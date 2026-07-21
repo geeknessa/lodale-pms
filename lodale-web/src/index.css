@@ -1,0 +1,165 @@
+@import url("https://fonts.googleapis.com/css2?family=Inria+Serif:wght@400;700&family=Inter:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inria Serif", ui-serif, serif;
+
+  /* Lodale brand palette */
+  --color-cream-100: #dad7cd;
+  --color-cream-50: #eeede7;
+  --color-moss-700: #2c4633;
+  --color-moss-600: #3a5a40;
+  --color-moss-500: #4c7256;
+  --color-moss-100: #e4eae1;
+  --color-forest-700: #263b33;
+  --color-forest-600: #344e41;
+  --color-ink-900: #262626;
+  --color-ink-700: #4a4a46;
+  --color-ink-400: #8c8c86;
+  --color-ink-200: #dddbd3;
+  --color-white: #ffffff;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-white);
+  color: var(--color-ink-900);
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+/* Global shadow removal as requested */
+* {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* Global Dark Mode overrides */
+body.dark {
+  background: var(--color-forest-700);
+  color: var(--color-white);
+}
+
+header {
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+body.dark header {
+  background-color: transparent !important;
+  border-color: var(--color-moss-600) !important;
+}
+
+body.dark header nav a,
+body.dark header button,
+body.dark header a,
+body.dark header span {
+  color: var(--color-white) !important;
+}
+
+body.dark header nav a:hover,
+body.dark header button:hover {
+  color: var(--color-cream-50) !important;
+}
+
+body.dark section.bg-cream-50,
+body.dark section.bg-cream-50\/50 {
+  background: var(--color-moss-700) !important;
+  border-color: var(--color-moss-600) !important;
+}
+
+body.dark section {
+  background: var(--color-forest-700);
+  border-color: var(--color-moss-600);
+}
+
+body.dark h1,
+body.dark h2,
+body.dark h3,
+body.dark h4,
+body.dark p,
+body.dark label,
+body.dark span,
+body.dark .text-ink-900 {
+  color: var(--color-white) !important;
+}
+
+body.dark .text-ink-700 {
+  color: var(--color-cream-50) !important;
+}
+
+body.dark .text-ink-400 {
+  color: var(--color-cream-100) !important;
+}
+
+body.dark .text-moss-700 {
+  color: var(--color-moss-100) !important;
+}
+
+body.dark .text-moss-600 {
+  color: var(--color-cream-50) !important;
+}
+
+body.dark .bg-moss-100 {
+  background-color: var(--color-moss-600) !important;
+  color: var(--color-white) !important;
+}
+
+body.dark .bg-cream-50 {
+  background-color: var(--color-forest-700) !important;
+}
+
+body.dark .logo-mark-svg .logo-bg {
+  fill: var(--color-white) !important;
+}
+
+body.dark .logo-mark-svg .logo-fg-stroke {
+  stroke: var(--color-moss-700) !important;
+}
+
+body.dark .logo-mark-svg .logo-fg-fill {
+  fill: var(--color-moss-700) !important;
+}
+
+body.dark .bg-white,
+body.dark .bg-cream-50\/30 {
+  background: var(--color-moss-700) !important;
+  border-color: var(--color-moss-600) !important;
+}
+
+body.dark .border-ink-200 {
+  border-color: var(--color-moss-600) !important;
+}
+
+body.dark input {
+  background: var(--color-moss-700) !important;
+  color: var(--color-white) !important;
+  border-color: var(--color-moss-600) !important;
+}
+
+body.dark input::placeholder {
+  color: var(--color-cream-100) !important;
+}
+
+body.dark footer {
+  background: var(--color-forest-700) !important;
+  border-color: var(--color-moss-600) !important;
+  color: var(--color-cream-100) !important;
+}
+
+/* Onboarding-specific themes */
+body.dark .onboarding-bg {
+  background: var(--color-forest-700) !important;
+}
+
+body.dark .onboarding-card {
+  background: var(--color-moss-700) !important;
+  border-color: var(--color-moss-600) !important;
+}
