@@ -13,10 +13,30 @@ export default function NavBar() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem("isAuthenticated") === "true";
   });
+  const [isAdmin, setIsAdmin] = useState(() => {
+    return (
+      localStorage.getItem("userRole") === "admin" ||
+      localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com"
+    );
+  });
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 12);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const handleAuth = () => {
       setIsAuthenticated(localStorage.getItem("isAuthenticated") === "true");
+      setIsAdmin(
+        localStorage.getItem("userRole") === "admin" ||
+          localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com"
+      );
     };
 
     // Check auth status on route/location change
@@ -34,53 +54,71 @@ export default function NavBar() {
     setIsOpen(false);
   }
 
-
+  function handleDashboardNavigate() {
+    if (isAdmin) {
+      navigate("/admin");
+    } else {
+      navigate("/dashboard/tenant");
+    }
+  }
 
   function handleSignOut() {
     localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("userRole");
     localStorage.removeItem("sessionExpiresAt");
     setIsAuthenticated(false);
+    setIsAdmin(false);
     setIsOpen(false);
     navigate("/explore");
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-ink-200/30 bg-transparent backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ease-in-out border-b backdrop-blur-md ${
+        isScrolled
+          ? "bg-theme-bg/95 border-theme-border/80 shadow-sm shadow-black/5 dark:shadow-none"
+          : "bg-theme-bg/80 border-theme-border/30"
+      }`}
+    >
+      <div
+        className={`mx-auto flex max-w-6xl items-center justify-between px-6 transition-all duration-300 ease-in-out ${
+          isScrolled ? "py-3" : "py-4"
+        }`}
+      >
         <Link to="/explore">
           <Logo />
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden items-center gap-8 text-[14px] font-medium text-ink-700 md:flex">
+        <nav className="hidden items-center gap-8 text-[14px] font-medium text-ink-700/90 dark:text-cream-100/90 md:flex">
           <Link
             to="/explore"
             onClick={handleHomeClick}
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className="hover:text-ink-900 dark:hover:text-white transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
           >
             Home
           </Link>
           <Link
             to="/explore#for-tenants"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className="hover:text-ink-900 dark:hover:text-white transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
           >
             For Tenants
           </Link>
           <Link
             to="/explore#for-landlords"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className="hover:text-ink-900 dark:hover:text-white transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
           >
             For Landlords
           </Link>
           <Link
             to="/how-it-works"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className="hover:text-ink-900 dark:hover:text-white transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
           >
             How It Works
           </Link>
           <Link
             to="/about"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className="hover:text-ink-900 dark:hover:text-white transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
           >
             About
           </Link>
@@ -114,10 +152,15 @@ export default function NavBar() {
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-3">
               <button
-                onClick={() => navigate("/dashboard/tenant")}
-                className="text-[14px] font-medium text-ink-700 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors"
+                onClick={handleDashboardNavigate}
+                className="text-[14px] font-medium text-ink-700 dark:text-cream-100/90 hover:text-ink-900 dark:hover:text-white focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors flex items-center gap-1.5"
               >
-                Dashboard
+                <span>Dashboard</span>
+                {isAdmin && (
+                  <span className="text-[10px] bg-[#344E41] text-white px-2 py-0.5 rounded font-bold uppercase">
+                    Admin
+                  </span>
+                )}
               </button>
               <Button
                 onClick={handleSignOut}
@@ -130,9 +173,15 @@ export default function NavBar() {
             <div className="hidden md:flex items-center gap-3">
               <button
                 onClick={() => navigate("/login")}
-                className="text-[14px] font-medium text-ink-700 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors"
+                className="text-[14px] font-medium text-ink-700 dark:text-cream-100/90 hover:text-ink-900 dark:hover:text-white focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors"
               >
                 Log In
+              </button>
+              <button
+                onClick={() => navigate("/login?role=admin")}
+                className="text-[12px] font-bold text-[#344E41] dark:text-[#DAD7CD] hover:underline px-2 py-1 bg-[#DAD7CD]/50 dark:bg-[#344E41]/50 rounded-md transition-colors"
+              >
+                Admin Portal
               </button>
               <Button
                 className="px-5 py-2.5 text-[14px] focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white"
@@ -147,7 +196,7 @@ export default function NavBar() {
 
       {/* Mobile Menu Dropdown Panel */}
       {isOpen && (
-        <nav className="flex flex-col gap-4 border-t border-ink-200/30 bg-theme-bg/95 backdrop-blur-md px-6 py-5 md:hidden animate-fade-in text-left">
+        <nav className="flex flex-col gap-4 border-t border-theme-border/30 bg-theme-bg/95 backdrop-blur-md px-6 py-5 md:hidden animate-fade-in text-left">
           <Link
             to="/explore"
             onClick={handleHomeClick}
@@ -189,11 +238,16 @@ export default function NavBar() {
               <button
                 onClick={() => {
                   setIsOpen(false);
-                  navigate("/dashboard/tenant");
+                  handleDashboardNavigate();
                 }}
-                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none flex items-center justify-between"
               >
-                Dashboard
+                <span>Dashboard</span>
+                {isAdmin && (
+                  <span className="text-[10px] bg-[#344E41] text-white px-2 py-0.5 rounded font-bold uppercase">
+                    Admin Portal
+                  </span>
+                )}
               </button>
               <Button
                 className="px-5 py-2.5 text-[14px]"
@@ -212,6 +266,15 @@ export default function NavBar() {
                 className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
               >
                 Log In
+              </button>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate("/login?role=admin");
+                }}
+                className="text-[13px] font-bold text-[#344E41] dark:text-[#DAD7CD] text-left py-1"
+              >
+                Admin Portal Login &rarr;
               </button>
               <Button
                 className="px-5 py-2.5 text-[14px]"

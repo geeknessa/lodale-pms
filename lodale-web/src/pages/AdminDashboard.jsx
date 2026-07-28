@@ -1,0 +1,2385 @@
+import React, { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Logo } from "../components/Logo";
+import { useTheme } from "../context/ThemeContext";
+import {
+  LayoutDashboard,
+  Users,
+  Building2,
+  MessageSquareWarning,
+  Search,
+  Filter,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Eye,
+  UserCheck,
+  UserX,
+  Trash2,
+  ShieldAlert,
+  Clock,
+  ExternalLink,
+  ChevronRight,
+  X,
+  Check,
+  Star,
+  MapPin,
+  ShieldCheck,
+  FileText,
+  Mail,
+  Phone,
+  Calendar,
+  Building,
+  Globe,
+  LogOut,
+  Settings,
+  Palette,
+  Sun,
+  Moon,
+  Monitor,
+  User,
+  Lock,
+  KeyRound,
+  Bell,
+  Sliders,
+  Info,
+  Upload,
+  Camera,
+  Laptop,
+  Smartphone,
+  Shield,
+} from "lucide-react";
+
+// --- MOCK INITIAL DATA ---
+const INITIAL_USERS = [
+  {
+    id: "usr-101",
+    name: "Emeka Nwankwo",
+    email: "emeka.n@example.com",
+    phone: "+234 803 123 4567",
+    role: "Landlord",
+    status: "Active",
+    joinedDate: "2025-11-14",
+    listingsCount: 3,
+    verifications: ["ID Verified", "Phone Verified"],
+  },
+  {
+    id: "usr-102",
+    name: "Amina Bello",
+    email: "amina.bello@example.com",
+    phone: "+234 802 987 6543",
+    role: "Tenant",
+    status: "Active",
+    joinedDate: "2026-01-09",
+    listingsCount: 0,
+    verifications: ["Phone Verified"],
+  },
+  {
+    id: "usr-103",
+    name: "Victor Ogunleye",
+    email: "victor.og@example.com",
+    phone: "+234 814 555 0192",
+    role: "Landlord",
+    status: "Suspended",
+    joinedDate: "2025-08-22",
+    listingsCount: 1,
+    verifications: ["ID Pending"],
+    suspensionReason: "Multiple reports of non-responsive communication and incomplete listing information.",
+  },
+  {
+    id: "usr-104",
+    name: "Grace Kalu",
+    email: "gkalu@example.com",
+    phone: "+234 701 444 8811",
+    role: "Tenant",
+    status: "Active",
+    joinedDate: "2026-02-18",
+    listingsCount: 0,
+    verifications: ["ID Verified", "Email Verified"],
+  },
+  {
+    id: "usr-105",
+    name: "Tunde Bakare",
+    email: "tunde.b@lodale.com",
+    phone: "+234 809 333 2211",
+    role: "Admin",
+    status: "Active",
+    joinedDate: "2025-05-01",
+    listingsCount: 0,
+    verifications: ["Admin Verified"],
+  },
+  {
+    id: "usr-106",
+    name: "Chidinma Eze",
+    email: "ceze.properties@example.com",
+    phone: "+234 812 777 9900",
+    role: "Landlord",
+    status: "Active",
+    joinedDate: "2026-03-02",
+    listingsCount: 2,
+    verifications: ["ID Verified", "Phone Verified"],
+  },
+];
+
+const INITIAL_LISTINGS = [
+  {
+    id: "lst-201",
+    title: "Oakwood Heights, Luxury 2BR",
+    location: "Yaba, Lagos",
+    price: "₦2,200,000/yr",
+    type: "Apartment",
+    status: "Pending Approval",
+    submittedAt: "2026-07-22T14:30:00Z",
+    landlord: { id: "usr-106", name: "Chidinma Eze", score: 4.9 },
+    description:
+      "Fully serviced 2-bedroom apartment with prepaid meter, constant water supply, and top-tier security.",
+    amenities: ["Prepaid Meter", "Borehole", "24/7 Security", "Balcony"],
+    deedVerified: true,
+  },
+  {
+    id: "lst-202",
+    title: "Skyline Tower, Studio Flat 4B",
+    location: "Victoria Island, Lagos",
+    price: "₦3,800,000/yr",
+    type: "Studio",
+    status: "Pending Approval",
+    submittedAt: "2026-07-23T08:15:00Z",
+    landlord: { id: "usr-101", name: "Emeka Nwankwo", score: 4.7 },
+    description:
+      "Modern minimalist studio with panoramic ocean view. Includes backup generator and underground parking.",
+    amenities: ["Backup Generator", "Elevator", "Security", "Fiber Internet"],
+    deedVerified: true,
+  },
+  {
+    id: "lst-203",
+    title: "Lekki Phase 1 Prime Villa",
+    location: "Lekki Phase 1, Lagos",
+    price: "₦5,500,000/yr",
+    type: "Duplex",
+    status: "Live",
+    submittedAt: "2026-06-10T10:00:00Z",
+    landlord: { id: "usr-101", name: "Emeka Nwankwo", score: 4.8 },
+    description:
+      "Spacious 4-bedroom terrace duplex in a serene gated estate with swimming pool access.",
+    amenities: ["Swimming Pool", "Gated Security", "Parking", "Prepaid Meter"],
+    deedVerified: true,
+  },
+  {
+    id: "lst-204",
+    title: "Unverified Cheap Self-Contain",
+    location: "Ikeja, Lagos",
+    price: "₦350,000/yr",
+    type: "Self Contain",
+    status: "Pending Approval",
+    submittedAt: "2026-07-23T06:45:00Z",
+    landlord: { id: "usr-103", name: "Victor Ogunleye", score: 3.2 },
+    description:
+      "Very cheap self contain near transport hub. Immediate move-in available.",
+    amenities: ["Water"],
+    deedVerified: false,
+    fraudWarning: "Price is suspiciously lower than area average. Landlord account currently suspended.",
+  },
+  {
+    id: "lst-205",
+    title: "Greenwich Estate 3-Bed Flat",
+    location: "Surulere, Lagos",
+    price: "₦1,900,000/yr",
+    type: "Apartment",
+    status: "Live",
+    submittedAt: "2026-05-18T12:00:00Z",
+    landlord: { id: "usr-106", name: "Chidinma Eze", score: 4.9 },
+    description: "Quiet residential flat close to schools and shopping centers.",
+    amenities: ["Borehole", "Prepaid Meter"],
+    deedVerified: true,
+  },
+];
+
+const INITIAL_REVIEWS = [
+  {
+    id: "rev-301",
+    authorName: "Amina Bello",
+    authorId: "usr-102",
+    propertyTitle: "Lekki Phase 1 Prime Villa",
+    listingId: "lst-203",
+    rating: 1,
+    comment:
+      "This listing posted fake photos! Water was leaking everywhere and landlord demanded cash outside the platform.",
+    submittedAt: "2026-07-23T07:20:00Z",
+    flagged: true,
+    flaggedBy: "Emeka Nwankwo (Landlord)",
+    flagReason: "Landlord claims tenant left false retaliatory review after deposit dispute.",
+    status: "Flagged",
+  },
+  {
+    id: "rev-302",
+    authorName: "Grace Kalu",
+    authorId: "usr-104",
+    propertyTitle: "Greenwich Estate 3-Bed Flat",
+    listingId: "lst-205",
+    rating: 5,
+    comment:
+      "Wonderful stay! Landlord Chidinma was extremely helpful and the apartment matched all photos.",
+    submittedAt: "2026-07-21T18:00:00Z",
+    flagged: false,
+    status: "Approved",
+  },
+  {
+    id: "rev-303",
+    authorName: "Anonymous Spammer",
+    authorId: "usr-999",
+    propertyTitle: "Skyline Tower, Studio Flat 4B",
+    listingId: "lst-202",
+    rating: 1,
+    comment:
+      "DO NOT RENT! Call +23480000000 to get free loans and crypto deals today!",
+    submittedAt: "2026-07-22T21:10:00Z",
+    flagged: true,
+    flaggedBy: "System Auto-Mod",
+    flagReason: "Spam content and external phone number advertisement detected.",
+    status: "Flagged",
+  },
+];
+
+export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const { themePreference, setThemePreference, effectiveTheme, isDark, toggleTheme } = useTheme();
+
+  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings'
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // Settings sub-tab: 'profile' | 'account' | 'appearance' | 'notifications' | 'preferences' | 'about'
+  const [settingsSubTab, setSettingsSubTab] = useState("profile");
+
+  const handleAdminSignOut = () => {
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("sessionExpiresAt");
+    navigate("/login");
+  };
+
+  // Dynamic state for core modules
+  const [users, setUsers] = useState(INITIAL_USERS);
+  const [listings, setListings] = useState(INITIAL_LISTINGS);
+  const [reviews, setReviews] = useState(INITIAL_REVIEWS);
+
+  // Filters & Search
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("All");
+  const [userStatusFilter, setUserStatusFilter] = useState("All");
+
+  const [listingFilter, setListingFilter] = useState("All");
+  const [listingSearch, setListingSearch] = useState("");
+
+  const [reviewFilter, setReviewFilter] = useState("Flagged");
+  const [reviewSearch, setReviewSearch] = useState("");
+
+  // Selected item modal states
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedListing, setSelectedListing] = useState(null);
+  const [selectedReviewFlag, setSelectedReviewFlag] = useState(null);
+  const [rejectReasonInput, setRejectReasonInput] = useState("");
+  const [isRejectingModalOpen, setIsRejectingModalOpen] = useState(false);
+
+  // Notification Toast
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
+
+  // --- SETTINGS FORM STATES ---
+  const [profileForm, setProfileForm] = useState({
+    name: "Tunde Bakare",
+    username: "tundebakare_admin",
+    email: "tunde.b@lodale.com",
+    phone: "+234 809 333 2211",
+    avatarPreview: null,
+  });
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
+
+  const [notificationSettings, setNotificationSettings] = useState({
+    emailAlerts: true,
+    smsAlerts: false,
+    reviewAlerts: true,
+    listingAlerts: true,
+  });
+
+  const [preferenceSettings, setPreferenceSettings] = useState({
+    language: "English (UK)",
+    timeZone: "West Africa Time (WAT) GMT+1",
+    dateFormat: "DD/MM/YYYY",
+    timeFormat: "24-hour",
+  });
+
+  // Handlers for Settings
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    showToast("Profile information saved successfully!");
+  };
+
+  const handleUpdatePassword = (e) => {
+    e.preventDefault();
+    if (!passwordForm.newPassword) {
+      showToast("Please enter a new password.");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showToast("New password and confirm password do not match!");
+      return;
+    }
+    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    showToast("Password updated successfully!");
+  };
+
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setProfileForm((prev) => ({ ...prev, avatarPreview: url }));
+      showToast("Profile photo updated!");
+    }
+  };
+
+  const handleSaveNotifications = (e) => {
+    e.preventDefault();
+    showToast("Notification preferences updated!");
+  };
+
+  const handleSavePreferences = (e) => {
+    e.preventDefault();
+    showToast("System preferences updated!");
+  };
+
+  // --- CORE ACTIONS ---
+  const handleToggleUserStatus = (userId) => {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === userId) {
+          const newStatus = u.status === "Active" ? "Suspended" : "Active";
+          showToast(`User ${u.name} is now ${newStatus}.`);
+          return {
+            ...u,
+            status: newStatus,
+            suspensionReason:
+              newStatus === "Suspended"
+                ? "Suspended by Admin for safety review."
+                : null,
+          };
+        }
+        return u;
+      })
+    );
+    if (selectedUser?.id === userId) {
+      setSelectedUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: prev.status === "Active" ? "Suspended" : "Active",
+            }
+          : null
+      );
+    }
+  };
+
+  const handleDeleteUser = (userId) => {
+    const target = users.find((u) => u.id === userId);
+    if (
+      window.confirm(
+        `Are you sure you want to permanently delete user "${target?.name}"?`
+      )
+    ) {
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      showToast(`User ${target?.name} deleted.`);
+      if (selectedUser?.id === userId) setSelectedUser(null);
+    }
+  };
+
+  const handleApproveListing = (listingId) => {
+    setListings((prev) =>
+      prev.map((l) => {
+        if (l.id === listingId) {
+          return { ...l, status: "Live" };
+        }
+        return l;
+      })
+    );
+    const item = listings.find((l) => l.id === listingId);
+    showToast(`Listing "${item?.title}" approved and is now live!`);
+    if (selectedListing?.id === listingId) {
+      setSelectedListing((prev) => (prev ? { ...prev, status: "Live" } : null));
+    }
+  };
+
+  const handleRejectListing = (listingId, reason = "Failed verification requirements.") => {
+    setListings((prev) =>
+      prev.map((l) => {
+        if (l.id === listingId) {
+          return { ...l, status: "Rejected", rejectionReason: reason };
+        }
+        return l;
+      })
+    );
+    const item = listings.find((l) => l.id === listingId);
+    showToast(`Listing "${item?.title}" rejected.`);
+    setIsRejectingModalOpen(false);
+    setRejectReasonInput("");
+    if (selectedListing?.id === listingId) {
+      setSelectedListing((prev) =>
+        prev ? { ...prev, status: "Rejected", rejectionReason: reason } : null
+      );
+    }
+  };
+
+  const handleRemoveListing = (listingId) => {
+    const item = listings.find((l) => l.id === listingId);
+    if (
+      window.confirm(
+        `Remove fraudulent listing "${item?.title}" from platform?`
+      )
+    ) {
+      setListings((prev) => prev.filter((l) => l.id !== listingId));
+      showToast(`Listing "${item?.title}" removed.`);
+      if (selectedListing?.id === listingId) setSelectedListing(null);
+    }
+  };
+
+  const handleDismissFlag = (reviewId) => {
+    setReviews((prev) =>
+      prev.map((r) => {
+        if (r.id === reviewId) {
+          return { ...r, flagged: false, status: "Approved" };
+        }
+        return r;
+      })
+    );
+    showToast("Flag dismissed. Review kept on platform.");
+    if (selectedReviewFlag?.id === reviewId) setSelectedReviewFlag(null);
+  };
+
+  const handleRemoveReview = (reviewId) => {
+    setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+    showToast("Abusive/fake review removed.");
+    if (selectedReviewFlag?.id === reviewId) setSelectedReviewFlag(null);
+  };
+
+  // --- FILTERED COMPUTATIONS ---
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      const matchesSearch =
+        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.email.toLowerCase().includes(userSearch.toLowerCase());
+      const matchesRole =
+        userRoleFilter === "All" || u.role === userRoleFilter;
+      const matchesStatus =
+        userStatusFilter === "All" || u.status === userStatusFilter;
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [users, userSearch, userRoleFilter, userStatusFilter]);
+
+  const filteredListings = useMemo(() => {
+    return listings.filter((l) => {
+      const matchesSearch =
+        l.title.toLowerCase().includes(listingSearch.toLowerCase()) ||
+        l.location.toLowerCase().includes(listingSearch.toLowerCase()) ||
+        l.landlord.name.toLowerCase().includes(listingSearch.toLowerCase());
+      const matchesStatus =
+        listingFilter === "All" || l.status === listingFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [listings, listingSearch, listingFilter]);
+
+  const filteredReviews = useMemo(() => {
+    return reviews.filter((r) => {
+      const matchesSearch =
+        r.comment.toLowerCase().includes(reviewSearch.toLowerCase()) ||
+        r.authorName.toLowerCase().includes(reviewSearch.toLowerCase()) ||
+        r.propertyTitle.toLowerCase().includes(reviewSearch.toLowerCase());
+      const matchesFlagged =
+        reviewFilter === "All" || (reviewFilter === "Flagged" && r.flagged);
+      return matchesSearch && matchesFlagged;
+    });
+  }, [reviews, reviewSearch, reviewFilter]);
+
+  const totalUsersCount = users.length;
+  const pendingListingsCount = listings.filter(
+    (l) => l.status === "Pending Approval"
+  ).length;
+  const flaggedReviewsCount = reviews.filter((r) => r.flagged).length;
+
+  const actionRequiredFeed = useMemo(() => {
+    const items = [
+      ...listings
+        .filter((l) => l.status === "Pending Approval")
+        .map((l) => ({
+          type: "listing",
+          id: l.id,
+          title: l.title,
+          sub: `${l.location} • Submitted by ${l.landlord.name}`,
+          timestamp: l.submittedAt,
+          raw: l,
+        })),
+      ...reviews
+        .filter((r) => r.flagged)
+        .map((r) => ({
+          type: "review",
+          id: r.id,
+          title: `Flagged Review on "${r.propertyTitle}"`,
+          sub: `Reported by ${r.flaggedBy} • "${r.comment.slice(0, 70)}..."`,
+          timestamp: r.submittedAt,
+          raw: r,
+        })),
+    ];
+    return items.sort(
+      (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+    );
+  }, [listings, reviews]);
+
+  const SETTINGS_PAGES = [
+    { id: "profile", label: "Profile", icon: User },
+    { id: "account", label: "Account & Security", icon: Lock },
+    { id: "appearance", label: "Appearance", icon: Palette },
+    { id: "notifications", label: "Notifications", icon: Bell },
+    { id: "preferences", label: "Preferences", icon: Sliders },
+    { id: "about", label: "About", icon: Info },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#DAD7CD] dark:bg-[#0E1714] text-[#262626] dark:text-[#E4EBE6] font-sans flex flex-col md:flex-row antialiased selection:bg-[#3A5A40] selection:text-white transition-colors duration-200">
+      {/* --- TOAST NOTIFICATION --- */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50 bg-[#344E41] dark:bg-[#1A3329] text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 border border-[#3A5A40] dark:border-[#2C4638] animate-bounce">
+          <ShieldCheck className="h-5 w-5 text-[#DAD7CD] dark:text-[#E5C583]" />
+          <span className="text-sm font-medium">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* --- LEFT SIDEBAR NAVIGATION --- */}
+      <aside className="w-full md:w-64 bg-[#344E41] dark:bg-[#121F1A] text-white flex-shrink-0 border-r border-[#3A5A40] dark:border-[#1E332B] flex flex-col justify-between min-h-screen transition-colors">
+        <div>
+          {/* Top Logo Container */}
+          <div className="p-6 border-b border-[#3A5A40] dark:border-[#1E332B]">
+            <div className="flex items-center gap-3">
+              <Logo variant="white" className="scale-90 origin-left" />
+            </div>
+            <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#3A5A40] dark:bg-[#1C3028] text-[11px] text-[#DAD7CD] dark:text-[#E5C583] font-medium uppercase tracking-wider">
+              <ShieldAlert className="h-3 w-3" /> Admin Portal
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="p-3 space-y-1">
+            {/* Overview */}
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
+                activeTab === "overview"
+                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+              }`}
+            >
+              <LayoutDashboard className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+              <span>Dashboard Overview</span>
+            </button>
+
+            <div className="pt-3 pb-1 px-3 text-[10.5px] font-semibold text-[#DAD7CD]/70 dark:text-[#A3BCA7]/70 uppercase tracking-wider whitespace-nowrap">
+              Safety &amp; Management
+            </div>
+
+            {/* 1. User Management */}
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
+                activeTab === "users"
+                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Users className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                <span className="truncate">1. User Management</span>
+              </div>
+              <span className="text-[11px] bg-[#262626]/40 dark:bg-black/40 px-1.5 py-0.5 rounded-full text-[#DAD7CD] ml-1 shrink-0">
+                {users.length}
+              </span>
+            </button>
+
+            {/* 2. Listing Oversight */}
+            <button
+              onClick={() => setActiveTab("listings")}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
+                activeTab === "listings"
+                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Building2 className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                <span className="truncate">2. Listing Oversight</span>
+              </div>
+              {pendingListingsCount > 0 && (
+                <span className="text-[11px] bg-amber-600 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
+                  {pendingListingsCount}
+                </span>
+              )}
+            </button>
+
+            {/* 3. Review & Rating Moderation */}
+            <button
+              onClick={() => setActiveTab("reviews")}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
+                activeTab === "reviews"
+                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <MessageSquareWarning className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                <span className="truncate">3. Review Moderation</span>
+              </div>
+              {flaggedReviewsCount > 0 && (
+                <span className="text-[11px] bg-rose-700 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
+                  {flaggedReviewsCount}
+                </span>
+              )}
+            </button>
+
+            {/* Section: Settings Header */}
+            <div className="pt-3 pb-1 px-3 text-[10.5px] font-semibold text-[#DAD7CD]/70 dark:text-[#A3BCA7]/70 uppercase tracking-wider whitespace-nowrap">
+              Settings
+            </div>
+
+            {/* Settings Main & Sub-links */}
+            <button
+              onClick={() => {
+                setActiveTab("settings");
+              }}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
+                activeTab === "settings"
+                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+              }`}
+            >
+              <Settings className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+              <span>Admin Settings</span>
+            </button>
+
+            {/* Sub-item links for quick access */}
+            <div className="pl-5 space-y-0.5 pt-0.5">
+              {SETTINGS_PAGES.map((sp) => {
+                const IconComp = sp.icon;
+                const isSubActive = activeTab === "settings" && settingsSubTab === sp.id;
+                return (
+                  <button
+                    key={sp.id}
+                    onClick={() => {
+                      setActiveTab("settings");
+                      setSettingsSubTab(sp.id);
+                    }}
+                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11.5px] font-medium transition-colors whitespace-nowrap ${
+                      isSubActive
+                        ? "bg-[#3A5A40]/80 dark:bg-[#1C332A] text-white font-semibold"
+                        : "text-[#DAD7CD]/80 dark:text-[#A3BCA7]/80 hover:text-white hover:bg-[#3A5A40]/30"
+                    }`}
+                  >
+                    <IconComp className="h-3.5 w-3.5 shrink-0" />
+                    <span>{sp.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        </div>
+
+        {/* Footer Admin info & Navigation controls */}
+        <div className="p-4 border-t border-[#3A5A40] dark:border-[#1E332B] space-y-3">
+          <div className="flex items-center justify-between text-xs text-[#DAD7CD]/80 dark:text-[#A3BCA7]">
+            <div>
+              <p className="font-semibold text-white">{profileForm.name}</p>
+              <p className="text-[11px] text-[#DAD7CD] dark:text-[#A3BCA7]">System Administrator</p>
+            </div>
+            <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+          </div>
+
+          <div className="pt-2 border-t border-[#3A5A40]/60 dark:border-[#1E332B]/60 space-y-1.5 text-xs font-medium">
+            <button
+              onClick={() => navigate("/explore")}
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[#DAD7CD] hover:bg-[#3A5A40] hover:text-white transition-colors"
+            >
+              <Globe className="h-3.5 w-3.5" />
+              <span>Return to Public Site</span>
+            </button>
+            <button
+              onClick={handleAdminSignOut}
+              className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-rose-300 hover:bg-rose-900/40 hover:text-rose-100 transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* --- MAIN AREA --- */}
+      <main className="flex-1 p-6 md:p-8 max-w-6xl overflow-y-auto">
+        {/* --- TAB 0: DASHBOARD OVERVIEW --- */}
+        {activeTab === "overview" && (
+          <div className="space-y-8">
+            <div>
+              <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                Dashboard Overview
+              </h1>
+              <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                Real-time safety metrics and high-priority platform action items.
+              </p>
+            </div>
+
+            {/* Key Numbers Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Card 1: Total Users */}
+              <div
+                onClick={() => setActiveTab("users")}
+                className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+              >
+                <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
+                    Total Users
+                  </span>
+                  <div className="p-2 rounded-lg bg-[#DAD7CD]/50 dark:bg-[#1D3029]">
+                    <Users className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
+                    {totalUsersCount}
+                  </span>
+                  <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                    {users.filter((u) => u.status === "Active").length} active
+                  </span>
+                </div>
+                <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
+                  Manage accounts <ChevronRight className="h-3.5 w-3.5" />
+                </div>
+              </div>
+
+              {/* Card 2: Listings Waiting Approval */}
+              <div
+                onClick={() => setActiveTab("listings")}
+                className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+              >
+                <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
+                    Listings Pending Review
+                  </span>
+                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                    <Building2 className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
+                    {pendingListingsCount}
+                  </span>
+                  <span className="text-xs text-amber-800 dark:text-amber-400 font-medium">
+                    needs verification
+                  </span>
+                </div>
+                <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
+                  Review listings <ChevronRight className="h-3.5 w-3.5" />
+                </div>
+              </div>
+
+              {/* Card 3: Flagged Reviews */}
+              <div
+                onClick={() => setActiveTab("reviews")}
+                className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+              >
+                <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
+                    Flagged Reviews
+                  </span>
+                  <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300">
+                    <MessageSquareWarning className="h-5 w-5" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
+                    {flaggedReviewsCount}
+                  </span>
+                  <span className="text-xs text-rose-800 dark:text-rose-400 font-medium">
+                    needing moderation
+                  </span>
+                </div>
+                <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
+                  Moderate reviews <ChevronRight className="h-3.5 w-3.5" />
+                </div>
+              </div>
+            </div>
+
+            {/* Short list: What needs action right now */}
+            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm">
+              <div className="flex items-center justify-between pb-4 border-b border-[#DAD7CD] dark:border-[#233B31]">
+                <div>
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                    Action Required Right Now
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
+                    Pending approvals and flagged reviews ordered by most recent first.
+                  </p>
+                </div>
+                <span className="text-xs bg-[#DAD7CD] dark:bg-[#233B31] px-2.5 py-1 rounded-full text-[#262626] dark:text-[#E4EBE6] font-medium">
+                  {actionRequiredFeed.length} Items Pending
+                </span>
+              </div>
+
+              <div className="mt-4 divide-y divide-[#DAD7CD]/60 dark:divide-[#233B31]">
+                {actionRequiredFeed.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                    <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400 mx-auto mb-2" />
+                    All clear! No pending listing approvals or flagged reviews.
+                  </div>
+                ) : (
+                  actionRequiredFeed.map((item) => (
+                    <div
+                      key={`${item.type}-${item.id}`}
+                      className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] px-2 rounded-lg transition-colors"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          {item.type === "listing" ? (
+                            <span className="text-[11px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2 py-0.5 rounded">
+                              Listing Approval
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-bold uppercase bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded">
+                              Flagged Review
+                            </span>
+                          )}
+                          <span className="text-xs text-[#262626]/50 dark:text-[#A3BCA7]/60">
+                            {new Date(item.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <h3 className="font-medium text-sm text-[#262626] dark:text-[#F0F5F2]">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">{item.sub}</p>
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {item.type === "listing" ? (
+                          <>
+                            <button
+                              onClick={() => setSelectedListing(item.raw)}
+                              className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                            >
+                              Inspect
+                            </button>
+                            <button
+                              onClick={() => handleApproveListing(item.id)}
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded flex items-center gap-1 transition-colors"
+                            >
+                              <Check className="h-3.5 w-3.5" /> Approve
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedListing(item.raw);
+                                setIsRejectingModalOpen(true);
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded flex items-center gap-1 transition-colors"
+                            >
+                              <X className="h-3.5 w-3.5" /> Reject
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => setSelectedReviewFlag(item.raw)}
+                              className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                            >
+                              Report Details
+                            </button>
+                            <button
+                              onClick={() => handleDismissFlag(item.id)}
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                            >
+                              Keep Review
+                            </button>
+                            <button
+                              onClick={() => handleRemoveReview(item.id)}
+                              className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                            >
+                              Remove
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB 1: USER MANAGEMENT --- */}
+        {activeTab === "users" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                1. User Management
+              </h1>
+              <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                View all registered users, inspect profiles, suspend/activate, or delete accounts.
+              </p>
+            </div>
+
+            {/* Search and Filters Bar */}
+            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="relative w-full md:w-80">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+                <input
+                  type="text"
+                  placeholder="Search user by name or email..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-1.5 text-xs text-[#262626]/80 dark:text-[#A3BCA7] font-medium">
+                  <Filter className="h-3.5 w-3.5" /> Filter Role:
+                </div>
+                <select
+                  value={userRoleFilter}
+                  onChange={(e) => setUserRoleFilter(e.target.value)}
+                  className="text-xs bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg px-2.5 py-2 text-[#262626] dark:text-[#E4EBE6] font-medium focus:outline-none"
+                >
+                  <option value="All">All Roles</option>
+                  <option value="Landlord">Landlord</option>
+                  <option value="Tenant">Tenant</option>
+                  <option value="Admin">Admin</option>
+                </select>
+
+                <select
+                  value={userStatusFilter}
+                  onChange={(e) => setUserStatusFilter(e.target.value)}
+                  className="text-xs bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg px-2.5 py-2 text-[#262626] dark:text-[#E4EBE6] font-medium focus:outline-none"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Active">Active</option>
+                  <option value="Suspended">Suspended</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Users Table */}
+            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-hidden shadow-sm">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-[#344E41] dark:bg-[#1A2E26] text-white text-xs font-semibold uppercase tracking-wider">
+                    <th className="py-3 px-4">User</th>
+                    <th className="py-3 px-4">Role</th>
+                    <th className="py-3 px-4">Verifications</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#DAD7CD] dark:divide-[#233B31] text-sm">
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-[#262626]/60 dark:text-[#A3BCA7]/70 text-xs">
+                        No users found matching filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div className="font-medium text-[#262626] dark:text-[#F0F5F2]">{user.name}</div>
+                          <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">{user.email}</div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span
+                            className={`inline-block text-xs px-2.5 py-0.5 rounded font-semibold ${
+                              user.role === "Landlord"
+                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border dark:border-emerald-800/50"
+                                : user.role === "Admin"
+                                ? "bg-purple-100 text-purple-900 dark:bg-purple-950/80 dark:text-purple-300 dark:border dark:border-purple-800/50"
+                                : "bg-blue-100 text-blue-900 dark:bg-blue-950/80 dark:text-blue-300 dark:border dark:border-blue-800/50"
+                            }`}
+                          >
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {user.verifications.map((v, i) => (
+                              <span
+                                key={i}
+                                className="text-[10px] bg-[#DAD7CD] dark:bg-[#233B31] px-1.5 py-0.5 rounded text-[#262626] dark:text-[#E4EBE6] font-medium"
+                              >
+                                {v}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {user.status === "Active" ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                              <span className="h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-400"></span> Active
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 dark:text-rose-400">
+                              <span className="h-2 w-2 rounded-full bg-rose-600 dark:bg-rose-400"></span> Suspended
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-2">
+                          <button
+                            onClick={() => setSelectedUser(user)}
+                            className="p-1.5 text-[#344E41] dark:text-[#E5C583] hover:bg-[#DAD7CD] dark:hover:bg-[#233B31] rounded transition-colors"
+                            title="View Profile"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleToggleUserStatus(user.id)}
+                            className={`p-1.5 rounded transition-colors ${
+                              user.status === "Active"
+                                ? "text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                                : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+                            }`}
+                            title={user.status === "Active" ? "Suspend Account" : "Activate Account"}
+                          >
+                            {user.status === "Active" ? (
+                              <UserX className="h-4 w-4" />
+                            ) : (
+                              <UserCheck className="h-4 w-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="p-1.5 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded transition-colors"
+                            title="Delete Account"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB 2: LISTING OVERSIGHT --- */}
+        {activeTab === "listings" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                2. Listing Oversight
+              </h1>
+              <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                Review new listings waiting to go live, approve or reject submissions, or remove fraudulent listings.
+              </p>
+            </div>
+
+            {/* Filter Tabs & Search */}
+            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg">
+                {["All", "Pending Approval", "Live", "Rejected"].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setListingFilter(tab)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                      listingFilter === tab
+                        ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                        : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative w-full md:w-72">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+                <input
+                  type="text"
+                  placeholder="Search title, area, landlord..."
+                  value={listingSearch}
+                  onChange={(e) => setListingSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+                />
+              </div>
+            </div>
+
+            {/* Listings Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredListings.length === 0 ? (
+                <div className="col-span-2 py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                  No listings found for the selected filter.
+                </div>
+              ) : (
+                filteredListings.map((lst) => (
+                  <div
+                    key={lst.id}
+                    className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col justify-between space-y-4 shadow-sm"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span
+                          className={`text-xs px-2.5 py-0.5 rounded font-bold uppercase ${
+                            lst.status === "Live"
+                              ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
+                              : lst.status === "Pending Approval"
+                              ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
+                              : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
+                          }`}
+                        >
+                          {lst.status}
+                        </span>
+                        <span className="text-xs text-[#262626]/50 dark:text-[#A3BCA7]/60">
+                          {lst.type}
+                        </span>
+                      </div>
+
+                      <h3 className="font-serif font-semibold text-lg text-[#262626] dark:text-[#F0F5F2]">
+                        {lst.title}
+                      </h3>
+                      <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex items-center gap-1 mt-1">
+                        <MapPin className="h-3.5 w-3.5 text-[#3A5A40] dark:text-[#E5C583]" /> {lst.location}
+                      </p>
+
+                      <div className="mt-3 text-sm font-bold text-[#344E41] dark:text-[#E5C583]">
+                        {lst.price}
+                      </div>
+
+                      <div className="mt-2 pt-2 border-t border-[#DAD7CD] dark:border-[#233B31] text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex items-center justify-between">
+                        <span>Landlord: <strong className="text-[#262626] dark:text-[#F0F5F2]">{lst.landlord.name}</strong></span>
+                        <span>Deed Verified: {lst.deedVerified ? "Yes" : "No"}</span>
+                      </div>
+
+                      {lst.fraudWarning && (
+                        <div className="mt-3 p-2.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 rounded text-xs text-rose-800 dark:text-rose-300 flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                          <span>{lst.fraudWarning}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => setSelectedListing(lst)}
+                        className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                      >
+                        Inspect Details
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        {lst.status === "Pending Approval" && (
+                          <>
+                            <button
+                              onClick={() => handleApproveListing(lst.id)}
+                              className="px-2.5 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedListing(lst);
+                                setIsRejectingModalOpen(true);
+                              }}
+                              className="px-2.5 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => handleRemoveListing(lst.id)}
+                          className="px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
+                          title="Remove if fraudulent"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB 3: REVIEW & RATING MODERATION --- */}
+        {activeTab === "reviews" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                3. Review &amp; Rating Moderation
+              </h1>
+              <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                Filter reported reviews, inspect details, and remove fake or abusive ratings.
+              </p>
+            </div>
+
+            {/* Filter Toggle & Search */}
+            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg">
+                <button
+                  onClick={() => setReviewFilter("Flagged")}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    reviewFilter === "Flagged"
+                      ? "bg-rose-800 text-white"
+                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                  }`}
+                >
+                  Flagged Only ({flaggedReviewsCount})
+                </button>
+                <button
+                  onClick={() => setReviewFilter("All")}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    reviewFilter === "All"
+                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                  }`}
+                >
+                  All Reviews ({reviews.length})
+                </button>
+              </div>
+
+              <div className="relative w-full md:w-72">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+                <input
+                  type="text"
+                  placeholder="Search in reviews..."
+                  value={reviewSearch}
+                  onChange={(e) => setReviewSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+                />
+              </div>
+            </div>
+
+            {/* Reviews Feed */}
+            <div className="space-y-4">
+              {filteredReviews.length === 0 ? (
+                <div className="py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                  No reviews match your current view.
+                </div>
+              ) : (
+                filteredReviews.map((rev) => (
+                  <div
+                    key={rev.id}
+                    className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm"
+                  >
+                    <div className="space-y-2 max-w-2xl">
+                      <div className="flex items-center gap-2">
+                        <div className="flex text-amber-500">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i < rev.rating ? "fill-amber-400 text-amber-400" : "text-gray-300 dark:text-gray-600"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                          {rev.propertyTitle}
+                        </span>
+                        {rev.flagged && (
+                          <span className="text-[10px] bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded font-bold uppercase">
+                            FLAGGED
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-sm text-[#262626] dark:text-[#E4EBE6] italic">
+                        "{rev.comment}"
+                      </p>
+
+                      <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                        By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {new Date(rev.submittedAt).toLocaleDateString()}
+                      </div>
+
+                      {rev.flagged && (
+                        <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded text-xs text-amber-900 dark:text-amber-300">
+                          <strong>Reported reason:</strong> {rev.flagReason}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => setSelectedReviewFlag(rev)}
+                        className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                      >
+                        Report Details
+                      </button>
+
+                      {rev.flagged && (
+                        <button
+                          onClick={() => handleDismissFlag(rev.id)}
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                        >
+                          Dismiss Flag (Keep)
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => handleRemoveReview(rev.id)}
+                        className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                      >
+                        Remove Review
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* --- TAB 4: SETTINGS MODULE (EXPANDED & REDESIGNED) --- */}
+        {(activeTab === "settings" || activeTab.startsWith("settings-")) && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Main Header */}
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#E5C583] uppercase tracking-wider mb-1">
+                <Settings className="h-4 w-4" /> System Administration
+              </div>
+              <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                Admin Settings
+              </h1>
+              <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                Manage your account credentials, security rules, notification preferences, and system parameters.
+              </p>
+            </div>
+
+            {/* Top Compact Sub-Navigation Tabs Bar */}
+            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-2 shadow-sm overflow-x-auto">
+              <div className="flex items-center gap-1.5 min-w-max">
+                {SETTINGS_PAGES.map((page) => {
+                  const IconComp = page.icon;
+                  const isActive = settingsSubTab === page.id;
+                  return (
+                    <button
+                      key={page.id}
+                      onClick={() => setSettingsSubTab(page.id)}
+                      className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition-all cursor-pointer ${
+                        isActive
+                          ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512] shadow-sm"
+                          : "text-[#262626]/80 dark:text-[#A3BCA7] hover:bg-[#DAD7CD]/50 dark:hover:bg-[#1D3029] hover:text-[#262626] dark:hover:text-white"
+                      }`}
+                    >
+                      <IconComp className="h-3.5 w-3.5" />
+                      <span>{page.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* --- SETTINGS PAGE 1: PROFILE --- */}
+            {settingsSubTab === "profile" && (
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                <div>
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                    <User className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                    Admin Profile
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
+                    Update your public administrator details and identity attributes.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSaveProfile} className="space-y-6">
+                  {/* Photo Upload Section */}
+                  <div className="flex items-center gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                    <div className="relative">
+                      <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#E5C583] dark:text-[#0B1512] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
+                        {profileForm.avatarPreview ? (
+                          <img
+                            src={profileForm.avatarPreview}
+                            alt="Avatar Preview"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          "TB"
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="avatar-upload"
+                          className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Upload className="h-3.5 w-3.5" /> Upload Photo
+                        </label>
+                        <input
+                          id="avatar-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
+                          className="hidden"
+                        />
+                        {profileForm.avatarPreview && (
+                          <button
+                            type="button"
+                            onClick={() => setProfileForm((p) => ({ ...p, avatarPreview: null }))}
+                            className="px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                        Supported formats: JPG, PNG, GIF. Maximum size 2MB.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Profile Form Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        value={profileForm.name}
+                        onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                        required
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        value={profileForm.username}
+                        onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
+                        required
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={profileForm.email}
+                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                        required
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="text"
+                        value={profileForm.phone}
+                        onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors shadow-sm"
+                    >
+                      Save Profile Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* --- SETTINGS PAGE 2: ACCOUNT & SECURITY --- */}
+            {settingsSubTab === "account" && (
+              <div className="space-y-6">
+                {/* Change Password */}
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+                  <div>
+                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                      <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                      Change Password
+                    </h2>
+                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
+                      Ensure your account is using a long, random password to stay secure.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        Current Password
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={passwordForm.currentPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        New Password
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={passwordForm.newPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors"
+                    >
+                      Update Password
+                    </button>
+                  </form>
+                </div>
+
+                {/* Two-Factor Authentication (2FA) */}
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-serif text-base font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                        <Shield className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                        Two-Factor Authentication (2FA)
+                      </h3>
+                      <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-0.5">
+                        Add an extra layer of security by requiring a 6-digit code when logging in.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTwoFactorEnabled(!twoFactorEnabled);
+                        showToast(`Two-factor authentication ${!twoFactorEnabled ? "enabled" : "disabled"}.`);
+                      }}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        twoFactorEnabled ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          twoFactorEnabled ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Active Sessions */}
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-serif text-base font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                        <Laptop className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                        Active Login Sessions
+                      </h3>
+                      <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-0.5">
+                        Devices currently signed in to your administrator account.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => showToast("Logged out from all other device sessions.")}
+                      className="px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                    >
+                      Logout from All Devices
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <div className="p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-3">
+                        <Laptop className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
+                        <div>
+                          <p className="font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                            Windows PC · Chrome 126
+                          </p>
+                          <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                            Lagos, Nigeria • 102.89.22.14 • Active Now
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 rounded text-[10px] font-bold uppercase">
+                        Current Session
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-3">
+                        <Smartphone className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
+                        <div>
+                          <p className="font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                            iPhone 14 Pro · Mobile Safari
+                          </p>
+                          <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                            Lagos, Nigeria • 102.89.45.88 • Last active 2 hours ago
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => showToast("Session revoked.")}
+                        className="text-xs text-rose-600 hover:underline"
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* --- SETTINGS PAGE 3: APPEARANCE --- */}
+            {settingsSubTab === "appearance" && (
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                <div>
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                    <Palette className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                    Appearance &amp; Theme
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                    Select your preferred visual mode. Theme changes apply instantly across your administrator interface.
+                  </p>
+                </div>
+
+                {/* Clean Radio Group / Segmented Control */}
+                <div className="space-y-3 max-w-lg">
+                  <span className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6]">
+                    Interface Theme Mode
+                  </span>
+
+                  <div className="space-y-2">
+                    {/* System Option */}
+                    <label
+                      onClick={() => setThemePreference("system")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        themePreference === "system"
+                          ? "border-[#3A5A40] dark:border-[#E5C583] bg-[#DAD7CD]/30 dark:bg-[#1B2C25] ring-1 ring-[#3A5A40] dark:ring-[#E5C583]"
+                          : "border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] hover:bg-[#DAD7CD]/20"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Monitor className="h-4.5 w-4.5 text-[#3A5A40] dark:text-[#E5C583]" />
+                        <div>
+                          <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                            System Preference
+                          </p>
+                          <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                            Automatically matches your OS or browser light/dark setting.
+                          </p>
+                        </div>
+                      </div>
+                      <input
+                        type="radio"
+                        name="theme-radio"
+                        checked={themePreference === "system"}
+                        onChange={() => setThemePreference("system")}
+                        className="accent-[#3A5A40] dark:accent-[#E5C583]"
+                      />
+                    </label>
+
+                    {/* Light Option */}
+                    <label
+                      onClick={() => setThemePreference("light")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        themePreference === "light"
+                          ? "border-[#3A5A40] dark:border-[#E5C583] bg-[#DAD7CD]/30 dark:bg-[#1B2C25] ring-1 ring-[#3A5A40] dark:ring-[#E5C583]"
+                          : "border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] hover:bg-[#DAD7CD]/20"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Sun className="h-4.5 w-4.5 text-amber-600" />
+                        <div>
+                          <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                            Light Mode
+                          </p>
+                          <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                            Lodale classic cream (#DAD7CD) &amp; sage palette.
+                          </p>
+                        </div>
+                      </div>
+                      <input
+                        type="radio"
+                        name="theme-radio"
+                        checked={themePreference === "light"}
+                        onChange={() => setThemePreference("light")}
+                        className="accent-[#3A5A40] dark:accent-[#E5C583]"
+                      />
+                    </label>
+
+                    {/* Dark Option */}
+                    <label
+                      onClick={() => setThemePreference("dark")}
+                      className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+                        themePreference === "dark"
+                          ? "border-[#3A5A40] dark:border-[#E5C583] bg-[#DAD7CD]/30 dark:bg-[#1B2C25] ring-1 ring-[#3A5A40] dark:ring-[#E5C583]"
+                          : "border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] hover:bg-[#DAD7CD]/20"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Moon className="h-4.5 w-4.5 text-indigo-400" />
+                        <div>
+                          <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                            Dark Mode
+                          </p>
+                          <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                            Deep forest charcoal (#0E1714) for low-light work.
+                          </p>
+                        </div>
+                      </div>
+                      <input
+                        type="radio"
+                        name="theme-radio"
+                        checked={themePreference === "dark"}
+                        onChange={() => setThemePreference("dark")}
+                        className="accent-[#3A5A40] dark:accent-[#E5C583]"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-[#DAD7CD]/30 dark:bg-[#121F1A] rounded-lg border border-[#3A5A40]/20 dark:border-[#233B31] text-xs text-[#262626]/80 dark:text-[#A3BCA7] flex items-center justify-between">
+                  <span>Currently Active Theme: <strong className="capitalize text-[#262626] dark:text-[#F0F5F2]">{effectiveTheme}</strong> Mode</span>
+                  <span className="text-[11px] bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512] px-2 py-0.5 rounded font-bold">
+                    {themePreference === "system" ? "Synced with OS" : "Manual Preference"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* --- SETTINGS PAGE 4: NOTIFICATIONS --- */}
+            {settingsSubTab === "notifications" && (
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                <div>
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                    Notification Channels &amp; Alerts
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                    Control how and when you receive administrative alerts and safety notifications.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSaveNotifications} className="space-y-4 max-w-xl">
+                  {/* Email Notifications */}
+                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                        Email Digest &amp; Alerts
+                      </p>
+                      <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                        Receive daily administrative summaries and critical platform updates via email.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNotificationSettings((n) => ({ ...n, emailAlerts: !n.emailAlerts }))
+                      }
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                        notificationSettings.emailAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          notificationSettings.emailAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* SMS Alerts */}
+                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                        SMS Emergency Alerts
+                      </p>
+                      <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                        Receive immediate SMS text notifications for urgent security breaches.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNotificationSettings((n) => ({ ...n, smsAlerts: !n.smsAlerts }))
+                      }
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                        notificationSettings.smsAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          notificationSettings.smsAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Review Alerts */}
+                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                        Review Moderation Alerts
+                      </p>
+                      <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                        Get notified when a user or host flags a review as fake or abusive.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNotificationSettings((n) => ({ ...n, reviewAlerts: !n.reviewAlerts }))
+                      }
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                        notificationSettings.reviewAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          notificationSettings.reviewAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Listing Approval Alerts */}
+                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                        Listing Approval Alerts
+                      </p>
+                      <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                        Get notified when a landlord submits a new property listing for verification.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setNotificationSettings((n) => ({ ...n, listingAlerts: !n.listingAlerts }))
+                      }
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                        notificationSettings.listingAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          notificationSettings.listingAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors shadow-sm"
+                    >
+                      Save Notification Preferences
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* --- SETTINGS PAGE 5: PREFERENCES --- */}
+            {settingsSubTab === "preferences" && (
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                <div>
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                    <Sliders className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                    Regional &amp; Localization Preferences
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                    Set your preferred language, time zone, and date formatting options.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSavePreferences} className="space-y-4 max-w-md">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                      System Language
+                    </label>
+                    <select
+                      value={preferenceSettings.language}
+                      onChange={(e) =>
+                        setPreferenceSettings({ ...preferenceSettings, language: e.target.value })
+                      }
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                    >
+                      <option value="English (UK)">English (UK)</option>
+                      <option value="English (US)">English (US)</option>
+                      <option value="Hausa">Hausa</option>
+                      <option value="Yoruba">Yoruba</option>
+                      <option value="Igbo">Igbo</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                      Time Zone
+                    </label>
+                    <select
+                      value={preferenceSettings.timeZone}
+                      onChange={(e) =>
+                        setPreferenceSettings({ ...preferenceSettings, timeZone: e.target.value })
+                      }
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                    >
+                      <option value="West Africa Time (WAT) GMT+1">West Africa Time (WAT) GMT+1</option>
+                      <option value="Coordinated Universal Time (UTC)">Coordinated Universal Time (UTC)</option>
+                      <option value="Eastern Standard Time (EST)">Eastern Standard Time (EST)</option>
+                      <option value="Pacific Time (PST)">Pacific Time (PST)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                      Date Format
+                    </label>
+                    <select
+                      value={preferenceSettings.dateFormat}
+                      onChange={(e) =>
+                        setPreferenceSettings({ ...preferenceSettings, dateFormat: e.target.value })
+                      }
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                    >
+                      <option value="DD/MM/YYYY">DD/MM/YYYY (23/07/2026)</option>
+                      <option value="MM/DD/YYYY">MM/DD/YYYY (07/23/2026)</option>
+                      <option value="YYYY-MM-DD">YYYY-MM-DD (2026-07-23)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                      Time Format
+                    </label>
+                    <select
+                      value={preferenceSettings.timeFormat}
+                      onChange={(e) =>
+                        setPreferenceSettings({ ...preferenceSettings, timeFormat: e.target.value })
+                      }
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                    >
+                      <option value="24-hour">24-hour (14:30)</option>
+                      <option value="12-hour">12-hour (2:30 PM)</option>
+                    </select>
+                  </div>
+
+                  <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors shadow-sm"
+                    >
+                      Save Preferences
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* --- SETTINGS PAGE 6: ABOUT --- */}
+            {settingsSubTab === "about" && (
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                <div>
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                    <Info className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                    About Lodale Admin Portal
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                    System specifications, version information, legal documentation, and platform status.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* System Info Box */}
+                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#121F1A] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">Application Version</span>
+                      <span className="text-xs font-mono bg-[#3A5A40] text-white px-2 py-0.5 rounded">v2.4.0</span>
+                    </div>
+                    <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] space-y-1">
+                      <p>Build: <strong>2026.07.23-prod</strong></p>
+                      <p>Environment: <strong>Verified Ledger Node (Nigeria)</strong></p>
+                      <p>Core Stack: <strong>React 18 · Vite · TailwindCSS</strong></p>
+                    </div>
+                  </div>
+
+                  {/* Health Box */}
+                  <div className="p-4 rounded-xl border border-emerald-300 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                      <span>System Health Status</span>
+                      <span className="flex items-center gap-1">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        Operational
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-800 dark:text-emerald-300">
+                      All verification nodes, database clusters, and media delivery endpoints are running nominally.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Legal & Compliance Links */}
+                <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31]">
+                  <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7] mb-3">
+                    Legal &amp; Compliance Resources
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => showToast("Opening Privacy Policy document...")}
+                      className="px-3.5 py-2 text-xs font-semibold bg-[#DAD7CD]/60 dark:bg-[#233B31] text-[#344E41] dark:text-[#E4EBE6] border border-[#3A5A40]/20 dark:border-[#2C4638] hover:bg-[#3A5A40] hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] focus:outline-none focus:ring-2 focus:ring-[#3A5A40] dark:focus:ring-[#E5C583] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <FileText className="h-3.5 w-3.5" /> Privacy Policy
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => showToast("Opening Terms of Service document...")}
+                      className="px-3.5 py-2 text-xs font-semibold bg-[#DAD7CD]/60 dark:bg-[#233B31] text-[#344E41] dark:text-[#E4EBE6] border border-[#3A5A40]/20 dark:border-[#2C4638] hover:bg-[#3A5A40] hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] focus:outline-none focus:ring-2 focus:ring-[#3A5A40] dark:focus:ring-[#E5C583] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <FileText className="h-3.5 w-3.5" /> Terms of Service
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => showToast("Downloading Security Whitepaper PDF...")}
+                      className="px-3.5 py-2 text-xs font-semibold bg-[#DAD7CD]/60 dark:bg-[#233B31] text-[#344E41] dark:text-[#E4EBE6] border border-[#3A5A40]/20 dark:border-[#2C4638] hover:bg-[#3A5A40] hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] focus:outline-none focus:ring-2 focus:ring-[#3A5A40] dark:focus:ring-[#E5C583] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5" /> Security Whitepaper
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* --- MODAL 1: VIEW USER PROFILE --- */}
+      {selectedUser && (
+        <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6]">
+            <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
+              <div>
+                <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  User Profile: {selectedUser.name}
+                </h2>
+                <p className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">User ID: {selectedUser.id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-2 text-[#262626]/80 dark:text-[#E4EBE6]">
+                <Mail className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" /> <span>{selectedUser.email}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[#262626]/80 dark:text-[#E4EBE6]">
+                <Phone className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" /> <span>{selectedUser.phone}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[#262626]/80 dark:text-[#E4EBE6]">
+                <Calendar className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" /> <span>Joined {selectedUser.joinedDate}</span>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-xs font-semibold text-[#262626]/70 dark:text-[#A3BCA7] uppercase">Role &amp; Status</span>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 text-xs font-bold bg-[#DAD7CD] dark:bg-[#233B31] text-[#262626] dark:text-[#E4EBE6] rounded">
+                    {selectedUser.role}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 text-xs font-bold rounded ${
+                      selectedUser.status === "Active"
+                        ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
+                        : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
+                    }`}
+                  >
+                    {selectedUser.status}
+                  </span>
+                </div>
+              </div>
+
+              {selectedUser.suspensionReason && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded text-xs text-rose-900 dark:text-rose-300">
+                  <strong>Suspension Note:</strong> {selectedUser.suspensionReason}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex items-center justify-between">
+              <button
+                onClick={() => handleToggleUserStatus(selectedUser.id)}
+                className={`px-4 py-2 text-xs font-bold rounded text-white transition-colors ${
+                  selectedUser.status === "Active"
+                    ? "bg-amber-700 hover:bg-amber-800 dark:bg-amber-600"
+                    : "bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600"
+                }`}
+              >
+                {selectedUser.status === "Active" ? "Suspend Account" : "Activate Account"}
+              </button>
+
+              <button
+                onClick={() => handleDeleteUser(selectedUser.id)}
+                className="px-4 py-2 text-xs font-bold rounded bg-rose-700 hover:bg-rose-800 text-white transition-colors"
+              >
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL 2: INSPECT LISTING DETAILS --- */}
+      {selectedListing && !isRejectingModalOpen && (
+        <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-2xl w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
+              <div>
+                <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  {selectedListing.title}
+                </h2>
+                <p className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">Listing ID: {selectedListing.id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedListing(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm">
+              <div className="flex items-center justify-between bg-[#DAD7CD]/30 dark:bg-[#1B2C25] p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33]">
+                <div>
+                  <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Asking Rent</div>
+                  <div className="text-lg font-bold text-[#344E41] dark:text-[#E5C583]">{selectedListing.price}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Location</div>
+                  <div className="font-medium text-[#262626] dark:text-[#F0F5F2]">{selectedListing.location}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Status</div>
+                  <div className="font-bold text-amber-800 dark:text-amber-300">{selectedListing.status}</div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Description</h4>
+                <p className="text-xs text-[#262626] dark:text-[#E4EBE6] mt-1">{selectedListing.description}</p>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Landlord Info</h4>
+                <p className="text-xs text-[#262626] dark:text-[#E4EBE6] mt-1 flex items-center gap-1">
+                  Name: <strong className="text-[#262626] dark:text-[#F0F5F2]">{selectedListing.landlord.name}</strong> • Rating: <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {selectedListing.landlord.score}
+                </p>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Verification Status</h4>
+                <div className="text-xs text-[#262626] dark:text-[#E4EBE6] mt-1 flex items-center gap-1.5">
+                  <span>Title Deed Document:</span>
+                  {selectedListing.deedVerified ? (
+                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Verified
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 font-semibold text-rose-700 dark:text-rose-400">
+                      <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Unverified
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex items-center justify-end gap-3">
+              {selectedListing.status === "Pending Approval" && (
+                <>
+                  <button
+                    onClick={() => handleApproveListing(selectedListing.id)}
+                    className="px-4 py-2 text-xs font-bold rounded bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 text-white transition-colors"
+                  >
+                    Approve Listing
+                  </button>
+                  <button
+                    onClick={() => setIsRejectingModalOpen(true)}
+                    className="px-4 py-2 text-xs font-bold rounded bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 hover:bg-rose-200 transition-colors"
+                  >
+                    Reject Submission
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => handleRemoveListing(selectedListing.id)}
+                className="px-4 py-2 text-xs font-bold rounded bg-rose-700 hover:bg-rose-800 text-white transition-colors"
+              >
+                Remove Fraudulent Listing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL 2B: REJECT REASON INPUT --- */}
+      {isRejectingModalOpen && selectedListing && (
+        <div className="fixed inset-0 z-50 bg-[#262626]/70 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-4 text-[#262626] dark:text-[#E4EBE6]">
+            <h3 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2]">
+              Reject Listing Submission
+            </h3>
+            <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
+              Please specify a reason for rejecting "{selectedListing.title}".
+            </p>
+            <textarea
+              rows={3}
+              value={rejectReasonInput}
+              onChange={(e) => setRejectReasonInput(e.target.value)}
+              placeholder="e.g. Incomplete address proof or suspicious pricing..."
+              className="w-full p-3 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setIsRejectingModalOpen(false)}
+                className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() =>
+                  handleRejectListing(
+                    selectedListing.id,
+                    rejectReasonInput || "Failed verification guidelines."
+                  )
+                }
+                className="px-4 py-1.5 text-xs font-bold bg-rose-700 text-white rounded hover:bg-rose-800"
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL 3: VIEW REVIEW FLAG REPORT --- */}
+      {selectedReviewFlag && (
+        <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6]">
+            <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
+              <div>
+                <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  Flag Report Details
+                </h2>
+                <p className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">Review ID: {selectedReviewFlag.id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedReviewFlag(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="p-3 bg-[#DAD7CD]/30 dark:bg-[#1B2C25] rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] space-y-1">
+                <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Property Listing:</div>
+                <div className="font-semibold text-[#262626] dark:text-[#F0F5F2]">{selectedReviewFlag.propertyTitle}</div>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Review Content:</div>
+                <p className="text-xs text-[#262626] dark:text-[#E4EBE6] italic mt-1 bg-gray-50 dark:bg-[#0E1714] p-3 rounded border border-gray-200 dark:border-[#263D33]">
+                  "{selectedReviewFlag.comment}"
+                </p>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Report Details:</div>
+                <div className="mt-1 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded text-xs text-amber-900 dark:text-amber-300 space-y-1">
+                  <p><strong>Reported By:</strong> {selectedReviewFlag.flaggedBy}</p>
+                  <p><strong>Reason:</strong> {selectedReviewFlag.flagReason}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex items-center justify-between">
+              {selectedReviewFlag.flagged && (
+                <button
+                  onClick={() => handleDismissFlag(selectedReviewFlag.id)}
+                  className="px-4 py-2 text-xs font-bold rounded bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 text-white transition-colors"
+                >
+                  Dismiss Flag (Keep Review)
+                </button>
+              )}
+              <button
+                onClick={() => handleRemoveReview(selectedReviewFlag.id)}
+                className="px-4 py-2 text-xs font-bold rounded bg-rose-700 hover:bg-rose-800 text-white transition-colors"
+              >
+                Remove Review Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

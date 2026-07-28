@@ -16,6 +16,7 @@ import SignUp from "./pages/SignUp";
 import Welcome from "./pages/Welcome";
 import Application from "./pages/Application";
 import AddProperty from "./pages/AddProperty";
+import AdminDashboard from "./pages/AdminDashboard";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
 import { AlertTriangle } from "lucide-react";
@@ -185,6 +186,8 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/dashboard/admin" element={<AdminDashboard />} />
             <Route
               path="/dashboard/:role"
               element={

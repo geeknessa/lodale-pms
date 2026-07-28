@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle, Zap } from "lucide-react";
 import { Logo } from "../components/Logo";
 import Button from "../components/Button";
 import heroBg from "../assets/modern_villa.png";
@@ -12,11 +12,21 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Simulated known user credentials
+  // Simulated known credentials
   const KNOWN_USER = {
     email: "user@example.com",
     password: "Password123!",
   };
+
+  const KNOWN_ADMIN = {
+    email: "admin@lodale.com",
+    password: "AdminPassword123!",
+  };
+
+  // State to toggle between User and Admin login modes
+  const [isAdminMode, setIsAdminMode] = useState(() => {
+    return location.search.includes("role=admin");
+  });
 
   // Pre-fill email from previous session
   const [email, setEmail] = useState(() => {
@@ -47,7 +57,7 @@ export default function Login() {
     return raw ? Number(raw) : null;
   });
 
-  // Focus ref for session pre-fill
+  // Refs for focusing and GSAP animations
   const passwordRef = useRef(null);
   const cardRef = useRef(null);
 
@@ -74,6 +84,16 @@ export default function Login() {
     }
   }, []);
 
+  function handleQuickAdminLogin() {
+    localStorage.removeItem("failedLoginAttempts");
+    localStorage.removeItem("loginLockoutUntil");
+    localStorage.setItem("isAuthenticated", "true");
+    localStorage.setItem("userRole", "admin");
+    localStorage.setItem("lastLoggedInEmail", KNOWN_ADMIN.email);
+    localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
+    navigate("/admin");
+  }
+
   function handleLoginSubmit(e) {
     e.preventDefault();
     setInlineError("");
@@ -84,12 +104,29 @@ export default function Login() {
     if (lockoutTime && Date.now() < lockoutTime) {
       const minutesRemaining = Math.ceil((lockoutTime - Date.now()) / 60000);
       setInlineError(
-        `Too many failed login attempts. Please try again in ${minutesRemaining} minutes or reset your password.`,
+        `Too many failed login attempts. Please try again in ${minutesRemaining} minutes or reset your password.`
       );
       return;
     }
 
-    if (email !== KNOWN_USER.email) {
+    // Check if logging in as Admin
+    if (email.toLowerCase() === KNOWN_ADMIN.email || isAdminMode) {
+      if (
+        (email.toLowerCase() === KNOWN_ADMIN.email && password === KNOWN_ADMIN.password) ||
+        isAdminMode
+      ) {
+        localStorage.removeItem("failedLoginAttempts");
+        localStorage.removeItem("loginLockoutUntil");
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userRole", "admin");
+        localStorage.setItem("lastLoggedInEmail", email || KNOWN_ADMIN.email);
+        localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
+        navigate("/admin");
+        return;
+      }
+    }
+
+    if (email !== KNOWN_USER.email && email.toLowerCase() !== KNOWN_ADMIN.email) {
       // Email not found
       const newAttempts = failedAttempts + 1;
       setFailedAttempts(newAttempts);
@@ -100,7 +137,7 @@ export default function Login() {
         setLockoutTime(lockDuration);
         localStorage.setItem("loginLockoutUntil", lockDuration.toString());
         setInlineError(
-          "Too many failed login attempts. Please try again in 15 minutes or reset your password.",
+          "Too many failed login attempts. Please try again in 15 minutes or reset your password."
         );
       } else {
         setInlineError("We couldn’t find an account with that email address.");
@@ -108,7 +145,7 @@ export default function Login() {
       return;
     }
 
-    if (password !== KNOWN_USER.password) {
+    if (email === KNOWN_USER.email && password !== KNOWN_USER.password) {
       // Password incorrect
       const newAttempts = failedAttempts + 1;
       setFailedAttempts(newAttempts);
@@ -119,27 +156,23 @@ export default function Login() {
         setLockoutTime(lockDuration);
         localStorage.setItem("loginLockoutUntil", lockDuration.toString());
         setInlineError(
-          "Too many failed login attempts. Please try again in 15 minutes or reset your password.",
+          "Too many failed login attempts. Please try again in 15 minutes or reset your password."
         );
       } else {
         setInlineError(
-          "The password you entered is incorrect. Please try again or reset your password.",
+          "The password you entered is incorrect. Please try again or reset your password."
         );
       }
       return;
     }
 
-    // Success! Clear attempt tracking
+    // Success User Login! Clear attempt tracking
     localStorage.removeItem("failedLoginAttempts");
     localStorage.removeItem("loginLockoutUntil");
     localStorage.setItem("isAuthenticated", "true");
+    localStorage.setItem("userRole", "user");
     localStorage.setItem("lastLoggedInEmail", email);
-
-    // Set 5-minute session lifetime for demo testing
-    localStorage.setItem(
-      "sessionExpiresAt",
-      (Date.now() + 5 * 60 * 1000).toString(),
-    );
+    localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
 
     // Redirect to explore/dashboard
     navigate("/explore");
@@ -161,7 +194,9 @@ export default function Login() {
     localStorage.removeItem("loginLockoutUntil");
 
     setResetMessage(`Password reset link has been sent to ${email}.`);
-  }  return (
+  }
+
+  return (
     <div
       className="min-h-screen w-full text-ink-900 dark:text-white flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-12 relative overflow-hidden font-sans select-none text-left transition-colors duration-200"
       style={{
@@ -173,6 +208,7 @@ export default function Login() {
     >
       {/* Background Overlay */}
       <div className="absolute inset-0 bg-[#FAF8F6]/55 dark:bg-[#0B1512]/90 transition-colors duration-200" />
+
       {/* Floating Back Button */}
       <button
         onClick={() => navigate(-1)}
@@ -191,20 +227,33 @@ export default function Login() {
         {/* Glassmorphic Form Card */}
         <div ref={cardRef} className="w-full bg-[#FAF8F6]/75 dark:bg-[#101F1A]/70 backdrop-blur-lg border border-white/80 dark:border-[#23372B]/60 shadow-[0_12px_40px_rgba(0,0,0,0.03)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.25)] rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 space-y-4 sm:space-y-6 transition-all duration-300">
           {/* Segmented Control Pill Toggle */}
-          <div className="flex justify-center">
+          <div className="flex flex-col gap-2">
             <div className="inline-flex p-1 bg-moss-100 dark:bg-[#101F1A] border border-ink-200 dark:border-[#23372B]/60 rounded-xl w-full transition-all duration-200">
               <button
                 type="button"
-                className="flex-1 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-bold tracking-wider rounded-lg uppercase bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512] hover:scale-[1.01] active:scale-98 transition-all cursor-pointer outline-none"
+                onClick={() => setIsAdminMode(false)}
+                className={`flex-1 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-bold tracking-wider rounded-lg uppercase transition-all cursor-pointer outline-none ${
+                  !isAdminMode
+                    ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512] shadow-sm"
+                    : "text-ink-700/60 dark:text-[#D0D7D5]/60 hover:text-ink-900 dark:hover:text-white"
+                }`}
               >
-                Log In
+                Standard User
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/signup")}
-                className="flex-1 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-bold tracking-wider rounded-lg uppercase text-ink-700/60 dark:text-[#D0D7D5]/60 hover:text-ink-900 dark:hover:text-white hover:bg-moss-200/30 dark:hover:bg-white/5 active:scale-98 transition-all cursor-pointer outline-none focus-visible:text-ink-900 dark:focus-visible:text-white"
+                onClick={() => {
+                  setIsAdminMode(true);
+                  setEmail("admin@lodale.com");
+                  setPassword("AdminPassword123!");
+                }}
+                className={`flex-1 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-bold tracking-wider rounded-lg uppercase transition-all cursor-pointer outline-none ${
+                  isAdminMode
+                    ? "bg-[#344E41] text-white shadow-sm"
+                    : "text-ink-700/60 dark:text-[#D0D7D5]/60 hover:text-ink-900 dark:hover:text-white"
+                }`}
               >
-                Sign Up
+                Admin Portal
               </button>
             </div>
           </div>
@@ -212,13 +261,34 @@ export default function Login() {
           {/* Form Title Header */}
           <div>
             <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-normal text-ink-900 dark:text-white leading-tight">
-              Welcome back
+              {isAdminMode ? "Admin Sign In" : "Welcome back"}
             </h1>
             <p className="text-[12px] sm:text-[13px] text-ink-700 dark:text-cream-100/70 mt-1 sm:mt-1.5">
-              Access your properties, tenants, payments, and maintenance
-              requests.
+              {isAdminMode
+                ? "Sign in to access platform moderation, listing approvals, and safety controls."
+                : "Access your properties, tenants, payments, and maintenance requests."}
             </p>
           </div>
+
+          {/* Quick Admin Access Card if Admin mode active */}
+          {isAdminMode && (
+            <div className="p-3.5 bg-[#344E41]/10 border border-[#344E41]/30 rounded-xl space-y-2 text-left">
+              <div className="flex items-center justify-between text-xs text-[#344E41] dark:text-[#DAD7CD] font-bold uppercase tracking-wider">
+                <span className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-amber-500" /> Quick Admin Demo Sign-In</span>
+                <span className="text-[10px] bg-[#344E41] text-white px-2 py-0.5 rounded">Staff Access</span>
+              </div>
+              <p className="text-[11px] text-ink-700 dark:text-cream-100/80">
+                Email: <code className="font-mono text-emerald-800 dark:text-emerald-300">admin@lodale.com</code> | Password: <code className="font-mono text-emerald-800 dark:text-emerald-300">AdminPassword123!</code>
+              </p>
+              <button
+                type="button"
+                onClick={handleQuickAdminLogin}
+                className="w-full py-2 px-3 text-xs font-bold bg-[#344E41] hover:bg-[#3A5A40] text-white rounded-lg transition-colors flex items-center justify-center gap-1.5"
+              >
+                Direct Access to Admin Dashboard &rarr;
+              </button>
+            </div>
+          )}
 
           {/* Security / Session warnings */}
           {sessionWarning && (
@@ -328,7 +398,7 @@ export default function Login() {
               type="submit"
               className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#0B1512] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 hover:scale-[1.015] active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer"
             >
-              Log In
+              {isAdminMode ? "Log In as Admin" : "Log In"}
             </Button>
           </form>
 
