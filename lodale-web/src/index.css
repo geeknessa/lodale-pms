@@ -3,6 +3,24 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+:root {
+  --theme-bg: #ffffff;
+  --theme-bg-offset: #eeede7;
+  --theme-text: #262626;
+  --theme-text-offset: #4a4a46;
+  --theme-border: rgba(221, 219, 211, 0.3);
+  --theme-card-bg: #ffffff;
+}
+
+.dark {
+  --theme-bg: #0e1714;
+  --theme-bg-offset: #13221c;
+  --theme-text: #f0f5f2;
+  --theme-text-offset: #a3bca7;
+  --theme-border: rgba(58, 90, 64, 0.3);
+  --theme-card-bg: #182c23;
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Inria Serif", ui-serif, serif;
@@ -21,14 +39,23 @@
   --color-ink-400: #8c8c86;
   --color-ink-200: #dddbd3;
   --color-white: #ffffff;
+
+  /* Map dynamic theme variables to avoid circular reference */
+  --color-theme-bg: var(--theme-bg);
+  --color-theme-text: var(--theme-text);
+  --color-theme-bg-offset: var(--theme-bg-offset);
+  --color-theme-border: var(--theme-border);
+  --color-theme-card-bg: var(--theme-card-bg);
+  --color-theme-text-offset: var(--theme-text-offset);
 }
 
 html,
+/* Global body default theme */
 body {
   overscroll-behavior: none;
   overscroll-behavior-y: none;
   font-family: var(--font-sans);
-  background: var(--color-white);
+  background-color: var(--color-white);
   color: var(--color-ink-900);
   transition:
     background-color 0.25s ease,
@@ -36,135 +63,42 @@ body {
     border-color 0.25s ease;
 }
 
-/* Global shadow removal as requested */
-* {
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
-
-/* Global Dark Mode overrides */
+/* Dark mode base body setup */
 body.dark {
-  background: var(--color-forest-700);
-  color: var(--color-white);
+  background-color: #0e1714;
+  color: #f0f5f2;
 }
 
-header {
-  transition:
-    background-color 0.25s ease,
-    color 0.25s ease,
-    border-color 0.25s ease;
+/* Smooth transition for theme switches */
+*,
+*::before,
+*::after {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-body.dark header {
-  background-color: transparent !important;
-  border-color: var(--color-moss-600) !important;
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-body.dark header nav a,
-body.dark header button,
-body.dark header a,
-body.dark header span {
-  color: var(--color-white) !important;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-body.dark header nav a:hover,
-body.dark header button:hover {
-  color: var(--color-cream-50) !important;
+::-webkit-scrollbar-thumb {
+  background: rgba(58, 90, 64, 0.3);
+  border-radius: 3px;
 }
 
-body.dark section.bg-cream-50,
-body.dark section.bg-cream-50\/50 {
-  background: var(--color-moss-700) !important;
-  border-color: var(--color-moss-600) !important;
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(229, 197, 131, 0.2);
 }
 
-body.dark section {
-  background: var(--color-forest-700);
-  border-color: var(--color-moss-600);
-}
-
-body.dark h1,
-body.dark h2,
-body.dark h3,
-body.dark h4,
-body.dark p,
-body.dark label,
-body.dark span,
-body.dark .text-ink-900 {
-  color: var(--color-white) !important;
-}
-
-body.dark .text-ink-700 {
-  color: var(--color-cream-50) !important;
-}
-
-body.dark .text-ink-400 {
-  color: var(--color-cream-100) !important;
-}
-
-body.dark .text-moss-700 {
-  color: var(--color-moss-100) !important;
-}
-
-body.dark .text-moss-600 {
-  color: var(--color-cream-50) !important;
-}
-
-body.dark .bg-moss-100 {
-  background-color: var(--color-moss-600) !important;
-  color: var(--color-white) !important;
-}
-
-body.dark .bg-cream-50 {
-  background-color: var(--color-forest-700) !important;
-}
-
-body.dark .logo-mark-svg .logo-bg {
-  fill: var(--color-white) !important;
-}
-
-body.dark .logo-mark-svg .logo-fg-stroke {
-  stroke: var(--color-moss-700) !important;
-}
-
-body.dark .logo-mark-svg .logo-fg-fill {
-  fill: var(--color-moss-700) !important;
-}
-
-body.dark .bg-white,
-body.dark .bg-cream-50\/30 {
-  background: var(--color-moss-700) !important;
-  border-color: var(--color-moss-600) !important;
-}
-
-body.dark .border-ink-200 {
-  border-color: var(--color-moss-600) !important;
-}
-
-body.dark input {
-  background: var(--color-moss-700) !important;
-  color: var(--color-white) !important;
-  border-color: var(--color-moss-600) !important;
-}
-
-body.dark input::placeholder {
-  color: var(--color-cream-100) !important;
-}
-
-body.dark footer {
-  background: var(--color-forest-700) !important;
-  border-color: var(--color-moss-600) !important;
-  color: var(--color-cream-100) !important;
-}
-
-/* Onboarding-specific themes */
-body.dark .onboarding-bg {
-  background: var(--color-forest-700) !important;
-}
-
-body.dark .onboarding-card {
-  background: var(--color-moss-700) !important;
-  border-color: var(--color-moss-600) !important;
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Custom Side Scrollbar Styling matching Lodale Theme */
