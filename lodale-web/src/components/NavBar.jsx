@@ -14,27 +14,109 @@ export default function NavBar() {
     return localStorage.getItem("isAuthenticated") === "true";
   });
 
+  const [activeSection, setActiveSection] = useState("");
+
   useEffect(() => {
     const handleAuth = () => {
       setIsAuthenticated(localStorage.getItem("isAuthenticated") === "true");
     };
 
-    // Check auth status on route/location change
     handleAuth();
 
     window.addEventListener("storage", handleAuth);
     return () => window.removeEventListener("storage", handleAuth);
   }, [location]);
 
+  // Scroll listener: active status changes ONLY when scrolling into sections
+  useEffect(() => {
+    const isHome = location.pathname === "/explore" || location.pathname === "/";
+    if (!isHome) {
+      setActiveSection("");
+      return;
+    }
+
+    const handleScroll = () => {
+      const tenantElem = document.getElementById("for-tenants");
+      const landlordElem = document.getElementById("for-landlords");
+      const scrollPos = window.scrollY;
+
+      const tenantTop = tenantElem ? tenantElem.offsetTop - 180 : Infinity;
+      const landlordTop = landlordElem ? landlordElem.offsetTop - 180 : Infinity;
+
+      if (scrollPos >= landlordTop) {
+        setActiveSection("#for-landlords");
+      } else if (scrollPos >= tenantTop) {
+        setActiveSection("#for-tenants");
+      } else {
+        setActiveSection("");
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [location.pathname]);
+
   function handleHomeClick(e) {
+    setIsOpen(false);
     if (location.pathname === "/explore" || location.pathname === "/") {
       e.preventDefault();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-    setIsOpen(false);
   }
 
+  function handleSectionClick(e, hash) {
+    setIsOpen(false);
+    if (location.pathname === "/explore" || location.pathname === "/") {
+      e.preventDefault();
+      const elem = document.getElementById(hash.replace("#", ""));
+      if (elem) {
+        const offset = 80;
+        const bodyRect = document.body.getBoundingClientRect().top;
+        const elementRect = elem.getBoundingClientRect().top;
+        const elementPosition = elementRect - bodyRect;
+        window.scrollTo({
+          top: elementPosition - offset,
+          behavior: "smooth",
+        });
+      }
+    }
+  }
 
+  const checkIsActive = (path, hash = "") => {
+    const isHomeRoute =
+      location.pathname === "/explore" ||
+      location.pathname === "/" ||
+      location.pathname === "/home";
+
+    if (isHomeRoute) {
+      if (hash) {
+        return activeSection === hash;
+      }
+      if (path === "/explore" || path === "/" || path === "/home") {
+        return activeSection === "";
+      }
+    }
+
+    return location.pathname === path;
+  };
+
+  const desktopLinkClass = (path, hash = "") => {
+    const active = checkIsActive(path, hash);
+    return `transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-md px-2.5 py-1 ${active
+        ? "text-moss-700 dark:text-[#E5C583] font-bold bg-moss-100/70 dark:bg-[#1C3328]/80 relative after:content-[''] after:absolute after:-bottom-1.5 after:left-2 after:right-2 after:h-[2.5px] after:bg-moss-700 dark:after:bg-[#E5C583] after:rounded-full shadow-xs"
+        : "text-ink-700 dark:text-cream-100/70 hover:text-ink-900 dark:hover:text-white font-medium hover:bg-black/5 dark:hover:bg-white/5"
+      }`;
+  };
+
+  const mobileLinkClass = (path, hash = "") => {
+    const active = checkIsActive(path, hash);
+    return `py-2.5 px-3 border-b transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none flex items-center justify-between rounded-lg ${active
+        ? "text-moss-700 dark:text-[#E5C583] font-bold border-moss-700 dark:border-[#E5C583] bg-moss-100/60 dark:bg-[#1C3328]/60"
+        : "text-theme-text dark:text-cream-100/80 hover:text-moss-600 border-theme-border/10 font-medium"
+      }`;
+  };
 
   function handleSignOut() {
     localStorage.removeItem("isAuthenticated");
@@ -47,40 +129,42 @@ export default function NavBar() {
   return (
     <header className="sticky top-0 z-50 border-b border-ink-200/30 bg-transparent backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link to="/explore">
+        <Link to="/explore" onClick={handleHomeClick}>
           <Logo />
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden items-center gap-8 text-[14px] font-medium text-ink-700 md:flex">
+        <nav className="hidden items-center gap-8 text-[14px] md:flex">
           <Link
             to="/explore"
             onClick={handleHomeClick}
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className={desktopLinkClass("/explore")}
           >
             Home
           </Link>
           <Link
             to="/explore#for-tenants"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            onClick={(e) => handleSectionClick(e, "#for-tenants")}
+            className={desktopLinkClass("/explore", "#for-tenants")}
           >
             For Tenants
           </Link>
           <Link
             to="/explore#for-landlords"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            onClick={(e) => handleSectionClick(e, "#for-landlords")}
+            className={desktopLinkClass("/explore", "#for-landlords")}
           >
             For Landlords
           </Link>
           <Link
             to="/how-it-works"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className={desktopLinkClass("/how-it-works")}
           >
             How It Works
           </Link>
           <Link
             to="/about"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className={desktopLinkClass("/about")}
           >
             About
           </Link>
@@ -115,7 +199,10 @@ export default function NavBar() {
             <div className="hidden md:flex items-center gap-3">
               <button
                 onClick={() => navigate("/dashboard/tenant")}
-                className="text-[14px] font-medium text-ink-700 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors"
+                className={`text-[14px] font-medium focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors ${location.pathname.startsWith("/dashboard")
+                  ? "text-moss-700 dark:text-[#E5C583] font-bold"
+                  : "text-ink-700 hover:text-ink-900"
+                  }`}
               >
                 Dashboard
               </button>
@@ -130,7 +217,10 @@ export default function NavBar() {
             <div className="hidden md:flex items-center gap-3">
               <button
                 onClick={() => navigate("/login")}
-                className="text-[14px] font-medium text-ink-700 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors"
+                className={`text-[14px] font-medium focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors ${location.pathname === "/login"
+                  ? "text-moss-700 dark:text-[#E5C583] font-bold"
+                  : "text-ink-700 hover:text-ink-900"
+                  }`}
               >
                 Log In
               </button>
@@ -151,37 +241,52 @@ export default function NavBar() {
           <Link
             to="/explore"
             onClick={handleHomeClick}
-            className="text-theme-text hover:text-moss-600 font-medium py-1.5 border-b border-theme-border/10 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+            className={mobileLinkClass("/explore")}
           >
-            Home
+            <span>Home</span>
+            {checkIsActive("/explore") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
           </Link>
           <Link
             to="/explore#for-tenants"
-            onClick={() => setIsOpen(false)}
-            className="text-theme-text hover:text-moss-600 font-medium py-1.5 border-b border-theme-border/10 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+            onClick={(e) => handleSectionClick(e, "#for-tenants")}
+            className={mobileLinkClass("/explore", "#for-tenants")}
           >
-            For Tenants
+            <span>For Tenants</span>
+            {checkIsActive("/explore", "#for-tenants") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
           </Link>
           <Link
             to="/explore#for-landlords"
-            onClick={() => setIsOpen(false)}
-            className="text-theme-text hover:text-moss-600 font-medium py-1.5 border-b border-theme-border/10 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+            onClick={(e) => handleSectionClick(e, "#for-landlords")}
+            className={mobileLinkClass("/explore", "#for-landlords")}
           >
-            For Landlords
+            <span>For Landlords</span>
+            {checkIsActive("/explore", "#for-landlords") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
           </Link>
           <Link
             to="/how-it-works"
             onClick={() => setIsOpen(false)}
-            className="text-theme-text hover:text-moss-600 font-medium py-1.5 border-b border-theme-border/10 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+            className={mobileLinkClass("/how-it-works")}
           >
-            How It Works
+            <span>How It Works</span>
+            {checkIsActive("/how-it-works") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
           </Link>
           <Link
             to="/about"
             onClick={() => setIsOpen(false)}
-            className="text-theme-text hover:text-moss-600 font-medium py-1.5 border-b border-theme-border/10 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+            className={mobileLinkClass("/about")}
           >
-            About
+            <span>About</span>
+            {checkIsActive("/about") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
           </Link>
 
           {isAuthenticated ? (
@@ -191,7 +296,10 @@ export default function NavBar() {
                   setIsOpen(false);
                   navigate("/dashboard/tenant");
                 }}
-                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+                className={`text-[14px] font-semibold text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none ${location.pathname.startsWith("/dashboard")
+                  ? "text-moss-700 dark:text-[#E5C583]"
+                  : "text-theme-text hover:text-moss-600"
+                  }`}
               >
                 Dashboard
               </button>
@@ -209,7 +317,10 @@ export default function NavBar() {
                   setIsOpen(false);
                   navigate("/login");
                 }}
-                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+                className={`text-[14px] font-semibold text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none ${location.pathname === "/login"
+                  ? "text-moss-700 dark:text-[#E5C583]"
+                  : "text-theme-text hover:text-moss-600"
+                  }`}
               >
                 Log In
               </button>

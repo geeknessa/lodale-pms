@@ -7,6 +7,7 @@ import Button from "../components/Button";
 export default function AddProperty() {
   const navigate = useNavigate();
   const [occupied, setOccupied] = useState(null); // null | true | false
+  const [rentCycle, setRentCycle] = useState("annual"); // "annual" | "monthly"
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -43,20 +44,61 @@ export default function AddProperty() {
               placeholder="Apartment, duplex, etc."
               required
             />
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                id="rent"
-                label="Monthly rent"
-                placeholder="₦200,000"
-                required
-              />
-              <Input
-                id="bedrooms"
-                label="Bedrooms"
-                type="number"
-                placeholder="2"
-                required
-              />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label
+                    htmlFor="rent"
+                    className="block text-[13px] font-medium text-ink-700"
+                  >
+                    Rent amount ({rentCycle === "annual" ? "per annum" : "per month"})
+                  </label>
+                  <div className="inline-flex p-0.5 bg-cream-100 border border-ink-200 rounded-md">
+                    <button
+                      type="button"
+                      onClick={() => setRentCycle("annual")}
+                      className={`px-2 py-0.5 text-[10.5px] font-bold rounded transition-all cursor-pointer ${
+                        rentCycle === "annual"
+                          ? "bg-moss-700 text-white shadow-xs"
+                          : "text-ink-700 hover:text-ink-900"
+                      }`}
+                    >
+                      Annual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRentCycle("monthly")}
+                      className={`px-2 py-0.5 text-[10.5px] font-bold rounded transition-all cursor-pointer ${
+                        rentCycle === "monthly"
+                          ? "bg-moss-700 text-white shadow-xs"
+                          : "text-ink-700 hover:text-ink-900"
+                      }`}
+                    >
+                      Monthly
+                    </button>
+                  </div>
+                </div>
+                <Input
+                  id="rent"
+                  placeholder={
+                    rentCycle === "annual"
+                      ? "₦2,500,000 / year"
+                      : "₦200,000 / month"
+                  }
+                  required
+                />
+              </div>
+
+              <div>
+                <Input
+                  id="bedrooms"
+                  label="Bedrooms"
+                  type="number"
+                  placeholder="2"
+                  required
+                />
+              </div>
             </div>
           </div>
 

@@ -143,19 +143,19 @@ export default function HowItWorks() {
     switch (type) {
       case "profile":
         return (
-          <div className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-6 shadow-xl transition-all duration-300">
-            <div className="flex items-center gap-4">
+          <div className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-5 shadow-xl transition-all duration-300 select-none">
+            <div className="flex items-center gap-3.5">
               <div className="relative">
-                <div className="h-14 w-14 rounded-full bg-moss-100 flex items-center justify-center font-display text-xl font-bold text-moss-700">
+                <div className="h-12 w-12 rounded-full bg-moss-100 flex items-center justify-center font-display text-lg font-bold text-moss-700">
                   {role === "tenant" ? "EO" : "AB"}
                 </div>
-                <div className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-moss-600 border-2 border-white text-white">
-                  <ShieldCheck className="h-3.5 w-3.5" />
+                <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-moss-600 border-2 border-white text-white">
+                  <ShieldCheck className="h-3 w-3" />
                 </div>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="font-display text-lg font-bold text-ink-900">
+                  <h4 className="font-display text-base font-bold text-ink-900">
                     {role === "tenant" ? "Emeka Obi" : "Ada Benson"}
                   </h4>
                 </div>
@@ -166,28 +166,27 @@ export default function HowItWorks() {
                 </p>
               </div>
             </div>
-            <div className="mt-5 space-y-3">
-              <div className="flex items-center justify-between text-[13px] border-b border-ink-100 pb-2">
+            <div className="mt-4 space-y-2.5">
+              <div className="flex items-center justify-between text-[12.5px] border-b border-ink-100 pb-2">
                 <span className="text-ink-700">ID Verification</span>
                 <span className="font-semibold text-moss-600 bg-moss-100 px-2.5 py-0.5 rounded text-[11px] flex items-center gap-1">
                   NIN Verified <Check className="h-3.5 w-3.5 shrink-0" />
                 </span>
               </div>
-              <div className="flex items-center justify-between text-[13px] border-b border-ink-100 pb-2">
+              <div className="flex items-center justify-between text-[12.5px] border-b border-ink-100 pb-2">
                 <span className="text-ink-700">Reliability Score</span>
                 <div className="text-right">
-                  <span className="font-bold text-moss-600 text-[14px]">
+                  <span className="font-bold text-moss-600 text-[13.5px]">
                     {role === "tenant" ? "4.9 / 5.0" : "4.8 / 5.0"}
                   </span>
                   <div className="text-[10px] text-ink-400">
-                    based on{" "}
                     {role === "tenant"
                       ? "3 past tenancies"
                       : "12 verified listings"}
                   </div>
                 </div>
               </div>
-              <div className="flex items-center justify-between text-[13px]">
+              <div className="flex items-center justify-between text-[12.5px]">
                 <span className="text-ink-700">Account Standing</span>
                 <span className="text-moss-600 font-semibold text-[12px]">
                   Excellent
@@ -198,41 +197,37 @@ export default function HowItWorks() {
         );
       case "lease":
         return (
-          <div className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-6 shadow-xl">
-            <div className="border-b border-ink-100 pb-3 mb-4 text-center">
-              <h4 className="font-display text-sm font-bold text-ink-900">
+          <div className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-5 shadow-xl select-none">
+            <div className="border-b border-ink-100 pb-2.5 mb-3 text-center">
+              <h4 className="font-display text-xs font-bold text-ink-900 tracking-wider">
                 RESIDENTIAL LEASE AGREEMENT
               </h4>
-              <p className="text-[9px] text-moss-600 font-bold tracking-wide flex items-center gap-0.5 justify-center mt-1">
+              <p className="text-[9px] text-moss-600 font-bold tracking-wide flex items-center gap-0.5 justify-center mt-0.5">
                 <Check className="h-3 w-3 shrink-0" /> COMPLIANT WITH NIGERIAN TENANCY ACT
               </p>
             </div>
-            <div className="space-y-3 text-[11px] text-ink-700 leading-relaxed max-h-32 overflow-y-auto pr-1">
+            <div className="space-y-2 text-[11px] text-ink-700 leading-normal">
               <p>
-                <strong>Section 1. Premises:</strong> Flat 4, 102 Herbert
-                Macaulay, Yaba, Lagos State.
+                <strong>Premises:</strong> Flat 4, 102 Herbert Macaulay, Yaba, Lagos.
               </p>
               <p>
-                <strong>Section 2. Duration:</strong> 1 Year commencing August
-                1, 2026 to July 31, 2027.
+                <strong>Duration:</strong> 1 Year (Aug 1, 2026 – July 31, 2027).
               </p>
               <p>
-                <strong>Section 3. Rent & Escrow:</strong> Rent of ₦1,800,000.
-                Caution deposit of ₦200,000 held securely in Lodale Trust
-                Escrow.
+                <strong>Rent & Deposit:</strong> ₦1,800,000/yr + ₦200,000 Caution Deposit held in Lodale Escrow.
               </p>
             </div>
-            <div className="mt-5 border-t border-ink-100 pt-4 grid grid-cols-2 gap-4">
+            <div className="mt-4 border-t border-ink-100 pt-3 grid grid-cols-2 gap-3">
               <div className="text-left border-r border-ink-100 pr-2">
                 <p className="text-[9px] text-ink-400">LANDLORD SIGNATURE</p>
-                <div className="font-display italic text-moss-700 py-1 text-[13px] font-semibold">
+                <div className="font-display italic text-moss-700 py-0.5 text-[12px] font-semibold">
                   Ada Benson
                 </div>
                 <p className="text-[8px] text-ink-400">Signed via NIN Key</p>
               </div>
               <div className="text-left pl-2">
                 <p className="text-[9px] text-ink-400">TENANT SIGNATURE</p>
-                <div className="font-display italic text-moss-700 py-1 text-[13px] font-semibold">
+                <div className="font-display italic text-moss-700 py-0.5 text-[12px] font-semibold">
                   Emeka Obi
                 </div>
                 <p className="text-[8px] text-ink-400">Signed via NIN Key</p>
@@ -242,13 +237,13 @@ export default function HowItWorks() {
         );
       case "ledger":
         return (
-          <div className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between border-b border-ink-100 pb-3 mb-4">
+          <div className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-5 shadow-xl select-none">
+            <div className="flex items-center justify-between border-b border-ink-100 pb-2.5 mb-3">
               <div>
-                <h4 className="font-display text-sm font-bold text-ink-900">
+                <h4 className="font-display text-xs font-bold text-ink-900">
                   Rent Receipt Log
                 </h4>
-                <p className="text-[10px] text-ink-400">INV-2026-0089</p>
+                <p className="text-[9.5px] text-ink-400">INV-2026-0089</p>
               </div>
               <div className="rounded bg-moss-100 text-moss-700 px-2 py-0.5 text-[10px] font-bold">
                 VERIFIED PAYMENT
@@ -273,7 +268,7 @@ export default function HowItWorks() {
                 <span className="text-moss-600">₦1,800,000.00</span>
               </div>
             </div>
-            <div className="mt-4 rounded-lg bg-moss-100/50 p-2.5 text-[10px] text-moss-700 border border-moss-600/10">
+            <div className="mt-3.5 rounded-lg bg-moss-100/50 p-2.5 text-[10px] text-moss-700 border border-moss-600/10">
               <p className="font-semibold flex items-center gap-1">
                 <Check className="h-3.5 w-3.5 shrink-0" /> Funds Settled Instantly
               </p>
@@ -285,27 +280,26 @@ export default function HowItWorks() {
         );
       case "maintenance":
         return (
-          <div className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between mb-3 border-b border-ink-100 pb-2">
-              <span className="rounded bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-700">
+          <div className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-5 shadow-xl select-none">
+            <div className="flex items-center justify-between mb-2 border-b border-ink-100 pb-2">
+              <span className="rounded bg-amber-100 px-2 py-0.5 text-[9.5px] font-bold text-amber-700">
                 ACTIVE TICKET
               </span>
-              <span className="text-[11px] text-ink-400">#MN-104</span>
+              <span className="text-[10px] text-ink-400">#MN-104</span>
             </div>
-            <h4 className="font-display text-sm font-bold text-ink-900">
+            <h4 className="font-display text-xs font-bold text-ink-900">
               Bedroom AC Unit Repair
             </h4>
-            <p className="mt-1 text-[12px] text-ink-700">
-              Air conditioner is blowing warm air. Condenser fan is making a
-              clicking sound.
+            <p className="mt-1 text-[11px] text-ink-700 leading-tight">
+              Air conditioner blowing warm air. Condenser fan clicking sound.
             </p>
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center gap-3 text-[11px]">
-                <div className="h-4 w-4 rounded-full bg-moss-600 text-white flex items-center justify-center">
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-2.5 text-[11px]">
+                <div className="h-3.5 w-3.5 rounded-full bg-moss-600 text-white flex items-center justify-center shrink-0">
                   <Check className="h-2.5 w-2.5 shrink-0" />
                 </div>
                 <div>
-                  <div className="font-medium text-ink-900">
+                  <div className="font-medium text-ink-900 text-[11px]">
                     Reported with photo logs
                   </div>
                   <div className="text-[9px] text-ink-400">
@@ -313,27 +307,27 @@ export default function HowItWorks() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-[11px]">
-                <div className="h-4 w-4 rounded-full bg-moss-600 text-white flex items-center justify-center">
+              <div className="flex items-center gap-2.5 text-[11px]">
+                <div className="h-3.5 w-3.5 rounded-full bg-moss-600 text-white flex items-center justify-center shrink-0">
                   <Check className="h-2.5 w-2.5 shrink-0" />
                 </div>
                 <div>
-                  <div className="font-medium text-ink-900">
-                    Contractor Assigned (Adesina Electricals)
+                  <div className="font-medium text-ink-900 text-[11px]">
+                    Contractor Assigned (Adesina)
                   </div>
                   <div className="text-[9px] text-ink-400">
                     July 18, 2026 • 11:15 AM
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-[11px]">
-                <div className="h-4 w-4 rounded-full border-2 border-moss-600/30 animate-pulse flex items-center justify-center text-[8px]"></div>
+              <div className="flex items-center gap-2.5 text-[11px]">
+                <div className="h-3.5 w-3.5 rounded-full border-2 border-moss-600/40 animate-pulse flex items-center justify-center shrink-0"></div>
                 <div>
-                  <div className="font-medium text-moss-700">
+                  <div className="font-medium text-moss-700 text-[11px]">
                     Technician dispatched
                   </div>
                   <div className="text-[9px] text-moss-600">
-                    Pending appointment today, 03:00 PM
+                    Appointment today, 03:00 PM
                   </div>
                 </div>
               </div>
@@ -342,34 +336,32 @@ export default function HowItWorks() {
         );
       case "rating":
         return (
-          <div className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-6 shadow-xl">
+          <div className="w-full max-w-sm rounded-2xl border border-ink-200 bg-white p-5 shadow-xl select-none">
             <div className="border-b border-ink-100 pb-2 mb-3 text-center">
-              <h4 className="font-display text-sm font-bold text-ink-900">
+              <h4 className="font-display text-xs font-bold text-ink-900">
                 Mutual Tenancy Feedback
               </h4>
               <p className="text-[9px] text-ink-400">
                 AUTOMATIC LEASE COMPLETION SIGN-OFF
               </p>
             </div>
-            <div className="space-y-3 text-[11px]">
-              <div className="rounded-lg bg-cream-50 p-3">
+            <div className="space-y-2.5 text-[11px]">
+              <div className="rounded-lg bg-cream-50 p-2.5">
                 <div className="flex items-center justify-between font-bold text-ink-900">
                   <span>Landlord Review (Ada)</span>
                   <span className="text-moss-600">★★★★★ 5.0</span>
                 </div>
-                <p className="mt-1 italic text-ink-700">
-                  "Emeka took excellent care of the property and paid every
-                  invoice early. Left the keys clean."
+                <p className="mt-1 italic text-ink-700 text-[10.5px]">
+                  "Emeka took excellent care of the property and paid every invoice early."
                 </p>
               </div>
-              <div className="rounded-lg bg-cream-50 p-3">
+              <div className="rounded-lg bg-cream-50 p-2.5">
                 <div className="flex items-center justify-between font-bold text-ink-900">
                   <span>Tenant Review (Emeka)</span>
                   <span className="text-moss-600">★★★★☆ 4.8</span>
                 </div>
-                <p className="mt-1 italic text-ink-700">
-                  "Ada was quick to solve plumbing fixes and caution deposit
-                  refund was returned in 24 hours."
+                <p className="mt-1 italic text-ink-700 text-[10.5px]">
+                  "Ada was quick to solve fixes and caution deposit was returned in 24 hrs."
                 </p>
               </div>
             </div>

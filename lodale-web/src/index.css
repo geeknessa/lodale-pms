@@ -23,7 +23,10 @@
   --color-white: #ffffff;
 }
 
+html,
 body {
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
   font-family: var(--font-sans);
   background: var(--color-white);
   color: var(--color-ink-900);
@@ -162,4 +165,47 @@ body.dark .onboarding-bg {
 body.dark .onboarding-card {
   background: var(--color-moss-700) !important;
   border-color: var(--color-moss-600) !important;
+}
+
+/* Custom Side Scrollbar Styling matching Lodale Theme */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-moss-600) var(--color-cream-50);
+}
+
+body.dark {
+  scrollbar-color: #E5C583 #0B1512;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FAF8F6;
+}
+
+body.dark ::-webkit-scrollbar-track {
+  background: #0B1512;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-moss-600);
+  border-radius: 9999px;
+  border: 2px solid #FAF8F6;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-moss-700);
+}
+
+body.dark ::-webkit-scrollbar-thumb {
+  background: #E5C583;
+  border-radius: 9999px;
+  border: 2px solid #0B1512;
+}
+
+body.dark ::-webkit-scrollbar-thumb:hover {
+  background: #D8B672;
 }
