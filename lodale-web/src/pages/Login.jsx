@@ -24,15 +24,23 @@ export default function Login() {
   };
 
   // State to toggle between User and Admin login modes
-  const [isAdminMode, setIsAdminMode] = useState(() => {
-    return location.search.includes("role=admin");
+  const [isAdminMode] = useState(() => {
+    return location.pathname === "/admin/login" || location.search.includes("role=admin");
   });
 
   // Pre-fill email from previous session
   const [email, setEmail] = useState(() => {
+    if (location.pathname === "/admin/login" || location.search.includes("role=admin")) {
+      return "admin@lodale.com";
+    }
     return localStorage.getItem("lastLoggedInEmail") || "";
   });
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState(() => {
+    if (location.pathname === "/admin/login" || location.search.includes("role=admin")) {
+      return "AdminPassword123!";
+    }
+    return "";
+  });
   const [showPassword, setShowPassword] = useState(false);
 
   // Error and Notification states
@@ -63,8 +71,14 @@ export default function Login() {
 
   useEffect(() => {
     // If email is pre-filled, focus on the password field automatically
-    if (localStorage.getItem("lastLoggedInEmail")) {
+    if (localStorage.getItem("lastLoggedInEmail") || location.pathname === "/admin/login" || location.search.includes("role=admin")) {
       passwordRef.current?.focus();
+    }
+
+    // Redirect already authenticated admin to /admin/dashboard
+    const isAlreadyAdmin = localStorage.getItem("isAuthenticated") === "true" && localStorage.getItem("userRole") === "admin";
+    if (isAlreadyAdmin && (location.pathname === "/admin/login" || location.pathname === "/login")) {
+      navigate("/admin/dashboard");
     }
 
     // GSAP Entry Animation
@@ -82,7 +96,7 @@ export default function Login() {
         { opacity: 1, y: 0, duration: 0.45, stagger: 0.08, ease: "power2.out", delay: 0.1 }
       );
     }
-  }, []);
+  }, [navigate, location.pathname, location.search]);
 
   function handleQuickAdminLogin() {
     localStorage.removeItem("failedLoginAttempts");
@@ -91,7 +105,7 @@ export default function Login() {
     localStorage.setItem("userRole", "admin");
     localStorage.setItem("lastLoggedInEmail", KNOWN_ADMIN.email);
     localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
-    navigate("/admin");
+    navigate("/admin/dashboard");
   }
 
   function handleLoginSubmit(e) {
@@ -121,7 +135,7 @@ export default function Login() {
         localStorage.setItem("userRole", "admin");
         localStorage.setItem("lastLoggedInEmail", email || KNOWN_ADMIN.email);
         localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
-        navigate("/admin");
+        navigate("/admin/dashboard");
         return;
       }
     }
@@ -226,37 +240,7 @@ export default function Login() {
 
         {/* Glassmorphic Form Card */}
         <div ref={cardRef} className="w-full bg-[#FAF8F6]/75 dark:bg-[#101F1A]/70 backdrop-blur-lg border border-white/80 dark:border-[#23372B]/60 shadow-[0_12px_40px_rgba(0,0,0,0.03)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.25)] rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 space-y-4 sm:space-y-6 transition-all duration-300">
-          {/* Segmented Control Pill Toggle */}
-          <div className="flex flex-col gap-2">
-            <div className="inline-flex p-1 bg-moss-100 dark:bg-[#101F1A] border border-ink-200 dark:border-[#23372B]/60 rounded-xl w-full transition-all duration-200">
-              <button
-                type="button"
-                onClick={() => setIsAdminMode(false)}
-                className={`flex-1 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-bold tracking-wider rounded-lg uppercase transition-all cursor-pointer outline-none ${
-                  !isAdminMode
-                    ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512] shadow-sm"
-                    : "text-ink-700/60 dark:text-[#D0D7D5]/60 hover:text-ink-900 dark:hover:text-white"
-                }`}
-              >
-                Standard User
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsAdminMode(true);
-                  setEmail("admin@lodale.com");
-                  setPassword("AdminPassword123!");
-                }}
-                className={`flex-1 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-bold tracking-wider rounded-lg uppercase transition-all cursor-pointer outline-none ${
-                  isAdminMode
-                    ? "bg-[#344E41] text-white shadow-sm"
-                    : "text-ink-700/60 dark:text-[#D0D7D5]/60 hover:text-ink-900 dark:hover:text-white"
-                }`}
-              >
-                Admin Portal
-              </button>
-            </div>
-          </div>
+          {/* Admin toggle removed to keep Admin Portal private */}
 
           {/* Form Title Header */}
           <div>

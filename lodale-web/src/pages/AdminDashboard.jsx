@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "../components/Logo";
 import { useTheme } from "../context/ThemeContext";
@@ -48,6 +48,7 @@ import {
   Laptop,
   Smartphone,
   Shield,
+  Menu,
 } from "lucide-react";
 
 // --- MOCK INITIAL DATA ---
@@ -244,8 +245,26 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const { themePreference, setThemePreference, effectiveTheme, isDark, toggleTheme } = useTheme();
 
+  // Mobile sidebar drawer state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings'
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Handle Escape key to close mobile sidebar drawer
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setIsSidebarOpen(false);
+      }
+    };
+    if (isSidebarOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isSidebarOpen]);
 
   // Settings sub-tab: 'profile' | 'account' | 'appearance' | 'notifications' | 'preferences' | 'about'
   const [settingsSubTab, setSettingsSubTab] = useState("profile");
@@ -554,183 +573,246 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#DAD7CD] dark:bg-[#0E1714] text-[#262626] dark:text-[#E4EBE6] font-sans flex flex-col md:flex-row antialiased selection:bg-[#3A5A40] selection:text-white transition-colors duration-200">
+    <div className="min-h-screen bg-[#DAD7CD] dark:bg-[#0E1714] text-[#262626] dark:text-[#E4EBE6] font-sans flex flex-col antialiased selection:bg-[#3A5A40] selection:text-white transition-colors duration-200">
       {/* --- TOAST NOTIFICATION --- */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-[#344E41] dark:bg-[#1A3329] text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 border border-[#3A5A40] dark:border-[#2C4638] animate-bounce">
+        <div className="fixed top-5 right-5 left-5 sm:left-auto z-50 bg-[#344E41] dark:bg-[#1A3329] text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 border border-[#3A5A40] dark:border-[#2C4638] animate-bounce">
           <ShieldCheck className="h-5 w-5 text-[#DAD7CD] dark:text-[#E5C583]" />
           <span className="text-sm font-medium">{toastMessage}</span>
         </div>
       )}
 
-      {/* --- LEFT SIDEBAR NAVIGATION --- */}
-      <aside className="w-full md:w-64 bg-[#344E41] dark:bg-[#121F1A] text-white flex-shrink-0 border-r border-[#3A5A40] dark:border-[#1E332B] flex flex-col justify-between min-h-screen transition-colors">
-        <div>
-          {/* Top Logo Container */}
-          <div className="p-6 border-b border-[#3A5A40] dark:border-[#1E332B]">
-            <div className="flex items-center gap-3">
-              <Logo variant="white" className="scale-90 origin-left" />
-            </div>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#3A5A40] dark:bg-[#1C3028] text-[11px] text-[#DAD7CD] dark:text-[#E5C583] font-medium uppercase tracking-wider">
-              <ShieldAlert className="h-3 w-3" /> Admin Portal
-            </div>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="p-3 space-y-1">
-            {/* Overview */}
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
-                activeTab === "overview"
-                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
-                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
-              }`}
-            >
-              <LayoutDashboard className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-              <span>Dashboard Overview</span>
-            </button>
-
-            <div className="pt-3 pb-1 px-3 text-[10.5px] font-semibold text-[#DAD7CD]/70 dark:text-[#A3BCA7]/70 uppercase tracking-wider whitespace-nowrap">
-              Safety &amp; Management
-            </div>
-
-            {/* 1. User Management */}
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
-                activeTab === "users"
-                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
-                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Users className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-                <span className="truncate">1. User Management</span>
-              </div>
-              <span className="text-[11px] bg-[#262626]/40 dark:bg-black/40 px-1.5 py-0.5 rounded-full text-[#DAD7CD] ml-1 shrink-0">
-                {users.length}
-              </span>
-            </button>
-
-            {/* 2. Listing Oversight */}
-            <button
-              onClick={() => setActiveTab("listings")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
-                activeTab === "listings"
-                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
-                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Building2 className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-                <span className="truncate">2. Listing Oversight</span>
-              </div>
-              {pendingListingsCount > 0 && (
-                <span className="text-[11px] bg-amber-600 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
-                  {pendingListingsCount}
-                </span>
-              )}
-            </button>
-
-            {/* 3. Review & Rating Moderation */}
-            <button
-              onClick={() => setActiveTab("reviews")}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
-                activeTab === "reviews"
-                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
-                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <MessageSquareWarning className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-                <span className="truncate">3. Review Moderation</span>
-              </div>
-              {flaggedReviewsCount > 0 && (
-                <span className="text-[11px] bg-rose-700 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
-                  {flaggedReviewsCount}
-                </span>
-              )}
-            </button>
-
-            {/* Section: Settings Header */}
-            <div className="pt-3 pb-1 px-3 text-[10.5px] font-semibold text-[#DAD7CD]/70 dark:text-[#A3BCA7]/70 uppercase tracking-wider whitespace-nowrap">
-              Settings
-            </div>
-
-            {/* Settings Main & Sub-links */}
-            <button
-              onClick={() => {
-                setActiveTab("settings");
-              }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
-                activeTab === "settings"
-                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
-                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
-              }`}
-            >
-              <Settings className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-              <span>Admin Settings</span>
-            </button>
-
-            {/* Sub-item links for quick access */}
-            <div className="pl-5 space-y-0.5 pt-0.5">
-              {SETTINGS_PAGES.map((sp) => {
-                const IconComp = sp.icon;
-                const isSubActive = activeTab === "settings" && settingsSubTab === sp.id;
-                return (
-                  <button
-                    key={sp.id}
-                    onClick={() => {
-                      setActiveTab("settings");
-                      setSettingsSubTab(sp.id);
-                    }}
-                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11.5px] font-medium transition-colors whitespace-nowrap ${
-                      isSubActive
-                        ? "bg-[#3A5A40]/80 dark:bg-[#1C332A] text-white font-semibold"
-                        : "text-[#DAD7CD]/80 dark:text-[#A3BCA7]/80 hover:text-white hover:bg-[#3A5A40]/30"
-                    }`}
-                  >
-                    <IconComp className="h-3.5 w-3.5 shrink-0" />
-                    <span>{sp.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>
+      {/* --- MOBILE/TABLET HEADER --- */}
+      <header className="sticky top-0 z-30 md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-[#16241F] border-b border-[#3A5A40]/20 dark:border-[#263D33] shadow-sm transition-colors duration-200">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-1.5 rounded-lg text-[#3A5A40] dark:text-[#E5C583] hover:bg-[#DAD7CD]/50 dark:hover:bg-[#1E3029] transition-colors focus:outline-none focus:ring-2 focus:ring-[#3A5A40]/40"
+            aria-label="Open sidebar"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <Logo className="scale-90 origin-left" />
         </div>
-
-        {/* Footer Admin info & Navigation controls */}
-        <div className="p-4 border-t border-[#3A5A40] dark:border-[#1E332B] space-y-3">
-          <div className="flex items-center justify-between text-xs text-[#DAD7CD]/80 dark:text-[#A3BCA7]">
-            <div>
-              <p className="font-semibold text-white">{profileForm.name}</p>
-              <p className="text-[11px] text-[#DAD7CD] dark:text-[#A3BCA7]">System Administrator</p>
-            </div>
-            <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
-          </div>
-
-          <div className="pt-2 border-t border-[#3A5A40]/60 dark:border-[#1E332B]/60 space-y-1.5 text-xs font-medium">
-            <button
-              onClick={() => navigate("/explore")}
-              className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[#DAD7CD] hover:bg-[#3A5A40] hover:text-white transition-colors"
-            >
-              <Globe className="h-3.5 w-3.5" />
-              <span>Return to Public Site</span>
-            </button>
-            <button
-              onClick={handleAdminSignOut}
-              className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-rose-300 hover:bg-rose-900/40 hover:text-rose-100 transition-colors"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span>Sign Out</span>
-            </button>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium uppercase px-2 py-0.5 rounded bg-[#3A5A40] dark:bg-[#1C3028] text-white dark:text-[#E5C583]">
+            Admin
+          </span>
         </div>
-      </aside>
+      </header>
+
+      {/* --- INNER WRAPPER --- */}
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
+        {/* --- BACKDROP OVERLAY FOR DRAWER --- */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        {/* --- LEFT SIDEBAR NAVIGATION --- */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#344E41] dark:bg-[#121F1A] text-white flex-shrink-0 border-r border-[#3A5A40] dark:border-[#1E332B] flex flex-col justify-between transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:flex ${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div>
+            {/* Top Logo Container */}
+            <div className="p-6 border-b border-[#3A5A40] dark:border-[#1E332B] flex items-center justify-between">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-3">
+                  <Logo variant="white" className="scale-90 origin-left" />
+                </div>
+                <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#3A5A40] dark:bg-[#1C3028] text-[11px] text-[#DAD7CD] dark:text-[#E5C583] font-medium uppercase tracking-wider w-max">
+                  <ShieldAlert className="h-3 w-3" /> Admin Portal
+                </div>
+              </div>
+              {/* Close Button inside the drawer */}
+              <button
+                onClick={() => setIsSidebarOpen(false)}
+                className="md:hidden p-1.5 rounded-lg text-[#DAD7CD] hover:text-white hover:bg-[#3A5A40] dark:hover:bg-[#1C3028] transition-colors focus:outline-none"
+                aria-label="Close sidebar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Navigation Links */}
+            <nav className="p-3 space-y-1">
+              {/* Overview */}
+              <button
+                onClick={() => {
+                  setActiveTab("overview");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "overview"
+                    ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                    : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                }`}
+              >
+                <LayoutDashboard className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                <span>Dashboard Overview</span>
+              </button>
+
+              <div className="pt-3 pb-1 px-3 text-[10.5px] font-semibold text-[#DAD7CD]/70 dark:text-[#A3BCA7]/70 uppercase tracking-wider whitespace-nowrap">
+                Safety &amp; Management
+              </div>
+
+              {/* 1. User Management */}
+              <button
+                onClick={() => {
+                  setActiveTab("users");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "users"
+                    ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                    : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Users className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">1. User Management</span>
+                </div>
+                <span className="text-[11px] bg-[#262626]/40 dark:bg-black/40 px-1.5 py-0.5 rounded-full text-[#DAD7CD] ml-1 shrink-0">
+                  {users.length}
+                </span>
+              </button>
+
+              {/* 2. Listing Oversight */}
+              <button
+                onClick={() => {
+                  setActiveTab("listings");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "listings"
+                    ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                    : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Building2 className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">2. Listing Oversight</span>
+                </div>
+                {pendingListingsCount > 0 && (
+                  <span className="text-[11px] bg-amber-600 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
+                    {pendingListingsCount}
+                  </span>
+                )}
+              </button>
+
+              {/* 3. Review & Rating Moderation */}
+              <button
+                onClick={() => {
+                  setActiveTab("reviews");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "reviews"
+                    ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                    : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <MessageSquareWarning className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">3. Review Moderation</span>
+                </div>
+                {flaggedReviewsCount > 0 && (
+                  <span className="text-[11px] bg-rose-700 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
+                    {flaggedReviewsCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Section: Settings Header */}
+              <div className="pt-3 pb-1 px-3 text-[10.5px] font-semibold text-[#DAD7CD]/70 dark:text-[#A3BCA7]/70 uppercase tracking-wider whitespace-nowrap">
+                Settings
+              </div>
+
+              {/* Settings Main & Sub-links */}
+              <button
+                onClick={() => {
+                  setActiveTab("settings");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "settings"
+                    ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                    : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                }`}
+              >
+                <Settings className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                <span>Admin Settings</span>
+              </button>
+
+              {/* Sub-item links for quick access */}
+              <div className="pl-5 space-y-0.5 pt-0.5">
+                {SETTINGS_PAGES.map((sp) => {
+                  const IconComp = sp.icon;
+                  const isSubActive = activeTab === "settings" && settingsSubTab === sp.id;
+                  return (
+                    <button
+                      key={sp.id}
+                      onClick={() => {
+                        setActiveTab("settings");
+                        setSettingsSubTab(sp.id);
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11.5px] font-medium transition-colors whitespace-nowrap ${
+                        isSubActive
+                          ? "bg-[#3A5A40]/80 dark:bg-[#1C332A] text-white font-semibold"
+                          : "text-[#DAD7CD]/80 dark:text-[#A3BCA7]/80 hover:text-white hover:bg-[#3A5A40]/30"
+                      }`}
+                    >
+                      <IconComp className="h-3.5 w-3.5 shrink-0" />
+                      <span>{sp.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </div>
+
+          {/* Footer Admin info & Navigation controls */}
+          <div className="p-4 border-t border-[#3A5A40] dark:border-[#1E332B] space-y-3">
+            <div className="flex items-center justify-between text-xs text-[#DAD7CD]/80 dark:text-[#A3BCA7]">
+              <div>
+                <p className="font-semibold text-white">{profileForm.name}</p>
+                <p className="text-[11px] text-[#DAD7CD] dark:text-[#A3BCA7]">System Administrator</p>
+              </div>
+              <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
+            </div>
+
+            <div className="pt-2 border-t border-[#3A5A40]/60 dark:border-[#1E332B]/60 space-y-1.5 text-xs font-medium">
+              <button
+                onClick={() => {
+                  setIsSidebarOpen(false);
+                  navigate("/explore");
+                }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[#DAD7CD] hover:bg-[#3A5A40] hover:text-white transition-colors"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                <span>Return to Public Site</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsSidebarOpen(false);
+                  handleAdminSignOut();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-rose-300 hover:bg-rose-900/40 hover:text-rose-100 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </aside>
 
       {/* --- MAIN AREA --- */}
-      <main className="flex-1 p-6 md:p-8 max-w-6xl overflow-y-auto">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full min-w-0 overflow-y-auto overflow-x-hidden">
         {/* --- TAB 0: DASHBOARD OVERVIEW --- */}
         {activeTab === "overview" && (
           <div className="space-y-8">
@@ -744,7 +826,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Key Numbers Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {/* Card 1: Total Users */}
               <div
                 onClick={() => setActiveTab("users")}
@@ -825,7 +907,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Short list: What needs action right now */}
-            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm">
+            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 sm:p-6 shadow-sm">
               <div className="flex items-center justify-between pb-4 border-b border-[#DAD7CD] dark:border-[#233B31]">
                 <div>
                   <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
@@ -851,9 +933,9 @@ export default function AdminDashboard() {
                   actionRequiredFeed.map((item) => (
                     <div
                       key={`${item.type}-${item.id}`}
-                      className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] px-2 rounded-lg transition-colors"
+                      className="py-4 flex flex-col md:flex-row md:flex-wrap lg:flex-nowrap md:items-center justify-between gap-4 hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] px-2 rounded-lg transition-colors w-full min-w-0"
                     >
-                      <div className="space-y-1">
+                      <div className="space-y-1 min-w-0 md:flex-1">
                         <div className="flex items-center gap-2">
                           {item.type === "listing" ? (
                             <span className="text-[11px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2 py-0.5 rounded">
@@ -878,18 +960,18 @@ export default function AdminDashboard() {
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="grid grid-cols-1 min-[350px]:grid-cols-2 md:flex md:flex-wrap md:items-center md:flex-shrink-0 gap-2 w-full md:w-auto">
                         {item.type === "listing" ? (
                           <>
                             <button
                               onClick={() => setSelectedListing(item.raw)}
-                              className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors col-span-1 min-[350px]:col-span-2 md:col-span-1 text-center"
                             >
                               Inspect
                             </button>
                             <button
                               onClick={() => handleApproveListing(item.id)}
-                              className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded flex items-center gap-1 transition-colors"
+                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded flex items-center justify-center gap-1 transition-colors"
                             >
                               <Check className="h-3.5 w-3.5" /> Approve
                             </button>
@@ -898,7 +980,7 @@ export default function AdminDashboard() {
                                 setSelectedListing(item.raw);
                                 setIsRejectingModalOpen(true);
                               }}
-                              className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded flex items-center gap-1 transition-colors"
+                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded flex items-center justify-center gap-1 transition-colors"
                             >
                               <X className="h-3.5 w-3.5" /> Reject
                             </button>
@@ -907,19 +989,19 @@ export default function AdminDashboard() {
                           <>
                             <button
                               onClick={() => setSelectedReviewFlag(item.raw)}
-                              className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors col-span-1 min-[350px]:col-span-2 md:col-span-1 text-center"
                             >
                               Report Details
                             </button>
                             <button
                               onClick={() => handleDismissFlag(item.id)}
-                              className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors text-center"
                             >
                               Keep Review
                             </button>
                             <button
                               onClick={() => handleRemoveReview(item.id)}
-                              className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors text-center"
                             >
                               Remove
                             </button>
@@ -959,7 +1041,7 @@ export default function AdminDashboard() {
                 />
               </div>
 
-              <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
                 <div className="flex items-center gap-1.5 text-xs text-[#262626]/80 dark:text-[#A3BCA7] font-medium">
                   <Filter className="h-3.5 w-3.5" /> Filter Role:
                 </div>
@@ -987,7 +1069,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* Users Table */}
-            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-hidden shadow-sm">
+            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[#344E41] dark:bg-[#1A2E26] text-white text-xs font-semibold uppercase tracking-wider">
@@ -1102,12 +1184,12 @@ export default function AdminDashboard() {
 
             {/* Filter Tabs & Search */}
             <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
-              <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg">
+              <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
                 {["All", "Pending Approval", "Live", "Rejected"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setListingFilter(tab)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${
                       listingFilter === tab
                         ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
                         : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
@@ -1171,7 +1253,7 @@ export default function AdminDashboard() {
                         {lst.price}
                       </div>
 
-                      <div className="mt-2 pt-2 border-t border-[#DAD7CD] dark:border-[#233B31] text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex items-center justify-between">
+                      <div className="mt-2 pt-2 border-t border-[#DAD7CD] dark:border-[#233B31] text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                         <span>Landlord: <strong className="text-[#262626] dark:text-[#F0F5F2]">{lst.landlord.name}</strong></span>
                         <span>Deed Verified: {lst.deedVerified ? "Yes" : "No"}</span>
                       </div>
@@ -1184,7 +1266,7 @@ export default function AdminDashboard() {
                       )}
                     </div>
 
-                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex items-center justify-between gap-2">
+                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-between gap-2">
                       <button
                         onClick={() => setSelectedListing(lst)}
                         className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
@@ -1192,7 +1274,7 @@ export default function AdminDashboard() {
                         Inspect Details
                       </button>
 
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {lst.status === "Pending Approval" && (
                           <>
                             <button
@@ -1242,10 +1324,10 @@ export default function AdminDashboard() {
 
             {/* Filter Toggle & Search */}
             <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
-              <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg">
+              <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
                 <button
                   onClick={() => setReviewFilter("Flagged")}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${
                     reviewFilter === "Flagged"
                       ? "bg-rose-800 text-white"
                       : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
@@ -1255,7 +1337,7 @@ export default function AdminDashboard() {
                 </button>
                 <button
                   onClick={() => setReviewFilter("All")}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${
                     reviewFilter === "All"
                       ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
                       : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
@@ -1326,7 +1408,7 @@ export default function AdminDashboard() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <button
                         onClick={() => setSelectedReviewFlag(rev)}
                         className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
@@ -1412,8 +1494,8 @@ export default function AdminDashboard() {
 
                 <form onSubmit={handleSaveProfile} className="space-y-6">
                   {/* Photo Upload Section */}
-                  <div className="flex items-center gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
-                    <div className="relative">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                    <div className="relative shrink-0">
                       <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#E5C583] dark:text-[#0B1512] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
                         {profileForm.avatarPreview ? (
                           <img
@@ -1427,8 +1509,8 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-1.5 text-center sm:text-left">
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                         <label
                           htmlFor="avatar-upload"
                           className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
@@ -1590,7 +1672,7 @@ export default function AdminDashboard() {
 
                 {/* Two-Factor Authentication (2FA) */}
                 <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h3 className="font-serif text-base font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
                         <Shield className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
@@ -1643,7 +1725,7 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="space-y-3 pt-2">
-                    <div className="p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] flex items-center justify-between text-xs">
+                    <div className="p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                       <div className="flex items-center gap-3">
                         <Laptop className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
                         <div>
@@ -1660,7 +1742,7 @@ export default function AdminDashboard() {
                       </span>
                     </div>
 
-                    <div className="p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] flex items-center justify-between text-xs">
+                    <div className="p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                       <div className="flex items-center gap-3">
                         <Smartphone className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
                         <div>
@@ -1818,7 +1900,7 @@ export default function AdminDashboard() {
 
                 <form onSubmit={handleSaveNotifications} className="space-y-4 max-w-xl">
                   {/* Email Notifications */}
-                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex items-center justify-between">
+                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
                         Email Digest &amp; Alerts
@@ -1845,7 +1927,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* SMS Alerts */}
-                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex items-center justify-between">
+                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
                         SMS Emergency Alerts
@@ -1872,7 +1954,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Review Alerts */}
-                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex items-center justify-between">
+                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
                         Review Moderation Alerts
@@ -1899,7 +1981,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Listing Approval Alerts */}
-                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex items-center justify-between">
+                  <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
                         Listing Approval Alerts
@@ -2109,11 +2191,12 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+    </div>
 
       {/* --- MODAL 1: VIEW USER PROFILE --- */}
       {selectedUser && (
         <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6]">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
               <div>
                 <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
@@ -2131,7 +2214,7 @@ export default function AdminDashboard() {
 
             <div className="space-y-3 text-sm">
               <div className="flex items-center gap-2 text-[#262626]/80 dark:text-[#E4EBE6]">
-                <Mail className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" /> <span>{selectedUser.email}</span>
+                <Mail className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583] shrink-0" /> <span className="break-all">{selectedUser.email}</span>
               </div>
               <div className="flex items-center gap-2 text-[#262626]/80 dark:text-[#E4EBE6]">
                 <Phone className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" /> <span>{selectedUser.phone}</span>
@@ -2165,7 +2248,7 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex items-center justify-between">
+            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-between gap-3">
               <button
                 onClick={() => handleToggleUserStatus(selectedUser.id)}
                 className={`px-4 py-2 text-xs font-bold rounded text-white transition-colors ${
@@ -2208,7 +2291,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="space-y-4 text-sm">
-              <div className="flex items-center justify-between bg-[#DAD7CD]/30 dark:bg-[#1B2C25] p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#DAD7CD]/30 dark:bg-[#1B2C25] p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] text-center sm:text-left">
                 <div>
                   <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Asking Rent</div>
                   <div className="text-lg font-bold text-[#344E41] dark:text-[#E5C583]">{selectedListing.price}</div>
@@ -2252,7 +2335,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex items-center justify-end gap-3">
+            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-end gap-3">
               {selectedListing.status === "Pending Approval" && (
                 <>
                   <button
@@ -2283,7 +2366,7 @@ export default function AdminDashboard() {
       {/* --- MODAL 2B: REJECT REASON INPUT --- */}
       {isRejectingModalOpen && selectedListing && (
         <div className="fixed inset-0 z-50 bg-[#262626]/70 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-4 text-[#262626] dark:text-[#E4EBE6]">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-4 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
             <h3 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2]">
               Reject Listing Submission
             </h3>
@@ -2323,7 +2406,7 @@ export default function AdminDashboard() {
       {/* --- MODAL 3: VIEW REVIEW FLAG REPORT --- */}
       {selectedReviewFlag && (
         <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6]">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
               <div>
                 <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
@@ -2361,7 +2444,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex items-center justify-between">
+            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-between gap-3">
               {selectedReviewFlag.flagged && (
                 <button
                   onClick={() => handleDismissFlag(selectedReviewFlag.id)}

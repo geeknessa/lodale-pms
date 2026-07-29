@@ -141,15 +141,6 @@ export default function Footer() {
                   For Landlords
                 </Link>
               </li>
-              <li>
-                <Link
-                  to="/admin"
-                  className="text-[#DAD7CD] hover:text-white font-semibold transition-colors flex items-center gap-1"
-                >
-                  <span>Admin Portal</span>
-                  <span className="text-[9px] bg-[#344E41] text-white px-1.5 py-0.2 rounded">Staff</span>
-                </Link>
-              </li>
             </ul>
           </div>
 

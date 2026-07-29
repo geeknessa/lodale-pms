@@ -56,7 +56,7 @@ export default function NavBar() {
 
   function handleDashboardNavigate() {
     if (isAdmin) {
-      navigate("/admin");
+      navigate("/admin/dashboard");
     } else {
       navigate("/dashboard/tenant");
     }
@@ -177,12 +177,6 @@ export default function NavBar() {
               >
                 Log In
               </button>
-              <button
-                onClick={() => navigate("/login?role=admin")}
-                className="text-[12px] font-bold text-[#344E41] dark:text-[#DAD7CD] hover:underline px-2 py-1 bg-[#DAD7CD]/50 dark:bg-[#344E41]/50 rounded-md transition-colors"
-              >
-                Admin Portal
-              </button>
               <Button
                 className="px-5 py-2.5 text-[14px] focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white"
                 onClick={() => navigate("/signup")}
@@ -266,15 +260,6 @@ export default function NavBar() {
                 className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
               >
                 Log In
-              </button>
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  navigate("/login?role=admin");
-                }}
-                className="text-[13px] font-bold text-[#344E41] dark:text-[#DAD7CD] text-left py-1"
-              >
-                Admin Portal Login &rarr;
               </button>
               <Button
                 className="px-5 py-2.5 text-[14px]"

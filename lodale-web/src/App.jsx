@@ -17,6 +17,7 @@ import Welcome from "./pages/Welcome";
 import Application from "./pages/Application";
 import AddProperty from "./pages/AddProperty";
 import AdminDashboard from "./pages/AdminDashboard";
+import AccessDenied from "./pages/AccessDenied";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
 import { AlertTriangle } from "lucide-react";
@@ -145,6 +146,75 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function AdminProtectedRoute({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const auth = localStorage.getItem("isAuthenticated") === "true";
+    const expires = localStorage.getItem("sessionExpiresAt");
+    if (auth && expires && Date.now() > Number(expires)) {
+      // Session expired
+      localStorage.removeItem("isAuthenticated");
+      localStorage.removeItem("sessionExpiresAt");
+      localStorage.removeItem("userRole");
+      return false;
+    }
+    return auth;
+  });
+
+  const [userRole, setUserRole] = useState(() => {
+    return localStorage.getItem("userRole");
+  });
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const auth = localStorage.getItem("isAuthenticated") === "true";
+      const expires = localStorage.getItem("sessionExpiresAt");
+      if (auth && expires && Date.now() > Number(expires)) {
+        localStorage.removeItem("isAuthenticated");
+        localStorage.removeItem("sessionExpiresAt");
+        localStorage.removeItem("userRole");
+        setIsAuthenticated(false);
+        setUserRole(null);
+      } else {
+        setIsAuthenticated(auth);
+        setUserRole(localStorage.getItem("userRole"));
+      }
+    };
+
+    checkAuth();
+
+    window.addEventListener("storage", checkAuth);
+    return () => window.removeEventListener("storage", checkAuth);
+  }, [location]);
+
+  if (!isAuthenticated) {
+    const expires = localStorage.getItem("sessionExpiresAt");
+    const wasSessionExpired = expires && Date.now() > Number(expires);
+
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("sessionExpiresAt");
+    localStorage.removeItem("userRole");
+
+    return (
+      <Navigate
+        to="/admin/login"
+        replace
+        state={{
+          fromProtected: true,
+          sessionExpired: wasSessionExpired,
+        }}
+      />
+    );
+  }
+
+  if (userRole !== "admin") {
+    return <Navigate to="/access-denied" replace />;
+  }
+
+  return children;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -186,8 +256,32 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/dashboard/admin" element={<AdminDashboard />} />
+            <Route path="/admin/login" element={<Login />} />
+            <Route path="/access-denied" element={<AccessDenied />} />
+            <Route
+              path="/admin"
+              element={
+                <AdminProtectedRoute>
+                  <AdminDashboard />
+                </AdminProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <AdminProtectedRoute>
+                  <AdminDashboard />
+                </AdminProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/admin"
+              element={
+                <AdminProtectedRoute>
+                  <AdminDashboard />
+                </AdminProtectedRoute>
+              }
+            />
             <Route
               path="/dashboard/:role"
               element={

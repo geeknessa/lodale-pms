@@ -423,7 +423,7 @@ export default function HowItWorks() {
           <div className="inline-flex rounded-lg bg-theme-bg-offset p-1 border border-theme-border">
             <button
               onClick={() => handleRoleSwitch("tenant")}
-              className={`rounded-md px-6 py-2.5 text-[14px] font-semibold transition-all cursor-pointer ${role === "tenant"
+              className={`rounded-md px-3 sm:px-6 py-2.5 text-[14px] font-semibold transition-all cursor-pointer ${role === "tenant"
                 ? "bg-moss-700 text-white shadow-xs"
                 : "text-theme-text-offset hover:text-theme-text"
                 }`}
@@ -432,7 +432,7 @@ export default function HowItWorks() {
             </button>
             <button
               onClick={() => handleRoleSwitch("landlord")}
-              className={`rounded-md px-6 py-2.5 text-[14px] font-semibold transition-all cursor-pointer ${role === "landlord"
+              className={`rounded-md px-3 sm:px-6 py-2.5 text-[14px] font-semibold transition-all cursor-pointer ${role === "landlord"
                 ? "bg-moss-700 text-white shadow-xs"
                 : "text-theme-text-offset hover:text-theme-text"
                 }`}

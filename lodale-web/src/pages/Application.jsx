@@ -14,7 +14,7 @@ export default function Application() {
       <div className="w-full max-w-lg text-center">
         <Logo className="mb-10 justify-center" />
 
-        <div className="rounded-2xl border border-ink-200 bg-white p-8 shadow-sm">
+        <div className="rounded-2xl border border-ink-200 bg-white p-4 sm:p-8 shadow-sm">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-moss-100 text-moss-700">
             <CheckCircle2 className="h-6 w-6" />
           </div>

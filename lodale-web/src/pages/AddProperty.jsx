@@ -20,7 +20,7 @@ export default function AddProperty() {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-ink-200 bg-white p-8 shadow-sm"
+          className="rounded-2xl border border-ink-200 bg-white p-4 sm:p-8 shadow-sm"
         >
           <h1 className="font-display text-2xl font-bold text-ink-900">
             Add your first property
@@ -43,7 +43,7 @@ export default function AddProperty() {
               placeholder="Apartment, duplex, etc."
               required
             />
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 id="rent"
                 label="Monthly rent"
@@ -64,7 +64,7 @@ export default function AddProperty() {
             <span className="mb-3 block text-[13px] font-medium text-ink-700">
               Does this property already have a tenant?
             </span>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setOccupied(true)}
