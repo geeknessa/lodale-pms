@@ -1,16 +1,144 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { CheckCircle2, Sparkles, Loader2 } from "lucide-react";
+import gsap from "gsap";
 import { Logo } from "../components/Logo";
 import Input from "../components/Input";
 import Button from "../components/Button";
+import { LISTINGS } from "../data/listings";
 
 export default function AddProperty() {
   const navigate = useNavigate();
   const [occupied, setOccupied] = useState(null); // null | true | false
+  const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const successOverlayRef = useRef(null);
+  const checkIconRef = useRef(null);
+  const textContainerRef = useRef(null);
 
   function handleSubmit(e) {
     e.preventDefault();
-    navigate("/dashboard/landlord");
+    const target = e.target;
+    const address = target.elements.address.value;
+    const rent = target.elements.rent.value;
+    const bedrooms = target.elements.bedrooms.value;
+
+    const formattedRent = rent.startsWith("₦") ? rent : "₦" + Number(rent.replace(/[^0-9]/g, "")).toLocaleString();
+
+    // Create a new listing object
+    const newListing = {
+      id: address.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now(),
+      title: address,
+      location: "Lagos, Nigeria",
+      price: formattedRent + "/mo",
+      beds: Number(bedrooms),
+      baths: 2,
+      amenities: ["Prepaid Meter", "24/7 Security"],
+      landlord: {
+        name: localStorage.getItem("username") || "Ada K.",
+        score: 5.0,
+        reviews: 1,
+      },
+    };
+
+    // Load existing list, append and save back to localStorage
+    const saved = localStorage.getItem("properties");
+    const currentListings = saved ? JSON.parse(saved) : LISTINGS;
+    const updatedListings = [newListing, ...currentListings];
+    localStorage.setItem("properties", JSON.stringify(updatedListings));
+
+    setIsSubmitted(true);
+  }
+
+  useEffect(() => {
+    if (isSubmitted && successOverlayRef.current) {
+      // 1. Initial fade-in of overlay
+      gsap.fromTo(successOverlayRef.current, 
+        { opacity: 0 }, 
+        { opacity: 1, duration: 0.5, ease: "power2.out" }
+      );
+
+      // 2. Pop the check icon
+      if (checkIconRef.current) {
+        gsap.fromTo(checkIconRef.current, 
+          { scale: 0, rotation: -45, opacity: 0 }, 
+          { scale: 1, rotation: 0, opacity: 1, duration: 0.7, ease: "back.out(1.7)", delay: 0.3 }
+        );
+        // Subtle loop pulse on check mark
+        gsap.to(checkIconRef.current, {
+          scale: 1.05,
+          duration: 1,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          delay: 1
+        });
+      }
+
+      // 3. Slide up the text container
+      if (textContainerRef.current) {
+        gsap.fromTo(textContainerRef.current.children, 
+          { y: 20, opacity: 0 }, 
+          { y: 0, opacity: 1, duration: 0.6, stagger: 0.15, ease: "power2.out", delay: 0.6 }
+        );
+      }
+
+      // 4. Smooth redirect after 3.2 seconds
+      const timer = setTimeout(() => {
+        gsap.to(successOverlayRef.current, {
+          opacity: 0,
+          duration: 0.4,
+          ease: "power2.inOut",
+          onComplete: () => {
+            navigate("/dashboard/landlord");
+          }
+        });
+      }, 3200);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isSubmitted, navigate]);
+
+  if (isSubmitted) {
+    return (
+      <div 
+        ref={successOverlayRef}
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0B1512] text-white font-sans px-6"
+      >
+        {/* Background glow animations */}
+        <div className="absolute top-1/4 left-1/4 h-80 w-80 rounded-full bg-moss-600/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 h-80 w-80 rounded-full bg-cream-50/5 blur-[100px] pointer-events-none" />
+
+        <div className="flex flex-col items-center max-w-sm text-center relative z-10">
+          {/* Animated Outer Ring */}
+          <div 
+            ref={checkIconRef}
+            className="flex h-24 w-24 items-center justify-center rounded-full bg-moss-800 border-2 border-moss-500/30 mb-8 relative shadow-[0_0_50px_rgba(58,90,64,0.25)]"
+          >
+            <CheckCircle2 className="h-12 w-12 text-[#E5C583]" />
+            <div className="absolute -top-1 -right-1">
+              <Sparkles className="h-6 w-6 text-amber-300 animate-pulse" />
+            </div>
+          </div>
+
+          <div ref={textContainerRef} className="space-y-4">
+            <h1 className="font-display text-3xl font-semibold tracking-tight text-white">
+              Property Registered!
+            </h1>
+            <p className="text-[14px] leading-relaxed text-[#A3BCA7]">
+              Your dashboard ledger is being configured and ownership stamp applied.
+            </p>
+            
+            <div className="flex items-center justify-center gap-2 pt-6">
+              <Loader2 className="h-4 w-4 animate-spin text-[#E5C583]" />
+              <span className="text-[12px] font-medium tracking-wide uppercase text-ink-300">
+                Opening Landlord Suite...
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

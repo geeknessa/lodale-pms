@@ -74,7 +74,14 @@ export default function GuestDashboard() {
   const listingsGridRef = useRef(null);
   const heroContentRef = useRef(null);
 
-  const filteredListings = LISTINGS.filter((listing) => {
+  const [allListings] = useState(() => {
+    const saved = localStorage.getItem("properties");
+    if (saved) return JSON.parse(saved);
+    localStorage.setItem("properties", JSON.stringify(LISTINGS));
+    return LISTINGS;
+  });
+
+  const filteredListings = allListings.filter((listing) => {
     const query = searchQuery.toLowerCase();
     return (
       listing.title.toLowerCase().includes(query) ||

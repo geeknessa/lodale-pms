@@ -44,6 +44,12 @@ export default function NavBar() {
     navigate("/explore");
   }
 
+  function handleDashboardNavigate() {
+    const userRole = localStorage.getItem("userRole") || "tenant";
+    setIsOpen(false);
+    navigate(`/dashboard/${userRole}`);
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-ink-200/30 bg-transparent backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -114,7 +120,7 @@ export default function NavBar() {
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-3">
               <button
-                onClick={() => navigate("/dashboard/tenant")}
+                onClick={handleDashboardNavigate}
                 className="text-[14px] font-medium text-ink-700 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors"
               >
                 Dashboard
@@ -187,10 +193,7 @@ export default function NavBar() {
           {isAuthenticated ? (
             <div className="flex flex-col gap-3.5 pt-3">
               <button
-                onClick={() => {
-                  setIsOpen(false);
-                  navigate("/dashboard/tenant");
-                }}
+                onClick={handleDashboardNavigate}
                 className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
               >
                 Dashboard

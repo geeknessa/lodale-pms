@@ -16,8 +16,12 @@ import SignUp from "./pages/SignUp";
 import Welcome from "./pages/Welcome";
 import Application from "./pages/Application";
 import AddProperty from "./pages/AddProperty";
+import DashboardAddProperty from "./pages/DashboardAddProperty";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
+import AdminDashboard from "./pages/LandlordDashboard/LandlordDashboard";
+import PropertyDetail from "./pages/PropertyDetail";
+import TenantDashboard from "./pages/TenantDashboard/TenantDashboard";
 import { AlertTriangle } from "lucide-react";
 
 
@@ -145,6 +149,31 @@ function ProtectedRoute({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    const saved = localStorage.getItem("properties");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        let changed = false;
+        const updated = parsed.map((item) => {
+          if (item.price && item.price.endsWith("/yr")) {
+            changed = true;
+            return {
+              ...item,
+              price: item.price.replace("/yr", "/mo"),
+            };
+          }
+          return item;
+        });
+        if (changed) {
+          localStorage.setItem("properties", JSON.stringify(updated));
+        }
+      } catch (err) {
+        console.error("Failed to migrate properties storage:", err);
+      }
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <BrowserRouter>
@@ -186,10 +215,34 @@ export default function App() {
               }
             />
             <Route
-              path="/dashboard/:role"
+              path="/dashboard/landlord"
               element={
                 <ProtectedRoute>
-                  <DashboardPlaceholder />
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/landlord/add-property"
+              element={
+                <ProtectedRoute>
+                  <DashboardAddProperty />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/landlord/properties/:id"
+              element={
+                <ProtectedRoute>
+                  <PropertyDetail />
+                </ProtectedRoute>
+              }
+            />
+             <Route
+              path="/dashboard/tenant"
+              element={
+                <ProtectedRoute>
+                  <TenantDashboard />
                 </ProtectedRoute>
               }
             />

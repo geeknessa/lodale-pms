@@ -89,7 +89,21 @@ export default function Login() {
       return;
     }
 
-    if (email !== KNOWN_USER.email) {
+    const savedUserStr = localStorage.getItem("registeredUser_" + email.toLowerCase());
+    let targetUser = null;
+
+    if (savedUserStr) {
+      targetUser = JSON.parse(savedUserStr);
+    } else if (email.toLowerCase() === KNOWN_USER.email.toLowerCase()) {
+      targetUser = {
+        email: KNOWN_USER.email.toLowerCase(),
+        password: KNOWN_USER.password,
+        username: "Ada",
+        role: "landlord"
+      };
+    }
+
+    if (!targetUser) {
       // Email not found
       const newAttempts = failedAttempts + 1;
       setFailedAttempts(newAttempts);
@@ -108,7 +122,7 @@ export default function Login() {
       return;
     }
 
-    if (password !== KNOWN_USER.password) {
+    if (password !== targetUser.password) {
       // Password incorrect
       const newAttempts = failedAttempts + 1;
       setFailedAttempts(newAttempts);
@@ -133,16 +147,18 @@ export default function Login() {
     localStorage.removeItem("failedLoginAttempts");
     localStorage.removeItem("loginLockoutUntil");
     localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("lastLoggedInEmail", email);
+    localStorage.setItem("lastLoggedInEmail", targetUser.email);
+    localStorage.setItem("username", targetUser.username);
+    localStorage.setItem("userRole", targetUser.role);
 
-    // Set 5-minute session lifetime for demo testing
+    // Set 24-hour session lifetime
     localStorage.setItem(
       "sessionExpiresAt",
-      (Date.now() + 5 * 60 * 1000).toString(),
+      (Date.now() + 24 * 60 * 60 * 1000).toString(),
     );
 
-    // Redirect to explore/dashboard
-    navigate("/explore");
+    // Redirect to their specific role dashboard
+    navigate(`/dashboard/${targetUser.role}`);
   }
 
   function handleForgotPassword() {
@@ -219,6 +235,8 @@ export default function Login() {
               requests.
             </p>
           </div>
+
+
 
           {/* Security / Session warnings */}
           {sessionWarning && (
