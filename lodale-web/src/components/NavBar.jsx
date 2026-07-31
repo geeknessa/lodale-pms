@@ -21,7 +21,7 @@ export default function NavBar() {
   });
   const [activeSection, setActiveSection] = useState("");
 
-  const [activeSection, setActiveSection] = useState("");
+
 
   useEffect(() => {
     const handleAuth = () => {
@@ -89,44 +89,6 @@ export default function NavBar() {
         });
       }
     }
-<<<<<<< HEAD
-=======
-  }
-
-  function handleDashboardNavigate() {
-    if (isAdmin) {
-      navigate("/admin");
-    } else {
-      navigate("/dashboard/tenant");
-    }
-  }
-
-  const checkIsActive = (path, hash = "") => {
-    const isHomeRoute =
-      location.pathname === "/explore" ||
-      location.pathname === "/" ||
-      location.pathname === "/home";
-
-    if (isHomeRoute) {
-      if (hash) {
-        return activeSection === hash;
-      }
-      if (path === "/explore" || path === "/" || path === "/home") {
-        return activeSection === "";
-      }
-    }
-
-    return location.pathname === path;
-  };
-
-  const mobileLinkClass = (path, hash = "") => {
-    const active = checkIsActive(path, hash);
-    return `py-2.5 px-3 border-b transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none flex items-center justify-between rounded-lg ${
-      active
-        ? "text-moss-700 dark:text-[#E5C583] font-bold border-moss-700 dark:border-[#E5C583] bg-moss-100/60 dark:bg-[#1C3328]/60"
-        : "text-theme-text dark:text-cream-100/80 hover:text-moss-600 border-theme-border/10 font-medium"
-    }`;
->>>>>>> 32d6f8ea43dc7068a1d44e6a46c6497624718d62
   }
 
   const checkIsActive = (path, hash = "") => {
