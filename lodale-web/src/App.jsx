@@ -20,7 +20,8 @@ import AccessDenied from "./pages/AccessDenied";
 import DashboardAddProperty from "./pages/DashboardAddProperty";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
-import AdminDashboard from "./pages/LandlordDashboard/LandlordDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import LandlordDashboard from "./pages/LandlordDashboard/LandlordDashboard";
 import PropertyDetail from "./pages/PropertyDetail";
 import TenantDashboard from "./pages/TenantDashboard/TenantDashboard";
 import { AlertTriangle } from "lucide-react";
@@ -305,6 +306,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <AddProperty />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/landlord"
+              element={
+                <ProtectedRoute>
+                  <LandlordDashboard />
                 </ProtectedRoute>
               }
             />
