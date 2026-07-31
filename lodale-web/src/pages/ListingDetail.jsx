@@ -28,22 +28,22 @@ export default function ListingDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-theme-bg text-theme-text transition-colors duration-250">
+    <div className="min-h-screen bg-white">
       <NavBar />
 
       <div className="mx-auto max-w-5xl px-6 py-10">
-        <div className="flex h-72 items-center justify-center rounded-2xl bg-theme-bg-offset">
-          <span className="text-[13px] font-medium text-moss-700 dark:text-moss-100">Photo</span>
+        <div className="flex h-72 items-center justify-center rounded-2xl bg-cream-100">
+          <span className="text-[13px] font-medium text-moss-700">Photo</span>
         </div>
 
         <div className="mt-8 grid gap-10 md:grid-cols-[1fr_320px]">
           <div>
-            <h1 className="font-display text-2xl font-bold text-theme-text">
+            <h1 className="font-display text-2xl font-bold text-ink-900">
               {listing.title}
             </h1>
-            <p className="mt-1 text-[14px] text-theme-text-offset/70">{listing.location}</p>
+            <p className="mt-1 text-[14px] text-ink-400">{listing.location}</p>
 
-            <div className="mt-4 flex items-center gap-5 text-[13px] text-theme-text-offset">
+            <div className="mt-4 flex items-center gap-5 text-[13px] text-ink-700">
               <span className="flex items-center gap-1">
                 <BedDouble className="h-4 w-4" /> {listing.beds} Bed
               </span>
@@ -56,7 +56,7 @@ export default function ListingDetail() {
               {listing.amenities.map((a) => (
                 <span
                   key={a}
-                  className="rounded-full bg-theme-bg-offset px-3 py-1 text-[12px] font-medium text-theme-text-offset"
+                  className="rounded-full bg-cream-50 px-3 py-1 text-[12px] font-medium text-ink-700"
                 >
                   {a}
                 </span>
@@ -82,26 +82,26 @@ export default function ListingDetail() {
           </div>
 
           {/* landlord score — fully visible to guests */}
-          <div className="h-fit rounded-2xl border border-theme-border p-6 bg-theme-card-bg">
-            <span className="text-[11px] font-semibold tracking-wide text-theme-text-offset/70">
+          <div className="h-fit rounded-2xl border border-ink-200 p-6">
+            <span className="text-[11px] font-semibold tracking-wide text-ink-400">
               LANDLORD & PROPERTY SCORE
             </span>
             <div className="mt-3 flex items-center gap-3">
-              <div className="h-11 w-11 rounded-full bg-theme-bg-offset" />
+              <div className="h-11 w-11 rounded-full bg-ink-200" />
               <div>
-                <div className="text-[14px] font-semibold text-theme-text">
+                <div className="text-[14px] font-semibold text-ink-900">
                   {listing.landlord.name}
                 </div>
-                <div className="text-[12px] text-theme-text-offset/70">
+                <div className="text-[12px] text-ink-400">
                   {listing.landlord.reviews} reviews
                 </div>
               </div>
             </div>
             <div className="mt-4 flex items-baseline gap-2">
-              <span className="font-display text-3xl font-bold text-moss-600 dark:text-[#E5C583]">
+              <span className="font-display text-3xl font-bold text-moss-600">
                 {listing.landlord.score}
               </span>
-              <span className="flex text-moss-600 dark:text-[#E5C583]">
+              <span className="flex text-moss-600">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
@@ -115,12 +115,12 @@ export default function ListingDetail() {
                 ))}
               </span>
             </div>
-            <p className="mt-2 text-[12px] text-theme-text-offset">
+            <p className="mt-2 text-[12px] text-ink-700">
               Verify landlord reliability before you pay.
             </p>
 
-            <div className="mt-6 rounded-xl bg-moss-100 dark:bg-moss-700/30 p-3">
-              <p className="text-[12px] font-medium text-moss-700 dark:text-moss-100">
+            <div className="mt-6 rounded-xl bg-moss-100 p-3">
+              <p className="text-[12px] font-medium text-moss-700">
                 {listing.price} / year
               </p>
             </div>

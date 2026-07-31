@@ -18,7 +18,6 @@ import {
   Trash2,
   ShieldAlert,
   Clock,
-  ExternalLink,
   ChevronRight,
   X,
   Check,
@@ -29,7 +28,6 @@ import {
   Mail,
   Phone,
   Calendar,
-  Building,
   Globe,
   LogOut,
   Settings,
@@ -44,7 +42,6 @@ import {
   Sliders,
   Info,
   Upload,
-  Camera,
   Laptop,
   Smartphone,
   Shield,
@@ -243,7 +240,7 @@ const INITIAL_REVIEWS = [
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { themePreference, setThemePreference, effectiveTheme, isDark, toggleTheme } = useTheme();
+  const { themePreference, setThemePreference, effectiveTheme } = useTheme();
 
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

@@ -14,13 +14,11 @@ export default function NavBar() {
     return localStorage.getItem("isAuthenticated") === "true";
   });
 
+  const [activeSection, setActiveSection] = useState("");
+
   useEffect(() => {
     const handleAuth = () => {
       setIsAuthenticated(localStorage.getItem("isAuthenticated") === "true");
-      setIsAdmin(
-        localStorage.getItem("userRole") === "admin" ||
-        localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com"
-      );
     };
 
     handleAuth();
@@ -70,16 +68,60 @@ export default function NavBar() {
 
   function handleSectionClick(e, hash) {
     setIsOpen(false);
+    if (location.pathname === "/explore" || location.pathname === "/") {
+      e.preventDefault();
+      const elem = document.getElementById(hash.replace("#", ""));
+      if (elem) {
+        const offset = 80;
+        const bodyRect = document.body.getBoundingClientRect().top;
+        const elementRect = elem.getBoundingClientRect().top;
+        const elementPosition = elementRect - bodyRect;
+        window.scrollTo({
+          top: elementPosition - offset,
+          behavior: "smooth",
+        });
+      }
+    }
   }
 
+  const checkIsActive = (path, hash = "") => {
+    const isHomeRoute =
+      location.pathname === "/explore" ||
+      location.pathname === "/" ||
+      location.pathname === "/home";
 
+    if (isHomeRoute) {
+      if (hash) {
+        return activeSection === hash;
+      }
+      if (path === "/explore" || path === "/" || path === "/home") {
+        return activeSection === "";
+      }
+    }
+
+    return location.pathname === path;
+  };
+
+  const desktopLinkClass = (path, hash = "") => {
+    const active = checkIsActive(path, hash);
+    return `transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-md px-2.5 py-1 ${active
+      ? "text-moss-700 dark:text-[#E5C583] font-bold bg-moss-100/70 dark:bg-[#1C3328]/80 relative after:content-[''] after:absolute after:-bottom-1.5 after:left-2 after:right-2 after:h-[2.5px] after:bg-moss-700 dark:after:bg-[#E5C583] after:rounded-full shadow-xs"
+      : "text-ink-700 dark:text-cream-100/70 hover:text-ink-900 dark:hover:text-white font-medium hover:bg-black/5 dark:hover:bg-white/5"
+      }`;
+  };
+
+  const mobileLinkClass = (path, hash = "") => {
+    const active = checkIsActive(path, hash);
+    return `py-2.5 px-3 border-b transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none flex items-center justify-between rounded-lg ${active
+      ? "text-moss-700 dark:text-[#E5C583] font-bold border-moss-700 dark:border-[#E5C583] bg-moss-100/60 dark:bg-[#1C3328]/60"
+      : "text-theme-text dark:text-cream-100/80 hover:text-moss-600 border-theme-border/10 font-medium"
+      }`;
+  };
 
   function handleSignOut() {
     localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("userRole");
     localStorage.removeItem("sessionExpiresAt");
     setIsAuthenticated(false);
-    setIsAdmin(false);
     setIsOpen(false);
     navigate("/explore");
   }
@@ -87,40 +129,42 @@ export default function NavBar() {
   return (
     <header className="sticky top-0 z-50 border-b border-ink-200/30 bg-transparent backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link to="/explore">
+        <Link to="/explore" onClick={handleHomeClick}>
           <Logo />
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden items-center gap-8 text-[14px] font-medium text-ink-700 md:flex">
+        <nav className="hidden items-center gap-8 text-[14px] md:flex">
           <Link
             to="/explore"
             onClick={handleHomeClick}
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className={desktopLinkClass("/explore")}
           >
             Home
           </Link>
           <Link
             to="/explore#for-tenants"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            onClick={(e) => handleSectionClick(e, "#for-tenants")}
+            className={desktopLinkClass("/explore", "#for-tenants")}
           >
             For Tenants
           </Link>
           <Link
             to="/explore#for-landlords"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            onClick={(e) => handleSectionClick(e, "#for-landlords")}
+            className={desktopLinkClass("/explore", "#for-landlords")}
           >
             For Landlords
           </Link>
           <Link
             to="/how-it-works"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className={desktopLinkClass("/how-it-works")}
           >
             How It Works
           </Link>
           <Link
             to="/about"
-            className="hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-[4px] px-1 py-0.5"
+            className={desktopLinkClass("/about")}
           >
             About
           </Link>
@@ -155,14 +199,12 @@ export default function NavBar() {
             <div className="hidden md:flex items-center gap-3">
               <button
                 onClick={() => navigate("/dashboard/tenant")}
-                className="text-[14px] font-medium text-ink-700 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors"
+                className={`text-[14px] font-medium focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors ${location.pathname.startsWith("/dashboard")
+                  ? "text-moss-700 dark:text-[#E5C583] font-bold"
+                  : "text-ink-700 hover:text-ink-900"
+                  }`}
               >
-                <span>Dashboard</span>
-                {isAdmin && (
-                  <span className="text-[10px] bg-[#344E41] text-white px-2 py-0.5 rounded font-bold uppercase">
-                    Admin
-                  </span>
-                )}
+                Dashboard
               </button>
               <Button
                 onClick={handleSignOut}
@@ -175,7 +217,10 @@ export default function NavBar() {
             <div className="hidden md:flex items-center gap-3">
               <button
                 onClick={() => navigate("/login")}
-                className="text-[14px] font-medium text-ink-700 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors"
+                className={`text-[14px] font-medium focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors ${location.pathname === "/login"
+                  ? "text-moss-700 dark:text-[#E5C583] font-bold"
+                  : "text-ink-700 hover:text-ink-900"
+                  }`}
               >
                 Log In
               </button>
@@ -192,7 +237,7 @@ export default function NavBar() {
 
       {/* Mobile Menu Dropdown Panel */}
       {isOpen && (
-        <nav className="flex flex-col gap-4 border-t border-theme-border/30 bg-theme-bg/95 backdrop-blur-md px-6 py-5 md:hidden animate-fade-in text-left">
+        <nav className="flex flex-col gap-4 border-t border-ink-200/30 bg-theme-bg/95 backdrop-blur-md px-6 py-5 md:hidden animate-fade-in text-left">
           <Link
             to="/explore"
             onClick={handleHomeClick}
@@ -249,16 +294,14 @@ export default function NavBar() {
               <button
                 onClick={() => {
                   setIsOpen(false);
-                  handleDashboardNavigate();
+                  navigate("/dashboard/tenant");
                 }}
-                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+                className={`text-[14px] font-semibold text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none ${location.pathname.startsWith("/dashboard")
+                  ? "text-moss-700 dark:text-[#E5C583]"
+                  : "text-theme-text hover:text-moss-600"
+                  }`}
               >
-                <span>Dashboard</span>
-                {isAdmin && (
-                  <span className="text-[10px] bg-[#344E41] text-white px-2 py-0.5 rounded font-bold uppercase">
-                    Admin Portal
-                  </span>
-                )}
+                Dashboard
               </button>
               <Button
                 className="px-5 py-2.5 text-[14px]"

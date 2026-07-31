@@ -152,7 +152,6 @@ function AdminProtectedRoute({ children }) {
     const auth = localStorage.getItem("isAuthenticated") === "true";
     const expires = localStorage.getItem("sessionExpiresAt");
     if (auth && expires && Date.now() > Number(expires)) {
-      // Session expired
       localStorage.removeItem("isAuthenticated");
       localStorage.removeItem("sessionExpiresAt");
       localStorage.removeItem("userRole");
@@ -231,34 +230,10 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/verify" element={<Navigate to="/signup" replace />} />
-
-            {/* Protected Routes */}
-            <Route
-              path="/welcome/:role"
-              element={
-                <ProtectedRoute>
-                  <Welcome />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/apply/:listingId"
-              element={
-                <ProtectedRoute>
-                  <Application />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/add-property"
-              element={
-                <ProtectedRoute>
-                  <AddProperty />
-                </ProtectedRoute>
-              }
-            />
             <Route path="/admin/login" element={<Login />} />
             <Route path="/access-denied" element={<AccessDenied />} />
+
+            {/* Protected Routes */}
             <Route
               path="/admin"
               element={
@@ -281,6 +256,30 @@ export default function App() {
                 <AdminProtectedRoute>
                   <AdminDashboard />
                 </AdminProtectedRoute>
+              }
+            />
+            <Route
+              path="/welcome/:role"
+              element={
+                <ProtectedRoute>
+                  <Welcome />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/apply/:listingId"
+              element={
+                <ProtectedRoute>
+                  <Application />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/add-property"
+              element={
+                <ProtectedRoute>
+                  <AddProperty />
+                </ProtectedRoute>
               }
             />
             <Route
