@@ -24,7 +24,7 @@ import {
 import { Logo } from "../../components/Logo";
 import Button from "../../components/Button";
 import { LISTINGS } from "../../data/listings";
-import AdminProperties from "./AdminProperties";
+import LandlordProperties from "./LandlordProperties";
 import UserInfo from "./components/UserInfo";
 import RequestInfo from "./components/RequestInfo";
 import LandlordChat from "./components/Landllordchat";
@@ -154,7 +154,7 @@ const TOUR_STEPS = [
   }
 ];
 
-export default function AdminDashboard() {
+export default function LandlordDashboard() {
   const navigate = useNavigate();
 
   // Retrieve username from localStorage with fallback
@@ -1287,7 +1287,7 @@ export default function AdminDashboard() {
 
             </div>
           ) : activeTab === 1 ? (
-            <AdminProperties />
+            <LandlordProperties />
           ) : activeTab === 2 ? (
             <Tenants setSelectedTenantForDetails={setSelectedTenantForDetails} setActiveTab={setActiveTab} />
           ) : activeTab === 3 ? (
