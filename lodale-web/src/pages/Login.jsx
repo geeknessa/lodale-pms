@@ -217,7 +217,7 @@ export default function Login() {
         backgroundImage: `url(${heroBg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
+        backgroundRepeat: "no-repeat", git
       }}
     >
       {/* Background Overlay */}
