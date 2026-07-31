@@ -18,6 +18,7 @@ import Application from "./pages/Application";
 import AddProperty from "./pages/AddProperty";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
+import AdminDashboard from "./pages/AdminDashboard";
 import { AlertTriangle } from "lucide-react";
 
 
@@ -144,6 +145,42 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+/**
+ * AdminRoute — extends ProtectedRoute with an additional role check.
+ * Reads `userRole` from localStorage (set at login alongside `isAuthenticated`).
+ * Redirects non-admin authenticated users back to their role dashboard.
+ *
+ * In development (import.meta.env.DEV) the guard is bypassed so the admin
+ * dashboard can be previewed without manually seeding localStorage.
+ */
+function AdminRoute({ children }) {
+  // ── Dev bypass ────────────────────────────────────────────────────────────
+  // Vite sets import.meta.env.DEV = true only during `vite dev`.
+  // This block is tree-shaken away in production builds.
+  if (import.meta.env.DEV) {
+    return children;
+  }
+
+  // ── Production guard ──────────────────────────────────────────────────────
+  const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
+  const expires = localStorage.getItem("sessionExpiresAt");
+  const sessionExpired = expires && Date.now() > Number(expires);
+
+  if (!isAuthenticated || sessionExpired) {
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("sessionExpiresAt");
+    return <Navigate to="/login" replace state={{ fromProtected: true, sessionExpired: Boolean(sessionExpired) }} />;
+  }
+
+  const role = localStorage.getItem("userRole");
+  if (role !== "admin") {
+    // Authenticated but not an admin — send to their own dashboard
+    return <Navigate to={`/dashboard/${role ?? "tenant"}`} replace />;
+  }
+
+  return children;
+}
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -191,6 +228,14 @@ export default function App() {
                 <ProtectedRoute>
                   <DashboardPlaceholder />
                 </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
               }
             />
           </Routes>
