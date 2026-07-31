@@ -189,7 +189,7 @@ export default function Login() {
     localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
 
     // Redirect to their specific role dashboard
-    navigate(`/dashboard/${targetUser.role}`);
+    navigate(`/dashboard/tenant`);
   }
 
   function handleForgotPassword() {
@@ -217,7 +217,7 @@ export default function Login() {
         backgroundImage: `url(${heroBg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundRepeat: "no-repeat", git
+        backgroundRepeat: "no-repeat",
       }}
     >
       {/* Background Overlay */}
