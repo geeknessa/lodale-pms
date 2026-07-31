@@ -35,12 +35,6 @@ import {
   User,
   KeyRound,
   Upload,
-<<<<<<< HEAD
-  Laptop,
-  Smartphone,
-  Shield,
-=======
->>>>>>> 32d6f8ea43dc7068a1d44e6a46c6497624718d62
   Menu,
 } from "lucide-react";
 
@@ -236,11 +230,7 @@ const INITIAL_REVIEWS = [
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-<<<<<<< HEAD
-  const { themePreference, setThemePreference, effectiveTheme } = useTheme();
-=======
   const { isDark, toggleTheme } = useTheme();
->>>>>>> 32d6f8ea43dc7068a1d44e6a46c6497624718d62
 
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -374,9 +364,9 @@ export default function AdminDashboard() {
       setSelectedUser((prev) =>
         prev
           ? {
-              ...prev,
-              status: prev.status === "Active" ? "Suspended" : "Active",
-            }
+            ...prev,
+            status: prev.status === "Active" ? "Suspended" : "Active",
+          }
           : null
       );
     }
@@ -578,9 +568,8 @@ export default function AdminDashboard() {
 
         {/* --- LEFT SIDEBAR NAVIGATION --- */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#344E41] dark:bg-[#1a1a1a] text-white flex-shrink-0 border-r border-[#3A5A40] dark:border-[#262626] flex flex-col justify-between transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:flex ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+          className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#344E41] dark:bg-[#1a1a1a] text-white flex-shrink-0 border-r border-[#3A5A40] dark:border-[#262626] flex flex-col justify-between transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:flex ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
         >
           <div>
             {/* Top Logo Container */}
@@ -611,11 +600,10 @@ export default function AdminDashboard() {
                   setActiveTab("overview");
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
-                  activeTab === "overview"
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "overview"
                     ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
                     : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
-                }`}
+                  }`}
               >
                 <LayoutDashboard className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
                 <span>Dashboard Overview</span>
@@ -631,11 +619,10 @@ export default function AdminDashboard() {
                   setActiveTab("users");
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
-                  activeTab === "users"
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "users"
                     ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
                     : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Users className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
@@ -652,11 +639,10 @@ export default function AdminDashboard() {
                   setActiveTab("listings");
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
-                  activeTab === "listings"
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "listings"
                     ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
                     : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Building2 className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
@@ -675,11 +661,10 @@ export default function AdminDashboard() {
                   setActiveTab("reviews");
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
-                  activeTab === "reviews"
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "reviews"
                     ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
                     : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <MessageSquareWarning className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
@@ -698,11 +683,10 @@ export default function AdminDashboard() {
                   setActiveTab("profile");
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${
-                  activeTab === "profile"
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "profile"
                     ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
                     : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
-                }`}
+                  }`}
               >
                 <User className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
                 <span>My Profile</span>
@@ -760,839 +744,832 @@ export default function AdminDashboard() {
           </div>
         </aside>
 
-      {/* --- MAIN AREA --- */}
-      <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full min-w-0 overflow-y-auto overflow-x-hidden">
-        {/* --- TAB 0: DASHBOARD OVERVIEW --- */}
-        {activeTab === "overview" && (
-          <div className="space-y-8">
-            <div>
-              <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
-                Dashboard Overview
-              </h1>
-              <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
-                Real-time safety metrics and high-priority platform action items.
-              </p>
+        {/* --- MAIN AREA --- */}
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full min-w-0 overflow-y-auto overflow-x-hidden">
+          {/* --- TAB 0: DASHBOARD OVERVIEW --- */}
+          {activeTab === "overview" && (
+            <div className="space-y-8">
+              <div>
+                <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  Dashboard Overview
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  Real-time safety metrics and high-priority platform action items.
+                </p>
+              </div>
+
+              {/* Key Numbers Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {/* Card 1: Total Users */}
+                <div
+                  onClick={() => setActiveTab("users")}
+                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+                >
+                  <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
+                      Total Users
+                    </span>
+                    <div className="p-2 rounded-lg bg-[#DAD7CD]/50 dark:bg-[#1D3029]">
+                      <Users className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
+                      {totalUsersCount}
+                    </span>
+                    <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                      {users.filter((u) => u.status === "Active").length} active
+                    </span>
+                  </div>
+                  <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
+                    Manage accounts <ChevronRight className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+
+                {/* Card 2: Listings Waiting Approval */}
+                <div
+                  onClick={() => setActiveTab("listings")}
+                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+                >
+                  <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
+                      Listings Pending Review
+                    </span>
+                    <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
+                      {pendingListingsCount}
+                    </span>
+                    <span className="text-xs text-amber-800 dark:text-amber-400 font-medium">
+                      needs verification
+                    </span>
+                  </div>
+                  <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
+                    Review listings <ChevronRight className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+
+                {/* Card 3: Flagged Reviews */}
+                <div
+                  onClick={() => setActiveTab("reviews")}
+                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+                >
+                  <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
+                      Flagged Reviews
+                    </span>
+                    <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300">
+                      <MessageSquareWarning className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
+                      {flaggedReviewsCount}
+                    </span>
+                    <span className="text-xs text-rose-800 dark:text-rose-400 font-medium">
+                      needing moderation
+                    </span>
+                  </div>
+                  <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
+                    Moderate reviews <ChevronRight className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Short list: What needs action right now */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 sm:p-6 shadow-sm">
+                <div className="flex items-center justify-between pb-4 border-b border-[#DAD7CD] dark:border-[#233B31]">
+                  <div>
+                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                      Action Required Right Now
+                    </h2>
+                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
+                      Pending approvals and flagged reviews ordered by most recent first.
+                    </p>
+                  </div>
+                  <span className="text-xs bg-[#DAD7CD] dark:bg-[#233B31] px-2.5 py-1 rounded-full text-[#262626] dark:text-[#E4EBE6] font-medium">
+                    {actionRequiredFeed.length} Items Pending
+                  </span>
+                </div>
+
+                <div className="mt-4 divide-y divide-[#DAD7CD]/60 dark:divide-[#233B31]">
+                  {actionRequiredFeed.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                      <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400 mx-auto mb-2" />
+                      All clear! No pending listing approvals or flagged reviews.
+                    </div>
+                  ) : (
+                    actionRequiredFeed.map((item) => (
+                      <div
+                        key={`${item.type}-${item.id}`}
+                        className="py-4 flex flex-col md:flex-row md:flex-wrap lg:flex-nowrap md:items-center justify-between gap-4 hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] px-2 rounded-lg transition-colors w-full min-w-0"
+                      >
+                        <div className="space-y-1 min-w-0 md:flex-1">
+                          <div className="flex items-center gap-2">
+                            {item.type === "listing" ? (
+                              <span className="text-[11px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2 py-0.5 rounded">
+                                Listing Approval
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-bold uppercase bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded">
+                                Flagged Review
+                              </span>
+                            )}
+                            <span className="text-xs text-[#262626]/50 dark:text-[#A3BCA7]/60">
+                              {new Date(item.timestamp).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <h3 className="font-medium text-sm text-[#262626] dark:text-[#F0F5F2]">
+                            {item.title}
+                          </h3>
+                          <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">{item.sub}</p>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="grid grid-cols-1 min-[350px]:grid-cols-2 md:flex md:flex-wrap md:items-center md:flex-shrink-0 gap-2 w-full md:w-auto">
+                          {item.type === "listing" ? (
+                            <>
+                              <button
+                                onClick={() => setSelectedListing(item.raw)}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors col-span-1 min-[350px]:col-span-2 md:col-span-1 text-center"
+                              >
+                                Inspect
+                              </button>
+                              <button
+                                onClick={() => handleApproveListing(item.id)}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded flex items-center justify-center gap-1 transition-colors"
+                              >
+                                <Check className="h-3.5 w-3.5" /> Approve
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedListing(item.raw);
+                                  setIsRejectingModalOpen(true);
+                                }}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded flex items-center justify-center gap-1 transition-colors"
+                              >
+                                <X className="h-3.5 w-3.5" /> Reject
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setSelectedReviewFlag(item.raw)}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors col-span-1 min-[350px]:col-span-2 md:col-span-1 text-center"
+                              >
+                                Report Details
+                              </button>
+                              <button
+                                onClick={() => handleDismissFlag(item.id)}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors text-center"
+                              >
+                                Keep Review
+                              </button>
+                              <button
+                                onClick={() => handleRemoveReview(item.id)}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors text-center"
+                              >
+                                Remove
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
+          )}
 
-            {/* Key Numbers Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {/* Card 1: Total Users */}
-              <div
-                onClick={() => setActiveTab("users")}
-                className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
-              >
-                <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
-                    Total Users
-                  </span>
-                  <div className="p-2 rounded-lg bg-[#DAD7CD]/50 dark:bg-[#1D3029]">
-                    <Users className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+          {/* --- TAB 1: USER MANAGEMENT --- */}
+          {activeTab === "users" && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  1. User Management
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  View all registered users, inspect profiles, suspend/activate, or delete accounts.
+                </p>
+              </div>
+
+              {/* Search and Filters Bar */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+                  <input
+                    type="text"
+                    placeholder="Search user by name or email..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                  <div className="flex items-center gap-1.5 text-xs text-[#262626]/80 dark:text-[#A3BCA7] font-medium">
+                    <Filter className="h-3.5 w-3.5" /> Filter Role:
                   </div>
-                </div>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
-                    {totalUsersCount}
-                  </span>
-                  <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                    {users.filter((u) => u.status === "Active").length} active
-                  </span>
-                </div>
-                <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
-                  Manage accounts <ChevronRight className="h-3.5 w-3.5" />
+                  <select
+                    value={userRoleFilter}
+                    onChange={(e) => setUserRoleFilter(e.target.value)}
+                    className="text-xs bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg px-2.5 py-2 text-[#262626] dark:text-[#E4EBE6] font-medium focus:outline-none"
+                  >
+                    <option value="All">All Roles</option>
+                    <option value="Landlord">Landlord</option>
+                    <option value="Tenant">Tenant</option>
+                    <option value="Admin">Admin</option>
+                  </select>
+
+                  <select
+                    value={userStatusFilter}
+                    onChange={(e) => setUserStatusFilter(e.target.value)}
+                    className="text-xs bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg px-2.5 py-2 text-[#262626] dark:text-[#E4EBE6] font-medium focus:outline-none"
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Active">Active</option>
+                    <option value="Suspended">Suspended</option>
+                  </select>
                 </div>
               </div>
 
-              {/* Card 2: Listings Waiting Approval */}
-              <div
-                onClick={() => setActiveTab("listings")}
-                className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
-              >
-                <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
-                    Listings Pending Review
-                  </span>
-                  <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                </div>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
-                    {pendingListingsCount}
-                  </span>
-                  <span className="text-xs text-amber-800 dark:text-amber-400 font-medium">
-                    needs verification
-                  </span>
-                </div>
-                <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
-                  Review listings <ChevronRight className="h-3.5 w-3.5" />
-                </div>
-              </div>
-
-              {/* Card 3: Flagged Reviews */}
-              <div
-                onClick={() => setActiveTab("reviews")}
-                className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
-              >
-                <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
-                    Flagged Reviews
-                  </span>
-                  <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300">
-                    <MessageSquareWarning className="h-5 w-5" />
-                  </div>
-                </div>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
-                    {flaggedReviewsCount}
-                  </span>
-                  <span className="text-xs text-rose-800 dark:text-rose-400 font-medium">
-                    needing moderation
-                  </span>
-                </div>
-                <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
-                  Moderate reviews <ChevronRight className="h-3.5 w-3.5" />
-                </div>
+              {/* Users Table */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#344E41] dark:bg-[#1A2E26] text-white text-xs font-semibold uppercase tracking-wider">
+                      <th className="py-3 px-4">User</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4">Verifications</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#DAD7CD] dark:divide-[#233B31] text-sm">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-[#262626]/60 dark:text-[#A3BCA7]/70 text-xs">
+                          No users found matching filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="font-medium text-[#262626] dark:text-[#F0F5F2]">{user.name}</div>
+                            <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">{user.email}</div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span
+                              className={`inline-block text-xs px-2.5 py-0.5 rounded font-semibold ${user.role === "Landlord"
+                                  ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border dark:border-emerald-800/50"
+                                  : user.role === "Admin"
+                                    ? "bg-purple-100 text-purple-900 dark:bg-purple-950/80 dark:text-purple-300 dark:border dark:border-purple-800/50"
+                                    : "bg-blue-100 text-blue-900 dark:bg-blue-950/80 dark:text-blue-300 dark:border dark:border-blue-800/50"
+                                }`}
+                            >
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              {user.verifications.map((v, i) => (
+                                <span
+                                  key={i}
+                                  className="text-[10px] bg-[#DAD7CD] dark:bg-[#233B31] px-1.5 py-0.5 rounded text-[#262626] dark:text-[#E4EBE6] font-medium"
+                                >
+                                  {v}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            {user.status === "Active" ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                                <span className="h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-400"></span> Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 dark:text-rose-400">
+                                <span className="h-2 w-2 rounded-full bg-rose-600 dark:bg-rose-400"></span> Suspended
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right space-x-2">
+                            <button
+                              onClick={() => setSelectedUser(user)}
+                              className="p-1.5 text-[#344E41] dark:text-[#E5C583] hover:bg-[#DAD7CD] dark:hover:bg-[#233B31] rounded transition-colors"
+                              title="View Profile"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleToggleUserStatus(user.id)}
+                              className={`p-1.5 rounded transition-colors ${user.status === "Active"
+                                  ? "text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                                  : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+                                }`}
+                              title={user.status === "Active" ? "Suspend Account" : "Activate Account"}
+                            >
+                              {user.status === "Active" ? (
+                                <UserX className="h-4 w-4" />
+                              ) : (
+                                <UserCheck className="h-4 w-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="p-1.5 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded transition-colors"
+                              title="Delete Account"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
+          )}
 
-            {/* Short list: What needs action right now */}
-            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 sm:p-6 shadow-sm">
-              <div className="flex items-center justify-between pb-4 border-b border-[#DAD7CD] dark:border-[#233B31]">
-                <div>
-                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
-                    Action Required Right Now
-                  </h2>
-                  <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
-                    Pending approvals and flagged reviews ordered by most recent first.
-                  </p>
-                </div>
-                <span className="text-xs bg-[#DAD7CD] dark:bg-[#233B31] px-2.5 py-1 rounded-full text-[#262626] dark:text-[#E4EBE6] font-medium">
-                  {actionRequiredFeed.length} Items Pending
-                </span>
+          {/* --- TAB 2: LISTING OVERSIGHT --- */}
+          {activeTab === "listings" && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  2. Listing Oversight
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  Review new listings waiting to go live, approve or reject submissions, or remove fraudulent listings.
+                </p>
               </div>
 
-              <div className="mt-4 divide-y divide-[#DAD7CD]/60 dark:divide-[#233B31]">
-                {actionRequiredFeed.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                    <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400 mx-auto mb-2" />
-                    All clear! No pending listing approvals or flagged reviews.
+              {/* Filter Tabs & Search */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
+                  {["All", "Pending Approval", "Live", "Rejected"].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setListingFilter(tab)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${listingFilter === tab
+                          ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                          : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                        }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+                  <input
+                    type="text"
+                    placeholder="Search title, area, landlord..."
+                    value={listingSearch}
+                    onChange={(e) => setListingSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+                  />
+                </div>
+              </div>
+
+              {/* Listings Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredListings.length === 0 ? (
+                  <div className="col-span-2 py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                    No listings found for the selected filter.
                   </div>
                 ) : (
-                  actionRequiredFeed.map((item) => (
+                  filteredListings.map((lst) => (
                     <div
-                      key={`${item.type}-${item.id}`}
-                      className="py-4 flex flex-col md:flex-row md:flex-wrap lg:flex-nowrap md:items-center justify-between gap-4 hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] px-2 rounded-lg transition-colors w-full min-w-0"
+                      key={lst.id}
+                      className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col justify-between space-y-4 shadow-sm"
                     >
-                      <div className="space-y-1 min-w-0 md:flex-1">
-                        <div className="flex items-center gap-2">
-                          {item.type === "listing" ? (
-                            <span className="text-[11px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2 py-0.5 rounded">
-                              Listing Approval
-                            </span>
-                          ) : (
-                            <span className="text-[11px] font-bold uppercase bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded">
-                              Flagged Review
-                            </span>
-                          )}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span
+                            className={`text-xs px-2.5 py-0.5 rounded font-bold uppercase ${lst.status === "Live"
+                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
+                                : lst.status === "Pending Approval"
+                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
+                                  : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
+                              }`}
+                          >
+                            {lst.status}
+                          </span>
                           <span className="text-xs text-[#262626]/50 dark:text-[#A3BCA7]/60">
-                            {new Date(item.timestamp).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {lst.type}
                           </span>
                         </div>
-                        <h3 className="font-medium text-sm text-[#262626] dark:text-[#F0F5F2]">
-                          {item.title}
+
+                        <h3 className="font-serif font-semibold text-lg text-[#262626] dark:text-[#F0F5F2]">
+                          {lst.title}
                         </h3>
-                        <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">{item.sub}</p>
+                        <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex items-center gap-1 mt-1">
+                          <MapPin className="h-3.5 w-3.5 text-[#3A5A40] dark:text-[#E5C583]" /> {lst.location}
+                        </p>
+
+                        <div className="mt-3 text-sm font-bold text-[#344E41] dark:text-[#E5C583]">
+                          {lst.price}
+                        </div>
+
+                        <div className="mt-2 pt-2 border-t border-[#DAD7CD] dark:border-[#233B31] text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                          <span>Landlord: <strong className="text-[#262626] dark:text-[#F0F5F2]">{lst.landlord.name}</strong></span>
+                          <span>Deed Verified: {lst.deedVerified ? "Yes" : "No"}</span>
+                        </div>
+
+                        {lst.fraudWarning && (
+                          <div className="mt-3 p-2.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 rounded text-xs text-rose-800 dark:text-rose-300 flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                            <span>{lst.fraudWarning}</span>
+                          </div>
+                        )}
                       </div>
 
-                      {/* Action buttons */}
-                      <div className="grid grid-cols-1 min-[350px]:grid-cols-2 md:flex md:flex-wrap md:items-center md:flex-shrink-0 gap-2 w-full md:w-auto">
-                        {item.type === "listing" ? (
-                          <>
-                            <button
-                              onClick={() => setSelectedListing(item.raw)}
-                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors col-span-1 min-[350px]:col-span-2 md:col-span-1 text-center"
-                            >
-                              Inspect
-                            </button>
-                            <button
-                              onClick={() => handleApproveListing(item.id)}
-                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded flex items-center justify-center gap-1 transition-colors"
-                            >
-                              <Check className="h-3.5 w-3.5" /> Approve
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedListing(item.raw);
-                                setIsRejectingModalOpen(true);
-                              }}
-                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded flex items-center justify-center gap-1 transition-colors"
-                            >
-                              <X className="h-3.5 w-3.5" /> Reject
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => setSelectedReviewFlag(item.raw)}
-                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors col-span-1 min-[350px]:col-span-2 md:col-span-1 text-center"
-                            >
-                              Report Details
-                            </button>
-                            <button
-                              onClick={() => handleDismissFlag(item.id)}
-                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors text-center"
-                            >
-                              Keep Review
-                            </button>
-                            <button
-                              onClick={() => handleRemoveReview(item.id)}
-                              className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors text-center"
-                            >
-                              Remove
-                            </button>
-                          </>
-                        )}
+                      <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-between gap-2">
+                        <button
+                          onClick={() => setSelectedListing(lst)}
+                          className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                        >
+                          Inspect Details
+                        </button>
+
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {lst.status === "Pending Approval" && (
+                            <>
+                              <button
+                                onClick={() => handleApproveListing(lst.id)}
+                                className="px-2.5 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedListing(lst);
+                                  setIsRejectingModalOpen(true);
+                                }}
+                                className="px-2.5 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleRemoveListing(lst.id)}
+                            className="px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
+                            title="Remove if fraudulent"
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))
                 )}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* --- TAB 1: USER MANAGEMENT --- */}
-        {activeTab === "users" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
-                1. User Management
-              </h1>
-              <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
-                View all registered users, inspect profiles, suspend/activate, or delete accounts.
-              </p>
-            </div>
-
-            {/* Search and Filters Bar */}
-            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
-              <div className="relative w-full md:w-80">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
-                <input
-                  type="text"
-                  placeholder="Search user by name or email..."
-                  value={userSearch}
-                  onChange={(e) => setUserSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
-                />
+          {/* --- TAB 3: REVIEW & RATING MODERATION --- */}
+          {activeTab === "reviews" && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  3. Review &amp; Rating Moderation
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  Filter reported reviews, inspect details, and remove fake or abusive ratings.
+                </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                <div className="flex items-center gap-1.5 text-xs text-[#262626]/80 dark:text-[#A3BCA7] font-medium">
-                  <Filter className="h-3.5 w-3.5" /> Filter Role:
-                </div>
-                <select
-                  value={userRoleFilter}
-                  onChange={(e) => setUserRoleFilter(e.target.value)}
-                  className="text-xs bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg px-2.5 py-2 text-[#262626] dark:text-[#E4EBE6] font-medium focus:outline-none"
-                >
-                  <option value="All">All Roles</option>
-                  <option value="Landlord">Landlord</option>
-                  <option value="Tenant">Tenant</option>
-                  <option value="Admin">Admin</option>
-                </select>
-
-                <select
-                  value={userStatusFilter}
-                  onChange={(e) => setUserStatusFilter(e.target.value)}
-                  className="text-xs bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg px-2.5 py-2 text-[#262626] dark:text-[#E4EBE6] font-medium focus:outline-none"
-                >
-                  <option value="All">All Statuses</option>
-                  <option value="Active">Active</option>
-                  <option value="Suspended">Suspended</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Users Table */}
-            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-[#344E41] dark:bg-[#1A2E26] text-white text-xs font-semibold uppercase tracking-wider">
-                    <th className="py-3 px-4">User</th>
-                    <th className="py-3 px-4">Role</th>
-                    <th className="py-3 px-4">Verifications</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#DAD7CD] dark:divide-[#233B31] text-sm">
-                  {filteredUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-[#262626]/60 dark:text-[#A3BCA7]/70 text-xs">
-                        No users found matching filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] transition-colors">
-                        <td className="py-3.5 px-4">
-                          <div className="font-medium text-[#262626] dark:text-[#F0F5F2]">{user.name}</div>
-                          <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">{user.email}</div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span
-                            className={`inline-block text-xs px-2.5 py-0.5 rounded font-semibold ${
-                              user.role === "Landlord"
-                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border dark:border-emerald-800/50"
-                                : user.role === "Admin"
-                                ? "bg-purple-100 text-purple-900 dark:bg-purple-950/80 dark:text-purple-300 dark:border dark:border-purple-800/50"
-                                : "bg-blue-100 text-blue-900 dark:bg-blue-950/80 dark:text-blue-300 dark:border dark:border-blue-800/50"
-                            }`}
-                          >
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="flex flex-wrap gap-1">
-                            {user.verifications.map((v, i) => (
-                              <span
-                                key={i}
-                                className="text-[10px] bg-[#DAD7CD] dark:bg-[#233B31] px-1.5 py-0.5 rounded text-[#262626] dark:text-[#E4EBE6] font-medium"
-                              >
-                                {v}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          {user.status === "Active" ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                              <span className="h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-400"></span> Active
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 dark:text-rose-400">
-                              <span className="h-2 w-2 rounded-full bg-rose-600 dark:bg-rose-400"></span> Suspended
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-right space-x-2">
-                          <button
-                            onClick={() => setSelectedUser(user)}
-                            className="p-1.5 text-[#344E41] dark:text-[#E5C583] hover:bg-[#DAD7CD] dark:hover:bg-[#233B31] rounded transition-colors"
-                            title="View Profile"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleToggleUserStatus(user.id)}
-                            className={`p-1.5 rounded transition-colors ${
-                              user.status === "Active"
-                                ? "text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60"
-                                : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
-                            }`}
-                            title={user.status === "Active" ? "Suspend Account" : "Activate Account"}
-                          >
-                            {user.status === "Active" ? (
-                              <UserX className="h-4 w-4" />
-                            ) : (
-                              <UserCheck className="h-4 w-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="p-1.5 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded transition-colors"
-                            title="Delete Account"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* --- TAB 2: LISTING OVERSIGHT --- */}
-        {activeTab === "listings" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
-                2. Listing Oversight
-              </h1>
-              <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
-                Review new listings waiting to go live, approve or reject submissions, or remove fraudulent listings.
-              </p>
-            </div>
-
-            {/* Filter Tabs & Search */}
-            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
-              <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
-                {["All", "Pending Approval", "Live", "Rejected"].map((tab) => (
+              {/* Filter Toggle & Search */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
                   <button
-                    key={tab}
-                    onClick={() => setListingFilter(tab)}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${
-                      listingFilter === tab
+                    onClick={() => setReviewFilter("Flagged")}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "Flagged"
+                        ? "bg-rose-800 text-white"
+                        : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                      }`}
+                  >
+                    Flagged Only ({flaggedReviewsCount})
+                  </button>
+                  <button
+                    onClick={() => setReviewFilter("All")}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "All"
                         ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
                         : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
-                    }`}
+                      }`}
                   >
-                    {tab}
+                    All Reviews ({reviews.length})
                   </button>
-                ))}
-              </div>
-
-              <div className="relative w-full md:w-72">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
-                <input
-                  type="text"
-                  placeholder="Search title, area, landlord..."
-                  value={listingSearch}
-                  onChange={(e) => setListingSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
-                />
-              </div>
-            </div>
-
-            {/* Listings Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredListings.length === 0 ? (
-                <div className="col-span-2 py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                  No listings found for the selected filter.
                 </div>
-              ) : (
-                filteredListings.map((lst) => (
-                  <div
-                    key={lst.id}
-                    className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col justify-between space-y-4 shadow-sm"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span
-                          className={`text-xs px-2.5 py-0.5 rounded font-bold uppercase ${
-                            lst.status === "Live"
-                              ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
-                              : lst.status === "Pending Approval"
-                              ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
-                              : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
-                          }`}
-                        >
-                          {lst.status}
-                        </span>
-                        <span className="text-xs text-[#262626]/50 dark:text-[#A3BCA7]/60">
-                          {lst.type}
-                        </span>
-                      </div>
 
-                      <h3 className="font-serif font-semibold text-lg text-[#262626] dark:text-[#F0F5F2]">
-                        {lst.title}
-                      </h3>
-                      <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex items-center gap-1 mt-1">
-                        <MapPin className="h-3.5 w-3.5 text-[#3A5A40] dark:text-[#E5C583]" /> {lst.location}
-                      </p>
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+                  <input
+                    type="text"
+                    placeholder="Search in reviews..."
+                    value={reviewSearch}
+                    onChange={(e) => setReviewSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+                  />
+                </div>
+              </div>
 
-                      <div className="mt-3 text-sm font-bold text-[#344E41] dark:text-[#E5C583]">
-                        {lst.price}
-                      </div>
-
-                      <div className="mt-2 pt-2 border-t border-[#DAD7CD] dark:border-[#233B31] text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                        <span>Landlord: <strong className="text-[#262626] dark:text-[#F0F5F2]">{lst.landlord.name}</strong></span>
-                        <span>Deed Verified: {lst.deedVerified ? "Yes" : "No"}</span>
-                      </div>
-
-                      {lst.fraudWarning && (
-                        <div className="mt-3 p-2.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 rounded text-xs text-rose-800 dark:text-rose-300 flex items-start gap-2">
-                          <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                          <span>{lst.fraudWarning}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-between gap-2">
-                      <button
-                        onClick={() => setSelectedListing(lst)}
-                        className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
-                      >
-                        Inspect Details
-                      </button>
-
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {lst.status === "Pending Approval" && (
-                          <>
-                            <button
-                              onClick={() => handleApproveListing(lst.id)}
-                              className="px-2.5 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => {
-                                setSelectedListing(lst);
-                                setIsRejectingModalOpen(true);
-                              }}
-                              className="px-2.5 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        )}
-                        <button
-                          onClick={() => handleRemoveListing(lst.id)}
-                          className="px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
-                          title="Remove if fraudulent"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
+              {/* Reviews Feed */}
+              <div className="space-y-4">
+                {filteredReviews.length === 0 ? (
+                  <div className="py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                    No reviews match your current view.
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* --- TAB 3: REVIEW & RATING MODERATION --- */}
-        {activeTab === "reviews" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
-                3. Review &amp; Rating Moderation
-              </h1>
-              <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
-                Filter reported reviews, inspect details, and remove fake or abusive ratings.
-              </p>
-            </div>
-
-            {/* Filter Toggle & Search */}
-            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
-              <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
-                <button
-                  onClick={() => setReviewFilter("Flagged")}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${
-                    reviewFilter === "Flagged"
-                      ? "bg-rose-800 text-white"
-                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
-                  }`}
-                >
-                  Flagged Only ({flaggedReviewsCount})
-                </button>
-                <button
-                  onClick={() => setReviewFilter("All")}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${
-                    reviewFilter === "All"
-                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
-                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
-                  }`}
-                >
-                  All Reviews ({reviews.length})
-                </button>
-              </div>
-
-              <div className="relative w-full md:w-72">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
-                <input
-                  type="text"
-                  placeholder="Search in reviews..."
-                  value={reviewSearch}
-                  onChange={(e) => setReviewSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
-                />
-              </div>
-            </div>
-
-            {/* Reviews Feed */}
-            <div className="space-y-4">
-              {filteredReviews.length === 0 ? (
-                <div className="py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                  No reviews match your current view.
-                </div>
-              ) : (
-                filteredReviews.map((rev) => (
-                  <div
-                    key={rev.id}
-                    className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm"
-                  >
-                    <div className="space-y-2 max-w-2xl">
-                      <div className="flex items-center gap-2">
-                        <div className="flex text-amber-500">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${
-                                i < rev.rating ? "fill-amber-400 text-amber-400" : "text-gray-300 dark:text-gray-600"
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
-                          {rev.propertyTitle}
-                        </span>
-                        {rev.flagged && (
-                          <span className="text-[10px] bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded font-bold uppercase">
-                            FLAGGED
+                ) : (
+                  filteredReviews.map((rev) => (
+                    <div
+                      key={rev.id}
+                      className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm"
+                    >
+                      <div className="space-y-2 max-w-2xl">
+                        <div className="flex items-center gap-2">
+                          <div className="flex text-amber-500">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${i < rev.rating ? "fill-amber-400 text-amber-400" : "text-gray-300 dark:text-gray-600"
+                                  }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                            {rev.propertyTitle}
                           </span>
+                          {rev.flagged && (
+                            <span className="text-[10px] bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded font-bold uppercase">
+                              FLAGGED
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-sm text-[#262626] dark:text-[#E4EBE6] italic">
+                          "{rev.comment}"
+                        </p>
+
+                        <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                          By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {new Date(rev.submittedAt).toLocaleDateString()}
+                        </div>
+
+                        {rev.flagged && (
+                          <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded text-xs text-amber-900 dark:text-amber-300">
+                            <strong>Reported reason:</strong> {rev.flagReason}
+                          </div>
                         )}
                       </div>
 
-                      <p className="text-sm text-[#262626] dark:text-[#E4EBE6] italic">
-                        "{rev.comment}"
-                      </p>
-
-                      <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                        By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {new Date(rev.submittedAt).toLocaleDateString()}
-                      </div>
-
-                      {rev.flagged && (
-                        <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded text-xs text-amber-900 dark:text-amber-300">
-                          <strong>Reported reason:</strong> {rev.flagReason}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => setSelectedReviewFlag(rev)}
-                        className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
-                      >
-                        Report Details
-                      </button>
-
-                      {rev.flagged && (
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
                         <button
-                          onClick={() => handleDismissFlag(rev.id)}
-                          className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                          onClick={() => setSelectedReviewFlag(rev)}
+                          className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
                         >
-                          Dismiss Flag (Keep)
+                          Report Details
                         </button>
-                      )}
 
-                      <button
-                        onClick={() => handleRemoveReview(rev.id)}
-                        className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
-                      >
-                        Remove Review
-                      </button>
+                        {rev.flagged && (
+                          <button
+                            onClick={() => handleDismissFlag(rev.id)}
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                          >
+                            Dismiss Flag (Keep)
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleRemoveReview(rev.id)}
+                          className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                        >
+                          Remove Review
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* --- TAB 4: MY PROFILE (SIMPLIFIED & SINGLE PAGE) --- */}
-        {activeTab === "profile" && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Main Header */}
-            <div>
-              <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#DAD7CD] uppercase tracking-wider mb-1">
-                <User className="h-4 w-4" /> System Administration
+                  ))
+                )}
               </div>
-              <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#DAD7CD]">
-                My Profile
-              </h1>
-              <p className="text-sm text-[#262626]/70 dark:text-[#DAD7CD]/75 mt-1">
-                Manage your personal information, contact details, and account password.
-              </p>
             </div>
+          )}
 
-            {/* Profile Details Form Card */}
-            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+          {/* --- TAB 4: MY PROFILE (SIMPLIFIED & SINGLE PAGE) --- */}
+          {activeTab === "profile" && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Main Header */}
               <div>
-                <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
-                  <User className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
-                  Profile Details
-                </h2>
-                <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
-                  Update your public administrator details and identity attributes.
+                <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#DAD7CD] uppercase tracking-wider mb-1">
+                  <User className="h-4 w-4" /> System Administration
+                </div>
+                <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#DAD7CD]">
+                  My Profile
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#DAD7CD]/75 mt-1">
+                  Manage your personal information, contact details, and account password.
                 </p>
               </div>
 
-              <form onSubmit={handleSaveProfile} className="space-y-6">
-                {/* Photo Upload Section */}
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
-                  <div className="relative shrink-0">
-                    <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#DAD7CD] dark:text-[#121F1A] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
-                      {profileForm.avatarPreview ? (
-                        <img
-                          src={profileForm.avatarPreview}
-                          alt="Avatar Preview"
-                          className="h-full w-full object-cover"
+              {/* Profile Details Form Card */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                <div>
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
+                    <User className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
+                    Profile Details
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
+                    Update your public administrator details and identity attributes.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSaveProfile} className="space-y-6">
+                  {/* Photo Upload Section */}
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                    <div className="relative shrink-0">
+                      <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#DAD7CD] dark:text-[#121F1A] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
+                        {profileForm.avatarPreview ? (
+                          <img
+                            src={profileForm.avatarPreview}
+                            alt="Avatar Preview"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          "TB"
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 text-center sm:text-left">
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                        <label
+                          htmlFor="avatar-upload"
+                          className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Upload className="h-3.5 w-3.5" /> Upload Photo
+                        </label>
+                        <input
+                          id="avatar-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
+                          className="hidden"
                         />
-                      ) : (
-                        "TB"
-                      )}
+                        {profileForm.avatarPreview && (
+                          <button
+                            type="button"
+                            onClick={() => setProfileForm((p) => ({ ...p, avatarPreview: null }))}
+                            className="px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#262626]/60 dark:text-[#DAD7CD]/75">
+                        Supported formats: JPG, PNG, GIF. Maximum size 2MB.
+                      </p>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5 text-center sm:text-left">
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                      <label
-                        htmlFor="avatar-upload"
-                        className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Upload className="h-3.5 w-3.5" /> Upload Photo
+                  {/* Profile Form Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Full Name
                       </label>
                       <input
-                        id="avatar-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarUpload}
-                        className="hidden"
+                        type="text"
+                        value={profileForm.name}
+                        onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                        required
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
                       />
-                      {profileForm.avatarPreview && (
-                        <button
-                          type="button"
-                          onClick={() => setProfileForm((p) => ({ ...p, avatarPreview: null }))}
-                          className="px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
-                        >
-                          Remove
-                        </button>
-                      )}
                     </div>
-                    <p className="text-[11px] text-[#262626]/60 dark:text-[#DAD7CD]/75">
-                      Supported formats: JPG, PNG, GIF. Maximum size 2MB.
-                    </p>
-                  </div>
-                </div>
 
-                {/* Profile Form Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                      Full Name
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.name}
-                      onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                      required
-                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        value={profileForm.username}
+                        onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
+                        required
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                      Username
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.username}
-                      onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
-                      required
-                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={profileForm.email}
+                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                        required
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      value={profileForm.email}
-                      onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                      required
-                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                    />
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="text"
+                        value={profileForm.phone}
+                        onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                      Phone Number
-                    </label>
-                    <input
-                      type="text"
-                      value={profileForm.phone}
-                      onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                    />
+                  <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
+                    >
+                      Save Profile Changes
+                    </button>
                   </div>
-                </div>
-
-                <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
-                  >
-                    Save Profile Changes
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Change Password Card */}
-            <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
-              <div>
-                <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
-                  <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
-                  Change Password
-                </h2>
-                <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
-                  Ensure your account is using a secure, random password.
-                </p>
+                </form>
               </div>
 
-              <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+              {/* Change Password Card */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={passwordForm.currentPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                  />
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
+                    <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
+                    Change Password
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
+                    Ensure your account is using a secure, random password.
+                  </p>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={passwordForm.newPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                  />
-                </div>
+                <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={passwordForm.confirmPassword}
-                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                    className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                  />
-                </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                    />
+                  </div>
 
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
-                >
-                  Update Password
-                </button>
-              </form>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
+                  >
+                    Update Password
+                  </button>
+                </form>
+              </div>
             </div>
-          </div>
-        )}
-      </main>
-    </div>
+          )}
+        </main>
+      </div>
 
       {/* --- MODAL 1: VIEW USER PROFILE --- */}
       {selectedUser && (
@@ -1631,11 +1608,10 @@ export default function AdminDashboard() {
                     {selectedUser.role}
                   </span>
                   <span
-                    className={`px-2.5 py-0.5 text-xs font-bold rounded ${
-                      selectedUser.status === "Active"
+                    className={`px-2.5 py-0.5 text-xs font-bold rounded ${selectedUser.status === "Active"
                         ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
                         : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
-                    }`}
+                      }`}
                   >
                     {selectedUser.status}
                   </span>
@@ -1652,11 +1628,10 @@ export default function AdminDashboard() {
             <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-between gap-3">
               <button
                 onClick={() => handleToggleUserStatus(selectedUser.id)}
-                className={`px-4 py-2 text-xs font-bold rounded text-white transition-colors ${
-                  selectedUser.status === "Active"
+                className={`px-4 py-2 text-xs font-bold rounded text-white transition-colors ${selectedUser.status === "Active"
                     ? "bg-amber-700 hover:bg-amber-800 dark:bg-amber-600"
                     : "bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600"
-                }`}
+                  }`}
               >
                 {selectedUser.status === "Active" ? "Suspend Account" : "Activate Account"}
               </button>
