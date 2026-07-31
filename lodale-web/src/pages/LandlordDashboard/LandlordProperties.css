@@ -1,0 +1,648 @@
+/* LandlordProperties.css - Styles for Properties list layout matching eCoursie reference */
+
+.ap-grid-container {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 32px;
+  margin-top: 24px;
+  text-align: left;
+}
+
+/* Left Column: Properties Main Area */
+.ap-main-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.ap-sub-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.ap-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ap-filter-lbl {
+  font-size: 12.5px;
+  font-weight: 750;
+  color: var(--text-secondary);
+}
+
+.ap-select-wrapper {
+  position: relative;
+}
+
+.ap-filter-select {
+  appearance: none;
+  background-color: var(--card-bg);
+  border: 1.5px solid var(--border-light);
+  border-radius: 12px;
+  padding: 8px 32px 8px 16px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.ap-filter-select:hover {
+  border-color: var(--text-muted);
+}
+
+.ap-select-wrapper::after {
+  content: "▼";
+  font-size: 7px;
+  color: var(--text-muted);
+  position: absolute;
+  right: 14px;
+  top: 52%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* Search Box */
+.ap-search-wrapper {
+  position: relative;
+  width: 240px;
+}
+
+.ap-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 16px;
+  width: 16px;
+  color: var(--text-muted);
+}
+
+.ap-search-input {
+  width: 100%;
+  background-color: var(--card-bg);
+  border: 1.5px solid var(--border-light);
+  border-radius: 12px;
+  padding: 8px 12px 8px 36px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.ap-search-input:focus {
+  border-color: var(--active-pill-bg);
+}
+
+/* Properties List Stack */
+.ap-list-stack {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 20px;
+}
+
+.ap-property-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-radius: 28px;
+  padding: 20px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1.5px solid transparent;
+}
+
+.ap-property-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(38, 38, 38, 0.08);
+}
+
+/* Visual illustration placeholders on left */
+.ap-card-visual {
+  height: 120px;
+  width: 100%;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 16px;
+}
+
+.ap-vector-house {
+  height: 60px;
+  width: 60px;
+}
+
+.ap-card-details {
+  flex-grow: 1;
+  margin-left: 0;
+  text-align: left;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.ap-property-title {
+  font-size: 17.5px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  margin: 0 0 6px 0;
+}
+
+.ap-property-desc {
+  font-size: 12.5px;
+  opacity: 0.85;
+  margin: 0 0 12px 0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ap-card-footer-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.ap-price-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 8px;
+  letter-spacing: -0.01em;
+}
+
+.ap-owner-lbl {
+  font-size: 11px;
+  opacity: 0.65;
+  font-weight: 600;
+}
+
+/* Card action buttons */
+.ap-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.ap-action-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.ap-action-btn:hover {
+  transform: translateY(-1px);
+}
+
+.ap-action-btn:active {
+  transform: translateY(0);
+}
+
+/* Pastel Cycle Palettes (Lavender, Purple, Pink) */
+.ap-property-card.pastel-blue {
+  background-color: #EEF4FE;
+  color: #2F3E5F;
+}
+.ap-property-card.pastel-blue .ap-card-visual {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3B82F6;
+}
+.ap-property-card.pastel-blue .ap-price-badge {
+  background-color: rgba(59, 130, 246, 0.12);
+  color: #1D4ED8;
+}
+.ap-property-card.pastel-blue .ap-action-btn.btn-primary {
+  background-color: #3B82F6;
+  color: #FFFFFF;
+}
+.ap-property-card.pastel-blue .ap-action-btn.btn-primary:hover {
+  background-color: #2563EB;
+}
+.ap-property-card.pastel-blue .ap-action-btn.btn-secondary {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #1D4ED8;
+}
+.ap-property-card.pastel-blue .ap-action-btn.btn-secondary:hover {
+  background-color: rgba(59, 130, 246, 0.18);
+}
+
+.ap-property-card.pastel-purple {
+  background-color: #F6F0FC;
+  color: #4C3C58;
+}
+.ap-property-card.pastel-purple .ap-card-visual {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: #8B5CF6;
+}
+.ap-property-card.pastel-purple .ap-price-badge {
+  background-color: rgba(139, 92, 246, 0.12);
+  color: #6D28D9;
+}
+.ap-property-card.pastel-purple .ap-action-btn.btn-primary {
+  background-color: #8B5CF6;
+  color: #FFFFFF;
+}
+.ap-property-card.pastel-purple .ap-action-btn.btn-primary:hover {
+  background-color: #7C3AED;
+}
+.ap-property-card.pastel-purple .ap-action-btn.btn-secondary {
+  background-color: rgba(139, 92, 246, 0.1);
+  color: #6D28D9;
+}
+.ap-property-card.pastel-purple .ap-action-btn.btn-secondary:hover {
+  background-color: rgba(139, 92, 246, 0.18);
+}
+
+.ap-property-card.pastel-pink {
+  background-color: #FAF0F0;
+  color: #5F3B3B;
+}
+.ap-property-card.pastel-pink .ap-card-visual {
+  background-color: rgba(239, 68, 68, 0.08);
+  color: #EF4444;
+}
+.ap-property-card.pastel-pink .ap-price-badge {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #B91C1C;
+}
+.ap-property-card.pastel-pink .ap-action-btn.btn-primary {
+  background-color: #EF4444;
+  color: #FFFFFF;
+}
+.ap-property-card.pastel-pink .ap-action-btn.btn-primary:hover {
+  background-color: #DC2626;
+}
+.ap-property-card.pastel-pink .ap-action-btn.btn-secondary {
+  background-color: rgba(239, 68, 68, 0.08);
+  color: #B91C1C;
+}
+.ap-property-card.pastel-pink .ap-action-btn.btn-secondary:hover {
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
+/* Right Column: Active Tenants Sidebar */
+.ap-sidebar-col {
+  background-color: var(--card-bg);
+  border: 1.5px solid var(--border-light);
+  border-radius: 28px;
+  padding: 24px;
+  height: fit-content;
+}
+
+.ap-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.ap-sidebar-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ap-see-all-btn {
+  font-size: 12px;
+  font-weight: 750;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.ap-see-all-btn:hover {
+  color: var(--active-pill-bg);
+}
+
+.ap-tenants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ap-tenant-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ap-tenant-avatar {
+  height: 38px;
+  width: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--border-light);
+}
+
+.ap-tenant-info {
+  flex-grow: 1;
+}
+
+.ap-tenant-name {
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ap-tenant-code {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 1px 0 0 0;
+}
+
+.ap-status-dot {
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ap-status-dot.active {
+  background-color: #10B981;
+}
+
+.ap-status-dot.inactive {
+  background-color: #D1D5DB;
+}
+
+.ap-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 32px;
+  color: var(--text-muted);
+  border: 1.5px dashed var(--border-light);
+  border-radius: 28px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Popup/Modal overlay */
+.ap-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(18, 18, 18, 0.4);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: ap-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Popup container */
+.ap-popup-card {
+  background-color: var(--card-bg);
+  border: 1.5px solid var(--border-light);
+  border-radius: 28px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: ap-scale-up 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ap-popup-header {
+  padding: 24px 24px 16px 24px;
+  border-bottom: 1.5px solid var(--border-light);
+  position: relative;
+  text-align: left;
+}
+
+.ap-popup-header h3 {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.ap-popup-property-title {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin: 4px 0 0 0;
+}
+
+.ap-popup-close-btn {
+  position: absolute;
+  right: 20px;
+  top: 20px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.ap-popup-close-btn:hover {
+  background-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+.ap-popup-body {
+  padding: 24px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.ap-popup-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 32px 0;
+}
+
+.ap-popup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ap-popup-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background-color: var(--cream-50, #FAF8F5);
+  border: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+}
+
+.ap-popup-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.ap-popup-avatar {
+  height: 48px;
+  width: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--border-light);
+  transition: transform 0.2s ease;
+}
+
+.ap-popup-avatar:hover {
+  transform: scale(1.05);
+}
+
+.ap-popup-info {
+  flex-grow: 1;
+  text-align: left;
+}
+
+.ap-popup-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ap-popup-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.ap-popup-score {
+  font-size: 12px;
+  font-weight: 700;
+  color: #D69E2E;
+}
+
+.ap-popup-lease {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 3px 0 0 0;
+  font-weight: 600;
+}
+
+/* Animations */
+@keyframes ap-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes ap-scale-up {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Dark Mode Overrides for LandlordProperties */
+body.dark .ap-filter-select option {
+  background-color: #12221C;
+  color: #FFFFFF;
+}
+
+body.dark .ap-popup-item {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+body.dark .ap-popup-item:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+body.dark .ap-property-card.pastel-blue {
+  background-color: rgba(59, 130, 246, 0.08);
+  color: #93C5FD;
+  border-color: rgba(59, 130, 246, 0.18);
+}
+body.dark .ap-property-card.pastel-blue .ap-card-visual {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+}
+body.dark .ap-property-card.pastel-blue .ap-price-badge {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+}
+body.dark .ap-property-card.pastel-blue .ap-action-btn.btn-secondary {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+}
+body.dark .ap-property-card.pastel-blue .ap-action-btn.btn-secondary:hover {
+  background-color: rgba(59, 130, 246, 0.25);
+}
+
+body.dark .ap-property-card.pastel-purple {
+  background-color: rgba(139, 92, 246, 0.08);
+  color: #C084FC;
+  border-color: rgba(139, 92, 246, 0.18);
+}
+body.dark .ap-property-card.pastel-purple .ap-card-visual {
+  background-color: rgba(139, 92, 246, 0.15);
+  color: #C084FC;
+}
+body.dark .ap-property-card.pastel-purple .ap-price-badge {
+  background-color: rgba(139, 92, 246, 0.15);
+  color: #C084FC;
+}
+body.dark .ap-property-card.pastel-purple .ap-action-btn.btn-secondary {
+  background-color: rgba(139, 92, 246, 0.15);
+  color: #C084FC;
+}
+body.dark .ap-property-card.pastel-purple .ap-action-btn.btn-secondary:hover {
+  background-color: rgba(139, 92, 246, 0.25);
+}
+
+body.dark .ap-property-card.pastel-pink {
+  background-color: rgba(239, 68, 68, 0.06);
+  color: #FCA5A5;
+  border-color: rgba(239, 68, 68, 0.15);
+}
+body.dark .ap-property-card.pastel-pink .ap-card-visual {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #FCA5A5;
+}
+body.dark .ap-property-card.pastel-pink .ap-price-badge {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #FCA5A5;
+}
+body.dark .ap-property-card.pastel-pink .ap-action-btn.btn-secondary {
+  background-color: rgba(239, 68, 68, 0.12);
+  color: #FCA5A5;
+}
+body.dark .ap-property-card.pastel-pink .ap-action-btn.btn-secondary:hover {
+  background-color: rgba(239, 68, 68, 0.22);
+}

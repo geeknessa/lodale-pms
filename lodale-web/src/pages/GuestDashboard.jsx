@@ -74,7 +74,14 @@ export default function GuestDashboard() {
   const listingsGridRef = useRef(null);
   const heroContentRef = useRef(null);
 
-  const filteredListings = LISTINGS.filter((listing) => {
+  const [allListings] = useState(() => {
+    const saved = localStorage.getItem("properties");
+    if (saved) return JSON.parse(saved);
+    localStorage.setItem("properties", JSON.stringify(LISTINGS));
+    return LISTINGS;
+  });
+
+  const filteredListings = allListings.filter((listing) => {
     const query = searchQuery.toLowerCase();
     return (
       listing.title.toLowerCase().includes(query) ||
@@ -301,16 +308,16 @@ export default function GuestDashboard() {
           </p>
 
           {/* New Feature Banner (Moodboard Banner 2) */}
-          <div className="mt-8 p-6 md:p-8 flex flex-col text-left rounded-[20px] bg-theme-bg-offset border border-theme-border shadow-none">
+          <div className="group/banner mt-8 p-6 md:p-8 flex flex-col text-left rounded-[20px] bg-cream-100 border border-ink-200 hover:border-moss-500/30 dark:bg-[#101F1A]/70 dark:border-[#23372B]/60 dark:hover:border-[#E5C583]/30 transition-all duration-300 shadow-none">
             <div className="flex flex-col items-start">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-moss-100 dark:bg-moss-700/30 text-moss-700 dark:text-cream-100 border border-moss-200/60 dark:border-moss-600/30 px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase mb-3 select-none">
-                <span className="h-1.5 w-1.5 rounded-full bg-moss-600 dark:bg-moss-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-moss-100 dark:bg-[#1C3328] text-moss-700 dark:text-[#E5C583] border border-moss-200/60 dark:border-[#2E4D3F]/60 px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase mb-3 select-none">
+                <span className="h-1.5 w-1.5 rounded-full bg-moss-600 dark:bg-[#E5C583] animate-pulse" />
                 New Feature
               </span>
-              <h3 className="font-display text-xl md:text-2xl font-bold text-theme-text mt-1">
+              <h3 className="font-display text-xl md:text-2xl font-bold text-ink-900 dark:text-white mt-1 group-hover/banner:text-moss-700 dark:group-hover/banner:text-[#E5C583] transition-colors duration-300">
                 Maintenance requests now sync to your ledger
               </h3>
-              <p className="mt-1 text-[13px] text-theme-text-offset max-w-xl">
+              <p className="mt-1 text-[13px] text-ink-700 dark:text-cream-50/90 max-w-xl">
                 Every repair is timestamped and filed against the property
                 automatically.
               </p>
