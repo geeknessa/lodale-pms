@@ -134,14 +134,22 @@ export default function SignUp() {
   const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
   const isPasswordValid =
     hasMinLength && hasUppercase && hasNumber && hasSpecialChar;
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
   function handleGoToStep3() {
     setInlineError("");
 
     // Validate inputs in step 2
-    if (!firstName || !lastName || !email || !password) {
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
       setInlineError(
         "Missing Information: Please ensure all fields are completely filled out before proceeding.",
+      );
+      return;
+    }
+
+    if (!isEmailValid) {
+      setInlineError(
+        "Invalid Email Address: Please enter a valid email address (e.g. name@example.com) before proceeding.",
       );
       return;
     }
@@ -153,7 +161,7 @@ export default function SignUp() {
       return;
     }
 
-    if (email.toLowerCase() === "user@example.com") {
+    if (email.trim().toLowerCase() === "user@example.com") {
       setInlineError(
         'Email Already Registered: An account was previously created using this email address. Please try signing in with this email, or click the "Log In" toggle at the top of the form.',
       );
@@ -282,60 +290,73 @@ export default function SignUp() {
           )}
 
           {/* Steps Progress Tracker */}
-          <div className="flex items-center gap-2 sm:gap-3 text-[11px] sm:text-[13px] tracking-wide text-ink-700 dark:text-cream-100/70 mb-1 sm:mb-2 justify-start">
-            <span
-              className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold ${step === 1
-                ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
-                : "border border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100/70/60"
-                }`}
-            >
-              1
-            </span>
-            <span
-              className={`${step === 1
-                ? "text-moss-700 dark:text-[#E5C583] font-semibold"
-                : "text-ink-700 dark:text-cream-100/70/60"
-                }`}
-            >
-              <span className="hidden sm:inline">Who are you?</span>
-              <span className="inline sm:hidden">Role</span>
-            </span>
-            <div className="w-4 sm:w-8 h-px bg-auth-divider-line" />
-            <span
-              className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold ${step === 2
-                ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
-                : "border border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100/70/60"
-                }`}
-            >
-              2
-            </span>
-            <span
-              className={`${step === 2
-                ? "text-moss-700 dark:text-[#E5C583] font-semibold"
-                : "text-ink-700 dark:text-cream-100/70/60"
-                }`}
-            >
-              <span className="hidden sm:inline">Your details</span>
-              <span className="inline sm:hidden">Details</span>
-            </span>
-            <div className="w-4 sm:w-8 h-px bg-auth-divider-line" />
-            <span
-              className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold ${step === 3
-                ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
-                : "border border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100/70/60"
-                }`}
-            >
-              3
-            </span>
-            <span
-              className={`${step === 3
-                ? "text-moss-700 dark:text-[#E5C583] font-semibold"
-                : "text-ink-700 dark:text-cream-100/70/60"
-                }`}
-            >
-              <span className="hidden sm:inline">Verify ID</span>
-              <span className="inline sm:hidden">Verify</span>
-            </span>
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2 text-[11px] sm:text-[13px] tracking-wide text-ink-700 dark:text-cream-100/70 mb-4 sm:mb-6 w-full">
+            {/* Step 1 */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span
+                className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold shrink-0 ${step === 1
+                  ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                  : "border border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100/70"
+                  }`}
+              >
+                1
+              </span>
+              <span
+                className={`whitespace-nowrap ${step === 1
+                  ? "text-moss-700 dark:text-[#E5C583] font-semibold"
+                  : "text-ink-700 dark:text-cream-100/70"
+                  }`}
+              >
+                <span className="hidden sm:inline">Who are you?</span>
+                <span className="inline sm:hidden">Role</span>
+              </span>
+            </div>
+
+            <div className="flex-1 h-px bg-auth-divider-line min-w-[8px] sm:min-w-[12px]" />
+
+            {/* Step 2 */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span
+                className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold shrink-0 ${step === 2
+                  ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                  : "border border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100/70"
+                  }`}
+              >
+                2
+              </span>
+              <span
+                className={`whitespace-nowrap ${step === 2
+                  ? "text-moss-700 dark:text-[#E5C583] font-semibold"
+                  : "text-ink-700 dark:text-cream-100/70"
+                  }`}
+              >
+                <span className="hidden sm:inline">Your details</span>
+                <span className="inline sm:hidden">Details</span>
+              </span>
+            </div>
+
+            <div className="flex-1 h-px bg-auth-divider-line min-w-[8px] sm:min-w-[12px]" />
+
+            {/* Step 3 */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span
+                className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold shrink-0 ${step === 3
+                  ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                  : "border border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100/70"
+                  }`}
+              >
+                3
+              </span>
+              <span
+                className={`whitespace-nowrap ${step === 3
+                  ? "text-moss-700 dark:text-[#E5C583] font-semibold"
+                  : "text-ink-700 dark:text-cream-100/70"
+                  }`}
+              >
+                <span className="hidden sm:inline">Verify ID</span>
+                <span className="inline sm:hidden">Verify</span>
+              </span>
+            </div>
           </div>
 
           {/* Form Step Content Container */}
@@ -425,7 +446,7 @@ export default function SignUp() {
               <div className="space-y-4 sm:space-y-6 animate-fade-in">
                 <div>
                   <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-normal text-ink-900 dark:text-white leading-tight">
-                    Build your <br />
+                    Build your{" "}
                     <span className="italic text-moss-700 dark:text-[#E5C583]">
                       record
                     </span>
@@ -511,7 +532,10 @@ export default function SignUp() {
                         type="email"
                         placeholder="janedoe@example.com"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setInlineError("");
+                        }}
                         className="w-full h-[42px] sm:h-[50px] pl-10 sm:pl-11 pr-4 rounded-xl border border-ink-200 hover:border-ink-400 dark:border-white/15 dark:hover:border-white/25 bg-transparent text-ink-900 dark:text-white placeholder-ink-400 dark:placeholder-white/30 text-[14px] sm:text-[15px] outline-none focus:border-moss-700 dark:focus:border-[#E5C583] focus-visible:ring-1 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] transition-all duration-200 hover:scale-[1.005]"
                       />
                     </div>
@@ -649,7 +673,7 @@ export default function SignUp() {
                   type="button"
                   onClick={handleGoogleSignUp}
                   disabled={googleLoading}
-                  className="w-full h-[42px] sm:h-[50px] border border-ink-200 dark:border-white/15 bg-[#FAF8F6]/75 dark:bg-[#101F1A]/70/20 hover:bg-moss-100 dark:bg-[#101F1A]/30 text-ink-900 dark:text-white rounded-xl flex items-center justify-center gap-3 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] disabled:opacity-50 animate-fade-in"
+                  className="w-full h-[42px] sm:h-[50px] border border-ink-200 dark:border-white/15 bg-[#FAF8F6]/75 hover:bg-moss-100 dark:bg-[#101F1A]/30 dark:hover:bg-[#101F1A]/60 text-ink-900 dark:text-white rounded-xl flex items-center justify-center gap-3 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] disabled:opacity-50 animate-fade-in"
                 >
                   {googleLoading ? (
                     <div className="h-4.5 w-4.5 sm:h-5 sm:w-5 border-2 border-auth-pill-active-bg border-t-transparent rounded-full animate-spin" />

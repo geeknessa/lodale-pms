@@ -23,7 +23,10 @@
   --color-white: #ffffff;
 }
 
+html,
 body {
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
   font-family: var(--font-sans);
   background: var(--color-white);
   color: var(--color-ink-900);
@@ -164,38 +167,45 @@ body.dark .onboarding-card {
   border-color: var(--color-moss-600) !important;
 }
 
-/* Global sleek scrollbar styles */
+/* Custom Side Scrollbar Styling matching Lodale Theme */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-moss-600) var(--color-cream-50);
+}
+
+body.dark {
+  scrollbar-color: #E5C583 #0B1512;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #FAF8F6;
+}
+
+body.dark ::-webkit-scrollbar-track {
+  background: #0B1512;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(38, 38, 38, 0.15);
-  border-radius: 10px;
+  background: var(--color-moss-600);
+  border-radius: 9999px;
+  border: 2px solid #FAF8F6;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(38, 38, 38, 0.35);
+  background: var(--color-moss-700);
 }
 
 body.dark ::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.15);
+  background: #E5C583;
+  border-radius: 9999px;
+  border: 2px solid #0B1512;
 }
 
 body.dark ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.35);
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(38, 38, 38, 0.15) transparent;
-}
-
-body.dark * {
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  background: #D8B672;
 }

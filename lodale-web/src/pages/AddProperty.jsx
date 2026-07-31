@@ -10,6 +10,7 @@ import { LISTINGS } from "../data/listings";
 export default function AddProperty() {
   const navigate = useNavigate();
   const [occupied, setOccupied] = useState(null); // null | true | false
+  const [rentCycle, setRentCycle] = useState("annual"); // "annual" | "monthly"
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const successOverlayRef = useRef(null);
@@ -53,15 +54,15 @@ export default function AddProperty() {
   useEffect(() => {
     if (isSubmitted && successOverlayRef.current) {
       // 1. Initial fade-in of overlay
-      gsap.fromTo(successOverlayRef.current, 
-        { opacity: 0 }, 
+      gsap.fromTo(successOverlayRef.current,
+        { opacity: 0 },
         { opacity: 1, duration: 0.5, ease: "power2.out" }
       );
 
       // 2. Pop the check icon
       if (checkIconRef.current) {
-        gsap.fromTo(checkIconRef.current, 
-          { scale: 0, rotation: -45, opacity: 0 }, 
+        gsap.fromTo(checkIconRef.current,
+          { scale: 0, rotation: -45, opacity: 0 },
           { scale: 1, rotation: 0, opacity: 1, duration: 0.7, ease: "back.out(1.7)", delay: 0.3 }
         );
         // Subtle loop pulse on check mark
@@ -77,8 +78,8 @@ export default function AddProperty() {
 
       // 3. Slide up the text container
       if (textContainerRef.current) {
-        gsap.fromTo(textContainerRef.current.children, 
-          { y: 20, opacity: 0 }, 
+        gsap.fromTo(textContainerRef.current.children,
+          { y: 20, opacity: 0 },
           { y: 0, opacity: 1, duration: 0.6, stagger: 0.15, ease: "power2.out", delay: 0.6 }
         );
       }
@@ -101,7 +102,7 @@ export default function AddProperty() {
 
   if (isSubmitted) {
     return (
-      <div 
+      <div
         ref={successOverlayRef}
         className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0B1512] text-white font-sans px-6"
       >
@@ -111,7 +112,7 @@ export default function AddProperty() {
 
         <div className="flex flex-col items-center max-w-sm text-center relative z-10">
           {/* Animated Outer Ring */}
-          <div 
+          <div
             ref={checkIconRef}
             className="flex h-24 w-24 items-center justify-center rounded-full bg-moss-800 border-2 border-moss-500/30 mb-8 relative shadow-[0_0_50px_rgba(58,90,64,0.25)]"
           >
@@ -128,7 +129,7 @@ export default function AddProperty() {
             <p className="text-[14px] leading-relaxed text-[#A3BCA7]">
               Your dashboard ledger is being configured and ownership stamp applied.
             </p>
-            
+
             <div className="flex items-center justify-center gap-2 pt-6">
               <Loader2 className="h-4 w-4 animate-spin text-[#E5C583]" />
               <span className="text-[12px] font-medium tracking-wide uppercase text-ink-300">
@@ -171,20 +172,59 @@ export default function AddProperty() {
               placeholder="Apartment, duplex, etc."
               required
             />
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                id="rent"
-                label="Monthly rent"
-                placeholder="₦200,000"
-                required
-              />
-              <Input
-                id="bedrooms"
-                label="Bedrooms"
-                type="number"
-                placeholder="2"
-                required
-              />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label
+                    htmlFor="rent"
+                    className="block text-[13px] font-medium text-ink-700"
+                  >
+                    Rent amount ({rentCycle === "annual" ? "per annum" : "per month"})
+                  </label>
+                  <div className="inline-flex p-0.5 bg-cream-100 border border-ink-200 rounded-md">
+                    <button
+                      type="button"
+                      onClick={() => setRentCycle("annual")}
+                      className={`px-2 py-0.5 text-[10.5px] font-bold rounded transition-all cursor-pointer ${rentCycle === "annual"
+                          ? "bg-moss-700 text-white shadow-xs"
+                          : "text-ink-700 hover:text-ink-900"
+                        }`}
+                    >
+                      Annual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRentCycle("monthly")}
+                      className={`px-2 py-0.5 text-[10.5px] font-bold rounded transition-all cursor-pointer ${rentCycle === "monthly"
+                          ? "bg-moss-700 text-white shadow-xs"
+                          : "text-ink-700 hover:text-ink-900"
+                        }`}
+                    >
+                      Monthly
+                    </button>
+                  </div>
+                </div>
+                <Input
+                  id="rent"
+                  placeholder={
+                    rentCycle === "annual"
+                      ? "₦2,500,000 / year"
+                      : "₦200,000 / month"
+                  }
+                  required
+                />
+              </div>
+
+              <div>
+                <Input
+                  id="bedrooms"
+                  label="Bedrooms"
+                  type="number"
+                  placeholder="2"
+                  required
+                />
+              </div>
             </div>
           </div>
 
@@ -196,11 +236,10 @@ export default function AddProperty() {
               <button
                 type="button"
                 onClick={() => setOccupied(true)}
-                className={`rounded-lg border p-4 text-left transition-colors ${
-                  occupied === true
-                    ? "border-moss-600 bg-moss-600/[0.04]"
-                    : "border-ink-200 hover:border-ink-400"
-                }`}
+                className={`rounded-lg border p-4 text-left transition-colors ${occupied === true
+                  ? "border-moss-600 bg-moss-600/[0.04]"
+                  : "border-ink-200 hover:border-ink-400"
+                  }`}
               >
                 <div className="font-semibold text-ink-900">Yes</div>
                 <div className="mt-1 text-[12px] text-ink-700">
@@ -210,11 +249,10 @@ export default function AddProperty() {
               <button
                 type="button"
                 onClick={() => setOccupied(false)}
-                className={`rounded-lg border p-4 text-left transition-colors ${
-                  occupied === false
-                    ? "border-moss-600 bg-moss-600/[0.04]"
-                    : "border-ink-200 hover:border-ink-400"
-                }`}
+                className={`rounded-lg border p-4 text-left transition-colors ${occupied === false
+                  ? "border-moss-600 bg-moss-600/[0.04]"
+                  : "border-ink-200 hover:border-ink-400"
+                  }`}
               >
                 <div className="font-semibold text-ink-900">
                   No, it&rsquo;s vacant
