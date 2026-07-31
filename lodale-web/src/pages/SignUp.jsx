@@ -208,12 +208,18 @@ export default function SignUp() {
         setIsVerifying(false);
         setVerified(true);
 
-        // Log in the user automatically upon successful registration and verification
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("lastLoggedInEmail", email);
+        localStorage.setItem("username", `${firstName.trim()} ${lastName.trim()}`);
+        localStorage.setItem("userRole", role);
+        localStorage.setItem("isNewSignUp", "true");
+        localStorage.setItem(
+          "registeredUser_" + email.toLowerCase(),
+          JSON.stringify({ email: email.toLowerCase(), role, username: `${firstName.trim()} ${lastName.trim()}`, password })
+        );
         localStorage.setItem(
           "sessionExpiresAt",
-          (Date.now() + 5 * 60 * 1000).toString(),
+          (Date.now() + 24 * 60 * 60 * 1000).toString(),
         );
       },
     });
@@ -223,7 +229,7 @@ export default function SignUp() {
     if (skipWelcome && listingId) {
       navigate(`/apply/${listingId}`);
     } else {
-      navigate(`/welcome/${role}`, { state: { username: firstName } });
+      navigate(`/welcome/${role}`, { state: { username: `${firstName.trim()} ${lastName.trim()}` } });
     }
   }
 

@@ -18,8 +18,12 @@ import Application from "./pages/Application";
 import AddProperty from "./pages/AddProperty";
 import AdminDashboard from "./pages/AdminDashboard";
 import AccessDenied from "./pages/AccessDenied";
+import DashboardAddProperty from "./pages/DashboardAddProperty";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
+import AdminDashboard from "./pages/LandlordDashboard/LandlordDashboard";
+import PropertyDetail from "./pages/PropertyDetail";
+import TenantDashboard from "./pages/TenantDashboard/TenantDashboard";
 import { AlertTriangle } from "lucide-react";
 
 
@@ -215,6 +219,31 @@ function AdminProtectedRoute({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    const saved = localStorage.getItem("properties");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        let changed = false;
+        const updated = parsed.map((item) => {
+          if (item.price && item.price.endsWith("/yr")) {
+            changed = true;
+            return {
+              ...item,
+              price: item.price.replace("/yr", "/mo"),
+            };
+          }
+          return item;
+        });
+        if (changed) {
+          localStorage.setItem("properties", JSON.stringify(updated));
+        }
+      } catch (err) {
+        console.error("Failed to migrate properties storage:", err);
+      }
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <BrowserRouter>
@@ -285,7 +314,7 @@ export default function App() {
               path="/dashboard/:role"
               element={
                 <ProtectedRoute>
-                  <DashboardPlaceholder />
+                  <TenantDashboard />
                 </ProtectedRoute>
               }
             />

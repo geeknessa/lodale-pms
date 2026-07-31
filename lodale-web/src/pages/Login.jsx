@@ -188,8 +188,8 @@ export default function Login() {
     localStorage.setItem("lastLoggedInEmail", email);
     localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
 
-    // Redirect to explore/dashboard
-    navigate("/explore");
+    // Redirect to their specific role dashboard
+    navigate(`/dashboard/${targetUser.role}`);
   }
 
   function handleForgotPassword() {
@@ -253,6 +253,8 @@ export default function Login() {
                 : "Access your properties, tenants, payments, and maintenance requests."}
             </p>
           </div>
+
+
 
           {/* Security / Session warnings */}
           {sessionWarning && (

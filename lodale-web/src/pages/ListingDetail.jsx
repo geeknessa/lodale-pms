@@ -7,7 +7,11 @@ import { LISTINGS } from "../data/listings";
 export default function ListingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const listing = LISTINGS.find((l) => l.id === id) ?? LISTINGS[0];
+  const listing = (() => {
+    const saved = localStorage.getItem("properties");
+    const list = saved ? JSON.parse(saved) : LISTINGS;
+    return list.find((l) => l.id === id) ?? list[0];
+  })();
 
   // Save / Message both require an account — send guests to sign up.
   function requireSignup() {
