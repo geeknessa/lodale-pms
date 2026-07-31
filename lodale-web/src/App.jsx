@@ -18,8 +18,12 @@ import Application from "./pages/Application";
 import AddProperty from "./pages/AddProperty";
 import AdminDashboard from "./pages/AdminDashboard";
 import AccessDenied from "./pages/AccessDenied";
+import DashboardAddProperty from "./pages/DashboardAddProperty";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
+import AdminDashboard from "./pages/LandlordDashboard/LandlordDashboard";
+import PropertyDetail from "./pages/PropertyDetail";
+import TenantDashboard from "./pages/TenantDashboard/TenantDashboard";
 import { AlertTriangle } from "lucide-react";
 
 
@@ -151,7 +155,6 @@ function AdminProtectedRoute({ children }) {
     const auth = localStorage.getItem("isAuthenticated") === "true";
     const expires = localStorage.getItem("sessionExpiresAt");
     if (auth && expires && Date.now() > Number(expires)) {
-      // Session expired
       localStorage.removeItem("isAuthenticated");
       localStorage.removeItem("sessionExpiresAt");
       localStorage.removeItem("userRole");
@@ -216,6 +219,31 @@ function AdminProtectedRoute({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    const saved = localStorage.getItem("properties");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        let changed = false;
+        const updated = parsed.map((item) => {
+          if (item.price && item.price.endsWith("/yr")) {
+            changed = true;
+            return {
+              ...item,
+              price: item.price.replace("/yr", "/mo"),
+            };
+          }
+          return item;
+        });
+        if (changed) {
+          localStorage.setItem("properties", JSON.stringify(updated));
+        }
+      } catch (err) {
+        console.error("Failed to migrate properties storage:", err);
+      }
+    }
+  }, []);
+
   return (
     <ThemeProvider>
       <BrowserRouter>
@@ -230,34 +258,10 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<SignUp />} />
             <Route path="/verify" element={<Navigate to="/signup" replace />} />
-
-            {/* Protected Routes */}
-            <Route
-              path="/welcome/:role"
-              element={
-                <ProtectedRoute>
-                  <Welcome />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/apply/:listingId"
-              element={
-                <ProtectedRoute>
-                  <Application />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/add-property"
-              element={
-                <ProtectedRoute>
-                  <AddProperty />
-                </ProtectedRoute>
-              }
-            />
             <Route path="/admin/login" element={<Login />} />
             <Route path="/access-denied" element={<AccessDenied />} />
+
+            {/* Protected Routes */}
             <Route
               path="/admin"
               element={
@@ -283,10 +287,34 @@ export default function App() {
               }
             />
             <Route
+              path="/welcome/:role"
+              element={
+                <ProtectedRoute>
+                  <Welcome />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/apply/:listingId"
+              element={
+                <ProtectedRoute>
+                  <Application />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/add-property"
+              element={
+                <ProtectedRoute>
+                  <AddProperty />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/dashboard/:role"
               element={
                 <ProtectedRoute>
-                  <DashboardPlaceholder />
+                  <TenantDashboard />
                 </ProtectedRoute>
               }
             />

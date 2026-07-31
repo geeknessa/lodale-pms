@@ -88,7 +88,7 @@ export default function Login() {
         { opacity: 0, y: 25, scale: 0.985 },
         { opacity: 1, y: 0, scale: 1, duration: 0.65, ease: "power3.out" }
       );
-      
+
       const children = cardRef.current.children;
       gsap.fromTo(
         children,
@@ -188,8 +188,8 @@ export default function Login() {
     localStorage.setItem("lastLoggedInEmail", email);
     localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
 
-    // Redirect to explore/dashboard
-    navigate("/explore");
+    // Redirect to their specific role dashboard
+    navigate(`/dashboard/${targetUser.role}`);
   }
 
   function handleForgotPassword() {
@@ -217,7 +217,7 @@ export default function Login() {
         backgroundImage: `url(${heroBg})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
+        backgroundRepeat: "no-repeat", git
       }}
     >
       {/* Background Overlay */}
@@ -254,25 +254,7 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Quick Admin Access Card if Admin mode active */}
-          {isAdminMode && (
-            <div className="p-3.5 bg-[#344E41]/10 border border-[#344E41]/30 rounded-xl space-y-2 text-left">
-              <div className="flex items-center justify-between text-xs text-[#344E41] dark:text-[#DAD7CD] font-bold uppercase tracking-wider">
-                <span className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5 text-amber-500" /> Quick Admin Demo Sign-In</span>
-                <span className="text-[10px] bg-[#344E41] text-white px-2 py-0.5 rounded">Staff Access</span>
-              </div>
-              <p className="text-[11px] text-ink-700 dark:text-cream-100/80">
-                Email: <code className="font-mono text-emerald-800 dark:text-emerald-300">admin@lodale.com</code> | Password: <code className="font-mono text-emerald-800 dark:text-emerald-300">AdminPassword123!</code>
-              </p>
-              <button
-                type="button"
-                onClick={handleQuickAdminLogin}
-                className="w-full py-2 px-3 text-xs font-bold bg-[#344E41] hover:bg-[#3A5A40] text-white rounded-lg transition-colors flex items-center justify-center gap-1.5"
-              >
-                Direct Access to Admin Dashboard &rarr;
-              </button>
-            </div>
-          )}
+
 
           {/* Security / Session warnings */}
           {sessionWarning && (
@@ -386,15 +368,17 @@ export default function Login() {
             </Button>
           </form>
 
-          <p className="text-center text-[12px] sm:text-[13px] text-ink-700/80 dark:text-white/80">
-            Don&rsquo;t have an account?{" "}
-            <Link
-              to="/signup"
-              className="font-semibold text-moss-700 dark:text-[#E5C583] hover:underline outline-none focus-visible:underline"
-            >
-              Create Account
-            </Link>
-          </p>
+          {!isAdminMode && (
+            <p className="text-center text-[12px] sm:text-[13px] text-ink-700/80 dark:text-white/80">
+              Don&rsquo;t have an account?{" "}
+              <Link
+                to="/signup"
+                className="font-semibold text-moss-700 dark:text-[#E5C583] hover:underline outline-none focus-visible:underline"
+              >
+                Create Account
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     </div>

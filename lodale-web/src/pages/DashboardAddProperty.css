@@ -1,0 +1,461 @@
+/* DashboardAddProperty.css - Dark mode aware styles */
+
+.dap-page {
+  min-height: 100vh;
+  background-color: var(--db-bg, #FAF8F6);
+  padding: 48px 24px;
+  font-family: 'Inter', sans-serif;
+  user-select: none;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+  color: var(--text-primary, #262626);
+}
+
+/* Background glows */
+.dap-glow-1 {
+  position: absolute;
+  top: 25%;
+  left: 25%;
+  height: 400px;
+  width: 400px;
+  border-radius: 50%;
+  background-color: rgba(228, 234, 225, 0.3);
+  filter: blur(120px);
+  pointer-events: none;
+}
+
+.dap-glow-2 {
+  position: absolute;
+  bottom: 33%;
+  right: 25%;
+  height: 350px;
+  width: 350px;
+  border-radius: 50%;
+  background-color: rgba(229, 197, 131, 0.05);
+  filter: blur(120px);
+  pointer-events: none;
+}
+
+body.dark .dap-glow-1 {
+  background-color: rgba(44, 70, 51, 0.2);
+}
+
+body.dark .dap-glow-2 {
+  background-color: rgba(229, 197, 131, 0.04);
+}
+
+.dap-inner {
+  max-width: 672px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
+}
+
+/* Top bar: back button + logo */
+.dap-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.dap-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary, #4A4A46);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  outline: none;
+  transition: color 0.2s ease;
+  padding: 0;
+}
+
+.dap-back-btn:hover {
+  color: var(--active-pill-bg, #2C4633);
+}
+
+/* Form Card */
+.dap-card {
+  border-radius: 28px;
+  border: 1.5px solid var(--border-light, rgba(228, 234, 225, 1));
+  background-color: var(--card-bg, #FFFFFF);
+  padding: 40px;
+  box-shadow: 0 12px 40px rgba(44, 70, 51, 0.03);
+  position: relative;
+}
+
+@media (max-width: 640px) {
+  .dap-card {
+    padding: 24px;
+  }
+}
+
+/* Building icon badge */
+.dap-building-badge {
+  position: absolute;
+  top: 0;
+  right: 32px;
+  transform: translateY(-50%);
+  background-color: var(--card-bg, #FFFFFF);
+  border: 1.5px solid var(--border-light, rgba(228, 234, 225, 1));
+  border-radius: 50%;
+  padding: 12px;
+  box-shadow: 0 4px 12px rgba(44, 70, 51, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dap-building-badge svg {
+  color: var(--active-pill-bg, #2C4633);
+  height: 24px;
+  width: 24px;
+}
+
+.dap-card-title {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary, #262626);
+  margin: 0;
+}
+
+.dap-card-desc {
+  margin: 8px 0 0 0;
+  font-size: 14px;
+  color: var(--text-secondary, #4A4A46);
+  line-height: 1.6;
+}
+
+.dap-form {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.dap-fields-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.dap-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 480px) {
+  .dap-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Occupancy Toggle Label */
+.dap-occupancy-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #262626);
+  margin-bottom: 12px;
+}
+
+/* Occupancy choice cards */
+.dap-occupancy-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 480px) {
+  .dap-occupancy-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dap-choice-card {
+  border-radius: 14px;
+  border: 1.5px solid var(--border-light, #E4EAE1);
+  background-color: var(--card-bg, #FFFFFF);
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: all 0.2s ease;
+  color: var(--text-primary, #262626);
+}
+
+.dap-choice-card:hover {
+  border-color: var(--active-pill-bg, #2C4633);
+}
+
+.dap-choice-card.selected {
+  border-color: var(--active-pill-bg, #2C4633);
+  background-color: var(--accent-green-light, rgba(44, 70, 51, 0.02));
+  box-shadow: 0 0 15px rgba(44, 70, 51, 0.04);
+}
+
+body.dark .dap-choice-card.selected {
+  background-color: rgba(229, 197, 131, 0.06);
+}
+
+.dap-choice-icon {
+  padding: 8px;
+  border-radius: 10px;
+  background-color: var(--db-bg, #FAF8F6);
+  color: var(--text-muted, #8C8C86);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.dap-choice-card.selected .dap-choice-icon {
+  background-color: var(--accent-green-light, rgba(44, 70, 51, 0.08));
+  color: var(--active-pill-bg, #2C4633);
+}
+
+.dap-choice-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #262626);
+}
+
+.dap-choice-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #4A4A46);
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+/* Tenant / Listing detail subform panel */
+.dap-subform {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border-radius: 14px;
+  background-color: var(--db-bg, #FAF8F6);
+  border: 1.5px solid var(--border-light, #E4EAE1);
+  padding: 20px;
+}
+
+.dap-subform-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--active-pill-bg, #2C4633);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+body.dark .dap-subform-title {
+  color: var(--active-pill-bg, #E5C583);
+}
+
+/* Submit button */
+.dap-submit-btn {
+  width: 100%;
+  padding: 14px 0;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.dap-submit-btn.active {
+  background-color: var(--active-pill-bg, #2C4633);
+  color: #FFFFFF;
+  box-shadow: 0 8px 20px rgba(44, 70, 51, 0.15);
+}
+
+body.dark .dap-submit-btn.active {
+  color: #0B1512;
+}
+
+.dap-submit-btn.active:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.dap-submit-btn.active:active {
+  transform: scale(0.98);
+}
+
+.dap-submit-btn.disabled {
+  background-color: var(--db-bg, #F4F4F5);
+  color: var(--text-muted, #8C8C86);
+  border: 1.5px solid var(--border-light, #E4EAE1);
+  cursor: not-allowed;
+}
+
+body.dark .dap-submit-btn.disabled {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: var(--border-light);
+}
+
+/* ─── Success Screen ─── */
+.dap-success-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--db-bg, #FAF8F6);
+  color: var(--text-primary, #262626);
+  font-family: 'Inter', sans-serif;
+  padding: 24px;
+}
+
+.dap-success-glow-1 {
+  position: absolute;
+  top: 25%;
+  left: 25%;
+  height: 320px;
+  width: 320px;
+  border-radius: 50%;
+  background-color: rgba(228, 234, 225, 1);
+  filter: blur(100px);
+  pointer-events: none;
+}
+
+body.dark .dap-success-glow-1 {
+  background-color: rgba(44, 70, 51, 0.25);
+}
+
+.dap-success-glow-2 {
+  position: absolute;
+  bottom: 25%;
+  right: 25%;
+  height: 320px;
+  width: 320px;
+  border-radius: 50%;
+  background-color: var(--db-bg, #FAF8F6);
+  filter: blur(100px);
+  pointer-events: none;
+}
+
+.dap-success-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 360px;
+  text-align: center;
+  position: relative;
+  z-index: 10;
+}
+
+.dap-success-icon-ring {
+  display: flex;
+  height: 96px;
+  width: 96px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: var(--card-bg, #FFFFFF);
+  border: 2px solid var(--border-light, #E4EAE1);
+  margin-bottom: 32px;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(44, 70, 51, 0.06);
+}
+
+.dap-success-icon-ring svg.check {
+  height: 48px;
+  width: 48px;
+  color: var(--active-pill-bg, #2C4633);
+}
+
+.dap-success-sparkle {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+}
+
+.dap-success-sparkle svg {
+  height: 24px;
+  width: 24px;
+  color: #E5C583;
+}
+
+.dap-success-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dap-success-heading {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--active-pill-bg, #2C4633);
+  margin: 0;
+}
+
+body.dark .dap-success-heading {
+  color: var(--active-pill-bg, #E5C583);
+}
+
+.dap-success-body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary, #4A4A46);
+  margin: 0;
+}
+
+.dap-success-loader-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 24px;
+}
+
+.dap-success-loader-row svg {
+  color: var(--active-pill-bg, #2C4633);
+  height: 16px;
+  width: 16px;
+}
+
+.dap-success-loader-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #8C8C86);
+}
+
+/* ─── Dark mode: Input component overrides within this page ─── */
+body.dark .dap-page input,
+body.dark .dap-subform input {
+  background-color: #0E1C18 !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark .dap-page input::placeholder,
+body.dark .dap-subform input::placeholder {
+  color: rgba(255, 255, 255, 0.28) !important;
+}
+
+body.dark .dap-page input:focus,
+body.dark .dap-subform input:focus {
+  border-color: var(--active-pill-bg) !important;
+}
+
+body.dark .dap-page label span {
+  color: var(--text-secondary, #A3BCA7) !important;
+}
