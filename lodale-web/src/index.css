@@ -52,8 +52,6 @@
 html,
 /* Global body default theme */
 body {
-  overscroll-behavior: none;
-  overscroll-behavior-y: none;
   font-family: var(--font-sans);
   background-color: var(--color-white);
   color: var(--color-ink-900);
