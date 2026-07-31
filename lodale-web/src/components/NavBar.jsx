@@ -17,20 +17,58 @@ export default function NavBar() {
   useEffect(() => {
     const handleAuth = () => {
       setIsAuthenticated(localStorage.getItem("isAuthenticated") === "true");
+      setIsAdmin(
+        localStorage.getItem("userRole") === "admin" ||
+        localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com"
+      );
     };
 
-    // Check auth status on route/location change
     handleAuth();
 
     window.addEventListener("storage", handleAuth);
     return () => window.removeEventListener("storage", handleAuth);
   }, [location]);
 
+  // Scroll listener: active status changes ONLY when scrolling into sections
+  useEffect(() => {
+    const isHome = location.pathname === "/explore" || location.pathname === "/";
+    if (!isHome) {
+      setActiveSection("");
+      return;
+    }
+
+    const handleScroll = () => {
+      const tenantElem = document.getElementById("for-tenants");
+      const landlordElem = document.getElementById("for-landlords");
+      const scrollPos = window.scrollY;
+
+      const tenantTop = tenantElem ? tenantElem.offsetTop - 180 : Infinity;
+      const landlordTop = landlordElem ? landlordElem.offsetTop - 180 : Infinity;
+
+      if (scrollPos >= landlordTop) {
+        setActiveSection("#for-landlords");
+      } else if (scrollPos >= tenantTop) {
+        setActiveSection("#for-tenants");
+      } else {
+        setActiveSection("");
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [location.pathname]);
+
   function handleHomeClick(e) {
+    setIsOpen(false);
     if (location.pathname === "/explore" || location.pathname === "/") {
       e.preventDefault();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+  }
+
+  function handleSectionClick(e, hash) {
     setIsOpen(false);
   }
 
@@ -38,8 +76,10 @@ export default function NavBar() {
 
   function handleSignOut() {
     localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("userRole");
     localStorage.removeItem("sessionExpiresAt");
     setIsAuthenticated(false);
+    setIsAdmin(false);
     setIsOpen(false);
     navigate("/explore");
   }
@@ -117,7 +157,12 @@ export default function NavBar() {
                 onClick={() => navigate("/dashboard/tenant")}
                 className="text-[14px] font-medium text-ink-700 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors"
               >
-                Dashboard
+                <span>Dashboard</span>
+                {isAdmin && (
+                  <span className="text-[10px] bg-[#344E41] text-white px-2 py-0.5 rounded font-bold uppercase">
+                    Admin
+                  </span>
+                )}
               </button>
               <Button
                 onClick={handleSignOut}
@@ -147,41 +192,56 @@ export default function NavBar() {
 
       {/* Mobile Menu Dropdown Panel */}
       {isOpen && (
-        <nav className="flex flex-col gap-4 border-t border-ink-200/30 bg-theme-bg/95 backdrop-blur-md px-6 py-5 md:hidden animate-fade-in text-left">
+        <nav className="flex flex-col gap-4 border-t border-theme-border/30 bg-theme-bg/95 backdrop-blur-md px-6 py-5 md:hidden animate-fade-in text-left">
           <Link
             to="/explore"
             onClick={handleHomeClick}
-            className="text-theme-text hover:text-moss-600 font-medium py-1.5 border-b border-theme-border/10 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+            className={mobileLinkClass("/explore")}
           >
-            Home
+            <span>Home</span>
+            {checkIsActive("/explore") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
           </Link>
           <Link
             to="/explore#for-tenants"
-            onClick={() => setIsOpen(false)}
-            className="text-theme-text hover:text-moss-600 font-medium py-1.5 border-b border-theme-border/10 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+            onClick={(e) => handleSectionClick(e, "#for-tenants")}
+            className={mobileLinkClass("/explore", "#for-tenants")}
           >
-            For Tenants
+            <span>For Tenants</span>
+            {checkIsActive("/explore", "#for-tenants") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
           </Link>
           <Link
             to="/explore#for-landlords"
-            onClick={() => setIsOpen(false)}
-            className="text-theme-text hover:text-moss-600 font-medium py-1.5 border-b border-theme-border/10 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+            onClick={(e) => handleSectionClick(e, "#for-landlords")}
+            className={mobileLinkClass("/explore", "#for-landlords")}
           >
-            For Landlords
+            <span>For Landlords</span>
+            {checkIsActive("/explore", "#for-landlords") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
           </Link>
           <Link
             to="/how-it-works"
             onClick={() => setIsOpen(false)}
-            className="text-theme-text hover:text-moss-600 font-medium py-1.5 border-b border-theme-border/10 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+            className={mobileLinkClass("/how-it-works")}
           >
-            How It Works
+            <span>How It Works</span>
+            {checkIsActive("/how-it-works") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
           </Link>
           <Link
             to="/about"
             onClick={() => setIsOpen(false)}
-            className="text-theme-text hover:text-moss-600 font-medium py-1.5 border-b border-theme-border/10 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+            className={mobileLinkClass("/about")}
           >
-            About
+            <span>About</span>
+            {checkIsActive("/about") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
           </Link>
 
           {isAuthenticated ? (
@@ -189,11 +249,16 @@ export default function NavBar() {
               <button
                 onClick={() => {
                   setIsOpen(false);
-                  navigate("/dashboard/tenant");
+                  handleDashboardNavigate();
                 }}
                 className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
               >
-                Dashboard
+                <span>Dashboard</span>
+                {isAdmin && (
+                  <span className="text-[10px] bg-[#344E41] text-white px-2 py-0.5 rounded font-bold uppercase">
+                    Admin Portal
+                  </span>
+                )}
               </button>
               <Button
                 className="px-5 py-2.5 text-[14px]"
@@ -209,7 +274,10 @@ export default function NavBar() {
                   setIsOpen(false);
                   navigate("/login");
                 }}
-                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+                className={`text-[14px] font-semibold text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none ${location.pathname === "/login"
+                  ? "text-moss-700 dark:text-[#E5C583]"
+                  : "text-theme-text hover:text-moss-600"
+                  }`}
               >
                 Log In
               </button>

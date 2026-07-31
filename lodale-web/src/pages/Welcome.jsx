@@ -123,11 +123,8 @@ export default function Welcome() {
       <div className="mx-auto max-w-3xl text-center">
         <Logo className="mb-14 justify-center" />
 
-        <div className="mx-auto mb-10 flex h-44 w-full max-w-md items-center justify-center rounded-2xl bg-moss-700">
-          <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-white/10">
-            <LogoMark size={40} variant="white" />
-          </div>
-        </div>
+
+
 
         <div ref={headerRef} className="space-y-2">
           <h1 className="font-display text-3xl font-semibold text-ink-900 dark:text-white">
@@ -177,6 +174,6 @@ export default function Welcome() {
           </p>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

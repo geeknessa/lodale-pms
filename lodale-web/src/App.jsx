@@ -16,6 +16,8 @@ import SignUp from "./pages/SignUp";
 import Welcome from "./pages/Welcome";
 import Application from "./pages/Application";
 import AddProperty from "./pages/AddProperty";
+import AdminDashboard from "./pages/AdminDashboard";
+import AccessDenied from "./pages/AccessDenied";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -145,37 +147,70 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-/**
- * AdminRoute — extends ProtectedRoute with an additional role check.
- * Reads `userRole` from localStorage (set at login alongside `isAuthenticated`).
- * Redirects non-admin authenticated users back to their role dashboard.
- *
- * In development (import.meta.env.DEV) the guard is bypassed so the admin
- * dashboard can be previewed without manually seeding localStorage.
- */
-function AdminRoute({ children }) {
-  // ── Dev bypass ────────────────────────────────────────────────────────────
-  // Vite sets import.meta.env.DEV = true only during `vite dev`.
-  // This block is tree-shaken away in production builds.
-  if (import.meta.env.DEV) {
-    return children;
-  }
+function AdminProtectedRoute({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const auth = localStorage.getItem("isAuthenticated") === "true";
+    const expires = localStorage.getItem("sessionExpiresAt");
+    if (auth && expires && Date.now() > Number(expires)) {
+      // Session expired
+      localStorage.removeItem("isAuthenticated");
+      localStorage.removeItem("sessionExpiresAt");
+      localStorage.removeItem("userRole");
+      return false;
+    }
+    return auth;
+  });
 
-  // ── Production guard ──────────────────────────────────────────────────────
-  const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
-  const expires = localStorage.getItem("sessionExpiresAt");
-  const sessionExpired = expires && Date.now() > Number(expires);
+  const [userRole, setUserRole] = useState(() => {
+    return localStorage.getItem("userRole");
+  });
 
-  if (!isAuthenticated || sessionExpired) {
+  const location = useLocation();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const auth = localStorage.getItem("isAuthenticated") === "true";
+      const expires = localStorage.getItem("sessionExpiresAt");
+      if (auth && expires && Date.now() > Number(expires)) {
+        localStorage.removeItem("isAuthenticated");
+        localStorage.removeItem("sessionExpiresAt");
+        localStorage.removeItem("userRole");
+        setIsAuthenticated(false);
+        setUserRole(null);
+      } else {
+        setIsAuthenticated(auth);
+        setUserRole(localStorage.getItem("userRole"));
+      }
+    };
+
+    checkAuth();
+
+    window.addEventListener("storage", checkAuth);
+    return () => window.removeEventListener("storage", checkAuth);
+  }, [location]);
+
+  if (!isAuthenticated) {
+    const expires = localStorage.getItem("sessionExpiresAt");
+    const wasSessionExpired = expires && Date.now() > Number(expires);
+
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("sessionExpiresAt");
-    return <Navigate to="/login" replace state={{ fromProtected: true, sessionExpired: Boolean(sessionExpired) }} />;
+    localStorage.removeItem("userRole");
+
+    return (
+      <Navigate
+        to="/admin/login"
+        replace
+        state={{
+          fromProtected: true,
+          sessionExpired: wasSessionExpired,
+        }}
+      />
+    );
   }
 
-  const role = localStorage.getItem("userRole");
-  if (role !== "admin") {
-    // Authenticated but not an admin — send to their own dashboard
-    return <Navigate to={`/dashboard/${role ?? "tenant"}`} replace />;
+  if (userRole !== "admin") {
+    return <Navigate to="/access-denied" replace />;
   }
 
   return children;
@@ -220,6 +255,32 @@ export default function App() {
                 <ProtectedRoute>
                   <AddProperty />
                 </ProtectedRoute>
+              }
+            />
+            <Route path="/admin/login" element={<Login />} />
+            <Route path="/access-denied" element={<AccessDenied />} />
+            <Route
+              path="/admin"
+              element={
+                <AdminProtectedRoute>
+                  <AdminDashboard />
+                </AdminProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/dashboard"
+              element={
+                <AdminProtectedRoute>
+                  <AdminDashboard />
+                </AdminProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/admin"
+              element={
+                <AdminProtectedRoute>
+                  <AdminDashboard />
+                </AdminProtectedRoute>
               }
             />
             <Route

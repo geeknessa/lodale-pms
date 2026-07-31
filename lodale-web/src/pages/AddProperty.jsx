@@ -7,6 +7,7 @@ import Button from "../components/Button";
 export default function AddProperty() {
   const navigate = useNavigate();
   const [occupied, setOccupied] = useState(null); // null | true | false
+  const [rentCycle, setRentCycle] = useState("annual"); // "annual" | "monthly"
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -20,7 +21,7 @@ export default function AddProperty() {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-ink-200 bg-white p-8 shadow-sm"
+          className="rounded-2xl border border-ink-200 bg-white p-4 sm:p-8 shadow-sm"
         >
           <h1 className="font-display text-2xl font-bold text-ink-900">
             Add your first property
@@ -64,15 +65,14 @@ export default function AddProperty() {
             <span className="mb-3 block text-[13px] font-medium text-ink-700">
               Does this property already have a tenant?
             </span>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setOccupied(true)}
-                className={`rounded-lg border p-4 text-left transition-colors ${
-                  occupied === true
+                className={`rounded-lg border p-4 text-left transition-colors ${occupied === true
                     ? "border-moss-600 bg-moss-600/[0.04]"
                     : "border-ink-200 hover:border-ink-400"
-                }`}
+                  }`}
               >
                 <div className="font-semibold text-ink-900">Yes</div>
                 <div className="mt-1 text-[12px] text-ink-700">
@@ -82,11 +82,10 @@ export default function AddProperty() {
               <button
                 type="button"
                 onClick={() => setOccupied(false)}
-                className={`rounded-lg border p-4 text-left transition-colors ${
-                  occupied === false
+                className={`rounded-lg border p-4 text-left transition-colors ${occupied === false
                     ? "border-moss-600 bg-moss-600/[0.04]"
                     : "border-ink-200 hover:border-ink-400"
-                }`}
+                  }`}
               >
                 <div className="font-semibold text-ink-900">
                   No, it&rsquo;s vacant

@@ -1,1193 +1,2438 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Logo } from "../components/Logo";
+import { useTheme } from "../context/ThemeContext";
 import {
   LayoutDashboard,
+  Users,
   Building2,
   MessageSquareWarning,
-  Users,
+  Search,
+  Filter,
   CheckCircle2,
   XCircle,
-  Clock,
   AlertTriangle,
-  Shield,
   Eye,
-  ChevronDown,
-  Search,
-  X,
-  Filter,
   UserCheck,
   UserX,
-  Ban,
-  RefreshCw,
-  LogOut,
+  Trash2,
+  ShieldAlert,
+  Clock,
+  ExternalLink,
+  ChevronRight,
+  X,
+  Check,
   Star,
   MapPin,
+  ShieldCheck,
+  FileText,
+  Mail,
+  Phone,
   Calendar,
-  TrendingUp,
-  Flag,
-  MoreVertical,
-  ArrowUpRight,
-  Loader2,
-  BadgeCheck,
-  ShieldAlert,
-  Trash2,
+  Building,
+  Globe,
+  LogOut,
+  Settings,
+  Palette,
+  Sun,
+  Moon,
+  Monitor,
   User,
+  Lock,
+  KeyRound,
+  Bell,
+  Sliders,
+  Info,
+  Upload,
+  Camera,
+  Laptop,
+  Smartphone,
+  Shield,
+  Menu,
 } from "lucide-react";
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const STATS = {
-  pendingListings: 14,
-  openReviewFlags: 7,
-  suspendedUsers: 3,
-  pendingVerifications: 22,
-  approvalsLast7d: 31,
-  removalsLast7d: 4,
-  totalUsers: 1284,
-  totalProperties: 409,
-};
-
-const LISTING_QUEUE = [
+// --- MOCK INITIAL DATA ---
+const INITIAL_USERS = [
   {
-    id: "laq-001",
-    property: {
-      id: "prop-001",
-      title: "Skyline Apartments, Block 4",
-      address: "14 Adeola Odeku St, Victoria Island",
-      city: "Lagos",
-      type: "apartment",
-      bedrooms: 3,
-      rent: 2_400_000,
-      images: [],
-    },
-    landlord: { name: "Chukwuemeka Okafor", email: "c.okafor@gmail.com", score: 4.7 },
-    queueStatus: "queued",
-    priority: "high",
-    submittedAt: "2026-07-29T10:22:00Z",
+    id: "usr-101",
+    name: "Emeka Nwankwo",
+    email: "emeka.n@example.com",
+    phone: "+234 803 123 4567",
+    role: "Landlord",
+    status: "Active",
+    joinedDate: "2025-11-14",
+    listingsCount: 3,
+    verifications: ["ID Verified", "Phone Verified"],
   },
   {
-    id: "laq-002",
-    property: {
-      id: "prop-002",
-      title: "Lekki Phase 1 Duplex",
-      address: "7B Admiralty Way, Lekki",
-      city: "Lagos",
-      type: "duplex",
-      bedrooms: 4,
-      rent: 5_500_000,
-      images: [],
-    },
-    landlord: { name: "Adaeze Nwosu", email: "adaeze.nwosu@yahoo.com", score: 4.2 },
-    queueStatus: "under_review",
-    priority: "normal",
-    submittedAt: "2026-07-28T08:00:00Z",
+    id: "usr-102",
+    name: "Amina Bello",
+    email: "amina.bello@example.com",
+    phone: "+234 802 987 6543",
+    role: "Tenant",
+    status: "Active",
+    joinedDate: "2026-01-09",
+    listingsCount: 0,
+    verifications: ["Phone Verified"],
   },
   {
-    id: "laq-003",
-    property: {
-      id: "prop-003",
-      title: "Gwarinpa Estate Bungalow",
-      address: "5th Avenue, Gwarinpa",
-      city: "Abuja",
-      type: "bungalow",
-      bedrooms: 3,
-      rent: 1_800_000,
-      images: [],
-    },
-    landlord: { name: "Babatunde Fashola", email: "b.fashola@outlook.com", score: 3.9 },
-    queueStatus: "queued",
-    priority: "urgent",
-    submittedAt: "2026-07-30T07:15:00Z",
+    id: "usr-103",
+    name: "Victor Ogunleye",
+    email: "victor.og@example.com",
+    phone: "+234 814 555 0192",
+    role: "Landlord",
+    status: "Suspended",
+    joinedDate: "2025-08-22",
+    listingsCount: 1,
+    verifications: ["ID Pending"],
+    suspensionReason: "Multiple reports of non-responsive communication and incomplete listing information.",
   },
   {
-    id: "laq-004",
-    property: {
-      id: "prop-004",
-      title: "Maitama Mini Flat",
-      address: "Plot 23 Tafawa Balewa Crescent",
-      city: "Abuja",
-      type: "apartment",
-      bedrooms: 1,
-      rent: 950_000,
-      images: [],
-    },
-    landlord: { name: "Ngozi Iweala", email: "ngozi.i@protonmail.com", score: 5.0 },
-    queueStatus: "approved",
-    priority: "normal",
-    submittedAt: "2026-07-27T14:00:00Z",
+    id: "usr-104",
+    name: "Grace Kalu",
+    email: "gkalu@example.com",
+    phone: "+234 701 444 8811",
+    role: "Tenant",
+    status: "Active",
+    joinedDate: "2026-02-18",
+    listingsCount: 0,
+    verifications: ["ID Verified", "Email Verified"],
   },
   {
-    id: "laq-005",
-    property: {
-      id: "prop-005",
-      title: "Yaba Studio Apartment",
-      address: "12 Agoro Street, Yaba",
-      city: "Lagos",
-      type: "studio",
-      bedrooms: 0,
-      rent: 600_000,
-      images: [],
-    },
-    landlord: { name: "Tunde Adebayo", email: "tunde.adebayo@gmail.com", score: 4.0 },
-    queueStatus: "rejected",
-    priority: "normal",
-    submittedAt: "2026-07-26T11:30:00Z",
+    id: "usr-105",
+    name: "Tunde Bakare",
+    email: "tunde.b@lodale.com",
+    phone: "+234 809 333 2211",
+    role: "Admin",
+    status: "Active",
+    joinedDate: "2025-05-01",
+    listingsCount: 0,
+    verifications: ["Admin Verified"],
+  },
+  {
+    id: "usr-106",
+    name: "Chidinma Eze",
+    email: "ceze.properties@example.com",
+    phone: "+234 812 777 9900",
+    role: "Landlord",
+    status: "Active",
+    joinedDate: "2026-03-02",
+    listingsCount: 2,
+    verifications: ["ID Verified", "Phone Verified"],
   },
 ];
 
-const REVIEW_QUEUE = [
+const INITIAL_LISTINGS = [
   {
-    id: "rmq-001",
-    review: {
-      id: "rev-001",
-      body: "This landlord is a total scam. He collected 6 months upfront and never fixed the roof. Do not rent from him.",
-      overallScore: 1,
-      reviewerRole: "tenant",
-    },
-    reviewer: { name: "Amaka Obi", email: "amaka@gmail.com" },
-    reviewee: { name: "Segun Bello", email: "segun.b@gmail.com" },
-    reportedBy: { name: "Segun Bello" },
-    reportReason: "false_information",
-    reportBody: "The claims in this review are fabricated. I have receipts for all repairs.",
-    queueStatus: "open",
-    createdAt: "2026-07-30T09:00:00Z",
+    id: "lst-201",
+    title: "Oakwood Heights, Luxury 2BR",
+    location: "Yaba, Lagos",
+    price: "₦2,200,000/yr",
+    type: "Apartment",
+    status: "Pending Approval",
+    submittedAt: "2026-07-22T14:30:00Z",
+    landlord: { id: "usr-106", name: "Chidinma Eze", score: 4.9 },
+    description:
+      "Fully serviced 2-bedroom apartment with prepaid meter, constant water supply, and top-tier security.",
+    amenities: ["Prepaid Meter", "Borehole", "24/7 Security", "Balcony"],
+    deedVerified: true,
   },
   {
-    id: "rmq-002",
-    review: {
-      id: "rev-002",
-      body: "Worst tenant I have ever had. Broke everything and tried to extort me at the end of the lease.",
-      overallScore: 1,
-      reviewerRole: "landlord",
-    },
-    reviewer: { name: "Alhaji Musa Usman", email: "musa.usman@yahoo.com" },
-    reviewee: { name: "Chidinma Eze", email: "chidinma.eze@gmail.com" },
-    reportedBy: { name: "Chidinma Eze" },
-    reportReason: "harassment",
-    reportBody: "This review is retaliatory because I reported maintenance issues.",
-    queueStatus: "under_review",
-    createdAt: "2026-07-29T16:45:00Z",
+    id: "lst-202",
+    title: "Skyline Tower, Studio Flat 4B",
+    location: "Victoria Island, Lagos",
+    price: "₦3,800,000/yr",
+    type: "Studio",
+    status: "Pending Approval",
+    submittedAt: "2026-07-23T08:15:00Z",
+    landlord: { id: "usr-101", name: "Emeka Nwankwo", score: 4.7 },
+    description:
+      "Modern minimalist studio with panoramic ocean view. Includes backup generator and underground parking.",
+    amenities: ["Backup Generator", "Elevator", "Security", "Fiber Internet"],
+    deedVerified: true,
   },
   {
-    id: "rmq-003",
-    review: {
-      id: "rev-003",
-      body: "Buy Bitcoin now!!! Great returns guaranteed!!!",
-      overallScore: 5,
-      reviewerRole: "tenant",
-    },
-    reviewer: { name: "Unknown Spammer", email: "bot123@tempmail.com" },
-    reviewee: { name: "Folake Adeyemi", email: "folake.a@outlook.com" },
-    reportedBy: { name: "Folake Adeyemi" },
-    reportReason: "spam",
-    reportBody: "This is obvious spam unrelated to any tenancy.",
-    queueStatus: "open",
-    createdAt: "2026-07-30T12:00:00Z",
+    id: "lst-203",
+    title: "Lekki Phase 1 Prime Villa",
+    location: "Lekki Phase 1, Lagos",
+    price: "₦5,500,000/yr",
+    type: "Duplex",
+    status: "Live",
+    submittedAt: "2026-06-10T10:00:00Z",
+    landlord: { id: "usr-101", name: "Emeka Nwankwo", score: 4.8 },
+    description:
+      "Spacious 4-bedroom terrace duplex in a serene gated estate with swimming pool access.",
+    amenities: ["Swimming Pool", "Gated Security", "Parking", "Prepaid Meter"],
+    deedVerified: true,
   },
   {
-    id: "rmq-004",
-    review: {
-      id: "rev-004",
-      body: "Good landlord overall. A few minor delays in maintenance but otherwise a solid experience.",
-      overallScore: 4,
-      reviewerRole: "tenant",
-    },
-    reviewer: { name: "Emeka Nze", email: "emeka.nze@gmail.com" },
-    reviewee: { name: "Ifeanyi Okeke", email: "ifeanyi.okeke@gmail.com" },
-    reportedBy: { name: "Ifeanyi Okeke" },
-    reportReason: "false_information",
-    reportBody: "I believe the reviewer is my competitor, not an actual tenant.",
-    queueStatus: "resolved_kept",
-    createdAt: "2026-07-28T11:00:00Z",
-  },
-];
-
-const USER_LIST = [
-  {
-    id: "usr-001",
-    name: "Adaeze Nwosu",
-    email: "adaeze.nwosu@yahoo.com",
-    role: "landlord",
-    idStatus: "verified",
-    isActive: true,
-    score: 4.2,
-    properties: 3,
-    joinedAt: "2025-03-12T00:00:00Z",
+    id: "lst-204",
+    title: "Unverified Cheap Self-Contain",
+    location: "Ikeja, Lagos",
+    price: "₦350,000/yr",
+    type: "Self Contain",
+    status: "Pending Approval",
+    submittedAt: "2026-07-23T06:45:00Z",
+    landlord: { id: "usr-103", name: "Victor Ogunleye", score: 3.2 },
+    description:
+      "Very cheap self contain near transport hub. Immediate move-in available.",
+    amenities: ["Water"],
+    deedVerified: false,
+    fraudWarning: "Price is suspiciously lower than area average. Landlord account currently suspended.",
   },
   {
-    id: "usr-002",
-    name: "Chukwuemeka Okafor",
-    email: "c.okafor@gmail.com",
-    role: "landlord",
-    idStatus: "verified",
-    isActive: true,
-    score: 4.7,
-    properties: 5,
-    joinedAt: "2024-11-01T00:00:00Z",
-  },
-  {
-    id: "usr-003",
-    name: "Amaka Obi",
-    email: "amaka@gmail.com",
-    role: "tenant",
-    idStatus: "pending",
-    isActive: true,
-    score: 3.8,
-    properties: 0,
-    joinedAt: "2026-01-15T00:00:00Z",
-  },
-  {
-    id: "usr-004",
-    name: "Unknown Spammer",
-    email: "bot123@tempmail.com",
-    role: "tenant",
-    idStatus: "unverified",
-    isActive: false,
-    score: 0,
-    properties: 0,
-    joinedAt: "2026-07-30T00:00:00Z",
-  },
-  {
-    id: "usr-005",
-    name: "Ngozi Iweala",
-    email: "ngozi.i@protonmail.com",
-    role: "landlord",
-    idStatus: "verified",
-    isActive: true,
-    score: 5.0,
-    properties: 2,
-    joinedAt: "2024-06-20T00:00:00Z",
-  },
-  {
-    id: "usr-006",
-    name: "Babatunde Fashola",
-    email: "b.fashola@outlook.com",
-    role: "landlord",
-    idStatus: "pending",
-    isActive: true,
-    score: 3.9,
-    properties: 1,
-    joinedAt: "2025-09-05T00:00:00Z",
-  },
-  {
-    id: "usr-007",
-    name: "Segun Bello",
-    email: "segun.b@gmail.com",
-    role: "landlord",
-    idStatus: "verified",
-    isActive: false,
-    score: 2.1,
-    properties: 1,
-    joinedAt: "2025-01-20T00:00:00Z",
+    id: "lst-205",
+    title: "Greenwich Estate 3-Bed Flat",
+    location: "Surulere, Lagos",
+    price: "₦1,900,000/yr",
+    type: "Apartment",
+    status: "Live",
+    submittedAt: "2026-05-18T12:00:00Z",
+    landlord: { id: "usr-106", name: "Chidinma Eze", score: 4.9 },
+    description: "Quiet residential flat close to schools and shopping centers.",
+    amenities: ["Borehole", "Prepaid Meter"],
+    deedVerified: true,
   },
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatNaira(amount) {
-  return new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(amount);
-}
-
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function timeAgo(iso) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3_600_000);
-  if (h < 1) return "just now";
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
-// ─── Status Badges ────────────────────────────────────────────────────────────
-
-const LISTING_STATUS_STYLES = {
-  queued:       "bg-amber-100 text-amber-800 border-amber-200",
-  under_review: "bg-blue-100 text-blue-800 border-blue-200",
-  approved:     "bg-emerald-100 text-emerald-800 border-emerald-200",
-  rejected:     "bg-red-100 text-red-800 border-red-200",
-  escalated:    "bg-purple-100 text-purple-800 border-purple-200",
-};
-
-const PRIORITY_STYLES = {
-  normal: "bg-slate-100 text-slate-700 border-slate-200",
-  high:   "bg-orange-100 text-orange-700 border-orange-200",
-  urgent: "bg-red-100 text-red-700 border-red-200",
-};
-
-const MODERATION_STATUS_STYLES = {
-  open:             "bg-amber-100 text-amber-800 border-amber-200",
-  under_review:     "bg-blue-100 text-blue-800 border-blue-200",
-  resolved_kept:    "bg-emerald-100 text-emerald-800 border-emerald-200",
-  resolved_removed: "bg-slate-100 text-slate-700 border-slate-200",
-  escalated:        "bg-purple-100 text-purple-800 border-purple-200",
-};
-
-const REPORT_REASON_LABELS = {
-  spam:                "Spam",
-  offensive_language:  "Offensive Language",
-  false_information:   "False Information",
-  harassment:          "Harassment",
-  conflict_of_interest:"Conflict of Interest",
-  other:               "Other",
-};
-
-function StatusBadge({ label, styleClass }) {
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${styleClass}`}>
-      {label}
-    </span>
-  );
-}
-
-// ─── Action Modal ─────────────────────────────────────────────────────────────
-
-function ActionModal({ title, description, children, onClose, confirmLabel, confirmClass, onConfirm, loading }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.55)" }}>
-      <div className="bg-white rounded-2xl w-full max-w-lg animate-in slide-in-from-bottom-4 duration-200">
-        {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-slate-100">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
-            {description && <p className="text-sm text-slate-500 mt-0.5">{description}</p>}
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors ml-4 flex-shrink-0">
-            <X size={18} />
-          </button>
-        </div>
-        {/* Body */}
-        <div className="p-6 space-y-4">{children}</div>
-        {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 pb-6">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
-            Cancel
-          </button>
-          <button onClick={onConfirm} disabled={loading} className={`px-5 py-2 text-sm font-semibold text-white rounded-xl flex items-center gap-2 transition-colors disabled:opacity-60 ${confirmClass}`}>
-            {loading && <Loader2 size={14} className="animate-spin" />}
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── SECTION: Dashboard ───────────────────────────────────────────────────────
-
-function StatCard({ icon: Icon, label, value, sub, accent }) {
-  const colors = {
-    amber:   { bg: "bg-amber-50",   icon: "text-amber-600",   border: "border-amber-100" },
-    blue:    { bg: "bg-blue-50",    icon: "text-blue-600",    border: "border-blue-100"  },
-    red:     { bg: "bg-red-50",     icon: "text-red-600",     border: "border-red-100"   },
-    emerald: { bg: "bg-emerald-50", icon: "text-emerald-600", border: "border-emerald-100" },
-    purple:  { bg: "bg-purple-50",  icon: "text-purple-600",  border: "border-purple-100"},
-  };
-  const c = colors[accent] || colors.blue;
-  return (
-    <div className={`bg-white rounded-2xl border ${c.border} p-6 flex items-start gap-4`}>
-      <div className={`p-3 rounded-xl ${c.bg}`}>
-        <Icon size={22} className={c.icon} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-slate-500 truncate">{label}</p>
-        <p className="text-3xl font-bold text-slate-900 mt-1">{value}</p>
-        {sub && <p className="text-xs text-slate-400 mt-1">{sub}</p>}
-      </div>
-    </div>
-  );
-}
-
-function DashboardSection() {
-  const recentActivity = [
-    { icon: CheckCircle2, color: "text-emerald-500", text: "Maitama Mini Flat approved by Admin Ngozi", time: "2h ago" },
-    { icon: Flag, color: "text-amber-500", text: "New spam report on review by Amaka Obi", time: "3h ago" },
-    { icon: UserX, color: "text-red-500", text: "User 'Unknown Spammer' suspended", time: "5h ago" },
-    { icon: Building2, color: "text-blue-500", text: "Gwarinpa Estate Bungalow entered queue (urgent)", time: "8h ago" },
-    { icon: BadgeCheck, color: "text-purple-500", text: "Identity verification approved for Adaeze Nwosu", time: "1d ago" },
-    { icon: XCircle, color: "text-red-500", text: "Review (rmq-002) escalated to super admin", time: "1d ago" },
-  ];
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-1">Dashboard Overview</h2>
-        <p className="text-slate-500 text-sm">Real-time platform health at a glance.</p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard icon={Building2}         label="Pending Listings"         value={STATS.pendingListings}       sub={`${STATS.approvalsLast7d} approved last 7 days`} accent="amber"   />
-        <StatCard icon={MessageSquareWarning} label="Open Review Flags"     value={STATS.openReviewFlags}       sub={`${STATS.removalsLast7d} removed last 7 days`}   accent="red"     />
-        <StatCard icon={UserX}             label="Suspended Users"           value={STATS.suspendedUsers}        sub="Active account restrictions"                     accent="purple"  />
-        <StatCard icon={BadgeCheck}        label="Pending Verifications"     value={STATS.pendingVerifications}  sub="Identity checks awaiting review"                 accent="blue"    />
-      </div>
-
-      {/* Secondary stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard icon={Users}      label="Total Users"      value={STATS.totalUsers.toLocaleString()}      sub="Across all roles" accent="emerald" />
-        <StatCard icon={Building2}  label="Total Properties" value={STATS.totalProperties.toLocaleString()} sub="Listed & managed"  accent="blue"    />
-        <StatCard icon={TrendingUp} label="Approvals (7d)"   value={STATS.approvalsLast7d}                 sub="Listings approved this week" accent="amber" />
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-white rounded-2xl border border-slate-100">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h3 className="text-base font-semibold text-slate-900">Recent Activity</h3>
-          <span className="text-xs text-slate-400">Last 48 hours</span>
-        </div>
-        <ul className="divide-y divide-slate-50">
-          {recentActivity.map((item, i) => (
-            <li key={i} className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 transition-colors">
-              <item.icon size={18} className={`flex-shrink-0 ${item.color}`} />
-              <p className="text-sm text-slate-700 flex-1">{item.text}</p>
-              <span className="text-xs text-slate-400 flex-shrink-0">{item.time}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-// ─── SECTION: Listing Approvals ───────────────────────────────────────────────
-
-function ListingApprovalsSection() {
-  const [filter, setFilter] = useState("all");
-  const [selectedListing, setSelectedListing] = useState(null);
-  const [modalMode, setModalMode] = useState(null); // 'approve' | 'reject'
-  const [notes, setNotes] = useState("");
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [queue, setQueue] = useState(LISTING_QUEUE);
-
-  const filtered = useMemo(() => {
-    if (filter === "all") return queue;
-    return queue.filter((l) => l.queueStatus === filter);
-  }, [filter, queue]);
-
-  function openModal(listing, mode) {
-    setSelectedListing(listing);
-    setModalMode(mode);
-    setNotes("");
-    setRejectionReason("");
-  }
-
-  function closeModal() {
-    setSelectedListing(null);
-    setModalMode(null);
-  }
-
-  function handleConfirm() {
-    if (!selectedListing) return;
-    setLoading(true);
-    setTimeout(() => {
-      setQueue((prev) =>
-        prev.map((l) =>
-          l.id === selectedListing.id
-            ? { ...l, queueStatus: modalMode === "approve" ? "approved" : "rejected" }
-            : l
-        )
-      );
-      setLoading(false);
-      closeModal();
-    }, 800);
-  }
-
-  const FILTER_TABS = [
-    { key: "all", label: "All" },
-    { key: "queued", label: "Queued" },
-    { key: "under_review", label: "Under Review" },
-    { key: "approved", label: "Approved" },
-    { key: "rejected", label: "Rejected" },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-1">Listing Approvals</h2>
-        <p className="text-slate-500 text-sm">Review and approve or reject property listings submitted by landlords.</p>
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {FILTER_TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setFilter(t.key)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-              filter === t.key
-                ? "bg-[#344e41] text-white border-[#344e41]"
-                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60">
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Property</th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Landlord</th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Priority</th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Submitted</th>
-                <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filtered.map((l) => (
-                <tr key={l.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-5 py-4">
-                    <p className="font-medium text-slate-900 truncate max-w-[200px]">{l.property.title}</p>
-                    <div className="flex items-center gap-1 text-slate-400 mt-0.5">
-                      <MapPin size={11} />
-                      <span className="text-xs truncate max-w-[180px]">{l.property.city} · {l.property.type} · {l.property.bedrooms}BR</span>
-                    </div>
-                    <p className="text-xs font-semibold text-[#344e41] mt-0.5">{formatNaira(l.property.rent)}/yr</p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <p className="font-medium text-slate-800">{l.landlord.name}</p>
-                    <div className="flex items-center gap-1 text-slate-400 mt-0.5">
-                      <Star size={11} className="fill-amber-400 text-amber-400" />
-                      <span className="text-xs">{l.landlord.score}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge
-                      label={l.queueStatus.replace(/_/g, " ")}
-                      styleClass={LISTING_STATUS_STYLES[l.queueStatus]}
-                    />
-                  </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge
-                      label={l.priority}
-                      styleClass={PRIORITY_STYLES[l.priority]}
-                    />
-                  </td>
-                  <td className="px-5 py-4">
-                    <p className="text-slate-600 text-xs">{formatDate(l.submittedAt)}</p>
-                    <p className="text-slate-400 text-xs">{timeAgo(l.submittedAt)}</p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      {(l.queueStatus === "queued" || l.queueStatus === "under_review") && (
-                        <>
-                          <button
-                            onClick={() => openModal(l, "approve")}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors"
-                          >
-                            <CheckCircle2 size={13} /> Approve
-                          </button>
-                          <button
-                            onClick={() => openModal(l, "reject")}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors"
-                          >
-                            <XCircle size={13} /> Reject
-                          </button>
-                        </>
-                      )}
-                      {(l.queueStatus === "approved" || l.queueStatus === "rejected") && (
-                        <span className="text-xs text-slate-400 italic">Decision made</span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-slate-400 text-sm">
-                    No listings match this filter.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal */}
-      {selectedListing && (
-        <ActionModal
-          title={modalMode === "approve" ? "Approve Listing" : "Reject Listing"}
-          description={selectedListing.property.title}
-          onClose={closeModal}
-          confirmLabel={modalMode === "approve" ? "Confirm Approval" : "Confirm Rejection"}
-          confirmClass={modalMode === "approve" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"}
-          onConfirm={handleConfirm}
-          loading={loading}
-        >
-          {modalMode === "reject" && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Rejection Reason <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-[#344e41]/30 focus:border-[#344e41]"
-              >
-                <option value="">Select a reason…</option>
-                <option value="insufficient_docs">Insufficient documentation</option>
-                <option value="unverifiable_ownership">Cannot verify ownership</option>
-                <option value="inaccurate_details">Inaccurate listing details</option>
-                <option value="policy_violation">Platform policy violation</option>
-                <option value="duplicate">Duplicate listing</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Verification Notes <span className="text-slate-400 font-normal">(internal)</span>
-            </label>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add internal notes for the audit record…"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-[#344e41]/30 focus:border-[#344e41]"
-            />
-          </div>
-          {modalMode === "approve" && (
-            <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-sm text-emerald-800">
-              <CheckCircle2 size={16} className="flex-shrink-0 mt-0.5" />
-              <span>Approving will set the property status to <strong>Active Vacant</strong> and make it visible to tenants.</span>
-            </div>
-          )}
-          {modalMode === "reject" && (
-            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-sm text-amber-800">
-              <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
-              <span>Rejecting returns the listing to <strong>Draft</strong> and notifies the landlord via email.</span>
-            </div>
-          )}
-        </ActionModal>
-      )}
-    </div>
-  );
-}
-
-// ─── SECTION: Review Moderation ───────────────────────────────────────────────
-
-function ReviewModerationSection() {
-  const [filter, setFilter] = useState("all");
-  const [selectedReport, setSelectedReport] = useState(null);
-  const [modalMode, setModalMode] = useState(null); // 'keep' | 'remove'
-  const [notes, setNotes] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [queue, setQueue] = useState(REVIEW_QUEUE);
-
-  const filtered = useMemo(() => {
-    if (filter === "all") return queue;
-    return queue.filter((r) => r.queueStatus === filter);
-  }, [filter, queue]);
-
-  function openModal(report, mode) {
-    setSelectedReport(report);
-    setModalMode(mode);
-    setNotes("");
-  }
-
-  function closeModal() {
-    setSelectedReport(null);
-    setModalMode(null);
-  }
-
-  function handleConfirm() {
-    if (!selectedReport) return;
-    setLoading(true);
-    setTimeout(() => {
-      setQueue((prev) =>
-        prev.map((r) =>
-          r.id === selectedReport.id
-            ? { ...r, queueStatus: modalMode === "keep" ? "resolved_kept" : "resolved_removed" }
-            : r
-        )
-      );
-      setLoading(false);
-      closeModal();
-    }, 800);
-  }
-
-  const FILTER_TABS = [
-    { key: "all", label: "All" },
-    { key: "open", label: "Open" },
-    { key: "under_review", label: "Under Review" },
-    { key: "resolved_kept", label: "Kept" },
-    { key: "resolved_removed", label: "Removed" },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-1">Review Moderation</h2>
-        <p className="text-slate-500 text-sm">Investigate reported reviews and decide to keep or remove them.</p>
-      </div>
-
-      <div className="flex gap-2 flex-wrap">
-        {FILTER_TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setFilter(t.key)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-              filter === t.key
-                ? "bg-[#344e41] text-white border-[#344e41]"
-                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="space-y-4">
-        {filtered.map((r) => (
-          <div key={r.id} className="bg-white rounded-2xl border border-slate-100 p-6">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div className="flex-1 min-w-0">
-                {/* Report reason + status */}
-                <div className="flex items-center gap-2 flex-wrap mb-3">
-                  <StatusBadge label={REPORT_REASON_LABELS[r.reportReason] || r.reportReason} styleClass={MODERATION_STATUS_STYLES.open} />
-                  <StatusBadge label={r.queueStatus.replace(/_/g, " ")} styleClass={MODERATION_STATUS_STYLES[r.queueStatus]} />
-                  <span className="text-xs text-slate-400">{timeAgo(r.createdAt)}</span>
-                </div>
-
-                {/* Review body */}
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 mb-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="flex items-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} size={12} className={i < r.review.overallScore ? "fill-amber-400 text-amber-400" : "text-slate-200 fill-slate-200"} />
-                      ))}
-                    </div>
-                    <span className="text-xs text-slate-400">by {r.reviewer.name} ({r.review.reviewerRole})</span>
-                  </div>
-                  <p className="text-sm text-slate-700 italic">"{r.review.body}"</p>
-                </div>
-
-                {/* Report detail */}
-                <div className="space-y-1">
-                  <p className="text-xs text-slate-500">
-                    <span className="font-medium text-slate-700">Reported by:</span> {r.reportedBy.name}
-                  </p>
-                  {r.reportBody && (
-                    <p className="text-xs text-slate-500">
-                      <span className="font-medium text-slate-700">Report detail:</span> {r.reportBody}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex flex-col gap-2 flex-shrink-0">
-                {(r.queueStatus === "open" || r.queueStatus === "under_review") && (
-                  <>
-                    <button
-                      onClick={() => openModal(r, "keep")}
-                      className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors"
-                    >
-                      <CheckCircle2 size={13} /> Keep Review
-                    </button>
-                    <button
-                      onClick={() => openModal(r, "remove")}
-                      className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl transition-colors"
-                    >
-                      <Trash2 size={13} /> Remove Review
-                    </button>
-                  </>
-                )}
-                {(r.queueStatus === "resolved_kept" || r.queueStatus === "resolved_removed") && (
-                  <span className="text-xs text-slate-400 italic text-right">Resolved</span>
-                )}
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {filtered.length === 0 && (
-          <div className="bg-white rounded-2xl border border-slate-100 py-16 text-center">
-            <MessageSquareWarning size={32} className="text-slate-200 mx-auto mb-3" />
-            <p className="text-sm text-slate-400">No reports match this filter.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Modal */}
-      {selectedReport && (
-        <ActionModal
-          title={modalMode === "keep" ? "Keep Review" : "Remove Review"}
-          description={`"${selectedReport.review.body.slice(0, 60)}…"`}
-          onClose={closeModal}
-          confirmLabel={modalMode === "keep" ? "Confirm — Keep" : "Confirm — Remove"}
-          confirmClass={modalMode === "keep" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-600 hover:bg-red-700"}
-          onConfirm={handleConfirm}
-          loading={loading}
-        >
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Moderation Notes</label>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Explain the moderation decision for the audit record…"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-[#344e41]/30 focus:border-[#344e41]"
-            />
-          </div>
-          {modalMode === "keep" && (
-            <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-sm text-emerald-800">
-              <CheckCircle2 size={16} className="flex-shrink-0 mt-0.5" />
-              <span>The review will be unflagged and remain <strong>published</strong> on the platform.</span>
-            </div>
-          )}
-          {modalMode === "remove" && (
-            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-3.5 text-sm text-red-800">
-              <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
-              <span>The review will be permanently <strong>removed</strong> and the reviewer notified.</span>
-            </div>
-          )}
-        </ActionModal>
-      )}
-    </div>
-  );
-}
-
-// ─── SECTION: User Management ─────────────────────────────────────────────────
-
-function UserManagementSection() {
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [actionType, setActionType] = useState(null);
-  const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [openDropdown, setOpenDropdown] = useState(null);
-  const [users, setUsers] = useState(USER_LIST);
-
-  const filtered = useMemo(() => {
-    return users.filter((u) => {
-      const matchRole = roleFilter === "all" || u.role === roleFilter;
-      const matchSearch = !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
-      return matchRole && matchSearch;
-    });
-  }, [users, search, roleFilter]);
-
-  function openActionModal(user, action) {
-    setSelectedUser(user);
-    setActionType(action);
-    setReason("");
-    setOpenDropdown(null);
-  }
-
-  function closeModal() {
-    setSelectedUser(null);
-    setActionType(null);
-  }
-
-  function handleConfirm() {
-    if (!selectedUser) return;
-    setLoading(true);
-    setTimeout(() => {
-      if (actionType === "suspend") {
-        setUsers((prev) => prev.map((u) => u.id === selectedUser.id ? { ...u, isActive: false } : u));
-      } else if (actionType === "reinstate") {
-        setUsers((prev) => prev.map((u) => u.id === selectedUser.id ? { ...u, isActive: true } : u));
-      } else if (actionType === "verify_id") {
-        setUsers((prev) => prev.map((u) => u.id === selectedUser.id ? { ...u, idStatus: "verified" } : u));
-      } else if (actionType === "reject_id") {
-        setUsers((prev) => prev.map((u) => u.id === selectedUser.id ? { ...u, idStatus: "unverified" } : u));
-      }
-      setLoading(false);
-      closeModal();
-    }, 800);
-  }
-
-  const ID_STATUS_STYLES = {
-    verified:   "bg-emerald-100 text-emerald-800 border-emerald-200",
-    pending:    "bg-amber-100 text-amber-800 border-amber-200",
-    unverified: "bg-slate-100 text-slate-600 border-slate-200",
-    rejected:   "bg-red-100 text-red-800 border-red-200",
-  };
-
-  const ACTION_LABELS = {
-    suspend:    { label: "Suspend User",   color: "bg-orange-600 hover:bg-orange-700" },
-    reinstate:  { label: "Reinstate",      color: "bg-emerald-600 hover:bg-emerald-700" },
-    verify_id:  { label: "Approve ID",     color: "bg-[#344e41] hover:bg-[#263b33]" },
-    reject_id:  { label: "Reject ID",      color: "bg-red-600 hover:bg-red-700" },
-    ban:        { label: "Ban User",       color: "bg-red-700 hover:bg-red-800" },
-    warn:       { label: "Issue Warning",  color: "bg-amber-600 hover:bg-amber-700" },
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-1">User Management</h2>
-        <p className="text-slate-500 text-sm">Search, filter, and manage all platform users.</p>
-      </div>
-
-      {/* Search + filter bar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[240px] max-w-sm">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by name or email…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#344e41]/30 focus:border-[#344e41]"
-          />
-        </div>
-        <div className="flex gap-2">
-          {["all", "tenant", "landlord", "admin"].map((r) => (
-            <button
-              key={r}
-              onClick={() => setRoleFilter(r)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium border transition-colors capitalize ${
-                roleFilter === r
-                  ? "bg-[#344e41] text-white border-[#344e41]"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              {r}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Users Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/60">
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">User</th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Role</th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">ID Status</th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Account</th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Score</th>
-                <th className="text-left px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Joined</th>
-                <th className="text-right px-5 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {filtered.map((u) => (
-                <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#344e41]/10 flex items-center justify-center flex-shrink-0">
-                        <User size={16} className="text-[#344e41]" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-slate-900">{u.name}</p>
-                        <p className="text-xs text-slate-400">{u.email}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge label={u.role} styleClass="bg-[#344e41]/10 text-[#344e41] border-[#344e41]/20" />
-                  </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge label={u.idStatus} styleClass={ID_STATUS_STYLES[u.idStatus]} />
-                  </td>
-                  <td className="px-5 py-4">
-                    <StatusBadge
-                      label={u.isActive ? "Active" : "Suspended"}
-                      styleClass={u.isActive ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-red-100 text-red-800 border-red-200"}
-                    />
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-1">
-                      <Star size={12} className="fill-amber-400 text-amber-400" />
-                      <span className="text-slate-700 font-medium">{u.score > 0 ? u.score.toFixed(1) : "—"}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-4 text-xs text-slate-500">{formatDate(u.joinedAt)}</td>
-                  <td className="px-5 py-4">
-                    <div className="flex justify-end">
-                      <div className="relative">
-                        <button
-                          onClick={() => setOpenDropdown(openDropdown === u.id ? null : u.id)}
-                          className="p-2 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-                        >
-                          <MoreVertical size={16} />
-                        </button>
-                        {openDropdown === u.id && (
-                          <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-slate-200 rounded-xl w-48 py-1 shadow-lg">
-                            {u.isActive
-                              ? <button onClick={() => openActionModal(u, "suspend")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-orange-600 hover:bg-orange-50 transition-colors"><UserX size={14} /> Suspend User</button>
-                              : <button onClick={() => openActionModal(u, "reinstate")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors"><UserCheck size={14} /> Reinstate</button>
-                            }
-                            {u.idStatus === "pending" && (
-                              <>
-                                <button onClick={() => openActionModal(u, "verify_id")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#344e41] hover:bg-emerald-50 transition-colors"><BadgeCheck size={14} /> Approve ID</button>
-                                <button onClick={() => openActionModal(u, "reject_id")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"><XCircle size={14} /> Reject ID</button>
-                              </>
-                            )}
-                            <button onClick={() => openActionModal(u, "warn")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 transition-colors"><ShieldAlert size={14} /> Issue Warning</button>
-                            <button onClick={() => openActionModal(u, "ban")} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-700 hover:bg-red-50 transition-colors border-t border-slate-100 mt-1 pt-2"><Ban size={14} /> Ban User</button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-slate-400 text-sm">No users match your search.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Action Modal */}
-      {selectedUser && actionType && (
-        <ActionModal
-          title={ACTION_LABELS[actionType]?.label || actionType}
-          description={`${selectedUser.name} · ${selectedUser.email}`}
-          onClose={closeModal}
-          confirmLabel={ACTION_LABELS[actionType]?.label || "Confirm"}
-          confirmClass={ACTION_LABELS[actionType]?.color || "bg-slate-700 hover:bg-slate-800"}
-          onConfirm={handleConfirm}
-          loading={loading}
-        >
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Reason <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              rows={3}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Provide a mandatory justification for this action…"
-              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-[#344e41]/30 focus:border-[#344e41]"
-            />
-          </div>
-          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-sm text-amber-800">
-            <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
-            <span>This action will be recorded in the immutable <strong>User Management Actions</strong> audit log.</span>
-          </div>
-        </ActionModal>
-      )}
-    </div>
-  );
-}
-
-// ─── Main Admin Dashboard ─────────────────────────────────────────────────────
-
-const NAV_ITEMS = [
-  { key: "dashboard",  label: "Dashboard",          icon: LayoutDashboard       },
-  { key: "listings",   label: "Listing Approvals",  icon: Building2,    badge: STATS.pendingListings },
-  { key: "reviews",    label: "Review Moderation",  icon: MessageSquareWarning, badge: STATS.openReviewFlags },
-  { key: "users",      label: "User Management",    icon: Users                 },
+const INITIAL_REVIEWS = [
+  {
+    id: "rev-301",
+    authorName: "Amina Bello",
+    authorId: "usr-102",
+    propertyTitle: "Lekki Phase 1 Prime Villa",
+    listingId: "lst-203",
+    rating: 1,
+    comment:
+      "This listing posted fake photos! Water was leaking everywhere and landlord demanded cash outside the platform.",
+    submittedAt: "2026-07-23T07:20:00Z",
+    flagged: true,
+    flaggedBy: "Emeka Nwankwo (Landlord)",
+    flagReason: "Landlord claims tenant left false retaliatory review after deposit dispute.",
+    status: "Flagged",
+  },
+  {
+    id: "rev-302",
+    authorName: "Grace Kalu",
+    authorId: "usr-104",
+    propertyTitle: "Greenwich Estate 3-Bed Flat",
+    listingId: "lst-205",
+    rating: 5,
+    comment:
+      "Wonderful stay! Landlord Chidinma was extremely helpful and the apartment matched all photos.",
+    submittedAt: "2026-07-21T18:00:00Z",
+    flagged: false,
+    status: "Approved",
+  },
+  {
+    id: "rev-303",
+    authorName: "Anonymous Spammer",
+    authorId: "usr-999",
+    propertyTitle: "Skyline Tower, Studio Flat 4B",
+    listingId: "lst-202",
+    rating: 1,
+    comment:
+      "DO NOT RENT! Call +23480000000 to get free loans and crypto deals today!",
+    submittedAt: "2026-07-22T21:10:00Z",
+    flagged: true,
+    flaggedBy: "System Auto-Mod",
+    flagReason: "Spam content and external phone number advertisement detected.",
+    status: "Flagged",
+  },
 ];
 
 export default function AdminDashboard() {
-  const [activeSection, setActiveSection] = useState("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+  const { themePreference, setThemePreference, effectiveTheme, isDark, toggleTheme } = useTheme();
 
-  function renderSection() {
-    switch (activeSection) {
-      case "dashboard": return <DashboardSection />;
-      case "listings":  return <ListingApprovalsSection />;
-      case "reviews":   return <ReviewModerationSection />;
-      case "users":     return <UserManagementSection />;
-      default:          return <DashboardSection />;
+  // Mobile sidebar drawer state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings'
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // Handle Escape key to close mobile sidebar drawer
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        setIsSidebarOpen(false);
+      }
+    };
+    if (isSidebarOpen) {
+      window.addEventListener("keydown", handleKeyDown);
     }
-  }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isSidebarOpen]);
+
+  // Settings sub-tab: 'profile' | 'account' | 'appearance' | 'notifications' | 'preferences' | 'about'
+  const [settingsSubTab, setSettingsSubTab] = useState("profile");
+
+  const handleAdminSignOut = () => {
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("sessionExpiresAt");
+    navigate("/login");
+  };
+
+  // Dynamic state for core modules
+  const [users, setUsers] = useState(INITIAL_USERS);
+  const [listings, setListings] = useState(INITIAL_LISTINGS);
+  const [reviews, setReviews] = useState(INITIAL_REVIEWS);
+
+  // Filters & Search
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState("All");
+  const [userStatusFilter, setUserStatusFilter] = useState("All");
+
+  const [listingFilter, setListingFilter] = useState("All");
+  const [listingSearch, setListingSearch] = useState("");
+
+  const [reviewFilter, setReviewFilter] = useState("Flagged");
+  const [reviewSearch, setReviewSearch] = useState("");
+
+  // Selected item modal states
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedListing, setSelectedListing] = useState(null);
+  const [selectedReviewFlag, setSelectedReviewFlag] = useState(null);
+  const [rejectReasonInput, setRejectReasonInput] = useState("");
+  const [isRejectingModalOpen, setIsRejectingModalOpen] = useState(false);
+
+  // Notification Toast
+  const [toastMessage, setToastMessage] = useState(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3500);
+  };
+
+  // --- SETTINGS FORM STATES ---
+  const [profileForm, setProfileForm] = useState({
+    name: "Tunde Bakare",
+    username: "tundebakare_admin",
+    email: "tunde.b@lodale.com",
+    phone: "+234 809 333 2211",
+    avatarPreview: null,
+  });
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true);
+
+  const [notificationSettings, setNotificationSettings] = useState({
+    emailAlerts: true,
+    smsAlerts: false,
+    reviewAlerts: true,
+    listingAlerts: true,
+  });
+
+  const [preferenceSettings, setPreferenceSettings] = useState({
+    language: "English (UK)",
+    timeZone: "West Africa Time (WAT) GMT+1",
+    dateFormat: "DD/MM/YYYY",
+    timeFormat: "24-hour",
+  });
+
+  // Handlers for Settings
+  const handleSaveProfile = (e) => {
+    e.preventDefault();
+    showToast("Profile information saved successfully!");
+  };
+
+  const handleUpdatePassword = (e) => {
+    e.preventDefault();
+    if (!passwordForm.newPassword) {
+      showToast("Please enter a new password.");
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      showToast("New password and confirm password do not match!");
+      return;
+    }
+    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    showToast("Password updated successfully!");
+  };
+
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setProfileForm((prev) => ({ ...prev, avatarPreview: url }));
+      showToast("Profile photo updated!");
+    }
+  };
+
+  const handleSaveNotifications = (e) => {
+    e.preventDefault();
+    showToast("Notification preferences updated!");
+  };
+
+  const handleSavePreferences = (e) => {
+    e.preventDefault();
+    showToast("System preferences updated!");
+  };
+
+  // --- CORE ACTIONS ---
+  const handleToggleUserStatus = (userId) => {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === userId) {
+          const newStatus = u.status === "Active" ? "Suspended" : "Active";
+          showToast(`User ${u.name} is now ${newStatus}.`);
+          return {
+            ...u,
+            status: newStatus,
+            suspensionReason:
+              newStatus === "Suspended"
+                ? "Suspended by Admin for safety review."
+                : null,
+          };
+        }
+        return u;
+      })
+    );
+    if (selectedUser?.id === userId) {
+      setSelectedUser((prev) =>
+        prev
+          ? {
+            ...prev,
+            status: prev.status === "Active" ? "Suspended" : "Active",
+          }
+          : null
+      );
+    }
+  };
+
+  const handleDeleteUser = (userId) => {
+    const target = users.find((u) => u.id === userId);
+    if (
+      window.confirm(
+        `Are you sure you want to permanently delete user "${target?.name}"?`
+      )
+    ) {
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      showToast(`User ${target?.name} deleted.`);
+      if (selectedUser?.id === userId) setSelectedUser(null);
+    }
+  };
+
+  const handleApproveListing = (listingId) => {
+    setListings((prev) =>
+      prev.map((l) => {
+        if (l.id === listingId) {
+          return { ...l, status: "Live" };
+        }
+        return l;
+      })
+    );
+    const item = listings.find((l) => l.id === listingId);
+    showToast(`Listing "${item?.title}" approved and is now live!`);
+    if (selectedListing?.id === listingId) {
+      setSelectedListing((prev) => (prev ? { ...prev, status: "Live" } : null));
+    }
+  };
+
+  const handleRejectListing = (listingId, reason = "Failed verification requirements.") => {
+    setListings((prev) =>
+      prev.map((l) => {
+        if (l.id === listingId) {
+          return { ...l, status: "Rejected", rejectionReason: reason };
+        }
+        return l;
+      })
+    );
+    const item = listings.find((l) => l.id === listingId);
+    showToast(`Listing "${item?.title}" rejected.`);
+    setIsRejectingModalOpen(false);
+    setRejectReasonInput("");
+    if (selectedListing?.id === listingId) {
+      setSelectedListing((prev) =>
+        prev ? { ...prev, status: "Rejected", rejectionReason: reason } : null
+      );
+    }
+  };
+
+  const handleRemoveListing = (listingId) => {
+    const item = listings.find((l) => l.id === listingId);
+    if (
+      window.confirm(
+        `Remove fraudulent listing "${item?.title}" from platform?`
+      )
+    ) {
+      setListings((prev) => prev.filter((l) => l.id !== listingId));
+      showToast(`Listing "${item?.title}" removed.`);
+      if (selectedListing?.id === listingId) setSelectedListing(null);
+    }
+  };
+
+  const handleDismissFlag = (reviewId) => {
+    setReviews((prev) =>
+      prev.map((r) => {
+        if (r.id === reviewId) {
+          return { ...r, flagged: false, status: "Approved" };
+        }
+        return r;
+      })
+    );
+    showToast("Flag dismissed. Review kept on platform.");
+    if (selectedReviewFlag?.id === reviewId) setSelectedReviewFlag(null);
+  };
+
+  const handleRemoveReview = (reviewId) => {
+    setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+    showToast("Abusive/fake review removed.");
+    if (selectedReviewFlag?.id === reviewId) setSelectedReviewFlag(null);
+  };
+
+  // --- FILTERED COMPUTATIONS ---
+  const filteredUsers = useMemo(() => {
+    return users.filter((u) => {
+      const matchesSearch =
+        u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
+        u.email.toLowerCase().includes(userSearch.toLowerCase());
+      const matchesRole =
+        userRoleFilter === "All" || u.role === userRoleFilter;
+      const matchesStatus =
+        userStatusFilter === "All" || u.status === userStatusFilter;
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [users, userSearch, userRoleFilter, userStatusFilter]);
+
+  const filteredListings = useMemo(() => {
+    return listings.filter((l) => {
+      const matchesSearch =
+        l.title.toLowerCase().includes(listingSearch.toLowerCase()) ||
+        l.location.toLowerCase().includes(listingSearch.toLowerCase()) ||
+        l.landlord.name.toLowerCase().includes(listingSearch.toLowerCase());
+      const matchesStatus =
+        listingFilter === "All" || l.status === listingFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [listings, listingSearch, listingFilter]);
+
+  const filteredReviews = useMemo(() => {
+    return reviews.filter((r) => {
+      const matchesSearch =
+        r.comment.toLowerCase().includes(reviewSearch.toLowerCase()) ||
+        r.authorName.toLowerCase().includes(reviewSearch.toLowerCase()) ||
+        r.propertyTitle.toLowerCase().includes(reviewSearch.toLowerCase());
+      const matchesFlagged =
+        reviewFilter === "All" || (reviewFilter === "Flagged" && r.flagged);
+      return matchesSearch && matchesFlagged;
+    });
+  }, [reviews, reviewSearch, reviewFilter]);
+
+  const totalUsersCount = users.length;
+  const pendingListingsCount = listings.filter(
+    (l) => l.status === "Pending Approval"
+  ).length;
+  const flaggedReviewsCount = reviews.filter((r) => r.flagged).length;
+
+  const actionRequiredFeed = useMemo(() => {
+    const items = [
+      ...listings
+        .filter((l) => l.status === "Pending Approval")
+        .map((l) => ({
+          type: "listing",
+          id: l.id,
+          title: l.title,
+          sub: `${l.location} • Submitted by ${l.landlord.name}`,
+          timestamp: l.submittedAt,
+          raw: l,
+        })),
+      ...reviews
+        .filter((r) => r.flagged)
+        .map((r) => ({
+          type: "review",
+          id: r.id,
+          title: `Flagged Review on "${r.propertyTitle}"`,
+          sub: `Reported by ${r.flaggedBy} • "${r.comment.slice(0, 70)}..."`,
+          timestamp: r.submittedAt,
+          raw: r,
+        })),
+    ];
+    return items.sort(
+      (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+    );
+  }, [listings, reviews]);
+
+  const SETTINGS_PAGES = [
+    { id: "profile", label: "Profile", icon: User },
+    { id: "account", label: "Account & Security", icon: Lock },
+    { id: "appearance", label: "Appearance", icon: Palette },
+    { id: "notifications", label: "Notifications", icon: Bell },
+    { id: "preferences", label: "Preferences", icon: Sliders },
+    { id: "about", label: "About", icon: Info },
+  ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* ── Sidebar ── */}
-      <aside className={`fixed inset-y-0 left-0 z-30 w-64 bg-[#263b33] flex flex-col transform transition-transform duration-200 lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-white/10">
-          <div className="w-8 h-8 rounded-lg bg-[#E5C583] flex items-center justify-center flex-shrink-0">
-            <Shield size={16} className="text-[#263b33]" />
-          </div>
-          <div>
-            <p className="font-semibold text-white text-sm leading-tight">Lodale Admin</p>
-            <p className="text-white/40 text-xs">Control Panel</p>
-          </div>
+    <div className="min-h-screen bg-[#DAD7CD] dark:bg-[#0E1714] text-[#262626] dark:text-[#E4EBE6] font-sans flex flex-col antialiased selection:bg-[#3A5A40] selection:text-white transition-colors duration-200">
+      {/* --- TOAST NOTIFICATION --- */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 left-5 sm:left-auto z-50 bg-[#344E41] dark:bg-[#1A3329] text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 border border-[#3A5A40] dark:border-[#2C4638] animate-bounce">
+          <ShieldCheck className="h-5 w-5 text-[#DAD7CD] dark:text-[#E5C583]" />
+          <span className="text-sm font-medium">{toastMessage}</span>
         </div>
+      )}
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map((item) => {
-            const active = activeSection === item.key;
-            return (
+      {/* --- MOBILE/TABLET HEADER --- */}
+      <header className="sticky top-0 z-30 md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-[#16241F] border-b border-[#3A5A40]/20 dark:border-[#263D33] shadow-sm transition-colors duration-200">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-1.5 rounded-lg text-[#3A5A40] dark:text-[#E5C583] hover:bg-[#DAD7CD]/50 dark:hover:bg-[#1E3029] transition-colors focus:outline-none focus:ring-2 focus:ring-[#3A5A40]/40"
+            aria-label="Open sidebar"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+          <Logo className="scale-90 origin-left" />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium uppercase px-2 py-0.5 rounded bg-[#3A5A40] dark:bg-[#1C3028] text-white dark:text-[#E5C583]">
+            Admin
+          </span>
+        </div>
+      </header>
+
+      {/* --- INNER WRAPPER --- */}
+      <div className="flex-1 flex flex-col md:flex-row min-h-0">
+        {/* --- BACKDROP OVERLAY FOR DRAWER --- */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        {/* --- LEFT SIDEBAR NAVIGATION --- */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#344E41] dark:bg-[#121F1A] text-white flex-shrink-0 border-r border-[#3A5A40] dark:border-[#1E332B] flex flex-col justify-between transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:flex ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+        >
+          <div>
+            {/* Top Logo Container */}
+            <div className="p-6 border-b border-[#3A5A40] dark:border-[#1E332B] flex items-center justify-between">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-3">
+                  <Logo variant="white" className="scale-90 origin-left" />
+                </div>
+                <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#3A5A40] dark:bg-[#1C3028] text-[11px] text-[#DAD7CD] dark:text-[#E5C583] font-medium uppercase tracking-wider w-max">
+                  <ShieldAlert className="h-3 w-3" /> Admin Portal
+                </div>
+              </div>
+              {/* Close Button inside the drawer */}
               <button
-                key={item.key}
-                onClick={() => { setActiveSection(item.key); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-medium transition-all group ${
-                  active
-                    ? "bg-white/10 text-white"
-                    : "text-white/55 hover:text-white hover:bg-white/5"
-                }`}
+                onClick={() => setIsSidebarOpen(false)}
+                className="md:hidden p-1.5 rounded-lg text-[#DAD7CD] hover:text-white hover:bg-[#3A5A40] dark:hover:bg-[#1C3028] transition-colors focus:outline-none"
+                aria-label="Close sidebar"
               >
-                <item.icon size={18} className={active ? "text-[#E5C583]" : "text-white/40 group-hover:text-white/70"} />
-                <span className="flex-1 text-left">{item.label}</span>
-                {item.badge != null && item.badge > 0 && (
-                  <span className="bg-[#E5C583] text-[#263b33] text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center">
-                    {item.badge}
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Navigation Links */}
+            <nav className="p-3 space-y-1">
+              {/* Overview */}
+              <button
+                onClick={() => {
+                  setActiveTab("overview");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "overview"
+                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                  }`}
+              >
+                <LayoutDashboard className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                <span>Dashboard Overview</span>
+              </button>
+
+              <div className="pt-3 pb-1 px-3 text-[10.5px] font-semibold text-[#DAD7CD]/70 dark:text-[#A3BCA7]/70 uppercase tracking-wider whitespace-nowrap">
+                Safety &amp; Management
+              </div>
+
+              {/* 1. User Management */}
+              <button
+                onClick={() => {
+                  setActiveTab("users");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "users"
+                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Users className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">1. User Management</span>
+                </div>
+                <span className="text-[11px] bg-[#262626]/40 dark:bg-black/40 px-1.5 py-0.5 rounded-full text-[#DAD7CD] ml-1 shrink-0">
+                  {users.length}
+                </span>
+              </button>
+
+              {/* 2. Listing Oversight */}
+              <button
+                onClick={() => {
+                  setActiveTab("listings");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "listings"
+                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Building2 className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">2. Listing Oversight</span>
+                </div>
+                {pendingListingsCount > 0 && (
+                  <span className="text-[11px] bg-amber-600 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
+                    {pendingListingsCount}
                   </span>
                 )}
               </button>
-            );
-          })}
-        </nav>
 
-        {/* Admin identity */}
-        <div className="px-4 py-4 border-t border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#344e41] flex items-center justify-center flex-shrink-0">
-              <User size={14} className="text-white/70" />
+              {/* 3. Review & Rating Moderation */}
+              <button
+                onClick={() => {
+                  setActiveTab("reviews");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "reviews"
+                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <MessageSquareWarning className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">3. Review Moderation</span>
+                </div>
+                {flaggedReviewsCount > 0 && (
+                  <span className="text-[11px] bg-rose-700 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
+                    {flaggedReviewsCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Section: Settings Header */}
+              <div className="pt-3 pb-1 px-3 text-[10.5px] font-semibold text-[#DAD7CD]/70 dark:text-[#A3BCA7]/70 uppercase tracking-wider whitespace-nowrap">
+                Settings
+              </div>
+
+              {/* Settings Main & Sub-links */}
+              <button
+                onClick={() => {
+                  setActiveTab("settings");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "settings"
+                  ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                  }`}
+              >
+                <Settings className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                <span>Admin Settings</span>
+              </button>
+
+              {/* Sub-item links for quick access */}
+              <div className="pl-5 space-y-0.5 pt-0.5">
+                {SETTINGS_PAGES.map((sp) => {
+                  const IconComp = sp.icon;
+                  const isSubActive = activeTab === "settings" && settingsSubTab === sp.id;
+                  return (
+                    <button
+                      key={sp.id}
+                      onClick={() => {
+                        setActiveTab("settings");
+                        setSettingsSubTab(sp.id);
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11.5px] font-medium transition-colors whitespace-nowrap ${isSubActive
+                        ? "bg-[#3A5A40]/80 dark:bg-[#1C332A] text-white font-semibold"
+                        : "text-[#DAD7CD]/80 dark:text-[#A3BCA7]/80 hover:text-white hover:bg-[#3A5A40]/30"
+                        }`}
+                    >
+                      <IconComp className="h-3.5 w-3.5 shrink-0" />
+                      <span>{sp.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </div>
+
+          {/* Footer Admin info & Navigation controls */}
+          <div className="p-4 border-t border-[#3A5A40] dark:border-[#1E332B] space-y-3">
+            <div className="flex items-center justify-between text-xs text-[#DAD7CD]/80 dark:text-[#A3BCA7]">
+              <div>
+                <p className="font-semibold text-white">{profileForm.name}</p>
+                <p className="text-[11px] text-[#DAD7CD] dark:text-[#A3BCA7]">System Administrator</p>
+              </div>
+              <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-white truncate">Admin</p>
-              <p className="text-xs text-white/40 truncate">Super Admin</p>
+
+            <div className="pt-2 border-t border-[#3A5A40]/60 dark:border-[#1E332B]/60 space-y-1.5 text-xs font-medium">
+              <button
+                onClick={() => {
+                  setIsSidebarOpen(false);
+                  navigate("/explore");
+                }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-[#DAD7CD] hover:bg-[#3A5A40] hover:text-white transition-colors"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                <span>Return to Public Site</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsSidebarOpen(false);
+                  handleAdminSignOut();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-rose-300 hover:bg-rose-900/40 hover:text-rose-100 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        {/* --- MAIN AREA --- */}
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full min-w-0 overflow-y-auto overflow-x-hidden">
+          {/* --- TAB 0: DASHBOARD OVERVIEW --- */}
+          {activeTab === "overview" && (
+            <div className="space-y-8">
+              <div>
+                <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  Dashboard Overview
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  Real-time safety metrics and high-priority platform action items.
+                </p>
+              </div>
+
+              {/* Key Numbers Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {/* Card 1: Total Users */}
+                <div
+                  onClick={() => setActiveTab("users")}
+                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+                >
+                  <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
+                      Total Users
+                    </span>
+                    <div className="p-2 rounded-lg bg-[#DAD7CD]/50 dark:bg-[#1D3029]">
+                      <Users className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
+                      {totalUsersCount}
+                    </span>
+                    <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                      {users.filter((u) => u.status === "Active").length} active
+                    </span>
+                  </div>
+                  <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
+                    Manage accounts <ChevronRight className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+
+                {/* Card 2: Listings Waiting Approval */}
+                <div
+                  onClick={() => setActiveTab("listings")}
+                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+                >
+                  <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
+                      Listings Pending Review
+                    </span>
+                    <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
+                      {pendingListingsCount}
+                    </span>
+                    <span className="text-xs text-amber-800 dark:text-amber-400 font-medium">
+                      needs verification
+                    </span>
+                  </div>
+                  <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
+                    Review listings <ChevronRight className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+
+                {/* Card 3: Flagged Reviews */}
+                <div
+                  onClick={() => setActiveTab("reviews")}
+                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+                >
+                  <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
+                      Flagged Reviews
+                    </span>
+                    <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300">
+                      <MessageSquareWarning className="h-5 w-5" />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="font-serif text-3xl font-bold text-[#262626] dark:text-[#F0F5F2]">
+                      {flaggedReviewsCount}
+                    </span>
+                    <span className="text-xs text-rose-800 dark:text-rose-400 font-medium">
+                      needing moderation
+                    </span>
+                  </div>
+                  <div className="mt-4 text-xs text-[#3A5A40] dark:text-[#E5C583] flex items-center gap-1 font-medium">
+                    Moderate reviews <ChevronRight className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Short list: What needs action right now */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 sm:p-6 shadow-sm">
+                <div className="flex items-center justify-between pb-4 border-b border-[#DAD7CD] dark:border-[#233B31]">
+                  <div>
+                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                      <Clock className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                      Action Required Right Now
+                    </h2>
+                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
+                      Pending approvals and flagged reviews ordered by most recent first.
+                    </p>
+                  </div>
+                  <span className="text-xs bg-[#DAD7CD] dark:bg-[#233B31] px-2.5 py-1 rounded-full text-[#262626] dark:text-[#E4EBE6] font-medium">
+                    {actionRequiredFeed.length} Items Pending
+                  </span>
+                </div>
+
+                <div className="mt-4 divide-y divide-[#DAD7CD]/60 dark:divide-[#233B31]">
+                  {actionRequiredFeed.length === 0 ? (
+                    <div className="py-8 text-center text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                      <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400 mx-auto mb-2" />
+                      All clear! No pending listing approvals or flagged reviews.
+                    </div>
+                  ) : (
+                    actionRequiredFeed.map((item) => (
+                      <div
+                        key={`${item.type}-${item.id}`}
+                        className="py-4 flex flex-col md:flex-row md:flex-wrap lg:flex-nowrap md:items-center justify-between gap-4 hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] px-2 rounded-lg transition-colors w-full min-w-0"
+                      >
+                        <div className="space-y-1 min-w-0 md:flex-1">
+                          <div className="flex items-center gap-2">
+                            {item.type === "listing" ? (
+                              <span className="text-[11px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2 py-0.5 rounded">
+                                Listing Approval
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-bold uppercase bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded">
+                                Flagged Review
+                              </span>
+                            )}
+                            <span className="text-xs text-[#262626]/50 dark:text-[#A3BCA7]/60">
+                              {new Date(item.timestamp).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <h3 className="font-medium text-sm text-[#262626] dark:text-[#F0F5F2]">
+                            {item.title}
+                          </h3>
+                          <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">{item.sub}</p>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="grid grid-cols-1 min-[350px]:grid-cols-2 md:flex md:flex-wrap md:items-center md:flex-shrink-0 gap-2 w-full md:w-auto">
+                          {item.type === "listing" ? (
+                            <>
+                              <button
+                                onClick={() => setSelectedListing(item.raw)}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors col-span-1 min-[350px]:col-span-2 md:col-span-1 text-center"
+                              >
+                                Inspect
+                              </button>
+                              <button
+                                onClick={() => handleApproveListing(item.id)}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded flex items-center justify-center gap-1 transition-colors"
+                              >
+                                <Check className="h-3.5 w-3.5" /> Approve
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedListing(item.raw);
+                                  setIsRejectingModalOpen(true);
+                                }}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded flex items-center justify-center gap-1 transition-colors"
+                              >
+                                <X className="h-3.5 w-3.5" /> Reject
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setSelectedReviewFlag(item.raw)}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors col-span-1 min-[350px]:col-span-2 md:col-span-1 text-center"
+                              >
+                                Report Details
+                              </button>
+                              <button
+                                onClick={() => handleDismissFlag(item.id)}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors text-center"
+                              >
+                                Keep Review
+                              </button>
+                              <button
+                                onClick={() => handleRemoveReview(item.id)}
+                                className="w-full md:w-auto px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors text-center"
+                              >
+                                Remove
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* --- TAB 1: USER MANAGEMENT --- */}
+          {activeTab === "users" && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  1. User Management
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  View all registered users, inspect profiles, suspend/activate, or delete accounts.
+                </p>
+              </div>
+
+              {/* Search and Filters Bar */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+                  <input
+                    type="text"
+                    placeholder="Search user by name or email..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                  <div className="flex items-center gap-1.5 text-xs text-[#262626]/80 dark:text-[#A3BCA7] font-medium">
+                    <Filter className="h-3.5 w-3.5" /> Filter Role:
+                  </div>
+                  <select
+                    value={userRoleFilter}
+                    onChange={(e) => setUserRoleFilter(e.target.value)}
+                    className="text-xs bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg px-2.5 py-2 text-[#262626] dark:text-[#E4EBE6] font-medium focus:outline-none"
+                  >
+                    <option value="All">All Roles</option>
+                    <option value="Landlord">Landlord</option>
+                    <option value="Tenant">Tenant</option>
+                    <option value="Admin">Admin</option>
+                  </select>
+
+                  <select
+                    value={userStatusFilter}
+                    onChange={(e) => setUserStatusFilter(e.target.value)}
+                    className="text-xs bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg px-2.5 py-2 text-[#262626] dark:text-[#E4EBE6] font-medium focus:outline-none"
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Active">Active</option>
+                    <option value="Suspended">Suspended</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Users Table */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#344E41] dark:bg-[#1A2E26] text-white text-xs font-semibold uppercase tracking-wider">
+                      <th className="py-3 px-4">User</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4">Verifications</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#DAD7CD] dark:divide-[#233B31] text-sm">
+                    {filteredUsers.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center text-[#262626]/60 dark:text-[#A3BCA7]/70 text-xs">
+                          No users found matching filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="font-medium text-[#262626] dark:text-[#F0F5F2]">{user.name}</div>
+                            <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">{user.email}</div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span
+                              className={`inline-block text-xs px-2.5 py-0.5 rounded font-semibold ${user.role === "Landlord"
+                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border dark:border-emerald-800/50"
+                                : user.role === "Admin"
+                                  ? "bg-purple-100 text-purple-900 dark:bg-purple-950/80 dark:text-purple-300 dark:border dark:border-purple-800/50"
+                                  : "bg-blue-100 text-blue-900 dark:bg-blue-950/80 dark:text-blue-300 dark:border dark:border-blue-800/50"
+                                }`}
+                            >
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-wrap gap-1">
+                              {user.verifications.map((v, i) => (
+                                <span
+                                  key={i}
+                                  className="text-[10px] bg-[#DAD7CD] dark:bg-[#233B31] px-1.5 py-0.5 rounded text-[#262626] dark:text-[#E4EBE6] font-medium"
+                                >
+                                  {v}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            {user.status === "Active" ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                                <span className="h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-400"></span> Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-rose-700 dark:text-rose-400">
+                                <span className="h-2 w-2 rounded-full bg-rose-600 dark:bg-rose-400"></span> Suspended
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-4 text-right space-x-2">
+                            <button
+                              onClick={() => setSelectedUser(user)}
+                              className="p-1.5 text-[#344E41] dark:text-[#E5C583] hover:bg-[#DAD7CD] dark:hover:bg-[#233B31] rounded transition-colors"
+                              title="View Profile"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleToggleUserStatus(user.id)}
+                              className={`p-1.5 rounded transition-colors ${user.status === "Active"
+                                ? "text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                                : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+                                }`}
+                              title={user.status === "Active" ? "Suspend Account" : "Activate Account"}
+                            >
+                              {user.status === "Active" ? (
+                                <UserX className="h-4 w-4" />
+                              ) : (
+                                <UserCheck className="h-4 w-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="p-1.5 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded transition-colors"
+                              title="Delete Account"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* --- TAB 2: LISTING OVERSIGHT --- */}
+          {activeTab === "listings" && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  2. Listing Oversight
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  Review new listings waiting to go live, approve or reject submissions, or remove fraudulent listings.
+                </p>
+              </div>
+
+              {/* Filter Tabs & Search */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
+                  {["All", "Pending Approval", "Live", "Rejected"].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setListingFilter(tab)}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${listingFilter === tab
+                        ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                        : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                        }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+                  <input
+                    type="text"
+                    placeholder="Search title, area, landlord..."
+                    value={listingSearch}
+                    onChange={(e) => setListingSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+                  />
+                </div>
+              </div>
+
+              {/* Listings Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredListings.length === 0 ? (
+                  <div className="col-span-2 py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                    No listings found for the selected filter.
+                  </div>
+                ) : (
+                  filteredListings.map((lst) => (
+                    <div
+                      key={lst.id}
+                      className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col justify-between space-y-4 shadow-sm"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span
+                            className={`text-xs px-2.5 py-0.5 rounded font-bold uppercase ${lst.status === "Live"
+                              ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
+                              : lst.status === "Pending Approval"
+                                ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
+                                : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
+                              }`}
+                          >
+                            {lst.status}
+                          </span>
+                          <span className="text-xs text-[#262626]/50 dark:text-[#A3BCA7]/60">
+                            {lst.type}
+                          </span>
+                        </div>
+
+                        <h3 className="font-serif font-semibold text-lg text-[#262626] dark:text-[#F0F5F2]">
+                          {lst.title}
+                        </h3>
+                        <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex items-center gap-1 mt-1">
+                          <MapPin className="h-3.5 w-3.5 text-[#3A5A40] dark:text-[#E5C583]" /> {lst.location}
+                        </p>
+
+                        <div className="mt-3 text-sm font-bold text-[#344E41] dark:text-[#E5C583]">
+                          {lst.price}
+                        </div>
+
+                        <div className="mt-2 pt-2 border-t border-[#DAD7CD] dark:border-[#233B31] text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                          <span>Landlord: <strong className="text-[#262626] dark:text-[#F0F5F2]">{lst.landlord.name}</strong></span>
+                          <span>Deed Verified: {lst.deedVerified ? "Yes" : "No"}</span>
+                        </div>
+
+                        {lst.fraudWarning && (
+                          <div className="mt-3 p-2.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900/60 rounded text-xs text-rose-800 dark:text-rose-300 flex items-start gap-2">
+                            <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                            <span>{lst.fraudWarning}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-between gap-2">
+                        <button
+                          onClick={() => setSelectedListing(lst)}
+                          className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                        >
+                          Inspect Details
+                        </button>
+
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {lst.status === "Pending Approval" && (
+                            <>
+                              <button
+                                onClick={() => handleApproveListing(lst.id)}
+                                className="px-2.5 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedListing(lst);
+                                  setIsRejectingModalOpen(true);
+                                }}
+                                className="px-2.5 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleRemoveListing(lst.id)}
+                            className="px-2.5 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
+                            title="Remove if fraudulent"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* --- TAB 3: REVIEW & RATING MODERATION --- */}
+          {activeTab === "reviews" && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  3. Review &amp; Rating Moderation
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  Filter reported reviews, inspect details, and remove fake or abusive ratings.
+                </p>
+              </div>
+
+              {/* Filter Toggle & Search */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
+                  <button
+                    onClick={() => setReviewFilter("Flagged")}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "Flagged"
+                      ? "bg-rose-800 text-white"
+                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                      }`}
+                  >
+                    Flagged Only ({flaggedReviewsCount})
+                  </button>
+                  <button
+                    onClick={() => setReviewFilter("All")}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "All"
+                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                      }`}
+                  >
+                    All Reviews ({reviews.length})
+                  </button>
+                </div>
+
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+                  <input
+                    type="text"
+                    placeholder="Search in reviews..."
+                    value={reviewSearch}
+                    onChange={(e) => setReviewSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+                  />
+                </div>
+              </div>
+
+              {/* Reviews Feed */}
+              <div className="space-y-4">
+                {filteredReviews.length === 0 ? (
+                  <div className="py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                    No reviews match your current view.
+                  </div>
+                ) : (
+                  filteredReviews.map((rev) => (
+                    <div
+                      key={rev.id}
+                      className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm"
+                    >
+                      <div className="space-y-2 max-w-2xl">
+                        <div className="flex items-center gap-2">
+                          <div className="flex text-amber-500">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${i < rev.rating ? "fill-amber-400 text-amber-400" : "text-gray-300 dark:text-gray-600"
+                                  }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                            {rev.propertyTitle}
+                          </span>
+                          {rev.flagged && (
+                            <span className="text-[10px] bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded font-bold uppercase">
+                              FLAGGED
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-sm text-[#262626] dark:text-[#E4EBE6] italic">
+                          "{rev.comment}"
+                        </p>
+
+                        <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                          By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {new Date(rev.submittedAt).toLocaleDateString()}
+                        </div>
+
+                        {rev.flagged && (
+                          <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded text-xs text-amber-900 dark:text-amber-300">
+                            <strong>Reported reason:</strong> {rev.flagReason}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => setSelectedReviewFlag(rev)}
+                          className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                        >
+                          Report Details
+                        </button>
+
+                        {rev.flagged && (
+                          <button
+                            onClick={() => handleDismissFlag(rev.id)}
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                          >
+                            Dismiss Flag (Keep)
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleRemoveReview(rev.id)}
+                          className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                        >
+                          Remove Review
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* --- TAB 4: SETTINGS MODULE (EXPANDED & REDESIGNED) --- */}
+          {(activeTab === "settings" || activeTab.startsWith("settings-")) && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Main Header */}
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#E5C583] uppercase tracking-wider mb-1">
+                  <Settings className="h-4 w-4" /> System Administration
+                </div>
+                <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  Admin Settings
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  Manage your account credentials, security rules, notification preferences, and system parameters.
+                </p>
+              </div>
+
+              {/* Top Compact Sub-Navigation Tabs Bar */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-2 shadow-sm overflow-x-auto">
+                <div className="flex items-center gap-1.5 min-w-max">
+                  {SETTINGS_PAGES.map((page) => {
+                    const IconComp = page.icon;
+                    const isActive = settingsSubTab === page.id;
+                    return (
+                      <button
+                        key={page.id}
+                        onClick={() => setSettingsSubTab(page.id)}
+                        className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition-all cursor-pointer ${isActive
+                          ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512] shadow-sm"
+                          : "text-[#262626]/80 dark:text-[#A3BCA7] hover:bg-[#DAD7CD]/50 dark:hover:bg-[#1D3029] hover:text-[#262626] dark:hover:text-white"
+                          }`}
+                      >
+                        <IconComp className="h-3.5 w-3.5" />
+                        <span>{page.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* --- SETTINGS PAGE 1: PROFILE --- */}
+              {settingsSubTab === "profile" && (
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                  <div>
+                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                      <User className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                      Admin Profile
+                    </h2>
+                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
+                      Update your public administrator details and identity attributes.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSaveProfile} className="space-y-6">
+                    {/* Photo Upload Section */}
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                      <div className="relative shrink-0">
+                        <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#E5C583] dark:text-[#0B1512] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
+                          {profileForm.avatarPreview ? (
+                            <img
+                              src={profileForm.avatarPreview}
+                              alt="Avatar Preview"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            "TB"
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 text-center sm:text-left">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                          <label
+                            htmlFor="avatar-upload"
+                            className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Upload className="h-3.5 w-3.5" /> Upload Photo
+                          </label>
+                          <input
+                            id="avatar-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                          />
+                          {profileForm.avatarPreview && (
+                            <button
+                              type="button"
+                              onClick={() => setProfileForm((p) => ({ ...p, avatarPreview: null }))}
+                              className="px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                          Supported formats: JPG, PNG, GIF. Maximum size 2MB.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Profile Form Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                          Full Name
+                        </label>
+                        <input
+                          type="text"
+                          value={profileForm.name}
+                          onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                          required
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                          Username
+                        </label>
+                        <input
+                          type="text"
+                          value={profileForm.username}
+                          onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
+                          required
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          value={profileForm.email}
+                          onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                          required
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                          Phone Number
+                        </label>
+                        <input
+                          type="text"
+                          value={profileForm.phone}
+                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors shadow-sm"
+                      >
+                        Save Profile Changes
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* --- SETTINGS PAGE 2: ACCOUNT & SECURITY --- */}
+              {settingsSubTab === "account" && (
+                <div className="space-y-6">
+                  {/* Change Password */}
+                  <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+                    <div>
+                      <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                        <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                        Change Password
+                      </h2>
+                      <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
+                        Ensure your account is using a long, random password to stay secure.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                          Current Password
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="••••••••"
+                          value={passwordForm.currentPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="••••••••"
+                          value={passwordForm.newPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="••••••••"
+                          value={passwordForm.confirmPassword}
+                          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="px-4 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors"
+                      >
+                        Update Password
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Two-Factor Authentication (2FA) */}
+                  <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <h3 className="font-serif text-base font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                          <Shield className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                          Two-Factor Authentication (2FA)
+                        </h3>
+                        <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-0.5">
+                          Add an extra layer of security by requiring a 6-digit code when logging in.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTwoFactorEnabled(!twoFactorEnabled);
+                          showToast(`Two-factor authentication ${!twoFactorEnabled ? "enabled" : "disabled"}.`);
+                        }}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${twoFactorEnabled ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
+                          }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${twoFactorEnabled ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
+                            }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Active Sessions */}
+                  <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-serif text-base font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                          <Laptop className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                          Active Login Sessions
+                        </h3>
+                        <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-0.5">
+                          Devices currently signed in to your administrator account.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => showToast("Logged out from all other device sessions.")}
+                        className="px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                      >
+                        Logout from All Devices
+                      </button>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                      <div className="p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                          <Laptop className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
+                          <div>
+                            <p className="font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                              Windows PC · Chrome 126
+                            </p>
+                            <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                              Lagos, Nigeria • 102.89.22.14 • Active Now
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 rounded text-[10px] font-bold uppercase">
+                          Current Session
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                          <Smartphone className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
+                          <div>
+                            <p className="font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                              iPhone 14 Pro · Mobile Safari
+                            </p>
+                            <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                              Lagos, Nigeria • 102.89.45.88 • Last active 2 hours ago
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => showToast("Session revoked.")}
+                          className="text-xs text-rose-600 hover:underline"
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* --- SETTINGS PAGE 3: APPEARANCE --- */}
+              {settingsSubTab === "appearance" && (
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                  <div>
+                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                      <Palette className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                      Appearance &amp; Theme
+                    </h2>
+                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                      Select your preferred visual mode. Theme changes apply instantly across your administrator interface.
+                    </p>
+                  </div>
+
+                  {/* Clean Radio Group / Segmented Control */}
+                  <div className="space-y-3 max-w-lg">
+                    <span className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6]">
+                      Interface Theme Mode
+                    </span>
+
+                    <div className="space-y-2">
+                      {/* System Option */}
+                      <label
+                        onClick={() => setThemePreference("system")}
+                        className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${themePreference === "system"
+                          ? "border-[#3A5A40] dark:border-[#E5C583] bg-[#DAD7CD]/30 dark:bg-[#1B2C25] ring-1 ring-[#3A5A40] dark:ring-[#E5C583]"
+                          : "border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] hover:bg-[#DAD7CD]/20"
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Monitor className="h-4.5 w-4.5 text-[#3A5A40] dark:text-[#E5C583]" />
+                          <div>
+                            <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                              System Preference
+                            </p>
+                            <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                              Automatically matches your OS or browser light/dark setting.
+                            </p>
+                          </div>
+                        </div>
+                        <input
+                          type="radio"
+                          name="theme-radio"
+                          checked={themePreference === "system"}
+                          onChange={() => setThemePreference("system")}
+                          className="accent-[#3A5A40] dark:accent-[#E5C583]"
+                        />
+                      </label>
+
+                      {/* Light Option */}
+                      <label
+                        onClick={() => setThemePreference("light")}
+                        className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${themePreference === "light"
+                          ? "border-[#3A5A40] dark:border-[#E5C583] bg-[#DAD7CD]/30 dark:bg-[#1B2C25] ring-1 ring-[#3A5A40] dark:ring-[#E5C583]"
+                          : "border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] hover:bg-[#DAD7CD]/20"
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Sun className="h-4.5 w-4.5 text-amber-600" />
+                          <div>
+                            <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                              Light Mode
+                            </p>
+                            <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                              Lodale classic cream (#DAD7CD) &amp; sage palette.
+                            </p>
+                          </div>
+                        </div>
+                        <input
+                          type="radio"
+                          name="theme-radio"
+                          checked={themePreference === "light"}
+                          onChange={() => setThemePreference("light")}
+                          className="accent-[#3A5A40] dark:accent-[#E5C583]"
+                        />
+                      </label>
+
+                      {/* Dark Option */}
+                      <label
+                        onClick={() => setThemePreference("dark")}
+                        className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${themePreference === "dark"
+                          ? "border-[#3A5A40] dark:border-[#E5C583] bg-[#DAD7CD]/30 dark:bg-[#1B2C25] ring-1 ring-[#3A5A40] dark:ring-[#E5C583]"
+                          : "border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] hover:bg-[#DAD7CD]/20"
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Moon className="h-4.5 w-4.5 text-indigo-400" />
+                          <div>
+                            <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                              Dark Mode
+                            </p>
+                            <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                              Deep forest charcoal (#0E1714) for low-light work.
+                            </p>
+                          </div>
+                        </div>
+                        <input
+                          type="radio"
+                          name="theme-radio"
+                          checked={themePreference === "dark"}
+                          onChange={() => setThemePreference("dark")}
+                          className="accent-[#3A5A40] dark:accent-[#E5C583]"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 bg-[#DAD7CD]/30 dark:bg-[#121F1A] rounded-lg border border-[#3A5A40]/20 dark:border-[#233B31] text-xs text-[#262626]/80 dark:text-[#A3BCA7] flex items-center justify-between">
+                    <span>Currently Active Theme: <strong className="capitalize text-[#262626] dark:text-[#F0F5F2]">{effectiveTheme}</strong> Mode</span>
+                    <span className="text-[11px] bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512] px-2 py-0.5 rounded font-bold">
+                      {themePreference === "system" ? "Synced with OS" : "Manual Preference"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* --- SETTINGS PAGE 4: NOTIFICATIONS --- */}
+              {settingsSubTab === "notifications" && (
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                  <div>
+                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                      <Bell className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                      Notification Channels &amp; Alerts
+                    </h2>
+                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                      Control how and when you receive administrative alerts and safety notifications.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSaveNotifications} className="space-y-4 max-w-xl">
+                    {/* Email Notifications */}
+                    <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                          Email Digest &amp; Alerts
+                        </p>
+                        <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                          Receive daily administrative summaries and critical platform updates via email.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNotificationSettings((n) => ({ ...n, emailAlerts: !n.emailAlerts }))
+                        }
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${notificationSettings.emailAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
+                          }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notificationSettings.emailAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
+                            }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* SMS Alerts */}
+                    <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                          SMS Emergency Alerts
+                        </p>
+                        <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                          Receive immediate SMS text notifications for urgent security breaches.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNotificationSettings((n) => ({ ...n, smsAlerts: !n.smsAlerts }))
+                        }
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${notificationSettings.smsAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
+                          }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notificationSettings.smsAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
+                            }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Review Alerts */}
+                    <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                          Review Moderation Alerts
+                        </p>
+                        <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                          Get notified when a user or host flags a review as fake or abusive.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNotificationSettings((n) => ({ ...n, reviewAlerts: !n.reviewAlerts }))
+                        }
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${notificationSettings.reviewAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
+                          }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notificationSettings.reviewAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
+                            }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Listing Approval Alerts */}
+                    <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                          Listing Approval Alerts
+                        </p>
+                        <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                          Get notified when a landlord submits a new property listing for verification.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNotificationSettings((n) => ({ ...n, listingAlerts: !n.listingAlerts }))
+                        }
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${notificationSettings.listingAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
+                          }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notificationSettings.listingAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
+                            }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors shadow-sm"
+                      >
+                        Save Notification Preferences
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* --- SETTINGS PAGE 5: PREFERENCES --- */}
+              {settingsSubTab === "preferences" && (
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                  <div>
+                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                      <Sliders className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                      Regional &amp; Localization Preferences
+                    </h2>
+                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                      Set your preferred language, time zone, and date formatting options.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSavePreferences} className="space-y-4 max-w-md">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        System Language
+                      </label>
+                      <select
+                        value={preferenceSettings.language}
+                        onChange={(e) =>
+                          setPreferenceSettings({ ...preferenceSettings, language: e.target.value })
+                        }
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      >
+                        <option value="English (UK)">English (UK)</option>
+                        <option value="English (US)">English (US)</option>
+                        <option value="Hausa">Hausa</option>
+                        <option value="Yoruba">Yoruba</option>
+                        <option value="Igbo">Igbo</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        Time Zone
+                      </label>
+                      <select
+                        value={preferenceSettings.timeZone}
+                        onChange={(e) =>
+                          setPreferenceSettings({ ...preferenceSettings, timeZone: e.target.value })
+                        }
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      >
+                        <option value="West Africa Time (WAT) GMT+1">West Africa Time (WAT) GMT+1</option>
+                        <option value="Coordinated Universal Time (UTC)">Coordinated Universal Time (UTC)</option>
+                        <option value="Eastern Standard Time (EST)">Eastern Standard Time (EST)</option>
+                        <option value="Pacific Time (PST)">Pacific Time (PST)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        Date Format
+                      </label>
+                      <select
+                        value={preferenceSettings.dateFormat}
+                        onChange={(e) =>
+                          setPreferenceSettings({ ...preferenceSettings, dateFormat: e.target.value })
+                        }
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      >
+                        <option value="DD/MM/YYYY">DD/MM/YYYY (23/07/2026)</option>
+                        <option value="MM/DD/YYYY">MM/DD/YYYY (07/23/2026)</option>
+                        <option value="YYYY-MM-DD">YYYY-MM-DD (2026-07-23)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
+                        Time Format
+                      </label>
+                      <select
+                        value={preferenceSettings.timeFormat}
+                        onChange={(e) =>
+                          setPreferenceSettings({ ...preferenceSettings, timeFormat: e.target.value })
+                        }
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
+                      >
+                        <option value="24-hour">24-hour (14:30)</option>
+                        <option value="12-hour">12-hour (2:30 PM)</option>
+                      </select>
+                    </div>
+
+                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors shadow-sm"
+                      >
+                        Save Preferences
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* --- SETTINGS PAGE 6: ABOUT --- */}
+              {settingsSubTab === "about" && (
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                  <div>
+                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                      <Info className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
+                      About Lodale Admin Portal
+                    </h2>
+                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                      System specifications, version information, legal documentation, and platform status.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* System Info Box */}
+                    <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#121F1A] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">Application Version</span>
+                        <span className="text-xs font-mono bg-[#3A5A40] text-white px-2 py-0.5 rounded">v2.4.0</span>
+                      </div>
+                      <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] space-y-1">
+                        <p>Build: <strong>2026.07.23-prod</strong></p>
+                        <p>Environment: <strong>Verified Ledger Node (Nigeria)</strong></p>
+                        <p>Core Stack: <strong>React 18 · Vite · TailwindCSS</strong></p>
+                      </div>
+                    </div>
+
+                    {/* Health Box */}
+                    <div className="p-4 rounded-xl border border-emerald-300 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                        <span>System Health Status</span>
+                        <span className="flex items-center gap-1">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+                          Operational
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-800 dark:text-emerald-300">
+                        All verification nodes, database clusters, and media delivery endpoints are running nominally.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Legal & Compliance Links */}
+                  <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31]">
+                    <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7] mb-3">
+                      Legal &amp; Compliance Resources
+                    </h4>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => showToast("Opening Privacy Policy document...")}
+                        className="px-3.5 py-2 text-xs font-semibold bg-[#DAD7CD]/60 dark:bg-[#233B31] text-[#344E41] dark:text-[#E4EBE6] border border-[#3A5A40]/20 dark:border-[#2C4638] hover:bg-[#3A5A40] hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] focus:outline-none focus:ring-2 focus:ring-[#3A5A40] dark:focus:ring-[#E5C583] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <FileText className="h-3.5 w-3.5" /> Privacy Policy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => showToast("Opening Terms of Service document...")}
+                        className="px-3.5 py-2 text-xs font-semibold bg-[#DAD7CD]/60 dark:bg-[#233B31] text-[#344E41] dark:text-[#E4EBE6] border border-[#3A5A40]/20 dark:border-[#2C4638] hover:bg-[#3A5A40] hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] focus:outline-none focus:ring-2 focus:ring-[#3A5A40] dark:focus:ring-[#E5C583] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <FileText className="h-3.5 w-3.5" /> Terms of Service
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => showToast("Downloading Security Whitepaper PDF...")}
+                        className="px-3.5 py-2 text-xs font-semibold bg-[#DAD7CD]/60 dark:bg-[#233B31] text-[#344E41] dark:text-[#E4EBE6] border border-[#3A5A40]/20 dark:border-[#2C4638] hover:bg-[#3A5A40] hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] focus:outline-none focus:ring-2 focus:ring-[#3A5A40] dark:focus:ring-[#E5C583] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5" /> Security Whitepaper
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* --- MODAL 1: VIEW USER PROFILE --- */}
+      {selectedUser && (
+        <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
+              <div>
+                <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  User Profile: {selectedUser.name}
+                </h2>
+                <p className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">User ID: {selectedUser.id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-2 text-[#262626]/80 dark:text-[#E4EBE6]">
+                <Mail className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583] shrink-0" /> <span className="break-all">{selectedUser.email}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[#262626]/80 dark:text-[#E4EBE6]">
+                <Phone className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" /> <span>{selectedUser.phone}</span>
+              </div>
+              <div className="flex items-center gap-2 text-[#262626]/80 dark:text-[#E4EBE6]">
+                <Calendar className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" /> <span>Joined {selectedUser.joinedDate}</span>
+              </div>
+
+              <div className="pt-2">
+                <span className="text-xs font-semibold text-[#262626]/70 dark:text-[#A3BCA7] uppercase">Role &amp; Status</span>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 text-xs font-bold bg-[#DAD7CD] dark:bg-[#233B31] text-[#262626] dark:text-[#E4EBE6] rounded">
+                    {selectedUser.role}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 text-xs font-bold rounded ${selectedUser.status === "Active"
+                      ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
+                      : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
+                      }`}
+                  >
+                    {selectedUser.status}
+                  </span>
+                </div>
+              </div>
+
+              {selectedUser.suspensionReason && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded text-xs text-rose-900 dark:text-rose-300">
+                  <strong>Suspension Note:</strong> {selectedUser.suspensionReason}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-between gap-3">
+              <button
+                onClick={() => handleToggleUserStatus(selectedUser.id)}
+                className={`px-4 py-2 text-xs font-bold rounded text-white transition-colors ${selectedUser.status === "Active"
+                  ? "bg-amber-700 hover:bg-amber-800 dark:bg-amber-600"
+                  : "bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600"
+                  }`}
+              >
+                {selectedUser.status === "Active" ? "Suspend Account" : "Activate Account"}
+              </button>
+
+              <button
+                onClick={() => handleDeleteUser(selectedUser.id)}
+                className="px-4 py-2 text-xs font-bold rounded bg-rose-700 hover:bg-rose-800 text-white transition-colors"
+              >
+                Delete Account
+              </button>
             </div>
           </div>
         </div>
-      </aside>
-
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-20 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* ── Main content ── */}
-      <div className="flex-1 min-w-0 flex flex-col">
-        {/* Top bar */}
-        <header className="sticky top-0 z-10 bg-white border-b border-slate-100 px-6 py-4 flex items-center gap-4">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
-          >
-            <Filter size={18} />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-base font-semibold text-slate-900 capitalize">
-              {NAV_ITEMS.find((n) => n.key === activeSection)?.label ?? "Admin"}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Live
-          </div>
-        </header>
+      {/* --- MODAL 2: INSPECT LISTING DETAILS --- */}
+      {selectedListing && !isRejectingModalOpen && (
+        <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-2xl w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
+              <div>
+                <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  {selectedListing.title}
+                </h2>
+                <p className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">Listing ID: {selectedListing.id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedListing(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-        {/* Page content */}
-        <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
-          {renderSection()}
-        </main>
-      </div>
+            <div className="space-y-4 text-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#DAD7CD]/30 dark:bg-[#1B2C25] p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] text-center sm:text-left">
+                <div>
+                  <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Asking Rent</div>
+                  <div className="text-lg font-bold text-[#344E41] dark:text-[#E5C583]">{selectedListing.price}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Location</div>
+                  <div className="font-medium text-[#262626] dark:text-[#F0F5F2]">{selectedListing.location}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Status</div>
+                  <div className="font-bold text-amber-800 dark:text-amber-300">{selectedListing.status}</div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Description</h4>
+                <p className="text-xs text-[#262626] dark:text-[#E4EBE6] mt-1">{selectedListing.description}</p>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Landlord Info</h4>
+                <p className="text-xs text-[#262626] dark:text-[#E4EBE6] mt-1 flex items-center gap-1">
+                  Name: <strong className="text-[#262626] dark:text-[#F0F5F2]">{selectedListing.landlord.name}</strong> • Rating: <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {selectedListing.landlord.score}
+                </p>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Verification Status</h4>
+                <div className="text-xs text-[#262626] dark:text-[#E4EBE6] mt-1 flex items-center gap-1.5">
+                  <span>Title Deed Document:</span>
+                  {selectedListing.deedVerified ? (
+                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Verified
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 font-semibold text-rose-700 dark:text-rose-400">
+                      <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Unverified
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-end gap-3">
+              {selectedListing.status === "Pending Approval" && (
+                <>
+                  <button
+                    onClick={() => handleApproveListing(selectedListing.id)}
+                    className="px-4 py-2 text-xs font-bold rounded bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 text-white transition-colors"
+                  >
+                    Approve Listing
+                  </button>
+                  <button
+                    onClick={() => setIsRejectingModalOpen(true)}
+                    className="px-4 py-2 text-xs font-bold rounded bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 hover:bg-rose-200 transition-colors"
+                  >
+                    Reject Submission
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => handleRemoveListing(selectedListing.id)}
+                className="px-4 py-2 text-xs font-bold rounded bg-rose-700 hover:bg-rose-800 text-white transition-colors"
+              >
+                Remove Fraudulent Listing
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL 2B: REJECT REASON INPUT --- */}
+      {isRejectingModalOpen && selectedListing && (
+        <div className="fixed inset-0 z-50 bg-[#262626]/70 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-4 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
+            <h3 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2]">
+              Reject Listing Submission
+            </h3>
+            <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
+              Please specify a reason for rejecting "{selectedListing.title}".
+            </p>
+            <textarea
+              rows={3}
+              value={rejectReasonInput}
+              onChange={(e) => setRejectReasonInput(e.target.value)}
+              placeholder="e.g. Incomplete address proof or suspicious pricing..."
+              className="w-full p-3 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setIsRejectingModalOpen(false)}
+                className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() =>
+                  handleRejectListing(
+                    selectedListing.id,
+                    rejectReasonInput || "Failed verification guidelines."
+                  )
+                }
+                className="px-4 py-1.5 text-xs font-bold bg-rose-700 text-white rounded hover:bg-rose-800"
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL 3: VIEW REVIEW FLAG REPORT --- */}
+      {selectedReviewFlag && (
+        <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
+              <div>
+                <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
+                  Flag Report Details
+                </h2>
+                <p className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">Review ID: {selectedReviewFlag.id}</p>
+              </div>
+              <button
+                onClick={() => setSelectedReviewFlag(null)}
+                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div className="p-3 bg-[#DAD7CD]/30 dark:bg-[#1B2C25] rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] space-y-1">
+                <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Property Listing:</div>
+                <div className="font-semibold text-[#262626] dark:text-[#F0F5F2]">{selectedReviewFlag.propertyTitle}</div>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Review Content:</div>
+                <p className="text-xs text-[#262626] dark:text-[#E4EBE6] italic mt-1 bg-gray-50 dark:bg-[#0E1714] p-3 rounded border border-gray-200 dark:border-[#263D33]">
+                  "{selectedReviewFlag.comment}"
+                </p>
+              </div>
+
+              <div>
+                <div className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Report Details:</div>
+                <div className="mt-1 p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded text-xs text-amber-900 dark:text-amber-300 space-y-1">
+                  <p><strong>Reported By:</strong> {selectedReviewFlag.flaggedBy}</p>
+                  <p><strong>Reason:</strong> {selectedReviewFlag.flagReason}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31] flex flex-wrap items-center justify-between gap-3">
+              {selectedReviewFlag.flagged && (
+                <button
+                  onClick={() => handleDismissFlag(selectedReviewFlag.id)}
+                  className="px-4 py-2 text-xs font-bold rounded bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 text-white transition-colors"
+                >
+                  Dismiss Flag (Keep Review)
+                </button>
+              )}
+              <button
+                onClick={() => handleRemoveReview(selectedReviewFlag.id)}
+                className="px-4 py-2 text-xs font-bold rounded bg-rose-700 hover:bg-rose-800 text-white transition-colors"
+              >
+                Remove Review Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
