@@ -516,31 +516,28 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
 
   const closeToYouProperties = (() => {
     const locLower = userLocationStr.toLowerCase().trim();
-    let matches = [];
     if (locLower) {
       const allTokens = locLower
         .split(/[\s,\-\(\)]+/)
         .filter(k => k.length > 2 && !["usa", "states", "united", "atlanta", "london", "york"].includes(k));
 
-      // Prefer specific area tokens over generic "lagos"
-      const specificTokens = allTokens.filter(k => k !== "lagos");
+      // Prefer specific area tokens over generic "lagos", "fct", "state"
+      const specificTokens = allTokens.filter(k => !["lagos", "fct", "state"].includes(k));
       const searchTokens = specificTokens.length > 0 ? specificTokens : allTokens;
 
       if (searchTokens.length > 0) {
-        matches = allAvailableProperties.filter(l => {
+        return allAvailableProperties.filter(l => {
           if (lastVisitedIds.has(l.id)) return false;
           const propLoc = (l.location || "").toLowerCase();
-          return searchTokens.some(k => propLoc.includes(k));
+          return searchTokens.every(k => propLoc.includes(k));
         });
       }
+      return [];
     }
 
-    if (matches.length === 0) {
-      matches = allAvailableProperties.filter(l =>
-        !lastVisitedIds.has(l.id) && l.recommendationCategory === "properties close to you"
-      );
-    }
-    return matches;
+    return allAvailableProperties.filter(l =>
+      !lastVisitedIds.has(l.id) && l.recommendationCategory === "properties close to you"
+    );
   })();
 
   const closeToYouIds = new Set(closeToYouProperties.map(p => p.id));
@@ -680,15 +677,36 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                 <h3 className="recommendation-section-title">
                   Properties close to you {userLocationStr ? `(${userLocationStr})` : ""}
                 </h3>
-                <div className="recommendation-cards-scroller">
-                  {closeToYouProperties.map(p => (
-                    <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
-                  ))}
-                </div>
+                {closeToYouProperties.length > 0 ? (
+                  <div className="recommendation-cards-scroller">
+                    {closeToYouProperties.map(p => (
+                      <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C] my-2">
+                    <div className="text-2xl mb-2">📍</div>
+                    <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">
+                      No properties currently available close to {userLocationStr || "your location"}
+                    </h4>
+                    <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7] max-w-md mx-auto mb-4 leading-relaxed">
+                      We don&apos;t have active listings in this location yet. You can explore all available listings across Nigeria below.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        const el = document.getElementById("popular-properties-section");
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] text-[12.5px] font-bold px-5 py-2.5 rounded-xl"
+                    >
+                      View Available Listings
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Section 3: Popular */}
-              <div className="recommendation-row">
+              <div className="recommendation-row" id="popular-properties-section">
                 <h3 className="recommendation-section-title">Popular properties</h3>
                 <div className="recommendation-cards-scroller">
                   {popularProperties.map(p => (
