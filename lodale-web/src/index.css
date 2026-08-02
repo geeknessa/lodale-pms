@@ -139,14 +139,39 @@ body.dark .border-ink-200 {
   border-color: var(--color-moss-600) !important;
 }
 
-body.dark input {
+body.dark input,
+body.dark textarea,
+body.dark select {
   background: var(--color-moss-700) !important;
   color: var(--color-white) !important;
   border-color: var(--color-moss-600) !important;
 }
 
-body.dark input::placeholder {
+/* Global placeholder styling: faint by default, disappears on focus & typing */
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  opacity: 0.45 !important;
+  transition: opacity 0.2s ease-in-out !important;
+}
+
+input:focus::placeholder,
+textarea:focus::placeholder,
+select:focus::placeholder {
+  opacity: 0 !important;
+}
+
+body.dark input::placeholder,
+body.dark textarea::placeholder,
+body.dark select::placeholder {
   color: var(--color-cream-100) !important;
+  opacity: 0.35 !important;
+}
+
+body.dark input:focus::placeholder,
+body.dark textarea:focus::placeholder,
+body.dark select:focus::placeholder {
+  opacity: 0 !important;
 }
 
 body.dark footer {
