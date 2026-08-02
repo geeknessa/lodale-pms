@@ -285,6 +285,17 @@ const LANDLORDS = [
   }
 ];
 
+const formatPrice = (priceVal) => {
+  if (priceVal === null || priceVal === undefined) return "₦0/mo";
+  let str = String(priceVal).trim();
+  str = str.replace(/^[₦N\s]+/, "").replace(/\/mo.*$/i, "").trim();
+  const numeric = parseFloat(str.replace(/,/g, ""));
+  if (!isNaN(numeric)) {
+    return `₦${numeric.toLocaleString()}/mo`;
+  }
+  return `₦${str}/mo`;
+};
+
 // Helper Property Card Component
 function PropertyCard({ property, onInspect }) {
   return (
@@ -292,21 +303,21 @@ function PropertyCard({ property, onInspect }) {
       <div className="property-card-image-wrapper">
         <img src={property.image} alt={property.title} className="property-card-image" />
         <span className="property-card-price-tag">
-          ₦{property.price.toLocaleString()}/mo
+          {formatPrice(property.price)}
         </span>
       </div>
-      
+
       <div className="property-card-body text-left">
         <h4 className="property-card-title-text">{property.title}</h4>
         <p className="property-card-location">📍 {property.location}</p>
-        
+
         <div className="property-card-specs">
           <span className="spec-tag">{property.beds} Bed{property.beds > 1 ? "s" : ""}</span>
           <span className="spec-tag">{property.baths} Bath{property.baths > 1 ? "s" : ""}</span>
           <span className="spec-tag capitalize">{property.type}</span>
         </div>
 
-        <button 
+        <button
           className="property-card-cta-btn"
           onClick={() => onInspect(property)}
         >
@@ -339,7 +350,7 @@ function LandlordCard({ landlord, onInspect }) {
           <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Base Location</span>
           <span className="font-semibold text-neutral-800 dark:text-neutral-200">📍 {landlord.location.split(",")[0]}</span>
         </div>
-        
+
         <div className="landlord-properties-list mb-4">
           <span className="text-[10px] uppercase font-bold tracking-wider text-[#6C6E73] dark:text-[#A3BCA7]">Managed Units</span>
           <div className="flex flex-col gap-1 mt-1">
@@ -349,7 +360,7 @@ function LandlordCard({ landlord, onInspect }) {
           </div>
         </div>
 
-        <button 
+        <button
           className="property-card-cta-btn w-full mt-auto"
           onClick={() => onInspect(landlord)}
         >
@@ -365,7 +376,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("property"); // "property" | "landlord"
   const [showFilterModal, setShowFilterModal] = useState(false);
-  
+
   // Filter Fields
   const [filterPrice, setFilterPrice] = useState(""); // Max price limit
   const [filterBeds, setFilterBeds] = useState(""); // Number of bedrooms
@@ -482,34 +493,63 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
         const prof = JSON.parse(raw);
         return prof.location || "";
       }
-    } catch (e) {}
+    } catch (e) { }
     return "";
   })();
 
   const allAvailableProperties = (() => {
     const saved = localStorage.getItem("properties");
     const addedProps = saved ? JSON.parse(saved) : [];
-    return [...addedProps, ...SEARCH_LISTINGS];
+    const combined = [...addedProps, ...SEARCH_LISTINGS];
+    const seen = new Set();
+    return combined.filter(p => {
+      if (!p) return false;
+      const key = (p.id || p.title || "").toLowerCase().trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   })();
 
   const lastVisitedProperties = allAvailableProperties.filter(l => l.recommendationCategory === "Last visited");
+  const lastVisitedIds = new Set(lastVisitedProperties.map(p => p.id));
+
   const closeToYouProperties = (() => {
     const locLower = userLocationStr.toLowerCase().trim();
+    let matches = [];
     if (locLower) {
-      const keywords = locLower
+      const allTokens = locLower
         .split(/[\s,\-\(\)]+/)
         .filter(k => k.length > 2 && !["usa", "states", "united", "atlanta", "london", "york"].includes(k));
-      if (keywords.length > 0) {
-        const matches = allAvailableProperties.filter(l => {
+
+      // Prefer specific area tokens over generic "lagos"
+      const specificTokens = allTokens.filter(k => k !== "lagos");
+      const searchTokens = specificTokens.length > 0 ? specificTokens : allTokens;
+
+      if (searchTokens.length > 0) {
+        matches = allAvailableProperties.filter(l => {
+          if (lastVisitedIds.has(l.id)) return false;
           const propLoc = (l.location || "").toLowerCase();
-          return keywords.some(k => propLoc.includes(k));
+          return searchTokens.some(k => propLoc.includes(k));
         });
-        if (matches.length > 0) return matches;
       }
     }
-    return allAvailableProperties.filter(l => l.recommendationCategory === "properties close to you");
+
+    if (matches.length === 0) {
+      matches = allAvailableProperties.filter(l =>
+        !lastVisitedIds.has(l.id) && l.recommendationCategory === "properties close to you"
+      );
+    }
+    return matches;
   })();
-  const popularProperties = allAvailableProperties.filter(l => l.recommendationCategory === "Popular properties");
+
+  const closeToYouIds = new Set(closeToYouProperties.map(p => p.id));
+
+  const popularProperties = allAvailableProperties.filter(l =>
+    !lastVisitedIds.has(l.id) &&
+    !closeToYouIds.has(l.id) &&
+    l.recommendationCategory === "Popular properties"
+  );
 
   return (
     <>
@@ -538,9 +578,9 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
         <div className="search-bar-row mb-6">
           <div className="search-input-wrapper tour-search-bar">
             <SearchIcon className="search-bar-icon h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-            <input 
-              type="text" 
-              className="search-bar-input" 
+            <input
+              type="text"
+              className="search-bar-input"
               placeholder={searchType === "property" ? "Search by name, location, state..." : "Search by landlord..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -551,13 +591,13 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
           </div>
 
           <div className="search-scope-toggles tour-search-scope">
-            <button 
+            <button
               className={`scope-toggle-btn ${searchType === "property" ? "active" : ""}`}
               onClick={() => { setSearchType("property"); setSearchQuery(""); }}
             >
               Property Details
             </button>
-            <button 
+            <button
               className={`scope-toggle-btn ${searchType === "landlord" ? "active" : ""}`}
               onClick={() => { setSearchType("landlord"); setSearchQuery(""); }}
             >
@@ -565,7 +605,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
             </button>
           </div>
 
-          <button 
+          <button
             className={`search-filter-trigger-btn tour-search-filter ${filterPrice || filterBeds || filterType || filterLandlordTenure ? "active" : ""}`}
             onClick={() => setShowFilterModal(true)}
           >
@@ -606,7 +646,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                 <button className="chip-remove" onClick={() => setFilterLandlordTenure("")}>&times;</button>
               </div>
             )}
-            <button 
+            <button
               className="clear-all-filters-btn"
               onClick={() => {
                 setSearchQuery("");
@@ -717,13 +757,13 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               <h3>Search Filters</h3>
               <button className="close-btn" onClick={() => setShowFilterModal(false)}>&times;</button>
             </div>
-            
+
             <div className="modal-scroll-area">
               <div style={{ gap: "18px", display: "flex", flexDirection: "column" }}>
                 {/* Rent Price Filter */}
                 <div>
                   <label className="form-lbl">Maximum Rent Price (Monthly)</label>
-                  <select 
+                  <select
                     className="form-input"
                     value={filterPrice}
                     onChange={(e) => setFilterPrice(e.target.value)}
@@ -856,13 +896,13 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               <h3>Property Specs</h3>
               <button className="close-btn" onClick={() => { setShowPropertyDetailsModal(false); setSelectedProperty(null); }}>&times;</button>
             </div>
-            
+
             <div className="modal-scroll-area">
               {/* Image banner */}
               <div className="property-banner-overlay" style={{ height: "180px", borderRadius: "18px", overflow: "hidden", position: "relative", marginBottom: "16px" }}>
                 <img src={selectedProperty.image} alt={selectedProperty.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 <span className="property-card-price-tag" style={{ position: "absolute", bottom: "12px", right: "12px" }}>
-                  ₦{selectedProperty.price.toLocaleString()}/mo
+                  {formatPrice(selectedProperty.price)}
                 </span>
               </div>
 
@@ -955,7 +995,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               <h3>Landlord profile specs</h3>
               <button className="close-btn" onClick={() => { setShowLandlordDetailsModal(false); setSelectedLandlord(null); }}>&times;</button>
             </div>
-            
+
             <div className="modal-scroll-area">
               {/* Landlord profile header */}
               <div className="flex flex-col items-center py-4 mb-4 border-b border-neutral-100 dark:border-neutral-800/40">
@@ -974,12 +1014,12 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               {/* Ratings and stats */}
               <div className="invoice-summary mb-5" style={{ padding: "16px", gap: "12px" }}>
                 <span className="summary-lbl">Reliability Breakdown</span>
-                
+
                 <div className="flex justify-between items-center text-[12.5px]">
                   <span>Overall Rating</span>
                   <span className="font-bold text-amber-500">★ {selectedLandlord.score} / 5.0 ({selectedLandlord.reviews} Reviews)</span>
                 </div>
-                
+
                 <div className="flex justify-between items-center text-[12.5px] mt-1">
                   <span>Base Location</span>
                   <span className="font-semibold">{selectedLandlord.location}</span>
