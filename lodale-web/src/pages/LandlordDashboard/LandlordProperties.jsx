@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Search, Building2, ChevronRight, X, Users } from "lucide-react";
 import { LISTINGS } from "../../data/listings";
 import UserInfo from "./components/UserInfo";
-import "./AdminProperties.css";
+import "./LandlordProperties.css";
 
 
 
-export default function AdminProperties() {
+export default function LandlordProperties() {
   const navigate = useNavigate();
   const [properties, setProperties] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");

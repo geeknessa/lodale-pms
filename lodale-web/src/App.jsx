@@ -318,7 +318,31 @@ export default function App() {
               }
             />
             <Route
-              path="/dashboard/:role"
+              path="/dashboard/landlord"
+              element={
+                <ProtectedRoute>
+                  <LandlordDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/landlord/add-property"
+              element={
+                <ProtectedRoute>
+                  <DashboardAddProperty />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/landlord/properties/:id"
+              element={
+                <ProtectedRoute>
+                  <PropertyDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/tenant"
               element={
                 <ProtectedRoute>
                   <TenantDashboard />

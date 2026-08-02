@@ -1,4 +1,4 @@
-/* AdminProperties.css - Styles for Properties list layout matching eCoursie reference */
+/* LandlordProperties.css - Styles for Properties list layout matching eCoursie reference */
 
 .ap-grid-container {
   display: grid;
@@ -570,7 +570,7 @@
   }
 }
 
-/* Dark Mode Overrides for AdminProperties */
+/* Dark Mode Overrides for LandlordProperties */
 body.dark .ap-filter-select option {
   background-color: #12221C;
   color: #FFFFFF;
