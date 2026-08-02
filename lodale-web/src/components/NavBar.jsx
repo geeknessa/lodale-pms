@@ -89,8 +89,6 @@ export default function NavBar() {
         });
       }
     }
-  }
-
   const checkIsActive = (path, hash = "") => {
     const isHomeRoute =
       location.pathname === "/explore" ||
@@ -108,6 +106,9 @@ export default function NavBar() {
 
     return location.pathname === path;
   };
+  }
+
+
 
   const desktopLinkClass = (path, hash = "") => {
     const active = checkIsActive(path, hash);
@@ -117,13 +118,7 @@ export default function NavBar() {
       }`;
   };
 
-  const mobileLinkClass = (path, hash = "") => {
-    const active = checkIsActive(path, hash);
-    return `py-2.5 px-3 border-b transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none flex items-center justify-between rounded-lg ${active
-      ? "text-moss-700 dark:text-[#E5C583] font-bold border-moss-700 dark:border-[#E5C583] bg-moss-100/60 dark:bg-[#1C3328]/60"
-      : "text-theme-text dark:text-cream-100/80 hover:text-moss-600 border-theme-border/10 font-medium"
-      }`;
-  };
+
 
   function handleSignOut() {
     const isCurrentAdmin = isAdmin || localStorage.getItem("userRole") === "admin";

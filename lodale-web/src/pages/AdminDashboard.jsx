@@ -35,6 +35,10 @@ import {
   User,
   KeyRound,
   Upload,
+  Camera,
+  Laptop,
+  Smartphone,
+  Shield,
   Menu,
 } from "lucide-react";
 
@@ -230,7 +234,7 @@ const INITIAL_REVIEWS = [
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { isDark, toggleTheme } = useTheme();
+  const { themePreference, setThemePreference, effectiveTheme, isDark, toggleTheme } = useTheme();
 
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
