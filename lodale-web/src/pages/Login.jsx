@@ -140,6 +140,55 @@ export default function Login() {
       }
     }
 
+    const regUserKey = "registeredUser_" + email.trim().toLowerCase();
+    const regUserData = localStorage.getItem(regUserKey);
+    let registeredUser = null;
+    if (regUserData) {
+      try {
+        registeredUser = JSON.parse(regUserData);
+      } catch (err) {}
+    }
+
+    // Registered user login logic
+    if (registeredUser) {
+      if (registeredUser.password !== password) {
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+        localStorage.setItem("failedLoginAttempts", newAttempts.toString());
+        setInlineError("The password you entered is incorrect. Please try again.");
+        return;
+      }
+
+      localStorage.removeItem("failedLoginAttempts");
+      localStorage.removeItem("loginLockoutUntil");
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("userRole", registeredUser.role || "tenant");
+      localStorage.setItem("lastLoggedInEmail", registeredUser.email);
+      localStorage.setItem("username", registeredUser.username);
+
+      const savedProfile = localStorage.getItem("userProfile_" + registeredUser.email);
+      if (savedProfile) {
+        localStorage.setItem("currentUserProfile", savedProfile);
+      } else {
+        const fallbackProf = registeredUser.profile || {
+          firstName: registeredUser.username.split(" ")[0] || "",
+          lastName: registeredUser.username.split(" ").slice(1).join(" ") || "",
+          email: registeredUser.email,
+          role: registeredUser.role || "tenant",
+          phone: "",
+          address: "",
+          dob: "",
+          location: "",
+          postalCode: "",
+        };
+        localStorage.setItem("currentUserProfile", JSON.stringify(fallbackProf));
+      }
+
+      localStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
+      navigate(`/dashboard/${registeredUser.role || "tenant"}`);
+      return;
+    }
+
     if (email !== KNOWN_USER.email && email.toLowerCase() !== KNOWN_ADMIN.email) {
       // Email not found
       const newAttempts = failedAttempts + 1;
@@ -180,15 +229,28 @@ export default function Login() {
       return;
     }
 
-    // Success User Login! Clear attempt tracking
+    // Success Known Demo User Login!
     localStorage.removeItem("failedLoginAttempts");
     localStorage.removeItem("loginLockoutUntil");
     localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userRole", "user");
+    localStorage.setItem("userRole", "tenant");
     localStorage.setItem("lastLoggedInEmail", email);
+    localStorage.setItem("username", "Tunde Bakare");
+    const demoProf = {
+      firstName: "Tunde",
+      lastName: "Bakare",
+      email,
+      phone: "+234 803 123 4567",
+      role: "tenant",
+      address: "",
+      dob: "",
+      location: "Lagos, Nigeria",
+      postalCode: ""
+    };
+    localStorage.setItem("currentUserProfile", JSON.stringify(demoProf));
     localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
 
-    // Redirect to their specific role dashboard
+    // Redirect to tenant dashboard
     navigate(`/dashboard/tenant`);
   }
 

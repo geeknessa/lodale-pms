@@ -45,14 +45,20 @@ export default function LandlordProperties() {
 
   useEffect(() => {
     const saved = localStorage.getItem("properties");
-    const allList = saved ? JSON.parse(saved) : LISTINGS;
-    if (!saved) {
-      localStorage.setItem("properties", JSON.stringify(LISTINGS));
+    if (saved) {
+      try {
+        const allList = JSON.parse(saved);
+        const userFirstName = username.toLowerCase().split(" ")[0];
+        const filtered = allList.filter((l) =>
+          !l.landlord?.name || l.landlord?.name?.toLowerCase().includes(userFirstName) || userFirstName.includes(l.landlord?.name?.toLowerCase().split(" ")[0] || "")
+        );
+        setProperties(filtered);
+      } catch (e) {
+        setProperties([]);
+      }
+    } else {
+      setProperties([]);
     }
-    const filtered = allList.filter((l) =>
-      l.landlord?.name?.toLowerCase().includes(username.toLowerCase().split(" ")[0])
-    );
-    setProperties(filtered);
   }, [username]);
 
   // Filter items

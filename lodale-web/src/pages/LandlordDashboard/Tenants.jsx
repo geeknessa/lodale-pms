@@ -33,7 +33,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
   const loadData = () => {
     // Load properties
     const savedProperties = localStorage.getItem("properties");
-    const propertyList = savedProperties ? JSON.parse(savedProperties) : LISTINGS;
+    const propertyList = savedProperties ? JSON.parse(savedProperties) : [];
     setProperties(propertyList);
 
     // Load tenants

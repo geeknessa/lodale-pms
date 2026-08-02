@@ -9,6 +9,30 @@ export default function Application() {
   const navigate = useNavigate();
   const listing = LISTINGS.find((l) => l.id === listingId) ?? LISTINGS[0];
 
+  const handleSubmit = () => {
+    const username = localStorage.getItem("username") || "Tenant User";
+    const userEmail = localStorage.getItem("lastLoggedInEmail") || "tenant@example.com";
+    const saved = localStorage.getItem("propertyApplications");
+    const currentApps = saved ? JSON.parse(saved) : [];
+    
+    const newApp = {
+      id: Date.now(),
+      tenantName: username,
+      name: username,
+      email: userEmail,
+      propertyId: listing.id,
+      propertyTitle: listing.title,
+      date: "Just now",
+      status: "Applicant",
+      reliabilityScore: "5.0",
+      notes: "Verified NIN application submitted via portal."
+    };
+
+    localStorage.setItem("propertyApplications", JSON.stringify([newApp, ...currentApps]));
+    window.dispatchEvent(new Event("storage"));
+    navigate("/dashboard/tenant");
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-cream-50 px-6 py-16">
       <div className="w-full max-w-lg text-center">
@@ -43,7 +67,7 @@ export default function Application() {
 
           <Button
             className="mt-6 w-full"
-            onClick={() => navigate("/dashboard/tenant")}
+            onClick={handleSubmit}
           >
             Submit Application
           </Button>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTheme } from "../../context/ThemeContext";
 import { User, Lock, LogOut, Calendar, ChevronDown, CheckCircle2, Camera, Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import "./Settings.css";
 
 export default function Settings() {
@@ -12,27 +13,35 @@ export default function Settings() {
   const [gender, setGender] = useState("male"); // male | female
 
   // Landlord Name splitting
-  const [fullName, setFullName] = useState(() => {
-    return localStorage.getItem("username") || "Ada K.";
+  const [userProfile, setUserProfile] = useState(() => {
+    const raw = localStorage.getItem("currentUserProfile");
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {}
+    }
+    const username = localStorage.getItem("username") || "";
+    const parts = username.split(" ");
+    return {
+      firstName: parts[0] || "",
+      lastName: parts.slice(1).join(" ") || "",
+      email: localStorage.getItem("lastLoggedInEmail") || "",
+      phone: "",
+      address: "",
+      dob: "",
+      location: "",
+      postalCode: ""
+    };
   });
 
-  const getNames = () => {
-    const parts = fullName.split(" ");
-    return {
-      first: parts[0] || "",
-      last: parts.slice(1).join(" ") || ""
-    };
-  };
-
-  const names = getNames();
-  const [firstName, setFirstName] = useState(names.first);
-  const [lastName, setLastName] = useState(names.last);
-  const [email] = useState("ada.k@lodale.com");
-  const [address, setAddress] = useState("3605 Parker Rd.");
-  const [phone, setPhone] = useState("(405) 555-0128");
-  const [dob, setDob] = useState("1 Feb, 1995");
-  const [location, setLocation] = useState("Atlanta, USA");
-  const [postalCode, setPostalCode] = useState("30301");
+  const [firstName, setFirstName] = useState(userProfile.firstName || "");
+  const [lastName, setLastName] = useState(userProfile.lastName || "");
+  const [email] = useState(userProfile.email || localStorage.getItem("lastLoggedInEmail") || "");
+  const [address, setAddress] = useState(userProfile.address || "");
+  const [phone, setPhone] = useState(userProfile.phone || "");
+  const [dob, setDob] = useState(userProfile.dob || "");
+  const [location, setLocation] = useState(userProfile.location || "");
+  const [postalCode, setPostalCode] = useState(userProfile.postalCode || "");
 
   // Password States
   const [currPassword, setCurrPassword] = useState("");
@@ -44,10 +53,25 @@ export default function Settings() {
   const handleSaveProfile = (e) => {
     e.preventDefault();
     const updatedName = `${firstName} ${lastName}`.trim();
-    setFullName(updatedName);
     localStorage.setItem("username", updatedName);
-    
-    // Alert or banner
+
+    const updatedProfile = {
+      ...userProfile,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim(),
+      address: address.trim(),
+      phone: phone.trim(),
+      dob: dob.trim(),
+      location: location.trim(),
+      postalCode: postalCode.trim()
+    };
+    setUserProfile(updatedProfile);
+    localStorage.setItem("currentUserProfile", JSON.stringify(updatedProfile));
+    if (email) {
+      localStorage.setItem("userProfile_" + email.toLowerCase(), JSON.stringify(updatedProfile));
+    }
+
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
@@ -255,15 +279,11 @@ export default function Settings() {
 
                 <div className="set-ref-input-group">
                   <label className="set-ref-lbl">Location</label>
-                  <div className="set-ref-input-wrapper">
-                    <input 
-                      type="text" 
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      className="set-ref-input"
-                    />
-                    <ChevronDown className="set-ref-input-icon right" />
-                  </div>
+                  <NigerianLocationSelect
+                    value={location}
+                    onChange={(val) => setLocation(val)}
+                    placeholder="Select Location"
+                  />
                 </div>
 
                 <div className="set-ref-input-group">

@@ -181,6 +181,22 @@ export default function TenantDashboard() {
   const [tooltipStyle, setTooltipStyle] = useState({});
   const [spotlightStyle, setSpotlightStyle] = useState({});
 
+  const [activeLease, setActiveLease] = useState(() => {
+    const saved = localStorage.getItem("tenantLease");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    const apps = localStorage.getItem("propertyApplications");
+    if (apps) {
+      try {
+        const parsed = JSON.parse(apps);
+        const approved = parsed.find(a => a.status === "Approved" || a.status === "Leased");
+        if (approved) return approved;
+      } catch (e) {}
+    }
+    return null;
+  });
+
   // Quick Requests State (initialized with requests loaded from localStorage and filtered by active tenant)
   const [requests, setRequests] = useState(() => {
     const saved = localStorage.getItem("tenantRequests");
@@ -204,10 +220,7 @@ export default function TenantDashboard() {
   const [payments, setPayments] = useState(() => {
     const saved = localStorage.getItem("tenantPayments");
     if (saved) return JSON.parse(saved);
-    return [
-      { id: "pay-1", month: "July 2026", amount: "₦150,000", date: "Jul 1, 2026", status: "Paid", method: "Bank Transfer" },
-      { id: "pay-2", month: "June 2026", amount: "₦150,000", date: "Jun 1, 2026", status: "Paid", method: "Card" }
-    ];
+    return [];
   });
 
   // Rent payment state
@@ -730,27 +743,28 @@ export default function TenantDashboard() {
             <div className="flex flex-col gap-3 mt-2 border-t border-neutral-100 dark:border-neutral-800/60 pt-4">
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Email Address</span>
-                <span className="text-[13px] font-bold">tenant@example.com</span>
+                <span className="text-[13px] font-bold">{localStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Phone Number</span>
-                <span className="text-[13px] font-bold">+234 812 345 6789</span>
+                <span className="text-[13px] font-bold">
+                  {(() => {
+                    try {
+                      const prof = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      return prof.phone || "Not provided";
+                    } catch (e) {
+                      return "Not provided";
+                    }
+                  })()}
+                </span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Active Unit</span>
-                <span className="text-[13px] font-bold">Skyline Residency, Unit 4B</span>
+                <span className="text-[13px] font-bold">No active unit</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
-                <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Monthly Rent</span>
-                <span className="text-[13px] font-bold text-moss-700 dark:text-[#E5C583]">₦150,000</span>
-              </div>
-              <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
-                <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Lease Term</span>
-                <span className="text-[13px] font-bold">Jan 2026 - Dec 2026</span>
-              </div>
-              <div className="flex justify-between items-center last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Reliability Score</span>
-                <span className="text-[13px] font-bold text-amber-500">★ 4.8 / 5.0</span>
+                <span className="text-[13px] font-bold text-amber-500">★ New Tenant</span>
               </div>
             </div>
 
@@ -875,15 +889,27 @@ export default function TenantDashboard() {
             <div className="modal-scroll-area">
               {/* Rating Big Number display */}
               <div className="modal-body-centered py-2">
-                <h2 className="text-4xl font-extrabold text-[#2C4633] dark:text-[#E5C583] mb-1" style={{ fontSize: "36px" }}>4.8</h2>
+                <h2 className="text-4xl font-extrabold text-[#2C4633] dark:text-[#E5C583] mb-1" style={{ fontSize: "36px" }}>
+                  {activeLease ? "4.8" : "New"}
+                </h2>
                 <div className="flex gap-1 mb-2">
-                  <span className="text-amber-500 text-lg">★</span>
-                  <span className="text-amber-500 text-lg">★</span>
-                  <span className="text-amber-500 text-lg">★</span>
-                  <span className="text-amber-500 text-lg">★</span>
-                  <span className="text-neutral-300 dark:text-neutral-700 text-lg">★</span>
+                  {activeLease ? (
+                    <>
+                      <span className="text-amber-500 text-lg">★</span>
+                      <span className="text-amber-500 text-lg">★</span>
+                      <span className="text-amber-500 text-lg">★</span>
+                      <span className="text-amber-500 text-lg">★</span>
+                      <span className="text-neutral-300 dark:text-neutral-700 text-lg">★</span>
+                    </>
+                  ) : (
+                    <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40">
+                      Verified Account
+                    </span>
+                  )}
                 </div>
-                <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] font-semibold">Excellent Tenant Standing</p>
+                <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] font-semibold">
+                  {activeLease ? "Excellent Tenant Standing" : "New Tenant Standing"}
+                </p>
               </div>
 
               {/* Breakdown cards */}
@@ -891,38 +917,32 @@ export default function TenantDashboard() {
                 <div className="invoice-summary" style={{ padding: "16px", gap: "10px" }}>
                   <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#6C6E73] dark:text-[#A3BCA7]">Rating Breakdown</h4>
 
-                  {/* Item 1 */}
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex justify-between items-center text-[12.5px]">
-                      <span>Rent Payment Punctuality</span>
-                      <span className="font-bold">5.0 / 5.0</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-emerald-500" style={{ width: "100%" }} />
-                    </div>
-                  </div>
-
-                  {/* Item 2 */}
-                  <div className="flex flex-col gap-1.5 mt-2">
-                    <div className="flex justify-between items-center text-[12.5px]">
-                      <span>Ledger Punctuality</span>
-                      <span className="font-bold">4.7 / 5.0</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#E5C583]" style={{ width: "94%" }} />
-                    </div>
-                  </div>
-
-                  {/* Item 3 */}
-                  <div className="flex flex-col gap-1.5 mt-2">
-                    <div className="flex justify-between items-center text-[12.5px]">
-                      <span>Landlord Checkout Reviews</span>
-                      <span className="font-bold">4.7 / 5.0</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#E5C583]" style={{ width: "94%" }} />
-                    </div>
-                  </div>
+                  {activeLease ? (
+                    <>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex justify-between items-center text-[12.5px]">
+                          <span>Rent Payment Punctuality</span>
+                          <span className="font-bold">5.0 / 5.0</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500" style={{ width: "100%" }} />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1.5 mt-2">
+                        <div className="flex justify-between items-center text-[12.5px]">
+                          <span>Ledger Punctuality</span>
+                          <span className="font-bold">4.7 / 5.0</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-[#E5C583]" style={{ width: "94%" }} />
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] py-2">
+                      No rating history recorded yet. Reliability scores generate automatically as you make rental payments.
+                    </p>
+                  )}
                 </div>
 
                 {/* History timeline feed */}
@@ -930,35 +950,21 @@ export default function TenantDashboard() {
                   <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#6C6E73] dark:text-[#A3BCA7] mb-3">Verification History</h4>
 
                   <div className="flex flex-col gap-3 max-h-[180px] overflow-y-auto pr-1">
-                    <div className="p-3 bg-neutral-50 dark:bg-[#1D2D26]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[12px] font-bold">Ada K. (Skyline Apartments)</span>
-                        <span className="text-[11px] text-amber-500 font-bold">★ 5.0</span>
+                    {activeLease ? (
+                      <div className="p-3 bg-neutral-50 dark:bg-[#1D2D26]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[12px] font-bold">Landlord Review</span>
+                          <span className="text-[11px] text-amber-500 font-bold">★ 5.0</span>
+                        </div>
+                        <p className="text-[11.5px] text-[#6C6E73] dark:text-[#A3BCA7] italic leading-relaxed">
+                          "Pays rent on time. Verified behavior."
+                        </p>
                       </div>
-                      <p className="text-[11.5px] text-[#6C6E73] dark:text-[#A3BCA7] italic leading-relaxed">
-                        "Tunde pays rent exactly on time every month. Perfect tenant behavior."
+                    ) : (
+                      <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] py-2 text-center">
+                        No reviews or tenancy checkouts recorded yet.
                       </p>
-                    </div>
-
-                    <div className="p-3 bg-neutral-50 dark:bg-[#1D2D26]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[12px] font-bold">Automated Ledger Check</span>
-                        <span className="text-[11px] text-amber-500 font-bold">★ 5.0</span>
-                      </div>
-                      <p className="text-[11.5px] text-[#6C6E73] dark:text-[#A3BCA7] italic leading-relaxed">
-                        "Rent ledger closed automatically for July 2026 with zero outstanding balance."
-                      </p>
-                    </div>
-
-                    <div className="p-3 bg-neutral-50 dark:bg-[#1D2D26]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[12px] font-bold">Victoria Island Residency</span>
-                        <span className="text-[11px] text-amber-500 font-bold">★ 4.6</span>
-                      </div>
-                      <p className="text-[11.5px] text-[#6C6E73] dark:text-[#A3BCA7] italic leading-relaxed">
-                        "Unit kept in great condition. Highly cooperative tenant during move-out."
-                      </p>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1082,8 +1088,7 @@ export default function TenantDashboard() {
                 {/* Redesigned Glassmorphic Card */}
                 <section className="db-card pro-card">
                   <div className="pro-card-header">
-                    <span className="pro-card-tag">Active Lease</span>
-                    <button className="pro-card-close" onClick={() => alert("Lease agreement is active")} aria-label="Dismiss">✕</button>
+                    <span className="pro-card-tag">{activeLease ? "Active Lease" : "No Active Lease"}</span>
                   </div>
 
                   <div className="pro-card-visual">
@@ -1111,35 +1116,39 @@ export default function TenantDashboard() {
 
                   <div className="pro-advantages-panel">
                     <div className="pro-advantages-header">
-                      <h4 className="pro-advantages-title">Reliability Rating</h4>
-                      <span className="pro-advantages-badge">★ 4.8</span>
+                      <h4 className="pro-advantages-title">{activeLease ? "Reliability Rating" : "Tenant Rating"}</h4>
+                      <span className="pro-advantages-badge">{activeLease ? "★ 4.8" : "New Tenant"}</span>
                     </div>
                     <p className="pro-advantages-desc">
-                      Based on automated rent checks, ledger punctuality, and landlord checkouts.
+                      {activeLease
+                        ? "Based on automated rent checks, ledger punctuality, and landlord checkouts."
+                        : "Your Tenant Reliability Score will build automatically as you complete rental payments and lease terms."}
                     </p>
 
-                    {/* SVG Sparkline rating chart */}
-                    <div style={{ marginTop: "8px", width: "100%", height: "36px" }}>
-                      <svg viewBox="0 0 200 45" style={{ width: "100%", height: "100%", overflow: "visible" }}>
-                        <defs>
-                          <linearGradient id="spark-grad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.35" />
-                            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-                          </linearGradient>
-                        </defs>
-                        <path d="M 0 35 Q 30 20 60 32 T 120 18 T 180 8" fill="none" stroke="#ffffff" strokeWidth="2.5" />
-                        <path d="M 0 35 Q 30 20 60 32 T 120 18 T 180 8 L 180 45 L 0 45 Z" fill="url(#spark-grad)" />
-                        <circle cx="180" cy="8" r="4.5" fill="#E5C583" />
-                      </svg>
-                    </div>
+                    {activeLease && (
+                      <div style={{ marginTop: "8px", width: "100%", height: "36px" }}>
+                        <svg viewBox="0 0 200 45" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+                          <defs>
+                            <linearGradient id="spark-grad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.35" />
+                              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                            </linearGradient>
+                          </defs>
+                          <path d="M 0 35 Q 30 20 60 32 T 120 18 T 180 8" fill="none" stroke="#ffffff" strokeWidth="2.5" />
+                          <path d="M 0 35 Q 30 20 60 32 T 120 18 T 180 8 L 180 45 L 0 45 Z" fill="url(#spark-grad)" />
+                          <circle cx="180" cy="8" r="4.5" fill="#E5C583" />
+                        </svg>
+                      </div>
+                    )}
 
-                    <div className="pro-view-agreement-row">
-                      <span className="text-[12px] font-bold text-white/90">View Rating Details</span>
+                    <div className="pro-view-agreement-row mt-3">
+                      <span className="text-[12px] font-bold text-white/90">
+                        {activeLease ? "View Rating Details" : "Explore Property Listings"}
+                      </span>
                       <div
-                        className="pro-arrow-circle"
-                        onClick={() => setShowRatingModal(true)}
-                        style={{ cursor: "pointer" }}
-                        title="View Rating Details"
+                        className="pro-arrow-circle cursor-pointer"
+                        onClick={() => activeLease ? setShowRatingModal(true) : setActiveTab(1)}
+                        title={activeLease ? "View Rating Details" : "Search Listings"}
                       >
                         <ArrowRight className="h-3.5 w-3.5 text-white" />
                       </div>
@@ -1215,64 +1224,60 @@ export default function TenantDashboard() {
                     <Building2 className="h-4.5 w-4.5 text-moss-600 dark:text-[#E5C583]" />
                   </div>
 
-                  <div className="property-visual-banner mt-2">
-                    <div className="property-banner-overlay" />
-                    <svg viewBox="0 0 300 100" className="property-banner-svg">
-                      <defs>
-                        <linearGradient id="building-grad" x1="0%" y1="100%" x2="0%" y2="0%">
-                          <stop offset="0%" stopColor="#2c4633" stopOpacity="0.85" />
-                          <stop offset="100%" stopColor="#a3bca7" stopOpacity="0.2" />
-                        </linearGradient>
-                      </defs>
-                      {/* Grid background */}
-                      <path d="M 0 80 Q 150 70 300 80 L 300 100 L 0 100 Z" fill="#2c4633" opacity="0.15" />
-                      {/* Abstract modern buildings */}
-                      <rect x="30" y="30" width="40" height="70" rx="3" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1" />
-                      <rect x="80" y="15" width="50" height="85" rx="4" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1.2" />
-                      <rect x="140" y="40" width="35" height="60" rx="3" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1" />
-                      <rect x="185" y="25" width="45" height="75" rx="3" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1" />
-
-                      {/* Little windows */}
-                      <rect x="90" y="25" width="8" height="8" rx="1.5" fill="#E5C583" opacity="0.8" />
-                      <rect x="110" y="25" width="8" height="8" rx="1.5" fill="#E5C583" opacity="0.6" />
-                      <rect x="90" y="40" width="8" height="8" rx="1.5" fill="#E5C583" opacity="0.5" />
-                      <rect x="110" y="40" width="8" height="8" rx="1.5" fill="#E5C583" opacity="0.8" />
-                      <rect x="40" y="40" width="6" height="6" rx="1" fill="#E5C583" opacity="0.7" />
-                      <rect x="54" y="40" width="6" height="6" rx="1" fill="#E5C583" opacity="0.4" />
-                      <rect x="40" y="55" width="6" height="6" rx="1" fill="#E5C583" opacity="0.6" />
-                      <rect x="195" y="35" width="7" height="7" rx="1.5" fill="#E5C583" opacity="0.7" />
-                      <rect x="210" y="35" width="7" height="7" rx="1.5" fill="#E5C583" opacity="0.5" />
-                    </svg>
-                  </div>
-
-                  <div className="property-details-body mt-4 text-left">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="property-name-title">Skyline Residency</h4>
-                        <p className="property-unit-subtitle">Unit 4B • First Floor</p>
+                  {activeLease ? (
+                    <>
+                      <div className="property-visual-banner mt-2">
+                        <div className="property-banner-overlay" />
+                        <svg viewBox="0 0 300 100" className="property-banner-svg">
+                          <defs>
+                            <linearGradient id="building-grad" x1="0%" y1="100%" x2="0%" y2="0%">
+                              <stop offset="0%" stopColor="#2c4633" stopOpacity="0.85" />
+                              <stop offset="100%" stopColor="#a3bca7" stopOpacity="0.2" />
+                            </linearGradient>
+                          </defs>
+                          <path d="M 0 80 Q 150 70 300 80 L 300 100 L 0 100 Z" fill="#2c4633" opacity="0.15" />
+                          <rect x="30" y="30" width="40" height="70" rx="3" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1" />
+                          <rect x="80" y="15" width="50" height="85" rx="4" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1.2" />
+                          <rect x="140" y="40" width="35" height="60" rx="3" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1" />
+                          <rect x="185" y="25" width="45" height="75" rx="3" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1" />
+                        </svg>
                       </div>
-                      <span className="property-status-badge">Leased</span>
+
+                      <div className="property-details-body mt-4 text-left">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="property-name-title">{activeLease.propertyTitle || "Leased Unit"}</h4>
+                            <p className="property-unit-subtitle">{activeLease.unit || "Active Tenancy"}</p>
+                          </div>
+                          <span className="property-status-badge">Leased</span>
+                        </div>
+
+                        <div className="property-meta-grid mt-4">
+                          <div className="property-meta-item">
+                            <span className="meta-lbl">Landlord</span>
+                            <span className="meta-val">{activeLease.landlord || "Verified Landlord"}</span>
+                          </div>
+                          <div className="property-meta-item">
+                            <span className="meta-lbl">Monthly Rent</span>
+                            <span className="meta-val highlight-gold">{activeLease.price || "₦150,000"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="py-8 text-center px-4">
+                      <p className="text-[13px] font-bold text-ink-900 dark:text-white">No Active Property Lease</p>
+                      <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] mt-1">
+                        You have not been assigned to a leased unit yet. Browse the directory to apply for a property.
+                      </p>
+                      <Button
+                        onClick={() => setActiveTab(1)}
+                        className="mt-4 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] text-[12px] px-4 py-2"
+                      >
+                        Search Properties
+                      </Button>
                     </div>
-
-                    <div className="property-meta-grid mt-4">
-                      <div className="property-meta-item">
-                        <span className="meta-lbl">Landlord</span>
-                        <span className="meta-val">Ada K.</span>
-                      </div>
-                      <div className="property-meta-item">
-                        <span className="meta-lbl">Type</span>
-                        <span className="meta-val">2 Bed Apartment</span>
-                      </div>
-                      <div className="property-meta-item">
-                        <span className="meta-lbl">Monthly Rent</span>
-                        <span className="meta-val highlight-gold">₦150,000</span>
-                      </div>
-                      <div className="property-meta-item">
-                        <span className="meta-lbl">Lease Term</span>
-                        <span className="meta-val">12 Months</span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </section>
 
                 {/* Sleek scrollable repair tickets timeline feed */}
@@ -1325,27 +1330,27 @@ export default function TenantDashboard() {
                     <div className="wallet-balance-pane">
                       <div>
                         <h5 className="activity-metric-sub">Ledger Balance</h5>
-                        <h3 className="wallet-balance-amount">₦150,000</h3>
+                        <h3 className="wallet-balance-amount">{activeLease ? "₦150,000" : "₦0"}</h3>
                       </div>
 
                       <div className="wallet-progress-group">
                         <div className="wallet-progress-item">
                           <div className="wallet-progress-lbl">
                             <span>Rent Paid</span>
-                            <span>72%</span>
+                            <span>{activeLease ? "100%" : "0%"}</span>
                           </div>
                           <div className="wallet-progress-track">
-                            <div className="wallet-progress-fill" style={{ width: "72%" }} />
+                            <div className="wallet-progress-fill" style={{ width: activeLease ? "100%" : "0%" }} />
                           </div>
                         </div>
 
                         <div className="wallet-progress-item">
                           <div className="wallet-progress-lbl">
                             <span>Utilities</span>
-                            <span>28%</span>
+                            <span>0%</span>
                           </div>
                           <div className="wallet-progress-track">
-                            <div className="wallet-progress-fill" style={{ width: "28%" }} />
+                            <div className="wallet-progress-fill" style={{ width: "0%" }} />
                           </div>
                         </div>
                       </div>
@@ -1357,20 +1362,23 @@ export default function TenantDashboard() {
                         <span className="visa-brand">Visa Debit</span>
                         <button
                           className="visa-pay-btn"
+                          disabled={!activeLease || rentPaid}
                           onClick={() => {
-                            if (rentPaid) {
-                              alert("August rent is already paid!");
+                            if (!activeLease) {
+                              alert("No active lease or rent due.");
+                            } else if (rentPaid) {
+                              alert("Rent is already paid!");
                             } else {
                               setShowPayModal(true);
                             }
                           }}
                         >
-                          {rentPaid ? "Settled" : "Pay Rent"}
+                          {!activeLease ? "No Rent Due" : rentPaid ? "Settled" : "Pay Rent"}
                         </button>
                       </div>
 
                       <div className="visa-balance">
-                        {rentPaid ? "₦0.00" : "₦150,000"}
+                        {!activeLease || rentPaid ? "₦0.00" : "₦150,000"}
                       </div>
 
                       <div className="visa-footer">
@@ -1385,38 +1393,48 @@ export default function TenantDashboard() {
                 <section className="db-card breakdown-card tour-breakdown">
                   <div className="db-card-header">
                     <h3 className="db-card-title">Monthly Rent Breakdown</h3>
-                    <span className="text-[12px] text-ink-400 dark:text-cream-100/50 font-bold">Split</span>
+                    <span className="text-[12px] text-ink-400 dark:text-cream-100/50 font-bold">{activeLease ? "Split" : "0 Active"}</span>
                   </div>
 
-                  <div className="doughnut-chart-wrapper">
-                    <svg className="doughnut-chart-svg" viewBox="0 0 36 36">
-                      {/* Segment 1: Base Rent (86% = stroke-dasharray 86 14) */}
-                      <circle cx="18" cy="18" r="15.915" fill="none" stroke="#2C4633" strokeWidth="3" strokeDasharray="86 14" strokeDashoffset="25" />
-                      {/* Segment 2: Utilities (10% = stroke-dasharray 10 90) */}
-                      <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E5C583" strokeWidth="3" strokeDasharray="10 90" strokeDashoffset="39" />
-                      {/* Segment 3: Service Charge (4% = stroke-dasharray 4 96) */}
-                      <circle cx="18" cy="18" r="15.915" fill="none" stroke="#8c8c86" strokeWidth="3" strokeDasharray="4 96" strokeDashoffset="49" />
-                    </svg>
-                    <div className="doughnut-center-text">
-                      <span className="doughnut-center-val">86%</span>
-                      <span className="doughnut-center-lbl">Rent Base</span>
-                    </div>
-                  </div>
+                  {activeLease ? (
+                    <>
+                      <div className="doughnut-chart-wrapper">
+                        <svg className="doughnut-chart-svg" viewBox="0 0 36 36">
+                          {/* Segment 1: Base Rent (86% = stroke-dasharray 86 14) */}
+                          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#2C4633" strokeWidth="3" strokeDasharray="86 14" strokeDashoffset="25" />
+                          {/* Segment 2: Utilities (10% = stroke-dasharray 10 90) */}
+                          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E5C583" strokeWidth="3" strokeDasharray="10 90" strokeDashoffset="39" />
+                          {/* Segment 3: Service Charge (4% = stroke-dasharray 4 96) */}
+                          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#8c8c86" strokeWidth="3" strokeDasharray="4 96" strokeDashoffset="49" />
+                        </svg>
+                        <div className="doughnut-center-text">
+                          <span className="doughnut-center-val">86%</span>
+                          <span className="doughnut-center-lbl">Rent Base</span>
+                        </div>
+                      </div>
 
-                  <div className="doughnut-legend">
-                    <div className="doughnut-legend-item">
-                      <span className="legend-color-dot" style={{ backgroundColor: "#2C4633" }} />
-                      <span>Rent (86%)</span>
+                      <div className="doughnut-legend">
+                        <div className="doughnut-legend-item">
+                          <span className="legend-color-dot" style={{ backgroundColor: "#2C4633" }} />
+                          <span>Rent (86%)</span>
+                        </div>
+                        <div className="doughnut-legend-item">
+                          <span className="legend-color-dot" style={{ backgroundColor: "#E5C583" }} />
+                          <span>Utilities (10%)</span>
+                        </div>
+                        <div className="doughnut-legend-item">
+                          <span className="legend-color-dot" style={{ backgroundColor: "#8c8c86" }} />
+                          <span>Service (4%)</span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="py-6 text-center px-4">
+                      <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">
+                        No active rent breakdown. Monthly budget splits for rent and utilities will appear once you have an active lease.
+                      </p>
                     </div>
-                    <div className="doughnut-legend-item">
-                      <span className="legend-color-dot" style={{ backgroundColor: "#E5C583" }} />
-                      <span>Utilities (10%)</span>
-                    </div>
-                    <div className="doughnut-legend-item">
-                      <span className="legend-color-dot" style={{ backgroundColor: "#8c8c86" }} />
-                      <span>Service (4%)</span>
-                    </div>
-                  </div>
+                  )}
                 </section>
               </div>
 

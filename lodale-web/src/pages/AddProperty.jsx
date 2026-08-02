@@ -44,7 +44,7 @@ export default function AddProperty() {
 
     // Load existing list, append and save back to localStorage
     const saved = localStorage.getItem("properties");
-    const currentListings = saved ? JSON.parse(saved) : LISTINGS;
+    const currentListings = saved ? JSON.parse(saved) : [];
     const updatedListings = [newListing, ...currentListings];
     localStorage.setItem("properties", JSON.stringify(updatedListings));
 

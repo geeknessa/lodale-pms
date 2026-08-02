@@ -160,6 +160,58 @@ const SEARCH_LISTINGS = [
     amenities: ["Prepaid Meter", "Water Treatment", "24/7 Security"],
     landlord: { name: "Ryan Herwinds", score: 4.8, reviews: 18 },
     recommendationCategory: "properties close to you"
+  },
+  {
+    id: "abuja-maitama-royal",
+    title: "Maitama Royal Residency",
+    location: "FCT - Abuja (Maitama)",
+    price: 550000,
+    beds: 3,
+    baths: 3,
+    type: "apartment",
+    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&h=250&q=80",
+    amenities: ["24/7 Power", "Prepaid Meter", "Security Detail"],
+    landlord: { name: "Fatima B.", score: 4.9, reviews: 14 },
+    recommendationCategory: "properties close to you"
+  },
+  {
+    id: "ph-gra-suite",
+    title: "GRA Phase 2 Executive Suite",
+    location: "Rivers - Port Harcourt",
+    price: 320000,
+    beds: 2,
+    baths: 2,
+    type: "apartment",
+    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
+    amenities: ["Water Treatment", "24/7 Security"],
+    landlord: { name: "Tari E.", score: 4.7, reviews: 9 },
+    recommendationCategory: "properties close to you"
+  },
+  {
+    id: "ibadan-bodija-flat",
+    title: "Bodija Garden Estate Flat",
+    location: "Oyo - Ibadan",
+    price: 180000,
+    beds: 3,
+    baths: 2,
+    type: "apartment",
+    image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&h=250&q=80",
+    amenities: ["Borehole", "Prepaid Meter", "Car Park"],
+    landlord: { name: "Akanbi O.", score: 4.6, reviews: 11 },
+    recommendationCategory: "properties close to you"
+  },
+  {
+    id: "enugu-independence-layout",
+    title: "Independence Layout Suite",
+    location: "Enugu - Enugu",
+    price: 160000,
+    beds: 2,
+    baths: 2,
+    type: "apartment",
+    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=400&h=250&q=80",
+    amenities: ["Paved Road", "Prepaid Meter"],
+    landlord: { name: "Nnamdi K.", score: 4.8, reviews: 7 },
+    recommendationCategory: "properties close to you"
   }
 ];
 
@@ -423,9 +475,41 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     return true;
   });
 
-  const lastVisitedProperties = SEARCH_LISTINGS.filter(l => l.recommendationCategory === "Last visited");
-  const closeToYouProperties = SEARCH_LISTINGS.filter(l => l.recommendationCategory === "properties close to you");
-  const popularProperties = SEARCH_LISTINGS.filter(l => l.recommendationCategory === "Popular properties");
+  const userLocationStr = (() => {
+    try {
+      const raw = localStorage.getItem("currentUserProfile");
+      if (raw) {
+        const prof = JSON.parse(raw);
+        return prof.location || "";
+      }
+    } catch (e) {}
+    return "";
+  })();
+
+  const allAvailableProperties = (() => {
+    const saved = localStorage.getItem("properties");
+    const addedProps = saved ? JSON.parse(saved) : [];
+    return [...addedProps, ...SEARCH_LISTINGS];
+  })();
+
+  const lastVisitedProperties = allAvailableProperties.filter(l => l.recommendationCategory === "Last visited");
+  const closeToYouProperties = (() => {
+    const locLower = userLocationStr.toLowerCase().trim();
+    if (locLower) {
+      const keywords = locLower
+        .split(/[\s,\-\(\)]+/)
+        .filter(k => k.length > 2 && !["usa", "states", "united", "atlanta", "london", "york"].includes(k));
+      if (keywords.length > 0) {
+        const matches = allAvailableProperties.filter(l => {
+          const propLoc = (l.location || "").toLowerCase();
+          return keywords.some(k => propLoc.includes(k));
+        });
+        if (matches.length > 0) return matches;
+      }
+    }
+    return allAvailableProperties.filter(l => l.recommendationCategory === "properties close to you");
+  })();
+  const popularProperties = allAvailableProperties.filter(l => l.recommendationCategory === "Popular properties");
 
   return (
     <>
@@ -553,7 +637,9 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
 
               {/* Section 2: Close to You */}
               <div className="recommendation-row mb-8">
-                <h3 className="recommendation-section-title">Properties close to you</h3>
+                <h3 className="recommendation-section-title">
+                  Properties close to you {userLocationStr ? `(${userLocationStr})` : ""}
+                </h3>
                 <div className="recommendation-cards-scroller">
                   {closeToYouProperties.map(p => (
                     <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />

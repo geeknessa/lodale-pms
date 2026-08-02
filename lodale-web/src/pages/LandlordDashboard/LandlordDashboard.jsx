@@ -204,77 +204,31 @@ export default function LandlordDashboard() {
     month: "short",
     year: "numeric"
   });
-  const [applications, setApplications] = useState([
-    {
-      id: 101,
-      name: "Chidi Azeez",
-      tenantName: "Chidi Azeez",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&h=64&q=80",
-      propertyTitle: "Skyline Apartments, Block 4",
-      propertyId: "skyline-block4",
-      reliabilityScore: "4.9",
-      date: "2 hours ago",
-      email: "chidi.azeez@domain.com",
-      phone: "+234 809 123 4567",
-      occupation: "Product Manager at TechCabal",
-      income: "₦850,000/mo",
-      status: "Applicant",
-      notes: "Verified NIN. References checked. Rent history shows on-time payments for 2 years."
-    },
-    {
-      id: 102,
-      name: "Fatima Bello",
-      tenantName: "Fatima Bello",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&h=64&q=80",
-      propertyTitle: "Oakwood Residency, Unit 12B",
-      propertyId: "oakwood-unit12b",
-      reliabilityScore: "4.7",
-      date: "1 day ago",
-      email: "fatima.b@domain.com",
-      phone: "+234 813 456 7890",
-      occupation: "Senior Accountant",
-      income: "₦700,000/mo",
-      status: "Applicant",
-      notes: "Verified NIN. Clean credit score. Transitioning from Lagos Mainland."
-    },
-    {
-      id: 103,
-      name: "Tunde Bakare",
-      tenantName: "Tunde Bakare",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=64&h=64&q=80",
-      propertyTitle: "Lekki Gardens, Plot 14",
-      propertyId: "lekki-gardens-14",
-      reliabilityScore: "4.8",
-      date: "3 days ago",
-      email: "t.bakare@domain.com",
-      phone: "+234 902 345 6781",
-      occupation: "Civil Engineer",
-      income: "₦950,000/mo",
-      status: "Applicant",
-      notes: "Verified NIN. Co-signer provided. Pays 6 months upfront."
+  const [applications, setApplications] = useState(() => {
+    const saved = localStorage.getItem("propertyApplications");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
     }
-  ]);
+    return [];
+  });
 
-  // Sync username if changed in storage
+  // Sync username & applications if changed in storage
   useEffect(() => {
     const handleStorageChange = () => {
-      setUsername(localStorage.getItem("username") || "Ada");
+      setUsername(localStorage.getItem("username") || "Landlord User");
+      const savedApps = localStorage.getItem("propertyApplications");
+      if (savedApps) {
+        try {
+          setApplications(JSON.parse(savedApps));
+        } catch (e) {}
+      }
     };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  // Unconditional reset of seed data on startup to ensure a clean first sign-in experience
-  useEffect(() => {
-    const isReset = localStorage.getItem("pms_dashboard_reset_v4");
-    if (!isReset) {
-      localStorage.setItem("propertyTenants", JSON.stringify({}));
-      localStorage.setItem("tenantRequests", JSON.stringify([]));
-      localStorage.setItem("landlordChats", JSON.stringify([]));
-      localStorage.setItem("pms_dashboard_reset_v4", "true");
-      // Force reload to apply storage update immediately
-      window.location.reload();
-    }
   }, []);
 
   // Trigger onboarding welcome overlay if new signup or first time entering
@@ -581,14 +535,20 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     const saved = localStorage.getItem("properties");
-    const allList = saved ? JSON.parse(saved) : LISTINGS;
-    if (!saved) {
-      localStorage.setItem("properties", JSON.stringify(LISTINGS));
+    if (saved) {
+      try {
+        const allList = JSON.parse(saved);
+        const userFirstName = username.toLowerCase().split(" ")[0];
+        const filtered = allList.filter(l =>
+          !l.landlord?.name || l.landlord?.name?.toLowerCase().includes(userFirstName) || userFirstName.includes(l.landlord?.name?.toLowerCase().split(" ")[0] || "")
+        );
+        setDisplayProperties(filtered);
+      } catch (e) {
+        setDisplayProperties([]);
+      }
+    } else {
+      setDisplayProperties([]);
     }
-    const filtered = allList.filter(l =>
-      l.landlord?.name?.toLowerCase().includes(username.toLowerCase().split(" ")[0])
-    );
-    setDisplayProperties(filtered);
   }, [username]);
 
   const handleUpdateRequestStatus = (requestId, newStatus) => {
@@ -1104,7 +1064,9 @@ export default function LandlordDashboard() {
                   </div>
 
                   <div className="activity-metric">
-                    <span className="activity-val">92%</span>
+                    <span className="activity-val">
+                      {displayProperties.length === 0 ? "0%" : `${Math.min(100, Math.round((getActiveTenantsCount() / Math.max(1, displayProperties.length)) * 100))}%`}
+                    </span>
                     <span className="activity-sub">Occupancy Rate</span>
                   </div>
 
