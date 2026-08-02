@@ -89,6 +89,8 @@ export default function NavBar() {
         });
       }
     }
+  }
+
   const checkIsActive = (path, hash = "") => {
     const isHomeRoute =
       location.pathname === "/explore" ||
@@ -106,7 +108,6 @@ export default function NavBar() {
 
     return location.pathname === path;
   };
-  }
 
 
 
