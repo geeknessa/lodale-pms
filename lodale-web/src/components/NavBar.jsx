@@ -13,8 +13,15 @@ export default function NavBar() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem("isAuthenticated") === "true";
   });
-
+  const [isAdmin, setIsAdmin] = useState(() => {
+    return (
+      localStorage.getItem("userRole") === "admin" ||
+      localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com"
+    );
+  });
   const [activeSection, setActiveSection] = useState("");
+
+
 
   useEffect(() => {
     const handleAuth = () => {
@@ -119,11 +126,19 @@ export default function NavBar() {
   };
 
   function handleSignOut() {
+    const isCurrentAdmin = isAdmin || localStorage.getItem("userRole") === "admin";
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("sessionExpiresAt");
+    if (localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com") {
+      localStorage.removeItem("lastLoggedInEmail");
+    }
     setIsAuthenticated(false);
     setIsOpen(false);
-    navigate("/explore");
+    if (isCurrentAdmin) {
+      navigate("/admin/login");
+    } else {
+      navigate("/explore");
+    }
   }
 
   function handleDashboardNavigate() {

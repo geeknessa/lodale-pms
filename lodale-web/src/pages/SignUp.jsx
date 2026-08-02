@@ -235,7 +235,7 @@ export default function SignUp() {
 
   return (
     <div
-      className="min-h-screen w-full text-ink-900 dark:text-white flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-12 relative overflow-hidden font-sans select-none text-left transition-colors duration-200"
+      className="min-h-screen w-full text-ink-900 dark:text-white flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-12 relative font-sans select-none text-left transition-colors duration-200"
       style={{
         backgroundImage: `url(${heroBg})`,
         backgroundSize: "cover",
