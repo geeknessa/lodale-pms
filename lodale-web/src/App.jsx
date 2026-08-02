@@ -20,6 +20,7 @@ import AccessDenied from "./pages/AccessDenied";
 import DashboardAddProperty from "./pages/DashboardAddProperty";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
+import AdminDashboard from "./pages/AdminDashboard";
 import LandlordDashboard from "./pages/LandlordDashboard/LandlordDashboard";
 import PropertyDetail from "./pages/PropertyDetail";
 import TenantDashboard from "./pages/TenantDashboard/TenantDashboard";
@@ -317,6 +318,14 @@ export default function App() {
               }
             />
             <Route
+              path="/dashboard/landlord"
+              element={
+                <ProtectedRoute>
+                  <LandlordDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/dashboard/landlord/add-property"
               element={
                 <ProtectedRoute>
@@ -332,7 +341,7 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-             <Route
+            <Route
               path="/dashboard/tenant"
               element={
                 <ProtectedRoute>
