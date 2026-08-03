@@ -245,7 +245,7 @@ export default function SignUp() {
     if (skipWelcome && listingId) {
       navigate(`/apply/${listingId}`);
     } else {
-      navigate(`/welcome/${role}`, { state: { username: `${firstName.trim()} ${lastName.trim()}` } });
+      navigate(`/dashboard/${role}`);
     }
   }
 

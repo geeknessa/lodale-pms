@@ -13,7 +13,6 @@ import HowItWorks from "./pages/HowItWorks";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
-import Welcome from "./pages/Welcome";
 import Application from "./pages/Application";
 import AddProperty from "./pages/AddProperty";
 import AccessDenied from "./pages/AccessDenied";
@@ -283,14 +282,6 @@ export default function App() {
                 <AdminProtectedRoute>
                   <AdminDashboard />
                 </AdminProtectedRoute>
-              }
-            />
-            <Route
-              path="/welcome/:role"
-              element={
-                <ProtectedRoute>
-                  <Welcome />
-                </ProtectedRoute>
               }
             />
             <Route
