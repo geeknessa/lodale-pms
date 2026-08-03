@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Building2, ChevronRight, X, Users } from "lucide-react";
+import { Search, Building2, ChevronRight, X, Users, Star } from "lucide-react";
 import { LISTINGS } from "../../data/listings";
 import UserInfo from "./components/UserInfo";
 import "./LandlordProperties.css";
@@ -307,7 +307,10 @@ export default function LandlordProperties() {
                           >
                             {tenant.name}
                           </span>
-                          <span className="ap-popup-score">⭐ {tenant.reliabilityScore}</span>
+                          <span className="ap-popup-score flex items-center gap-1 font-bold text-amber-500">
+                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" />
+                            <span>{tenant.reliabilityScore}</span>
+                          </span>
                         </div>
                         <p className="ap-popup-lease">{tenant.leaseStatus}</p>
                       </div>

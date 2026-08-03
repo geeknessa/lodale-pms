@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search as SearchIcon, User } from "lucide-react";
+import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2 } from "lucide-react";
 import Button from "../../components/Button";
 import "./TenantSearch.css";
 
@@ -309,7 +309,10 @@ function PropertyCard({ property, onInspect }) {
 
       <div className="property-card-body text-left">
         <h4 className="property-card-title-text">{property.title}</h4>
-        <p className="property-card-location">📍 {property.location}</p>
+        <p className="property-card-location flex items-center gap-1">
+          <MapPin className="h-3.5 w-3.5 shrink-0 text-moss-600 dark:text-[#E5C583]" />
+          <span>{property.location}</span>
+        </p>
 
         <div className="property-card-specs">
           <span className="spec-tag">{property.beds} Bed{property.beds > 1 ? "s" : ""}</span>
@@ -335,7 +338,7 @@ function LandlordCard({ landlord, onInspect }) {
       <div className="landlord-card-header text-center">
         <div className="landlord-avatar-wrapper">
           <img src={landlord.avatar} alt={landlord.name} className="landlord-avatar-img" />
-          <span className="landlord-verification-tick">✓</span>
+          <span className="landlord-verification-tick"><Check className="h-3 w-3" /></span>
         </div>
         <h4 className="landlord-name-text">{landlord.name}</h4>
         <span className="landlord-badge">Verified Partner</span>
@@ -344,11 +347,17 @@ function LandlordCard({ landlord, onInspect }) {
       <div className="landlord-card-body text-left">
         <div className="landlord-metric flex justify-between items-center text-[12.5px] mb-2">
           <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Rating Score</span>
-          <span className="font-bold text-amber-500">★ {landlord.score} ({landlord.reviews} reviews)</span>
+          <span className="font-bold text-amber-500 flex items-center gap-1">
+            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+            <span>{landlord.score} ({landlord.reviews} reviews)</span>
+          </span>
         </div>
         <div className="landlord-metric flex justify-between items-center text-[12.5px] mb-3">
           <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Base Location</span>
-          <span className="font-semibold text-neutral-800 dark:text-neutral-200">📍 {landlord.location.split(",")[0]}</span>
+          <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
+            <MapPin className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583] shrink-0" />
+            <span>{landlord.location.split(",")[0]}</span>
+          </span>
         </div>
 
         <div className="landlord-properties-list mb-4">
@@ -560,7 +569,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
         if (!addedKeys.has(key)) {
           addedKeys.add(key);
           suggestions.push({
-            icon: "🏠",
+            icon: <Home className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />,
             text: p.title,
             subtitle: p.location,
             category: "Property",
@@ -577,7 +586,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
         if (!addedKeys.has(key)) {
           addedKeys.add(key);
           suggestions.push({
-            icon: "📍",
+            icon: <MapPin className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />,
             text: p.location,
             subtitle: `Listings in ${p.location}`,
             category: "Location",
@@ -594,7 +603,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
         if (!addedKeys.has(key)) {
           addedKeys.add(key);
           suggestions.push({
-            icon: "👤",
+            icon: <User className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />,
             text: l.name,
             subtitle: `Verified Partner (${l.rating}★)`,
             category: "Landlord",
@@ -837,7 +846,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                   </div>
                 ) : (
                   <div className="p-6 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C] my-2">
-                    <div className="text-2xl mb-2">📍</div>
+                    <div className="mb-2 flex justify-center"><MapPin className="h-7 w-7 text-moss-600 dark:text-[#E5C583]" /></div>
                     <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">
                       No properties currently available close to {userLocationStr || "your location"}
                     </h4>
@@ -931,7 +940,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
             </div>
             {((searchType === "property" ? filteredListings.length : filteredLandlords.length) === 0) ? (
               <div className="search-empty-state py-12 text-center">
-                <div className="search-empty-icon text-3xl mb-3">🔍</div>
+                <div className="mb-3 flex justify-center"><SearchIcon className="h-8 w-8 text-neutral-400" /></div>
                 <h4 className="font-bold text-[16px]">No Match Matched Your Criteria</h4>
                 <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7] mt-1 max-w-sm mx-auto">
                   Try clearing some active filters or modifying your query keywords.
@@ -1115,8 +1124,9 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               <h4 className="font-bold text-[18px] text-ink-900 dark:text-white leading-snug mb-1">
                 {selectedProperty.title}
               </h4>
-              <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] mb-4">
-                📍 {selectedProperty.location}
+              <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] mb-4 flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583] shrink-0" />
+                <span>{selectedProperty.location}</span>
               </p>
 
               {/* Specifications pills */}
@@ -1137,8 +1147,9 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                 <span className="summary-lbl">Included Amenities</span>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {selectedProperty.amenities.map((a, i) => (
-                    <span key={i} className="px-2 py-0.5 bg-neutral-50 dark:bg-[#0E1714] text-[11.5px] font-semibold rounded-md border border-neutral-100 dark:border-neutral-800/40">
-                      ✓ {a}
+                    <span key={i} className="px-2.5 py-1 bg-neutral-50 dark:bg-[#0E1714] text-[11.5px] font-semibold rounded-md border border-neutral-100 dark:border-neutral-800/40 flex items-center gap-1">
+                      <Check className="h-3 w-3 text-moss-600 dark:text-[#E5C583]" />
+                      <span>{a}</span>
                     </span>
                   ))}
                 </div>
@@ -1206,7 +1217,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               <div className="flex flex-col items-center py-4 mb-4 border-b border-neutral-100 dark:border-neutral-800/40">
                 <div className="landlord-avatar-wrapper" style={{ width: "80px", height: "80px", position: "relative" }}>
                   <img src={selectedLandlord.avatar} alt={selectedLandlord.name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", border: "2px solid #E5C583" }} />
-                  <span className="landlord-verification-tick" style={{ position: "absolute", bottom: "0", right: "0", width: "22px", height: "22px", fontSize: "12px" }}>✓</span>
+                  <span className="landlord-verification-tick flex items-center justify-center" style={{ position: "absolute", bottom: "0", right: "0", width: "22px", height: "22px" }}><Check className="h-3 w-3" /></span>
                 </div>
                 <h4 className="font-bold text-[20px] text-ink-900 dark:text-white mt-3 mb-1">
                   {selectedLandlord.name}

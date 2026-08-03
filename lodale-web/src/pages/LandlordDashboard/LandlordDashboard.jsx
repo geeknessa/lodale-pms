@@ -173,8 +173,22 @@ export default function LandlordDashboard() {
     }
   };
 
-  // Keep track of active sidebar tab (default: 0 for Dashboard)
-  const [activeTab, setActiveTab] = useState(0);
+  // Keep track of active sidebar tab (persisted on page reload)
+  const [activeTab, setActiveTabState] = useState(() => {
+    try {
+      const saved = localStorage.getItem("landlordActiveTab");
+      return saved !== null ? Number(saved) : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+
+  const setActiveTab = (index) => {
+    setActiveTabState(index);
+    try {
+      localStorage.setItem("landlordActiveTab", index.toString());
+    } catch (e) {}
+  };
 
   // Active top navigation pill
   const [activePill, setActivePill] = useState("Overview");
@@ -714,7 +728,10 @@ export default function LandlordDashboard() {
                               >
                                 {app.tenantName}
                               </span>
-                              <span className="db-popup-score">⭐ {app.reliabilityScore}</span>
+                              <span className="db-popup-score flex items-center gap-1 font-bold text-amber-500">
+                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                                <span>{app.reliabilityScore}</span>
+                              </span>
                             </div>
                             <p className="db-popup-property">{app.propertyTitle}</p>
                             <span className="db-popup-date">{app.date}</span>
@@ -1302,15 +1319,15 @@ export default function LandlordDashboard() {
             </div>
 
             <h3 className="font-display text-xl font-bold text-ink-900 dark:text-white mb-1">Landlord Reviews & Ratings</h3>
-            <p className="text-[12.5px] text-ink-400 dark:text-cream-100/70 mb-5">
-              Overall score: <strong className="text-ink-900 dark:text-white font-bold">⭐ 4.8 / 5.0</strong> based on 12 verified tenant reviews.
+            <p className="text-[12.5px] text-ink-400 dark:text-cream-100/70 mb-5 flex items-center justify-center gap-1">
+              Overall score: <strong className="text-ink-900 dark:text-white font-bold flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> 4.8 / 5.0</strong> based on 12 verified tenant reviews.
             </p>
 
             <div className="space-y-4 text-left max-h-[300px] overflow-y-auto pr-1 border-t border-[#E4EAE1] dark:border-white/10 pt-4">
               <div className="border-b border-[#E4EAE1]/60 dark:border-white/5 pb-3">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[13px] font-bold text-ink-900 dark:text-white">Maren Maureen</span>
-                  <span className="text-[11px] text-[#D69E2E] font-bold">⭐ 5.0</span>
+                  <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> 5.0</span>
                 </div>
                 <p className="text-[12px] text-ink-600 dark:text-cream-100/80 leading-relaxed">
                   "Ada K. is an outstanding landlord. Every maintenance request I submitted was sorted out in less than a day. Super professional and pleasant to deal with."
@@ -1321,7 +1338,7 @@ export default function LandlordDashboard() {
               <div className="border-b border-[#E4EAE1]/60 dark:border-white/5 pb-3">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[13px] font-bold text-ink-900 dark:text-white">Emeka Obi</span>
-                  <span className="text-[11px] text-[#D69E2E] font-bold">⭐ 4.0</span>
+                  <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> 4.0</span>
                 </div>
                 <p className="text-[12px] text-ink-600 dark:text-cream-100/80 leading-relaxed">
                   "Great landlord, very responsive with repairs. The property and amenities are exactly as advertised. Minor delays in unit key handover at start but overall excellent."
@@ -1332,7 +1349,7 @@ export default function LandlordDashboard() {
               <div className="pb-1">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[13px] font-bold text-ink-900 dark:text-white">Ryan Herwinds</span>
-                  <span className="text-[11px] text-[#D69E2E] font-bold">⭐ 5.0</span>
+                  <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> 5.0</span>
                 </div>
                 <p className="text-[12px] text-ink-600 dark:text-cream-100/80 leading-relaxed">
                   "Very simple onboarding and smooth lease renewal. Ada respects privacy and responds quickly to emergency lock checks."
@@ -1390,7 +1407,9 @@ export default function LandlordDashboard() {
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Account Rating</span>
-                <span className="text-ink-900 dark:text-white font-semibold flex items-center gap-1">⭐ 4.9 <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">(18 reviews)</span></span>
+                <span className="text-ink-900 dark:text-white font-semibold flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> 4.9 <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">(18 reviews)</span>
+                </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Member Since</span>

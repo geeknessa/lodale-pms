@@ -23,6 +23,7 @@ import {
   HelpCircle,
   Bell,
   Menu,
+  Check,
 } from "lucide-react";
 import gsap from "gsap";
 import { Logo, LogoMark } from "../../components/Logo";
@@ -158,9 +159,23 @@ export default function TenantDashboard() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
-  // Active navigation tab
+  // Active navigation tab (persisted on page reload)
   // 0: Dashboard, 1: Search, 2: Chat, 3: Settings
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTabState] = useState(() => {
+    try {
+      const saved = localStorage.getItem("tenantActiveTab");
+      return saved !== null ? Number(saved) : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+
+  const setActiveTab = (index) => {
+    setActiveTabState(index);
+    try {
+      localStorage.setItem("tenantActiveTab", index.toString());
+    } catch (e) {}
+  };
 
   // Retrieve username with fallback
   const [username, setUsername] = useState(() => {
@@ -625,21 +640,21 @@ export default function TenantDashboard() {
 
             <ul className="welcome-checklist text-left">
               <li>
-                <div className="chk-icon">✓</div>
+                <div className="chk-icon flex items-center justify-center"><Check className="h-3.5 w-3.5" /></div>
                 <div>
                   <strong>Direct Landlord Sync</strong>
                   <span>Direct secure line for messaging and requests.</span>
                 </div>
               </li>
               <li>
-                <div className="chk-icon">✓</div>
+                <div className="chk-icon flex items-center justify-center"><Check className="h-3.5 w-3.5" /></div>
                 <div>
                   <strong>NIN ID Verification Profile</strong>
                   <span>Encrypted digital credentials stored locally for application checkouts.</span>
                 </div>
               </li>
               <li>
-                <div className="chk-icon">✓</div>
+                <div className="chk-icon flex items-center justify-center"><Check className="h-3.5 w-3.5" /></div>
                 <div>
                   <strong>Automated Rent Ledger</strong>
                   <span>Instant rent payments, invoices, and compliant stamp receipts.</span>
@@ -712,7 +727,7 @@ export default function TenantDashboard() {
 
             {payingState === "success" && (
               <div className="modal-body-centered py-10">
-                <div className="payment-success-badge">✓</div>
+                <div className="payment-success-badge flex items-center justify-center"><Check className="h-6 w-6" /></div>
                 <h4 className="mt-4 font-bold text-[16px] text-emerald-600 dark:text-emerald-400">Payment Successful!</h4>
                 <p className="text-[12.5px] text-ink-700 dark:text-cream-100/70 mt-1">Rent invoice paid successfully. Receipt added to your ledger.</p>
               </div>
@@ -1460,7 +1475,7 @@ export default function TenantDashboard() {
           /* TAB 4+: UNDER DEVELOPMENT VIEWS */
           <div className="under-development-wrapper flex-1 flex items-center justify-center">
             <div className="under-dev-card text-center">
-              <div className="sparkle-icon">✨</div>
+              <div className="sparkle-icon flex justify-center"><Sparkles className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>
               <span className="tag mb-2 inline-block">Under Development</span>
               <h2 className="font-display text-2xl font-bold text-ink-900 dark:text-white mb-2">
                 {getTabName()} Section
