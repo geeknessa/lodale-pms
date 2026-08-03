@@ -109,9 +109,6 @@ export default function DashboardAddProperty() {
     const updatedListings = [newListing, ...currentListings];
     localStorage.setItem("properties", JSON.stringify(updatedListings));
 
-    // Notify TenantSearch (same tab) to refresh its listing pool
-    window.dispatchEvent(new CustomEvent("lodale:listing-added"));
-
     setIsSubmitted(true);
   }
 

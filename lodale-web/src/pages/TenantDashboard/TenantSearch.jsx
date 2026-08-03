@@ -422,40 +422,6 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     }
   });
 
-  // ── Reactive pool of ALL available properties (static + landlord-posted) ──
-  const buildAllAvailable = () => {
-    try {
-      const saved = localStorage.getItem("properties");
-      const addedProps = saved ? JSON.parse(saved) : [];
-      const combined = [...addedProps, ...SEARCH_LISTINGS];
-      const seen = new Set();
-      return combined.filter(p => {
-        if (!p) return false;
-        const key = (p.id || p.title || "").toLowerCase().trim();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-    } catch (e) {
-      return [...SEARCH_LISTINGS];
-    }
-  };
-
-  const [allAvailableProperties, setAllAvailableProperties] = useState(buildAllAvailable);
-
-  // Re-sync when the landlord saves a new listing (same tab or another tab)
-  useEffect(() => {
-    const sync = () => setAllAvailableProperties(buildAllAvailable());
-    window.addEventListener("storage", sync);
-    // Also listen for custom event fired in same tab
-    window.addEventListener("lodale:listing-added", sync);
-    return () => {
-      window.removeEventListener("storage", sync);
-      window.removeEventListener("lodale:listing-added", sync);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleInspectProperty = (property) => {
     setSelectedProperty(property);
     setShowPropertyDetailsModal(true);
@@ -523,30 +489,26 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
   // Helper to check if any filters are active
   const hasActiveFilters = searchQuery.trim() !== "" || filterPrice !== "" || filterBeds !== "" || filterType !== "" || filterLandlordTenure !== "";
 
-  // Perform search filtering — uses allAvailableProperties so landlord-posted
-  // listings are included alongside the built-in SEARCH_LISTINGS pool.
-  const filteredListings = allAvailableProperties.filter(listing => {
+  // Perform search filtering
+  const filteredListings = SEARCH_LISTINGS.filter(listing => {
     // 1. Text Search matching
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
       if (searchType === "property") {
         const matchesTitle = listing.title.toLowerCase().includes(query);
         const matchesLocation = listing.location.toLowerCase().includes(query);
-        const matchesLandlord = (listing.landlord?.name || "").toLowerCase().includes(query);
+        const matchesLandlord = listing.landlord.name.toLowerCase().includes(query);
         if (!matchesTitle && !matchesLocation && !matchesLandlord) return false;
       } else {
-        const matchesLandlord = (listing.landlord?.name || "").toLowerCase().includes(query);
+        const matchesLandlord = listing.landlord.name.toLowerCase().includes(query);
         if (!matchesLandlord) return false;
       }
     }
 
-    // 2. Rent Price Filter — normalise both numeric and string prices
+    // 2. Rent Price Filter
     if (filterPrice !== "") {
       const maxPrice = parseFloat(filterPrice);
-      const rawPrice = typeof listing.price === "number"
-        ? listing.price
-        : parseFloat(String(listing.price).replace(/[^0-9.]/g, "")) || 0;
-      if (rawPrice > maxPrice) return false;
+      if (listing.price > maxPrice) return false;
     }
 
     // 3. Beds Filter
@@ -560,9 +522,9 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
       if (listing.type !== filterType) return false;
     }
 
-    // 5. Landlord Tenure Filter (only applies to static listings with known landlords)
+    // 5. Landlord Tenure Filter
     if (filterLandlordTenure !== "") {
-      const landlordObj = LANDLORDS.find(l => l.name === listing.landlord?.name);
+      const landlordObj = LANDLORDS.find(l => l.name === listing.landlord.name);
       if (!landlordObj || landlordObj.joinedStatus !== filterLandlordTenure) return false;
     }
 
@@ -580,7 +542,19 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     return "";
   })();
 
-  // allAvailableProperties is now reactive state — see useState above
+  const allAvailableProperties = (() => {
+    const saved = localStorage.getItem("properties");
+    const addedProps = saved ? JSON.parse(saved) : [];
+    const combined = [...addedProps, ...SEARCH_LISTINGS];
+    const seen = new Set();
+    return combined.filter(p => {
+      if (!p) return false;
+      const key = (p.id || p.title || "").toLowerCase().trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
 
   const searchSuggestions = (() => {
     const q = searchQuery.toLowerCase().trim();
@@ -678,8 +652,6 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     !closeToYouIds.has(l.id) &&
     l.recommendationCategory === "Popular properties"
   );
-
-
 
   return (
     <>
@@ -892,7 +864,6 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                   </div>
                 )}
               </div>
-
 
               {/* Section 3: Popular Properties */}
               <div className="recommendation-row mb-8" id="popular-properties-section">
