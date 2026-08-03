@@ -144,7 +144,7 @@ export default function NavBar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-ink-200/30 bg-transparent backdrop-blur-md">
+    <header className="sticky top-0 z-[100] border-b border-ink-200/30 bg-white/85 dark:bg-[#0B1512]/85 backdrop-blur-md transition-colors">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link to="/explore" onClick={handleHomeClick}>
           <Logo />

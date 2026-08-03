@@ -25,13 +25,11 @@ body.dark {
 .tenant-wrapper {
   height: 100vh;
   width: 100%;
-  max-width: 100vw;
   background-color: var(--tenant-canvas);
   color: var(--tenant-text-main);
   display: flex;
   font-family: 'Inter', system-ui, sans-serif;
   overflow: hidden;
-  overscroll-behavior: none;
   box-sizing: border-box;
 }
 
