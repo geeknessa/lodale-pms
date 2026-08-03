@@ -183,6 +183,17 @@ export default function TenantDashboard() {
   });
   const firstName = username.split(" ")[0];
 
+  // Dynamic real-time date formatting
+  const currentDateStr = new Date().toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  });
+  const currentMonthYearStr = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
   // Tenant avatar state (uses User icon by default until user uploads custom photo)
   const [tenantAvatar, setTenantAvatar] = useState(() => {
     const emailKey = localStorage.getItem("lastLoggedInEmail");
@@ -562,7 +573,7 @@ export default function TenantDashboard() {
       setTimeout(() => {
         const newPayment = {
           id: "pay-" + Date.now(),
-          month: "August 2026",
+          month: currentMonthYearStr,
           amount: "₦150,000",
           date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
           status: "Paid",
@@ -715,7 +726,7 @@ export default function TenantDashboard() {
                 <div className="modal-body text-left">
                   <div className="invoice-summary">
                     <span className="summary-lbl">Due Period</span>
-                    <span className="summary-val">August 2026</span>
+                    <span className="summary-val">{currentMonthYearStr}</span>
                     <span className="summary-lbl mt-3">Total Rent Amount</span>
                     <span className="summary-val amount text-moss-700 dark:text-[#E5C583]">₦150,000</span>
                     <span className="summary-lbl mt-3">Recipient Landlord</span>
@@ -1094,7 +1105,7 @@ export default function TenantDashboard() {
               <div className="db-controls-group">
                 <div className="db-date-selector">
                   <Calendar className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" />
-                  <span>Monday, 27 Jul</span>
+                  <span>{currentDateStr}</span>
                 </div>
 
                 <div className="db-search-trigger" onClick={() => setActiveTab(1)} title="Search">

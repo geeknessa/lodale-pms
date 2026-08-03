@@ -20,6 +20,7 @@ import {
   ArrowUpRight,
   Star,
   Sparkles,
+  User,
 } from "lucide-react";
 import { Logo } from "../../components/Logo";
 import Button from "../../components/Button";
@@ -218,6 +219,36 @@ export default function LandlordDashboard() {
     month: "short",
     year: "numeric"
   });
+
+  // Landlord profile avatar state (persisted across uploads)
+  const [landlordAvatar, setLandlordAvatar] = useState(() => {
+    const emailKey = localStorage.getItem("lastLoggedInEmail");
+    if (emailKey) {
+      const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
+      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
+    }
+    const globalSaved = localStorage.getItem("landlordAvatarUrl");
+    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
+    return "";
+  });
+
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      const emailKey = localStorage.getItem("lastLoggedInEmail");
+      let updated = null;
+      if (emailKey) {
+        updated = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
+      }
+      if (!updated) {
+        updated = localStorage.getItem("landlordAvatarUrl");
+      }
+      if (updated && !updated.includes("unsplash.com")) {
+        setLandlordAvatar(updated);
+      }
+    };
+    window.addEventListener("storage", handleAvatarUpdate);
+    return () => window.removeEventListener("storage", handleAvatarUpdate);
+  }, []);
   const [applications, setApplications] = useState(() => {
     const saved = localStorage.getItem("propertyApplications");
     if (saved) {
@@ -907,11 +938,13 @@ export default function LandlordDashboard() {
             onClick={() => setShowLandlordProfileModal(true)}
             title="View landlord details"
           >
-            <img
-              src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=64&h=64&q=80"
-              alt="User profile"
-              className="db-user-avatar"
-            />
+            <div className="db-user-avatar overflow-hidden rounded-full flex items-center justify-center bg-[#3A5A40]/10 dark:bg-[#1E382A] text-[#2C4633] dark:text-[#E5C583] border border-[#2C4633]/20 dark:border-white/20">
+              {landlordAvatar ? (
+                <img src={landlordAvatar} alt="Landlord profile" className="h-full w-full object-cover" />
+              ) : (
+                <User className="h-4.5 w-4.5 text-[#2C4633] dark:text-[#E5C583]" />
+              )}
+            </div>
             <div className="hidden sm:block text-left">
               <p className="db-user-name">{username}</p>
               <p className="db-user-role">Verified Landlord</p>
