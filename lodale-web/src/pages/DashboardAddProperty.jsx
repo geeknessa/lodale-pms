@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Sparkles, Loader2, User, Key, Building2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Sparkles, Loader2, User, Key, Building2, Camera, ImagePlus, Upload, Check } from "lucide-react";
 import gsap from "gsap";
 import { Logo } from "../components/Logo";
 import Input from "../components/Input";
@@ -8,17 +8,48 @@ import Button from "../components/Button";
 import { LISTINGS } from "../data/listings";
 import "./DashboardAddProperty.css";
 
+const PRESET_PHOTOS = [
+  { label: "Modern Villa", url: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80" },
+  { label: "Luxury Apartment", url: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80" },
+  { label: "Gated Residency", url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80" },
+  { label: "Cozy Studio", url: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80" },
+];
+
 export default function DashboardAddProperty() {
   const navigate = useNavigate();
   const [occupied, setOccupied] = useState(null); // null | true | false
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  // Property picture prompt state
+  const [propertyPhoto, setPropertyPhoto] = useState(PRESET_PHOTOS[0].url);
+  const [photoPreview, setPhotoPreview] = useState(PRESET_PHOTOS[0].url);
+  const [photoError, setPhotoError] = useState("");
+
+  const fileInputRef = useRef(null);
   const cardRef = useRef(null);
   const titleRef = useRef(null);
   const descRef = useRef(null);
   const successOverlayRef = useRef(null);
   const checkIconRef = useRef(null);
   const textContainerRef = useRef(null);
+
+  function handleFileUpload(e) {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        setPhotoError("Please select a valid image file (PNG, JPG, WEBP).");
+        return;
+      }
+      setPhotoError("");
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const result = evt.target.result;
+        setPropertyPhoto(result);
+        setPhotoPreview(result);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
 
   // Mount animation sequence
   useEffect(() => {
@@ -61,6 +92,7 @@ export default function DashboardAddProperty() {
       title: address,
       location: "Lagos, Nigeria",
       price: formattedRent + "/mo",
+      image: propertyPhoto || PRESET_PHOTOS[0].url,
       beds: Number(bedrooms),
       baths: 2,
       amenities: ["Prepaid Meter", "24/7 Security"],
@@ -219,6 +251,86 @@ export default function DashboardAddProperty() {
                   light={false}
                   required
                 />
+              </div>
+
+              {/* PROPERTY PICTURE PROMPT & PHOTO PICKER */}
+              <div className="rounded-xl border border-[#3A5A40]/30 dark:border-white/10 bg-[#3A5A40]/5 dark:bg-white/5 p-5 animate-form-field">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[13px] font-bold text-ink-900 dark:text-white flex items-center gap-1.5">
+                    <Camera className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
+                    <span>Property Photos & Pictures *</span>
+                  </label>
+                  <span className="text-[11px] font-bold text-moss-700 dark:text-[#E5C583] flex items-center gap-1">
+                    <Check className="h-3.5 w-3.5" /> Photo Attached
+                  </span>
+                </div>
+                <p className="text-[12px] text-ink-700 dark:text-cream-100/70 mb-4 leading-relaxed">
+                  Add a high-quality picture of your rental unit so prospective tenants can inspect layout details.
+                </p>
+
+                {/* Photo Preview */}
+                {photoPreview && (
+                  <div className="relative mb-4 h-44 w-full overflow-hidden rounded-xl border border-ink-200 dark:border-white/15 shadow-sm group">
+                    <img
+                      src={photoPreview}
+                      alt="Property Preview"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <span className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-md flex items-center gap-1">
+                      <Check className="h-3 w-3 text-emerald-400" /> Active Listing Photo
+                    </span>
+                  </div>
+                )}
+
+                {/* File Upload Trigger */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+
+                <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] font-bold text-[12.5px] hover:bg-[#1E382A] dark:hover:bg-[#d8b672] transition-all cursor-pointer shadow-xs active:scale-95 border-none outline-none"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload Photo from Device
+                  </button>
+                </div>
+
+                {/* Sample Photo Pickers */}
+                <div className="mt-3">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-400 dark:text-cream-100/50 mb-2">
+                    Or pick a recommended sample photo:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {PRESET_PHOTOS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setPropertyPhoto(preset.url);
+                          setPhotoPreview(preset.url);
+                        }}
+                        className={`text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer outline-none ${
+                          photoPreview === preset.url
+                            ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] border-transparent shadow-xs"
+                            : "bg-white dark:bg-[#182C24] text-ink-700 dark:text-cream-100/80 border-ink-200 dark:border-white/10 hover:border-moss-500"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {photoError && (
+                  <p className="mt-2 text-[12px] font-semibold text-rose-600 dark:text-rose-400">{photoError}</p>
+                )}
               </div>
             </div>
 

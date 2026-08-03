@@ -39,6 +39,11 @@ export default function Login() {
     if (location.pathname === "/admin/login" || location.search.includes("role=admin")) {
       return "AdminPassword123!";
     }
+    const cleanInitial = (localStorage.getItem("lastLoggedInEmail") || "").trim().toLowerCase();
+    if (cleanInitial) {
+      const savedPass = localStorage.getItem("userPassword_" + cleanInitial) || localStorage.getItem("lastLoggedInPassword");
+      if (savedPass) return savedPass;
+    }
     return "";
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -140,18 +145,37 @@ export default function Login() {
       }
     }
 
-    const regUserKey = "registeredUser_" + email.trim().toLowerCase();
-    const regUserData = localStorage.getItem(regUserKey);
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    // 1. Direct user key lookup
     let registeredUser = null;
+    const regUserKey = "registeredUser_" + cleanEmail;
+    const regUserData = localStorage.getItem(regUserKey);
     if (regUserData) {
       try {
         registeredUser = JSON.parse(regUserData);
       } catch (err) {}
     }
 
+    // 2. Global registeredUsers array lookup fallback
+    if (!registeredUser) {
+      try {
+        const listStr = localStorage.getItem("registeredUsers");
+        if (listStr) {
+          const list = JSON.parse(listStr);
+          registeredUser = list.find(u => u && u.email && u.email.toLowerCase() === cleanEmail);
+        }
+      } catch (e) {}
+    }
+
+    const savedUserPassword = localStorage.getItem("userPassword_" + cleanEmail) || (registeredUser ? registeredUser.password : null);
+
     // Registered user login logic
-    if (registeredUser) {
-      if (registeredUser.password !== password) {
+    if (registeredUser || savedUserPassword) {
+      const expectedPassword = ((registeredUser && registeredUser.password) || savedUserPassword || "").trim();
+      
+      if (expectedPassword && cleanPassword !== expectedPassword && password !== expectedPassword) {
         const newAttempts = failedAttempts + 1;
         setFailedAttempts(newAttempts);
         localStorage.setItem("failedLoginAttempts", newAttempts.toString());
@@ -159,22 +183,28 @@ export default function Login() {
         return;
       }
 
+      // Login Successful!
+      const userRole = registeredUser?.role || localStorage.getItem("userRole") || "tenant";
+      const userFullName = registeredUser?.username || localStorage.getItem("username") || "User";
+
       localStorage.removeItem("failedLoginAttempts");
       localStorage.removeItem("loginLockoutUntil");
       localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("userRole", registeredUser.role || "tenant");
-      localStorage.setItem("lastLoggedInEmail", registeredUser.email);
-      localStorage.setItem("username", registeredUser.username);
+      localStorage.setItem("userRole", userRole);
+      localStorage.setItem("lastLoggedInEmail", cleanEmail);
+      localStorage.setItem("lastLoggedInPassword", expectedPassword || cleanPassword);
+      localStorage.setItem("userPassword_" + cleanEmail, expectedPassword || cleanPassword);
+      localStorage.setItem("username", userFullName);
 
-      const savedProfile = localStorage.getItem("userProfile_" + registeredUser.email);
+      const savedProfile = localStorage.getItem("userProfile_" + cleanEmail);
       if (savedProfile) {
         localStorage.setItem("currentUserProfile", savedProfile);
       } else {
-        const fallbackProf = registeredUser.profile || {
-          firstName: registeredUser.username.split(" ")[0] || "",
-          lastName: registeredUser.username.split(" ").slice(1).join(" ") || "",
-          email: registeredUser.email,
-          role: registeredUser.role || "tenant",
+        const fallbackProf = registeredUser?.profile || {
+          firstName: userFullName.split(" ")[0] || "",
+          lastName: userFullName.split(" ").slice(1).join(" ") || "",
+          email: cleanEmail,
+          role: userRole,
           phone: "",
           address: "",
           dob: "",
@@ -185,7 +215,7 @@ export default function Login() {
       }
 
       localStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
-      navigate(`/dashboard/${registeredUser.role || "tenant"}`);
+      navigate(`/dashboard/${userRole}`);
       return;
     }
 
