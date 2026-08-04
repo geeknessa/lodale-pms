@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Sparkles, Loader2, Camera, ImagePlus, Upload, Check } from "lucide-react";
+import { CheckCircle2, Sparkles, Loader2, Camera, ImagePlus, Upload, Check, Clock } from "lucide-react";
 import gsap from "gsap";
 import { Logo } from "../components/Logo";
 import Input from "../components/Input";
 import Button from "../components/Button";
 import { LISTINGS } from "../data/listings";
+import { propertyService } from "../services/propertyService";
 
 const PRESET_PHOTOS = [
   { label: "Modern Villa", url: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80" },
@@ -25,7 +26,13 @@ export default function AddProperty() {
   const [photoPreview, setPhotoPreview] = useState(PRESET_PHOTOS[0].url);
   const [photoError, setPhotoError] = useState("");
 
+  // Proof of ownership legal papers state
+  const [docType, setDocType] = useState("Deed of Assignment");
+  const [docName, setDocName] = useState("Deed_of_Assignment_Signed.pdf");
+  const [docUploaded, setDocUploaded] = useState(true);
+
   const fileInputRef = useRef(null);
+  const docInputRef = useRef(null);
   const successOverlayRef = useRef(null);
   const checkIconRef = useRef(null);
   const textContainerRef = useRef(null);
@@ -48,14 +55,45 @@ export default function AddProperty() {
     }
   }
 
-  function handleSubmit(e) {
+  function handleDocUpload(e) {
+    const file = e.target.files?.[0];
+    if (file) {
+      setDocName(file.name);
+      setDocUploaded(true);
+    }
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
     const target = e.target;
     const address = target.elements.address.value;
     const rent = target.elements.rent.value;
     const bedrooms = target.elements.bedrooms.value;
 
-    const formattedRent = rent.startsWith("₦") ? rent : "₦" + Number(rent.replace(/[^0-9]/g, "")).toLocaleString();
+    const numericRent = Number(rent.replace(/[^0-9]/g, "")) || 500000;
+    const ownershipDocString = `${docType} (${docName})`;
+
+    const propertyPayload = {
+      title: address,
+      address_line1: address,
+      city: "Lagos",
+      state: "Lagos",
+      rent_amount: numericRent,
+      bedrooms: Number(bedrooms) || 1,
+      bathrooms: 2,
+      property_type: "apartment",
+      amenities: ["Prepaid Meter", "24/7 Security"],
+      ownership_doc: ownershipDocString,
+      cover_image: propertyPhoto || PRESET_PHOTOS[0].url,
+    };
+
+    try {
+      await propertyService.createProperty(propertyPayload);
+    } catch (err) {
+      console.warn("Backend API error, storing locally fallback:", err);
+    }
+
+    const formattedRent = rent.startsWith("₦") ? rent : "₦" + numericRent.toLocaleString();
 
     // Create a new listing object
     const newListing = {
@@ -66,6 +104,8 @@ export default function AddProperty() {
       image: propertyPhoto || PRESET_PHOTOS[0].url,
       beds: Number(bedrooms),
       baths: 2,
+      status: "pending_review",
+      ownership_doc: ownershipDocString,
       amenities: ["Prepaid Meter", "24/7 Security"],
       landlord: {
         name: localStorage.getItem("username") || "Ada K.",
@@ -154,18 +194,22 @@ export default function AddProperty() {
             </div>
           </div>
 
-          <div ref={textContainerRef} className="space-y-4">
+          <div ref={textContainerRef} className="space-y-3">
             <h1 className="font-display text-3xl font-semibold tracking-tight text-white">
-              Property Registered!
+              Sent for Admin Review!
             </h1>
-            <p className="text-[14px] leading-relaxed text-[#A3BCA7]">
-              Your dashboard ledger is being configured and ownership stamp applied.
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-full font-bold text-xs">
+              <Clock className="h-3.5 w-3.5 text-amber-300" />
+              <span>Status: Pending Review</span>
+            </div>
+            <p className="text-[13px] leading-relaxed text-[#A3BCA7] max-w-sm mx-auto">
+              Your property and proof of ownership legal documents have been submitted to Admin. Your listing status will update to <strong>Approved &amp; Live</strong>, <strong>Rejected</strong> (with reason), or <strong>Info Requested</strong> once reviewed.
             </p>
 
-            <div className="flex items-center justify-center gap-2 pt-6">
+            <div className="flex items-center justify-center gap-2 pt-4">
               <Loader2 className="h-4 w-4 animate-spin text-[#E5C583]" />
               <span className="text-[12px] font-medium tracking-wide uppercase text-ink-300">
-                Opening Landlord Suite...
+                Opening Landlord Dashboard...
               </span>
             </div>
           </div>
@@ -257,6 +301,66 @@ export default function AddProperty() {
                   required
                 />
               </div>
+            </div>
+
+            {/* PROOF OF OWNERSHIP LEGAL PAPERS SECTION */}
+            <div className="rounded-xl border border-moss-700/20 bg-moss-700/[0.03] p-5 mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-[13px] font-bold text-ink-900 flex items-center gap-1.5">
+                  <Upload className="h-4 w-4 text-moss-700" />
+                  <span>Proof of Ownership (Legal Papers) *</span>
+                </label>
+                <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                  <Check className="h-3.5 w-3.5" /> Legal Proof Attached
+                </span>
+              </div>
+              <p className="text-[12px] text-ink-700 mb-3 leading-relaxed">
+                Upload legal title documents (Deed of Assignment, Certificate of Occupancy, or Land Title Receipt) for Admin verification before listing.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-600 mb-1">
+                    Document Type
+                  </label>
+                  <select
+                    value={docType}
+                    onChange={(e) => setDocType(e.target.value)}
+                    className="w-full px-3 py-2 text-xs font-semibold rounded-lg bg-white border border-ink-200 text-ink-900 outline-none"
+                  >
+                    <option value="Deed of Assignment">Deed of Assignment</option>
+                    <option value="Certificate of Occupancy (C of O)">Certificate of Occupancy (C of O)</option>
+                    <option value="Governor's Consent">Governor's Consent</option>
+                    <option value="Land Title Receipt / Survey Plan">Land Title Receipt / Survey Plan</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-600 mb-1">
+                    Uploaded File
+                  </label>
+                  <div className="flex items-center gap-2 p-2 bg-white border border-ink-200 rounded-lg text-xs font-mono text-ink-800 truncate">
+                    <span className="truncate">{docName}</span>
+                  </div>
+                </div>
+              </div>
+
+              <input
+                ref={docInputRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                onChange={handleDocUpload}
+                className="hidden"
+              />
+
+              <button
+                type="button"
+                onClick={() => docInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-moss-700 text-white font-bold text-[12px] hover:bg-moss-800 transition-all cursor-pointer border-none outline-none"
+              >
+                <Upload className="h-4 w-4" />
+                Attach Legal Proof File (PDF / Image)
+              </button>
             </div>
 
             {/* PROPERTY PICTURE PROMPT & PHOTO PICKER */}

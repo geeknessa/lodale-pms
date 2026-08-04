@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Logo, VerifiedBadge } from "../components/Logo";
 import Button from "../components/Button";
+import { authService } from "../services/authService";
 import heroBg from "../assets/modern_villa.png";
 import { useTheme } from "../context/ThemeContext";
 
@@ -253,6 +254,20 @@ export default function SignUp() {
           existing.push(userRecord);
           localStorage.setItem("registeredUsers", JSON.stringify(existing));
         } catch (e) {}
+
+        // Persist user to PostgreSQL Database via authService
+        try {
+          authService.signUp({
+            email: cleanEmail,
+            password: cleanPassword,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            role: role,
+            phone: ""
+          });
+        } catch (dbErr) {
+          console.warn("Database user persist warning:", dbErr);
+        }
 
         localStorage.setItem(
           "sessionExpiresAt",
