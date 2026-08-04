@@ -6,6 +6,7 @@ import { Logo } from "../components/Logo";
 import Input from "../components/Input";
 import Button from "../components/Button";
 import { LISTINGS } from "../data/listings";
+import { propertyService } from "../services/propertyService";
 import "./DashboardAddProperty.css";
 
 const PRESET_PHOTOS = [
@@ -77,16 +78,36 @@ export default function DashboardAddProperty() {
     }
   }, [isSubmitted]);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const target = e.target;
     const address = target.elements.address.value;
     const rent = target.elements.rent.value;
     const bedrooms = target.elements.bedrooms.value;
 
-    const formattedRent = rent.startsWith("₦") ? rent : "₦" + Number(rent.replace(/[^0-9]/g, "")).toLocaleString();
+    const numericRent = Number(rent.replace(/[^0-9]/g, "")) || 500000;
 
-    // Create a new listing object
+    const propertyPayload = {
+      title: address,
+      address_line1: address,
+      city: "Lagos",
+      state: "Lagos",
+      rent_amount: numericRent,
+      bedrooms: Number(bedrooms) || 1,
+      bathrooms: 2,
+      property_type: "apartment",
+      amenities: ["Prepaid Meter", "24/7 Security"],
+    };
+
+    try {
+      await propertyService.createProperty(propertyPayload);
+    } catch (err) {
+      console.warn("Backend API error, storing locally fallback:", err);
+    }
+
+    const formattedRent = rent.startsWith("₦") ? rent : "₦" + numericRent.toLocaleString();
+
+    // Create a new listing object for local cache
     const newListing = {
       id: address.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now(),
       title: address,
@@ -95,6 +116,7 @@ export default function DashboardAddProperty() {
       image: propertyPhoto || PRESET_PHOTOS[0].url,
       beds: Number(bedrooms),
       baths: 2,
+      status: "pending_review",
       amenities: ["Prepaid Meter", "24/7 Security"],
       landlord: {
         name: localStorage.getItem("username") || "Ada K.",

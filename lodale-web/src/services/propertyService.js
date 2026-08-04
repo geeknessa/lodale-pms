@@ -6,7 +6,7 @@ import { listings as mockListings } from '../data/listings';
  */
 export const propertyService = {
   /**
-   * Get property listings
+   * Get public active property listings
    */
   async getProperties(filters = {}) {
     try {
@@ -28,6 +28,19 @@ export const propertyService = {
   },
 
   /**
+   * Get properties owned by a specific landlord (including pending/draft/info_requested)
+   */
+  async getLandlordProperties(landlordId) {
+    try {
+      if (!landlordId) return [];
+      return await apiClient(`/properties/landlord/${landlordId}`);
+    } catch (error) {
+      console.warn('[PropertyService] Failed to fetch landlord properties:', error.message);
+      return [];
+    }
+  },
+
+  /**
    * Get single property detail by ID
    */
   async getPropertyById(id) {
@@ -39,7 +52,7 @@ export const propertyService = {
   },
 
   /**
-   * Create a new property
+   * Create a new property listing (defaults to status = 'pending_review')
    */
   async createProperty(propertyData) {
     return await apiClient('/properties', {
