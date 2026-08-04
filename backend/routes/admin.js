@@ -115,8 +115,8 @@ router.post('/properties/:id/review', async (req, res) => {
       message: action === 'approve'
         ? `Property "${property.title}" approved and is now active & live!`
         : (action === 'reject'
-            ? `Property "${property.title}" rejected.`
-            : `Information requested for "${property.title}".`)
+          ? `Property "${property.title}" rejected.`
+          : `Information requested for "${property.title}".`)
     });
   } catch (error) {
     console.error('[Admin Review Route Error]:', error);

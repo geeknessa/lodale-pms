@@ -8,12 +8,12 @@ import "./TenantChat.css";
 
 
 const LANDLORD_AVATARS = {
-  "Ada K.": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&h=150&q=80",
-  "Chidi O.": "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&h=150&q=80",
-  "Funke A.": "https://images.unsplash.com/photo-1580894732444-8fecef2601de?auto=format&fit=crop&w=150&h=150&q=80",
-  "Emeka Obi": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&h=150&q=80",
-  "Maren Maureen": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80",
-  "Ryan Herwinds": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80"
+  "Ada K.": "",
+  "Chidi O.": "",
+  "Funke A.": "",
+  "Emeka Obi": "",
+  "Maren Maureen": "",
+  "Ryan Herwinds": ""
 };
 
 export default function TenantChat() {
@@ -47,7 +47,7 @@ export default function TenantChat() {
       if (redirectLandlordName && !redirectHandled.current) {
         let thread = currentChats.find(c => c.name.toLowerCase() === redirectLandlordName.toLowerCase());
         if (!thread) {
-          const avatar = LANDLORD_AVATARS[redirectLandlordName] || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=64&h=64&q=80";
+          const avatar = LANDLORD_AVATARS[redirectLandlordName] || "";
           const newChat = {
             id: redirectLandlordName.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
             name: redirectLandlordName,

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Building2, ChevronRight, X, Users, Star } from "lucide-react";
+import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info } from "lucide-react";
+import { propertyService } from "../../services/propertyService";
 import { LISTINGS } from "../../data/listings";
 import UserInfo from "./components/UserInfo";
 import "./LandlordProperties.css";
@@ -43,22 +44,24 @@ export default function LandlordProperties() {
     return tenantsMap[propertyId] || [];
   };
 
+  const [selectedFeedbackProperty, setSelectedFeedbackProperty] = useState(null);
+
   useEffect(() => {
-    const saved = localStorage.getItem("properties");
-    if (saved) {
-      try {
-        const allList = JSON.parse(saved);
-        const userFirstName = username.toLowerCase().split(" ")[0];
-        const filtered = allList.filter((l) =>
-          !l.landlord?.name || l.landlord?.name?.toLowerCase().includes(userFirstName) || userFirstName.includes(l.landlord?.name?.toLowerCase().split(" ")[0] || "")
-        );
-        setProperties(filtered);
-      } catch (e) {
-        setProperties([]);
-      }
-    } else {
-      setProperties([]);
+    async function loadProperties() {
+      const apiProps = await propertyService.getLandlordProperties("11111111-1111-1111-1111-111111111111");
+      const saved = localStorage.getItem("properties");
+      const localProps = saved ? JSON.parse(saved) : [];
+
+      const apiIds = new Set(apiProps.map(p => p.id));
+      const combined = [
+        ...apiProps,
+        ...localProps.filter(l => !apiIds.has(l.id))
+      ];
+
+      setProperties(combined);
     }
+
+    loadProperties();
   }, [username]);
 
   // Filter items
@@ -118,10 +121,10 @@ export default function LandlordProperties() {
         <div className="ap-sub-controls">
           <div className="ap-filter-row">
             <span className="ap-filter-lbl">Filter by:</span>
-            
+
             <div className="ap-select-wrapper">
-              <select 
-                value={rentFilter} 
+              <select
+                value={rentFilter}
                 onChange={(e) => setRentFilter(e.target.value)}
                 className="ap-filter-select"
               >
@@ -133,8 +136,8 @@ export default function LandlordProperties() {
             </div>
 
             <div className="ap-select-wrapper">
-              <select 
-                value={locationFilter} 
+              <select
+                value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
                 className="ap-filter-select"
               >
@@ -146,8 +149,8 @@ export default function LandlordProperties() {
             </div>
 
             <div className="ap-select-wrapper">
-              <select 
-                value={typeFilter} 
+              <select
+                value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
                 className="ap-filter-select"
               >
@@ -174,29 +177,84 @@ export default function LandlordProperties() {
         {/* Properties list */}
         <div className="ap-list-stack tour-property-results">
           {filteredProperties.length > 0 ? (
-            filteredProperties.map((item, idx) => {
-              const style = pastelStyles[idx % pastelStyles.length];
+            filteredProperties.map((item) => {
+              const status = item.status || 'pending_review';
+              const imgUrl = item.image || item.cover_image || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80";
+
               return (
-                <div key={item.id} className={`ap-property-card ${style.bg}`}>
-                  {/* Top Visual Illustration box */}
-                  <div className="ap-card-visual">
-                    <svg viewBox="0 0 100 100" className="ap-vector-house">
-                      <polygon points="50,20 85,50 85,85 15,85 15,50" fill="none" stroke="currentColor" strokeWidth="2.5" />
-                      <rect x="30" y="60" width="15" height="25" fill="none" stroke="currentColor" strokeWidth="2" />
-                      <rect x="55" y="55" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                      <line x1="15" y1="50" x2="85" y2="50" stroke="currentColor" strokeWidth="1.5" />
-                    </svg>
+                <div key={item.id} className="ap-property-card bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4">
+                  {/* Real Property Photo */}
+                  <div className="ap-card-visual flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-ink-100 dark:bg-white/10 relative">
+                    <img
+                      src={imgUrl}
+                      alt={item.title}
+                      className="w-full h-full object-cover rounded-xl"
+                      onError={(e) => {
+                        e.target.src = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80";
+                      }}
+                    />
                   </div>
 
                   {/* Center Content */}
-                  <div className="ap-card-details">
-                    <h3 className="ap-property-title">{item.title}</h3>
-                    <p className="ap-property-desc">
-                      {item.beds} Bedrooms • {item.baths} Bathrooms • {item.amenities.join(", ")}
+                  <div className="ap-card-details flex-1 min-w-0">
+                    <h3 className="ap-property-title text-base font-bold text-ink-900 dark:text-white truncate">{item.title}</h3>
+                    <p className="ap-property-desc text-xs text-ink-600 dark:text-cream-100/70 mt-1">
+                      {item.beds || 1} Bedrooms • {item.baths || 1} Bathrooms • {Array.isArray(item.amenities) ? item.amenities.join(", ") : "Prepaid Meter, 24/7 Security"}
                     </p>
-                    <div className="ap-card-footer-info">
-                      <span className="ap-price-badge">{item.price}</span>
-                      <span className="ap-owner-lbl">Managed by {item.landlord.name}</span>
+                    <div className="ap-card-footer-info flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 border-t border-ink-100 dark:border-white/10">
+                      <span className="ap-price-badge font-bold text-moss-700 dark:text-[#E5C583] text-sm">{item.price}</span>
+                      
+                      {/* Property Review Status Tag */}
+                      {(() => {
+                        const hasTenants = getTenantsForProperty(item.id).length > 0 || status === 'occupied' || status === 'active_occupied';
+                        const isLive = status === 'active_vacant' || status === 'Live' || status === 'approved' || status === 'active';
+                        const isPending = status === 'pending_review' || status === 'Pending Approval' || !item.status;
+                        const isRejected = status === 'rejected' || status === 'inactive' || status === 'Rejected';
+                        const isInfoReq = status === 'info_requested' || status === 'Info Requested';
+
+                        if (hasTenants) {
+                          return (
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-300">
+                              <Users className="h-3 w-3" /> Occupied
+                            </span>
+                          );
+                        }
+                        if (isLive) {
+                          return (
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                              <CheckCircle2 className="h-3 w-3" /> Live
+                            </span>
+                          );
+                        }
+                        if (isPending) {
+                          return (
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-300">
+                              <Clock className="h-3 w-3" /> Pending Review
+                            </span>
+                          );
+                        }
+                        if (isRejected) {
+                          return (
+                            <button
+                              onClick={() => setSelectedFeedbackProperty(item)}
+                              className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-rose-100 hover:bg-rose-200 text-rose-900 dark:text-rose-300 px-2.5 py-0.5 rounded-full border border-rose-300 cursor-pointer"
+                            >
+                              <AlertTriangle className="h-3 w-3" /> Rejected Reason
+                            </button>
+                          );
+                        }
+                        if (isInfoReq) {
+                          return (
+                            <button
+                              onClick={() => setSelectedFeedbackProperty(item)}
+                              className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-blue-100 hover:bg-blue-200 text-blue-900 dark:text-blue-300 px-2.5 py-0.5 rounded-full border border-blue-300 cursor-pointer"
+                            >
+                              <Info className="h-3 w-3" /> Info Needed
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
 
@@ -239,17 +297,17 @@ export default function LandlordProperties() {
         <div className="ap-tenants-list">
           {activeTenants.length > 0 ? (
             activeTenants.map((tenant) => (
-              <div 
-                key={tenant.id} 
+              <div
+                key={tenant.id}
                 className="ap-tenant-row cursor-pointer hover:bg-cream-100/40 p-1.5 rounded-xl transition-colors"
                 onClick={() => setSelectedTenantForDetails(tenant)}
               >
-                <img 
-                  src={tenant.avatar} 
-                  alt={tenant.name} 
+                <img
+                  src={tenant.avatar}
+                  alt={tenant.name}
                   className="ap-tenant-avatar"
                   onError={(e) => {
-                    e.target.src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=64&h=64&q=80";
+                    e.target.style.display = 'none';
                   }}
                 />
                 <div className="ap-tenant-info">
@@ -273,14 +331,14 @@ export default function LandlordProperties() {
             <div className="ap-popup-header">
               <h3>Current Tenants</h3>
               <p className="ap-popup-property-title">{showTenantsPopupForProperty.title}</p>
-              <button 
+              <button
                 className="ap-popup-close-btn"
                 onClick={() => setShowTenantsPopupForProperty(null)}
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
+
             <div className="ap-popup-body">
               {getTenantsForProperty(showTenantsPopupForProperty.id).length === 0 ? (
                 <div className="ap-popup-empty">
@@ -290,18 +348,18 @@ export default function LandlordProperties() {
                 <div className="ap-popup-list">
                   {getTenantsForProperty(showTenantsPopupForProperty.id).map((tenant) => (
                     <div key={tenant.id} className="ap-popup-item">
-                      <img 
-                        src={tenant.avatar} 
-                        alt={tenant.name} 
-                        className="ap-popup-avatar cursor-pointer" 
+                      <img
+                        src={tenant.avatar}
+                        alt={tenant.name}
+                        className="ap-popup-avatar cursor-pointer"
                         onClick={() => setSelectedTenantForDetails(tenant)}
                         onError={(e) => {
-                          e.target.src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=64&h=64&q=80";
+                          e.target.style.display = 'none';
                         }}
                       />
                       <div className="ap-popup-info">
                         <div className="ap-popup-name-row">
-                          <span 
+                          <span
                             className="ap-popup-name cursor-pointer hover:underline"
                             onClick={() => setSelectedTenantForDetails(tenant)}
                           >
@@ -324,9 +382,9 @@ export default function LandlordProperties() {
       )}
 
       {selectedTenantForDetails && (
-        <UserInfo 
-          tenant={selectedTenantForDetails} 
-          onClose={() => setSelectedTenantForDetails(null)} 
+        <UserInfo
+          tenant={selectedTenantForDetails}
+          onClose={() => setSelectedTenantForDetails(null)}
         />
       )}
     </div>

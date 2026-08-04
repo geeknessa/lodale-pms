@@ -74,20 +74,35 @@ export default function GuestDashboard() {
   const listingsGridRef = useRef(null);
   const heroContentRef = useRef(null);
 
-  const [allListings] = useState(() => {
+  const [allListings, setAllListings] = useState(() => {
     const saved = localStorage.getItem("properties");
     if (saved) return JSON.parse(saved);
-    localStorage.setItem("properties", JSON.stringify(LISTINGS));
     return LISTINGS;
   });
 
+  useEffect(() => {
+    async function fetchPublicListings() {
+      try {
+        const saved = localStorage.getItem("properties");
+        const localProps = saved ? JSON.parse(saved) : LISTINGS;
+        // Exclude unapproved / rejected listings from guest view unless explicitly active
+        const approvedOnly = localProps.filter(
+          (p) => !p.status || p.status === "active_vacant" || p.status === "Approved" || p.status === "Live"
+        );
+        setAllListings(approvedOnly.length > 0 ? approvedOnly : LISTINGS);
+      } catch (err) {
+        console.warn("Failed to load public listings:", err);
+      }
+    }
+    fetchPublicListings();
+  }, []);
+
   const filteredListings = allListings.filter((listing) => {
     const query = searchQuery.toLowerCase();
-    return (
-      listing.title.toLowerCase().includes(query) ||
-      listing.location.toLowerCase().includes(query) ||
-      listing.landlord.name.toLowerCase().includes(query)
-    );
+    const titleMatch = listing.title?.toLowerCase().includes(query);
+    const locMatch = listing.location?.toLowerCase().includes(query);
+    const landlordMatch = listing.landlord?.name?.toLowerCase().includes(query);
+    return titleMatch || locMatch || landlordMatch;
   });
 
   function signUpAs(role) {

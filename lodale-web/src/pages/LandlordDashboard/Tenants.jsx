@@ -117,9 +117,9 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
       id: Date.now(),
       name: formData.name,
       tenantName: formData.name,
-      avatar: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 999999)}?auto=format&fit=crop&w=64&h=64&q=80`,
+      avatar: "",
       email: formData.email,
-      phone: formData.phone || "+234 800 000 0000",
+      phone: formData.phone || "",
       reliabilityScore: (4.5 + Math.random() * 0.5).toFixed(1), // Auto-generate score 4.5-5.0
       occupation: formData.occupation || "Independent Professional",
       income: formData.income ? `₦${Number(formData.income).toLocaleString()}/mo` : "₦450,000/mo",
@@ -210,7 +210,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
       chat = {
         id: tenantName.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
         name: tenantName,
-        avatar: tenantAvatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=64&h=64&q=80",
+        avatar: tenantAvatar || "",
         email: tenantObj.email,
         phone: tenantObj.phone,
         reliabilityScore: tenantObj.reliabilityScore,
@@ -390,7 +390,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                     className="tenant-card-avatar cursor-pointer"
                     onClick={() => setSelectedTenantForDetails(tenant)}
                     onError={(e) => {
-                      e.target.src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=64&h=64&q=80";
+                      e.target.style.display = 'none';
                     }}
                   />
                   <div className="tenant-card-meta">

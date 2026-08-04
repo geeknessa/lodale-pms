@@ -270,7 +270,7 @@ export default function Login() {
       firstName: "Tunde",
       lastName: "Bakare",
       email,
-      phone: "+234 803 123 4567",
+      phone: "",
       role: "tenant",
       address: "",
       dob: "",

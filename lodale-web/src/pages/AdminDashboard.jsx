@@ -271,17 +271,133 @@ export default function AdminDashboard() {
   const [reviews, setReviews] = useState(INITIAL_REVIEWS);
 
   useEffect(() => {
-    async function loadPendingProperties() {
-      const apiPending = await adminService.getPendingProperties();
-      if (apiPending && apiPending.length > 0) {
-        setListings((prev) => {
-          const existingIds = new Set(prev.map((l) => l.id));
-          const newItems = apiPending.filter((p) => !existingIds.has(p.id));
-          return [...newItems, ...prev];
-        });
+    async function loadAdminData() {
+      // 1. Load Pending / Local Properties
+      let apiPending = [];
+      try {
+        apiPending = await adminService.getPendingProperties();
+      } catch (err) {
+        console.warn("Backend API offline fallback:", err);
       }
+
+      let localProps = [];
+      try {
+        const saved = localStorage.getItem("properties");
+        if (saved) localProps = JSON.parse(saved);
+      } catch (err) {}
+
+      setListings((prev) => {
+        const existingMap = new Map(prev.map(l => [l.id, l]));
+
+        localProps.forEach((p) => {
+          if (!existingMap.has(p.id)) {
+            existingMap.set(p.id, {
+              ...p,
+              status: p.status === 'pending_review' ? 'Pending Approval' : (p.status || 'Pending Approval'),
+              ownershipDoc: p.ownership_doc || p.ownershipDoc || 'Deed of Assignment',
+              deedVerified: true,
+              type: p.property_type || p.type || 'Apartment',
+              rent: p.price || (p.rent_amount ? `₦${Number(p.rent_amount).toLocaleString()}/yr` : '₦2,500,000/yr'),
+              landlord: p.landlord || { name: 'Ada K.', score: 5.0, reviews: 1 }
+            });
+          }
+        });
+
+        apiPending.forEach((p) => {
+          if (!existingMap.has(p.id)) {
+            existingMap.set(p.id, {
+              ...p,
+              status: 'Pending Approval',
+              ownershipDoc: p.ownership_doc || 'Deed of Assignment',
+              deedVerified: true,
+              type: p.property_type || 'Apartment',
+              rent: `₦${Number(p.rent_amount || 2500000).toLocaleString()}/yr`,
+              landlord: p.landlord || { name: 'Ada K.', score: 5.0, reviews: 1 }
+            });
+          }
+        });
+
+        return Array.from(existingMap.values());
+      });
+
+      // 2. Load Registered Users & Landlords
+      let registeredUsers = [];
+      try {
+        const savedUsers = localStorage.getItem("registeredUsers");
+        if (savedUsers) registeredUsers = JSON.parse(savedUsers);
+      } catch (err) {}
+
+      const activeUsername = localStorage.getItem("username");
+      const activeEmail = localStorage.getItem("lastLoggedInEmail");
+      const activeRole = localStorage.getItem("userRole");
+
+      setUsers((prev) => {
+        const existingMap = new Map(prev.map((u) => [u.email?.toLowerCase(), u]));
+
+        // Add from registeredUsers list
+        registeredUsers.forEach((r) => {
+          if (r && r.email) {
+            const emailKey = r.email.toLowerCase();
+            if (!existingMap.has(emailKey)) {
+              const userRole = (r.role || r.profile?.role || "Landlord").toLowerCase();
+              const formattedRole = userRole.includes("landlord") ? "Landlord" : "Tenant";
+              existingMap.set(emailKey, {
+                id: r.id || "usr-" + Math.floor(Math.random() * 100000),
+                name: r.name || r.username || r.profile?.name || "Registered User",
+                email: r.email,
+                phone: r.phone || r.profile?.phone || "",
+                role: formattedRole,
+                status: "Active",
+                joinedDate: new Date().toISOString().split("T")[0],
+                listingsCount: formattedRole === "Landlord" ? 1 : 0,
+                verifications: ["ID Verified", "Email Verified"],
+              });
+            }
+          }
+        });
+
+        // Add active logged in user if not present
+        if (activeEmail && !existingMap.has(activeEmail.toLowerCase())) {
+          const formattedRole = (activeRole || "landlord").toLowerCase().includes("landlord") ? "Landlord" : "Tenant";
+          existingMap.set(activeEmail.toLowerCase(), {
+            id: "usr-" + Math.floor(Math.random() * 100000),
+            name: activeUsername || "Ada K.",
+            email: activeEmail,
+            phone: "",
+            role: formattedRole,
+            status: "Active",
+            joinedDate: new Date().toISOString().split("T")[0],
+            listingsCount: formattedRole === "Landlord" ? 1 : 0,
+            verifications: ["ID Verified", "Phone Verified"],
+          });
+        }
+
+        // Check landlord names in localProps
+        localProps.forEach((p) => {
+          const lName = p.landlord?.name || activeUsername || "Landlord User";
+          const mockEmail = lName.toLowerCase().replace(/[^a-z0-9]+/g, ".") + "@lodale.com";
+          if (!existingMap.has(mockEmail)) {
+            existingMap.set(mockEmail, {
+              id: "usr-l-" + Math.floor(Math.random() * 10000),
+              name: lName,
+              email: mockEmail,
+              phone: "",
+              role: "Landlord",
+              status: "Active",
+              joinedDate: new Date().toISOString().split("T")[0],
+              listingsCount: 1,
+              verifications: ["ID Verified", "Title Proof Attached"],
+            });
+          }
+        });
+
+        return Array.from(existingMap.values());
+      });
     }
-    loadPendingProperties();
+
+    loadAdminData();
+    window.addEventListener("storage", loadAdminData);
+    return () => window.removeEventListener("storage", loadAdminData);
   }, []);
 
   // Filters & Search
@@ -418,8 +534,38 @@ export default function AdminDashboard() {
         return l;
       })
     );
+
     const item = listings.find((l) => l.id === listingId);
-    showToast(`Listing "${item?.title || 'Property'}" approved and is now live!`);
+    const propertyTitle = item?.title || "Property";
+
+    try {
+      const saved = localStorage.getItem("properties");
+      if (saved) {
+        const localProps = JSON.parse(saved);
+        const updated = localProps.map((p) =>
+          p.id === listingId ? { ...p, status: "active_vacant" } : p
+        );
+        localStorage.setItem("properties", JSON.stringify(updated));
+      }
+    } catch (err) {}
+
+    // Send notification to landlord
+    try {
+      const savedNotifs = localStorage.getItem("landlordNotifications");
+      const currentNotifs = savedNotifs ? JSON.parse(savedNotifs) : [];
+      const newNotif = {
+        id: "notif-app-" + Date.now(),
+        title: "Property Approved & Live!",
+        message: `Your property "${propertyTitle}" has been reviewed and approved by Admin. It is now active on tenant search listings.`,
+        time: "Just now",
+        type: "success",
+        read: false
+      };
+      localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
+      window.dispatchEvent(new Event("storage"));
+    } catch (err) {}
+
+    showToast(`Listing "${propertyTitle}" approved and is now live!`);
     if (selectedListing?.id === listingId) {
       setSelectedListing((prev) => (prev ? { ...prev, status: "Live" } : null));
     }
@@ -439,8 +585,38 @@ export default function AdminDashboard() {
         return l;
       })
     );
+
     const item = listings.find((l) => l.id === listingId);
-    showToast(`Listing "${item?.title || 'Property'}" rejected.`);
+    const propertyTitle = item?.title || "Property";
+
+    try {
+      const saved = localStorage.getItem("properties");
+      if (saved) {
+        const localProps = JSON.parse(saved);
+        const updated = localProps.map((p) =>
+          p.id === listingId ? { ...p, status: "rejected", admin_notes: reason } : p
+        );
+        localStorage.setItem("properties", JSON.stringify(updated));
+      }
+    } catch (err) {}
+
+    // Send notification to landlord
+    try {
+      const savedNotifs = localStorage.getItem("landlordNotifications");
+      const currentNotifs = savedNotifs ? JSON.parse(savedNotifs) : [];
+      const newNotif = {
+        id: "notif-rej-" + Date.now(),
+        title: "Property Review Update",
+        message: `Your property "${propertyTitle}" review status was updated to Rejected by Admin. Reason: ${reason}`,
+        time: "Just now",
+        type: "warning",
+        read: false
+      };
+      localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
+      window.dispatchEvent(new Event("storage"));
+    } catch (err) {}
+
+    showToast(`Listing "${propertyTitle}" rejected.`);
     setIsRejectingModalOpen(false);
     setRejectReasonInput("");
     if (selectedListing?.id === listingId) {
@@ -630,8 +806,8 @@ export default function AdminDashboard() {
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "overview"
-                    ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
-                    : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
               >
                 <LayoutDashboard className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
@@ -649,8 +825,8 @@ export default function AdminDashboard() {
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "users"
-                    ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
-                    : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -669,8 +845,8 @@ export default function AdminDashboard() {
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "listings"
-                    ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
-                    : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -691,8 +867,8 @@ export default function AdminDashboard() {
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "reviews"
-                    ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
-                    : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -713,8 +889,8 @@ export default function AdminDashboard() {
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "profile"
-                    ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
-                    : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
               >
                 <User className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
@@ -1059,10 +1235,10 @@ export default function AdminDashboard() {
                           <td className="py-3.5 px-4">
                             <span
                               className={`inline-block text-xs px-2.5 py-0.5 rounded font-semibold ${user.role === "Landlord"
-                                  ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border dark:border-emerald-800/50"
-                                  : user.role === "Admin"
-                                    ? "bg-purple-100 text-purple-900 dark:bg-purple-950/80 dark:text-purple-300 dark:border dark:border-purple-800/50"
-                                    : "bg-blue-100 text-blue-900 dark:bg-blue-950/80 dark:text-blue-300 dark:border dark:border-blue-800/50"
+                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border dark:border-emerald-800/50"
+                                : user.role === "Admin"
+                                  ? "bg-purple-100 text-purple-900 dark:bg-purple-950/80 dark:text-purple-300 dark:border dark:border-purple-800/50"
+                                  : "bg-blue-100 text-blue-900 dark:bg-blue-950/80 dark:text-blue-300 dark:border dark:border-blue-800/50"
                                 }`}
                             >
                               {user.role}
@@ -1102,8 +1278,8 @@ export default function AdminDashboard() {
                             <button
                               onClick={() => handleToggleUserStatus(user.id)}
                               className={`p-1.5 rounded transition-colors ${user.status === "Active"
-                                  ? "text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60"
-                                  : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
+                                ? "text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                                : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
                                 }`}
                               title={user.status === "Active" ? "Suspend Account" : "Activate Account"}
                             >
@@ -1150,8 +1326,8 @@ export default function AdminDashboard() {
                       key={tab}
                       onClick={() => setListingFilter(tab)}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${listingFilter === tab
-                          ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
-                          : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                        ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                        : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
                         }`}
                     >
                       {tab}
@@ -1187,10 +1363,10 @@ export default function AdminDashboard() {
                         <div className="flex items-center justify-between mb-2">
                           <span
                             className={`text-xs px-2.5 py-0.5 rounded font-bold uppercase ${lst.status === "Live"
-                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
-                                : lst.status === "Pending Approval"
-                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
-                                  : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
+                              ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
+                              : lst.status === "Pending Approval"
+                                ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
+                                : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
                               }`}
                           >
                             {lst.status}
@@ -1286,8 +1462,8 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setReviewFilter("Flagged")}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "Flagged"
-                        ? "bg-rose-800 text-white"
-                        : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                      ? "bg-rose-800 text-white"
+                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
                       }`}
                   >
                     Flagged Only ({flaggedReviewsCount})
@@ -1295,8 +1471,8 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setReviewFilter("All")}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "All"
-                        ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
-                        : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
                       }`}
                   >
                     All Reviews ({reviews.length})
@@ -1638,8 +1814,8 @@ export default function AdminDashboard() {
                   </span>
                   <span
                     className={`px-2.5 py-0.5 text-xs font-bold rounded ${selectedUser.status === "Active"
-                        ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
-                        : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
+                      ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
+                      : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
                       }`}
                   >
                     {selectedUser.status}
@@ -1658,8 +1834,8 @@ export default function AdminDashboard() {
               <button
                 onClick={() => handleToggleUserStatus(selectedUser.id)}
                 className={`px-4 py-2 text-xs font-bold rounded text-white transition-colors ${selectedUser.status === "Active"
-                    ? "bg-amber-700 hover:bg-amber-800 dark:bg-amber-600"
-                    : "bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600"
+                  ? "bg-amber-700 hover:bg-amber-800 dark:bg-amber-600"
+                  : "bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600"
                   }`}
               >
                 {selectedUser.status === "Active" ? "Suspend Account" : "Activate Account"}
