@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { initDb } from './db.js';
 import authRoutes from './routes/auth.js';
 import propertyRoutes from './routes/properties.js';
+import adminRoutes from './routes/admin.js';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ initDb();
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

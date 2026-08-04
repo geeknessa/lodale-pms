@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Logo } from "../components/Logo";
 import { useTheme } from "../context/ThemeContext";
+import { adminService } from "../services/adminService";
 import {
   LayoutDashboard,
   Users,
@@ -269,6 +270,20 @@ export default function AdminDashboard() {
   const [listings, setListings] = useState(INITIAL_LISTINGS);
   const [reviews, setReviews] = useState(INITIAL_REVIEWS);
 
+  useEffect(() => {
+    async function loadPendingProperties() {
+      const apiPending = await adminService.getPendingProperties();
+      if (apiPending && apiPending.length > 0) {
+        setListings((prev) => {
+          const existingIds = new Set(prev.map((l) => l.id));
+          const newItems = apiPending.filter((p) => !existingIds.has(p.id));
+          return [...newItems, ...prev];
+        });
+      }
+    }
+    loadPendingProperties();
+  }, []);
+
   // Filters & Search
   const [userSearch, setUserSearch] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("All");
@@ -389,7 +404,12 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleApproveListing = (listingId) => {
+  const handleApproveListing = async (listingId) => {
+    try {
+      await adminService.reviewProperty(listingId, "approve");
+    } catch (e) {
+      console.warn("API review approval warning:", e);
+    }
     setListings((prev) =>
       prev.map((l) => {
         if (l.id === listingId) {
@@ -399,13 +419,18 @@ export default function AdminDashboard() {
       })
     );
     const item = listings.find((l) => l.id === listingId);
-    showToast(`Listing "${item?.title}" approved and is now live!`);
+    showToast(`Listing "${item?.title || 'Property'}" approved and is now live!`);
     if (selectedListing?.id === listingId) {
       setSelectedListing((prev) => (prev ? { ...prev, status: "Live" } : null));
     }
   };
 
-  const handleRejectListing = (listingId, reason = "Failed verification requirements.") => {
+  const handleRejectListing = async (listingId, reason = "Failed verification requirements.") => {
+    try {
+      await adminService.reviewProperty(listingId, "reject", reason);
+    } catch (e) {
+      console.warn("API review rejection warning:", e);
+    }
     setListings((prev) =>
       prev.map((l) => {
         if (l.id === listingId) {
@@ -415,7 +440,7 @@ export default function AdminDashboard() {
       })
     );
     const item = listings.find((l) => l.id === listingId);
-    showToast(`Listing "${item?.title}" rejected.`);
+    showToast(`Listing "${item?.title || 'Property'}" rejected.`);
     setIsRejectingModalOpen(false);
     setRejectReasonInput("");
     if (selectedListing?.id === listingId) {
