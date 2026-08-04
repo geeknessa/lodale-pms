@@ -246,15 +246,15 @@ export default function UserInfo({ tenant, onClose }) {
               <p className="ui-notes-content">{tenant.notes}</p>
               <div className="ui-verification-checklist">
                 <div className="ui-checklist-item">
-                  <span className="ui-check-icon">✓</span>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 inline shrink-0" />
                   <span>NIN Verification Match</span>
                 </div>
                 <div className="ui-checklist-item">
-                  <span className="ui-check-icon">✓</span>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 inline shrink-0" />
                   <span>Credit Reference Check Passed</span>
                 </div>
                 <div className="ui-checklist-item">
-                  <span className="ui-check-icon">✓</span>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500 inline shrink-0" />
                   <span>Previous Landlord Review Cleared</span>
                 </div>
               </div>

@@ -90,7 +90,7 @@ export default function VerifyId() {
     if (skipWelcome && listingId) {
       navigate(`/apply/${listingId}`);
     } else {
-      navigate(`/welcome/${role}`, { state: { username } });
+      navigate(`/dashboard/${role}`);
     }
   }
 

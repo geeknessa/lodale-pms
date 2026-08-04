@@ -91,14 +91,6 @@ export default function NavBar() {
     }
   }
 
-  function handleDashboardNavigate() {
-    if (isAdmin) {
-      navigate("/admin");
-    } else {
-      navigate("/dashboard/tenant");
-    }
-  }
-
   const checkIsActive = (path, hash = "") => {
     const isHomeRoute =
       location.pathname === "/explore" ||
@@ -116,15 +108,6 @@ export default function NavBar() {
 
     return location.pathname === path;
   };
-
-  const mobileLinkClass = (path, hash = "") => {
-    const active = checkIsActive(path, hash);
-    return `py-2.5 px-3 border-b transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none flex items-center justify-between rounded-lg ${active
-        ? "text-moss-700 dark:text-[#E5C583] font-bold border-moss-700 dark:border-[#E5C583] bg-moss-100/60 dark:bg-[#1C3328]/60"
-        : "text-theme-text dark:text-cream-100/80 hover:text-moss-600 border-theme-border/10 font-medium"
-      }`;
-
-  }
 
 
 
@@ -145,12 +128,15 @@ export default function NavBar() {
     if (localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com") {
       localStorage.removeItem("lastLoggedInEmail");
     }
+    if (isCurrentAdmin) {
+      localStorage.setItem("explicitAdminSignOut", "true");
+    }
     setIsAuthenticated(false);
     setIsOpen(false);
     if (isCurrentAdmin) {
-      navigate("/admin/login");
+      navigate("/admin/login", { replace: true });
     } else {
-      navigate("/explore");
+      navigate("/explore", { replace: true });
     }
   }
 
@@ -161,7 +147,7 @@ export default function NavBar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-ink-200/30 bg-transparent backdrop-blur-md">
+    <header className="sticky top-0 z-[100] border-b border-ink-200/30 bg-white/85 dark:bg-[#0B1512]/85 backdrop-blur-md transition-colors">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link to="/explore" onClick={handleHomeClick}>
           <Logo />

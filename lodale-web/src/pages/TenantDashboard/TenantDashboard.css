@@ -24,7 +24,7 @@ body.dark {
 
 .tenant-wrapper {
   height: 100vh;
-  width: 100vw;
+  width: 100%;
   background-color: var(--tenant-canvas);
   color: var(--tenant-text-main);
   display: flex;

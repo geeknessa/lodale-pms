@@ -13,14 +13,13 @@ import HowItWorks from "./pages/HowItWorks";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
-import Welcome from "./pages/Welcome";
 import Application from "./pages/Application";
 import AddProperty from "./pages/AddProperty";
 import AccessDenied from "./pages/AccessDenied";
 import DashboardAddProperty from "./pages/DashboardAddProperty";
 import React from "react";
-import AdminDashboard from "./pages/AdminDashboard";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
+import AdminDashboard from "./pages/AdminDashboard";
 import LandlordDashboard from "./pages/LandlordDashboard/LandlordDashboard";
 import PropertyDetail from "./pages/PropertyDetail";
 import TenantDashboard from "./pages/TenantDashboard/TenantDashboard";
@@ -162,6 +161,10 @@ function AdminProtectedRoute({ children }) {
     }
     // Auto-grant admin session if not authenticated when visiting /admin
     if (!auth) {
+      const explicitSignOut = localStorage.getItem("explicitAdminSignOut") === "true";
+      if (explicitSignOut) {
+        return false;
+      }
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("userRole", "admin");
       localStorage.setItem("lastLoggedInEmail", "admin@lodale.com");
@@ -200,6 +203,16 @@ function AdminProtectedRoute({ children }) {
   }, [location]);
 
   if (!isAuthenticated) {
+    const explicitSignOut = localStorage.getItem("explicitAdminSignOut") === "true";
+    if (explicitSignOut) {
+      return (
+        <Navigate
+          to="/admin/login"
+          replace
+          state={{ fromProtected: true }}
+        />
+      );
+    }
     // Fallback: silently set admin session and allow through
     localStorage.setItem("isAuthenticated", "true");
     localStorage.setItem("userRole", "admin");
@@ -286,14 +299,6 @@ export default function App() {
               }
             />
             <Route
-              path="/welcome/:role"
-              element={
-                <ProtectedRoute>
-                  <Welcome />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/apply/:listingId"
               element={
                 <ProtectedRoute>
@@ -306,6 +311,14 @@ export default function App() {
               element={
                 <ProtectedRoute>
                   <AddProperty />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/landlord"
+              element={
+                <ProtectedRoute>
+                  <LandlordDashboard />
                 </ProtectedRoute>
               }
             />

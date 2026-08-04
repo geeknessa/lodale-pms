@@ -1,36 +1,43 @@
 import { useState, useRef } from "react";
 import { User, Lock, LogOut, Pencil, Calendar, ChevronDown, CheckCircle2 } from "lucide-react";
 import Button from "../../components/Button";
+import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import "./TenantSettings.css";
 
 export default function TenantSettings({ onSignOut }) {
   const [activeTab, setActiveTab] = useState("personal"); // "personal" | "security"
 
   // Load initial settings
+  const [userProfile, setUserProfile] = useState(() => {
+    const raw = localStorage.getItem("currentUserProfile");
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch (e) {}
+    }
+    const username = localStorage.getItem("username") || "";
+    const parts = username.split(" ");
+    return {
+      firstName: parts[0] || "",
+      lastName: parts.slice(1).join(" ") || "",
+      email: localStorage.getItem("lastLoggedInEmail") || "",
+      phone: "",
+      address: "",
+      dob: "",
+      location: "",
+      postalCode: ""
+    };
+  });
+
   const [gender, setGender] = useState("Male");
-  const [firstName, setFirstName] = useState(() => {
-    const name = localStorage.getItem("username");
-    if (name) {
-      return name.split(" ")[0];
-    }
-    return "Roland";
-  });
-  const [lastName, setLastName] = useState(() => {
-    const name = localStorage.getItem("username");
-    if (name) {
-      const parts = name.split(" ");
-      return parts.length > 1 ? parts.slice(1).join(" ") : "";
-    }
-    return "Donald";
-  });
-  const [email, setEmail] = useState(() => {
-    return localStorage.getItem("lastLoggedInEmail") || "rolandDonald@mail.com";
-  });
-  const [address, setAddress] = useState("3605 Parker Rd.");
-  const [phone, setPhone] = useState("(405) 555-0128");
-  const [dob, setDob] = useState("1 Feb, 1995");
-  const [location, setLocation] = useState("Atlanta, USA");
-  const [postalCode, setPostalCode] = useState("30301");
+  const [firstName, setFirstName] = useState(userProfile.firstName || "");
+  const [lastName, setLastName] = useState(userProfile.lastName || "");
+  const [email, setEmail] = useState(userProfile.email || localStorage.getItem("lastLoggedInEmail") || "");
+  const [address, setAddress] = useState(userProfile.address || "");
+  const [phone, setPhone] = useState(userProfile.phone || "");
+  const [dob, setDob] = useState(userProfile.dob || "");
+  const [location, setLocation] = useState(userProfile.location || "");
+  const [postalCode, setPostalCode] = useState(userProfile.postalCode || "");
 
   // Profile avatar states
   const [avatarUrl, setAvatarUrl] = useState(
@@ -59,8 +66,25 @@ export default function TenantSettings({ onSignOut }) {
     e.preventDefault();
     if (activeTab === "personal") {
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      localStorage.setItem("username", fullName || "Tunde");
+      localStorage.setItem("username", fullName);
       localStorage.setItem("lastLoggedInEmail", email.trim());
+
+      const updatedProfile = {
+        ...userProfile,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        address: address.trim(),
+        phone: phone.trim(),
+        dob: dob.trim(),
+        location: location.trim(),
+        postalCode: postalCode.trim()
+      };
+      setUserProfile(updatedProfile);
+      localStorage.setItem("currentUserProfile", JSON.stringify(updatedProfile));
+      if (email) {
+        localStorage.setItem("userProfile_" + email.toLowerCase(), JSON.stringify(updatedProfile));
+      }
       
       // Dispatch storage event so layout header/sidebar updates
       window.dispatchEvent(new Event("storage"));
@@ -276,19 +300,11 @@ export default function TenantSettings({ onSignOut }) {
 
               <div className="settings-form-group">
                 <label className="settings-input-label">Location</label>
-                <div className="settings-input-with-icon">
-                  <select
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    className="settings-form-input select-input"
-                  >
-                    <option value="Atlanta, USA">Atlanta, USA</option>
-                    <option value="Lagos, Nigeria">Lagos, Nigeria</option>
-                    <option value="London, UK">London, UK</option>
-                    <option value="New York, USA">New York, USA</option>
-                  </select>
-                  <ChevronDown className="input-right-icon text-ink-400 pointer-events-none" />
-                </div>
+                <NigerianLocationSelect
+                  value={location}
+                  onChange={(val) => setLocation(val)}
+                  placeholder="Select Location"
+                />
               </div>
 
               <div className="settings-form-group">

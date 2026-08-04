@@ -173,8 +173,22 @@ export default function LandlordDashboard() {
     }
   };
 
-  // Keep track of active sidebar tab (default: 0 for Dashboard)
-  const [activeTab, setActiveTab] = useState(0);
+  // Keep track of active sidebar tab (persisted on page reload)
+  const [activeTab, setActiveTabState] = useState(() => {
+    try {
+      const saved = localStorage.getItem("landlordActiveTab");
+      return saved !== null ? Number(saved) : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+
+  const setActiveTab = (index) => {
+    setActiveTabState(index);
+    try {
+      localStorage.setItem("landlordActiveTab", index.toString());
+    } catch (e) {}
+  };
 
   // Active top navigation pill
   const [activePill, setActivePill] = useState("Overview");
@@ -204,77 +218,31 @@ export default function LandlordDashboard() {
     month: "short",
     year: "numeric"
   });
-  const [applications, setApplications] = useState([
-    {
-      id: 101,
-      name: "Chidi Azeez",
-      tenantName: "Chidi Azeez",
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&h=64&q=80",
-      propertyTitle: "Skyline Apartments, Block 4",
-      propertyId: "skyline-block4",
-      reliabilityScore: "4.9",
-      date: "2 hours ago",
-      email: "chidi.azeez@domain.com",
-      phone: "+234 809 123 4567",
-      occupation: "Product Manager at TechCabal",
-      income: "₦850,000/mo",
-      status: "Applicant",
-      notes: "Verified NIN. References checked. Rent history shows on-time payments for 2 years."
-    },
-    {
-      id: 102,
-      name: "Fatima Bello",
-      tenantName: "Fatima Bello",
-      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&h=64&q=80",
-      propertyTitle: "Oakwood Residency, Unit 12B",
-      propertyId: "oakwood-unit12b",
-      reliabilityScore: "4.7",
-      date: "1 day ago",
-      email: "fatima.b@domain.com",
-      phone: "+234 813 456 7890",
-      occupation: "Senior Accountant",
-      income: "₦700,000/mo",
-      status: "Applicant",
-      notes: "Verified NIN. Clean credit score. Transitioning from Lagos Mainland."
-    },
-    {
-      id: 103,
-      name: "Tunde Bakare",
-      tenantName: "Tunde Bakare",
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=64&h=64&q=80",
-      propertyTitle: "Lekki Gardens, Plot 14",
-      propertyId: "lekki-gardens-14",
-      reliabilityScore: "4.8",
-      date: "3 days ago",
-      email: "t.bakare@domain.com",
-      phone: "+234 902 345 6781",
-      occupation: "Civil Engineer",
-      income: "₦950,000/mo",
-      status: "Applicant",
-      notes: "Verified NIN. Co-signer provided. Pays 6 months upfront."
+  const [applications, setApplications] = useState(() => {
+    const saved = localStorage.getItem("propertyApplications");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
     }
-  ]);
+    return [];
+  });
 
-  // Sync username if changed in storage
+  // Sync username & applications if changed in storage
   useEffect(() => {
     const handleStorageChange = () => {
-      setUsername(localStorage.getItem("username") || "Ada");
+      setUsername(localStorage.getItem("username") || "Landlord User");
+      const savedApps = localStorage.getItem("propertyApplications");
+      if (savedApps) {
+        try {
+          setApplications(JSON.parse(savedApps));
+        } catch (e) {}
+      }
     };
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  // Unconditional reset of seed data on startup to ensure a clean first sign-in experience
-  useEffect(() => {
-    const isReset = localStorage.getItem("pms_dashboard_reset_v4");
-    if (!isReset) {
-      localStorage.setItem("propertyTenants", JSON.stringify({}));
-      localStorage.setItem("tenantRequests", JSON.stringify([]));
-      localStorage.setItem("landlordChats", JSON.stringify([]));
-      localStorage.setItem("pms_dashboard_reset_v4", "true");
-      // Force reload to apply storage update immediately
-      window.location.reload();
-    }
   }, []);
 
   // Trigger onboarding welcome overlay if new signup or first time entering
@@ -564,7 +532,7 @@ export default function LandlordDashboard() {
     localStorage.removeItem("sessionExpiresAt");
     localStorage.removeItem("username");
     localStorage.removeItem("userRole");
-    navigate("/login");
+    navigate("/login", { replace: true });
   }
 
   // Sidebar navigation items
@@ -581,14 +549,20 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     const saved = localStorage.getItem("properties");
-    const allList = saved ? JSON.parse(saved) : LISTINGS;
-    if (!saved) {
-      localStorage.setItem("properties", JSON.stringify(LISTINGS));
+    if (saved) {
+      try {
+        const allList = JSON.parse(saved);
+        const userFirstName = username.toLowerCase().split(" ")[0];
+        const filtered = allList.filter(l =>
+          !l.landlord?.name || l.landlord?.name?.toLowerCase().includes(userFirstName) || userFirstName.includes(l.landlord?.name?.toLowerCase().split(" ")[0] || "")
+        );
+        setDisplayProperties(filtered);
+      } catch (e) {
+        setDisplayProperties([]);
+      }
+    } else {
+      setDisplayProperties([]);
     }
-    const filtered = allList.filter(l =>
-      l.landlord?.name?.toLowerCase().includes(username.toLowerCase().split(" ")[0])
-    );
-    setDisplayProperties(filtered);
   }, [username]);
 
   const handleUpdateRequestStatus = (requestId, newStatus) => {
@@ -754,7 +728,10 @@ export default function LandlordDashboard() {
                               >
                                 {app.tenantName}
                               </span>
-                              <span className="db-popup-score">⭐ {app.reliabilityScore}</span>
+                              <span className="db-popup-score flex items-center gap-1 font-bold text-amber-500">
+                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                                <span>{app.reliabilityScore}</span>
+                              </span>
                             </div>
                             <p className="db-popup-property">{app.propertyTitle}</p>
                             <span className="db-popup-date">{app.date}</span>
@@ -1104,7 +1081,9 @@ export default function LandlordDashboard() {
                   </div>
 
                   <div className="activity-metric">
-                    <span className="activity-val">92%</span>
+                    <span className="activity-val">
+                      {displayProperties.length === 0 ? "0%" : `${Math.min(100, Math.round((getActiveTenantsCount() / Math.max(1, displayProperties.length)) * 100))}%`}
+                    </span>
                     <span className="activity-sub">Occupancy Rate</span>
                   </div>
 
@@ -1340,15 +1319,15 @@ export default function LandlordDashboard() {
             </div>
 
             <h3 className="font-display text-xl font-bold text-ink-900 dark:text-white mb-1">Landlord Reviews & Ratings</h3>
-            <p className="text-[12.5px] text-ink-400 dark:text-cream-100/70 mb-5">
-              Overall score: <strong className="text-ink-900 dark:text-white font-bold">⭐ 4.8 / 5.0</strong> based on 12 verified tenant reviews.
+            <p className="text-[12.5px] text-ink-400 dark:text-cream-100/70 mb-5 flex items-center justify-center gap-1">
+              Overall score: <strong className="text-ink-900 dark:text-white font-bold flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> 4.8 / 5.0</strong> based on 12 verified tenant reviews.
             </p>
 
             <div className="space-y-4 text-left max-h-[300px] overflow-y-auto pr-1 border-t border-[#E4EAE1] dark:border-white/10 pt-4">
               <div className="border-b border-[#E4EAE1]/60 dark:border-white/5 pb-3">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[13px] font-bold text-ink-900 dark:text-white">Maren Maureen</span>
-                  <span className="text-[11px] text-[#D69E2E] font-bold">⭐ 5.0</span>
+                  <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> 5.0</span>
                 </div>
                 <p className="text-[12px] text-ink-600 dark:text-cream-100/80 leading-relaxed">
                   "Ada K. is an outstanding landlord. Every maintenance request I submitted was sorted out in less than a day. Super professional and pleasant to deal with."
@@ -1359,7 +1338,7 @@ export default function LandlordDashboard() {
               <div className="border-b border-[#E4EAE1]/60 dark:border-white/5 pb-3">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[13px] font-bold text-ink-900 dark:text-white">Emeka Obi</span>
-                  <span className="text-[11px] text-[#D69E2E] font-bold">⭐ 4.0</span>
+                  <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> 4.0</span>
                 </div>
                 <p className="text-[12px] text-ink-600 dark:text-cream-100/80 leading-relaxed">
                   "Great landlord, very responsive with repairs. The property and amenities are exactly as advertised. Minor delays in unit key handover at start but overall excellent."
@@ -1370,7 +1349,7 @@ export default function LandlordDashboard() {
               <div className="pb-1">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[13px] font-bold text-ink-900 dark:text-white">Ryan Herwinds</span>
-                  <span className="text-[11px] text-[#D69E2E] font-bold">⭐ 5.0</span>
+                  <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> 5.0</span>
                 </div>
                 <p className="text-[12px] text-ink-600 dark:text-cream-100/80 leading-relaxed">
                   "Very simple onboarding and smooth lease renewal. Ada respects privacy and responds quickly to emergency lock checks."
@@ -1428,7 +1407,9 @@ export default function LandlordDashboard() {
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Account Rating</span>
-                <span className="text-ink-900 dark:text-white font-semibold flex items-center gap-1">⭐ 4.9 <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">(18 reviews)</span></span>
+                <span className="text-ink-900 dark:text-white font-semibold flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> 4.9 <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">(18 reviews)</span>
+                </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Member Since</span>

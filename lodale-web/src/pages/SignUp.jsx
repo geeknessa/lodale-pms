@@ -213,9 +213,25 @@ export default function SignUp() {
         localStorage.setItem("username", `${firstName.trim()} ${lastName.trim()}`);
         localStorage.setItem("userRole", role);
         localStorage.setItem("isNewSignUp", "true");
+
+        const profileObj = {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim().toLowerCase(),
+          phone: "",
+          role,
+          address: "",
+          dob: "",
+          location: "",
+          postalCode: "",
+          nin: ninNumber || ""
+        };
+        localStorage.setItem("userProfile_" + email.trim().toLowerCase(), JSON.stringify(profileObj));
+        localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
+
         localStorage.setItem(
           "registeredUser_" + email.toLowerCase(),
-          JSON.stringify({ email: email.toLowerCase(), role, username: `${firstName.trim()} ${lastName.trim()}`, password })
+          JSON.stringify({ email: email.toLowerCase(), role, username: `${firstName.trim()} ${lastName.trim()}`, password, profile: profileObj })
         );
         localStorage.setItem(
           "sessionExpiresAt",
@@ -229,7 +245,7 @@ export default function SignUp() {
     if (skipWelcome && listingId) {
       navigate(`/apply/${listingId}`);
     } else {
-      navigate(`/welcome/${role}`, { state: { username: `${firstName.trim()} ${lastName.trim()}` } });
+      navigate(`/dashboard/${role}`);
     }
   }
 

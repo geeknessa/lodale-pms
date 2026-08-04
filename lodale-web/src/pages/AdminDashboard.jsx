@@ -261,7 +261,8 @@ export default function AdminDashboard() {
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("userRole");
     localStorage.removeItem("sessionExpiresAt");
-    navigate("/admin/login");
+    localStorage.setItem("explicitAdminSignOut", "true");
+    navigate("/admin/login", { replace: true });
   };
 
   // Dynamic state for core modules
