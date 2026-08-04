@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Logo, VerifiedBadge } from "../components/Logo";
 import Button from "../components/Button";
+import { authService } from "../services/authService";
 import heroBg from "../assets/modern_villa.png";
 import { useTheme } from "../context/ThemeContext";
 
@@ -208,16 +209,22 @@ export default function SignUp() {
         setIsVerifying(false);
         setVerified(true);
 
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanPassword = password.trim();
+        const cleanName = `${firstName.trim()} ${lastName.trim()}`;
+
         localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("lastLoggedInEmail", email);
-        localStorage.setItem("username", `${firstName.trim()} ${lastName.trim()}`);
+        localStorage.setItem("lastLoggedInEmail", cleanEmail);
+        localStorage.setItem("lastLoggedInPassword", cleanPassword);
+        localStorage.setItem("username", cleanName);
         localStorage.setItem("userRole", role);
         localStorage.setItem("isNewSignUp", "true");
+        localStorage.setItem("userPassword_" + cleanEmail, cleanPassword);
 
         const profileObj = {
           firstName: firstName.trim(),
           lastName: lastName.trim(),
-          email: email.trim().toLowerCase(),
+          email: cleanEmail,
           phone: "",
           role,
           address: "",
@@ -226,13 +233,42 @@ export default function SignUp() {
           postalCode: "",
           nin: ninNumber || ""
         };
-        localStorage.setItem("userProfile_" + email.trim().toLowerCase(), JSON.stringify(profileObj));
+        localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
         localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
 
-        localStorage.setItem(
-          "registeredUser_" + email.toLowerCase(),
-          JSON.stringify({ email: email.toLowerCase(), role, username: `${firstName.trim()} ${lastName.trim()}`, password, profile: profileObj })
-        );
+        const userRecord = {
+          email: cleanEmail,
+          role,
+          username: cleanName,
+          password: cleanPassword,
+          profile: profileObj
+        };
+
+        localStorage.setItem("registeredUser_" + cleanEmail, JSON.stringify(userRecord));
+
+        // Store in global registeredUsers array for cross-page lookup
+        try {
+          const existingStr = localStorage.getItem("registeredUsers");
+          let existing = existingStr ? JSON.parse(existingStr) : [];
+          existing = existing.filter(u => u && u.email && u.email.toLowerCase() !== cleanEmail);
+          existing.push(userRecord);
+          localStorage.setItem("registeredUsers", JSON.stringify(existing));
+        } catch (e) {}
+
+        // Persist user to PostgreSQL Database via authService
+        try {
+          authService.signUp({
+            email: cleanEmail,
+            password: cleanPassword,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            role: role,
+            phone: ""
+          });
+        } catch (dbErr) {
+          console.warn("Database user persist warning:", dbErr);
+        }
+
         localStorage.setItem(
           "sessionExpiresAt",
           (Date.now() + 24 * 60 * 60 * 1000).toString(),

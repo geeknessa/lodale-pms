@@ -39,10 +39,17 @@ export default function TenantSettings({ onSignOut }) {
   const [location, setLocation] = useState(userProfile.location || "");
   const [postalCode, setPostalCode] = useState(userProfile.postalCode || "");
 
-  // Profile avatar states
-  const [avatarUrl, setAvatarUrl] = useState(
-    "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&h=150&q=80"
-  );
+  // Profile avatar states (uses User vector icon until user uploads their custom photo)
+  const [avatarUrl, setAvatarUrl] = useState(() => {
+    const emailKey = localStorage.getItem("lastLoggedInEmail");
+    if (emailKey) {
+      const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
+      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
+    }
+    const globalSaved = localStorage.getItem("tenantAvatarUrl");
+    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
+    return userProfile.avatar && !userProfile.avatar.includes("unsplash.com") ? userProfile.avatar : "";
+  });
   const fileInputRef = useRef(null);
 
   // Security form states
@@ -57,8 +64,23 @@ export default function TenantSettings({ onSignOut }) {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      setAvatarUrl(url);
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const base64Data = evt.target.result;
+        setAvatarUrl(base64Data);
+        localStorage.setItem("tenantAvatarUrl", base64Data);
+        const emailKey = email || localStorage.getItem("lastLoggedInEmail");
+        if (emailKey) {
+          localStorage.setItem("tenantAvatar_" + emailKey.toLowerCase(), base64Data);
+        }
+
+        const updatedProf = { ...userProfile, avatar: base64Data };
+        setUserProfile(updatedProf);
+        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+
+        window.dispatchEvent(new Event("storage"));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -68,6 +90,10 @@ export default function TenantSettings({ onSignOut }) {
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
       localStorage.setItem("username", fullName);
       localStorage.setItem("lastLoggedInEmail", email.trim());
+      localStorage.setItem("tenantAvatarUrl", avatarUrl);
+      if (email) {
+        localStorage.setItem("tenantAvatar_" + email.trim().toLowerCase(), avatarUrl);
+      }
 
       const updatedProfile = {
         ...userProfile,
@@ -78,7 +104,8 @@ export default function TenantSettings({ onSignOut }) {
         phone: phone.trim(),
         dob: dob.trim(),
         location: location.trim(),
-        postalCode: postalCode.trim()
+        postalCode: postalCode.trim(),
+        avatar: avatarUrl
       };
       setUserProfile(updatedProfile);
       localStorage.setItem("currentUserProfile", JSON.stringify(updatedProfile));
@@ -141,7 +168,13 @@ export default function TenantSettings({ onSignOut }) {
       <div className="settings-sidebar-card">
         <div className="settings-profile-section">
           <div className="settings-avatar-container" onClick={handleAvatarClick} title="Click to upload a new photo">
-            <img src={avatarUrl} alt="User Profile" className="settings-profile-avatar" />
+            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-moss-100/70 dark:bg-[#1E382A] text-moss-700 dark:text-[#E5C583] border-4 border-neutral-200 dark:border-white/10">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="User Profile" className="h-full w-full object-cover" />
+              ) : (
+                <User className="h-10 w-10 text-moss-700 dark:text-[#E5C583]" />
+              )}
+            </div>
             <div className="settings-avatar-edit-badge">
               <Pencil className="h-3 w-3" />
             </div>

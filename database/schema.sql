@@ -1,3 +1,7 @@
+-- Enable required extensions for UUID generation and crypto
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- =============================================================================
 -- Migration: V001__create_users.sql
 -- Description: Creates the core users table and supporting enums/types.
@@ -8,18 +12,21 @@
 
 -- ─── Enum Types ─────────────────────────────────────────────────────────────
 
+DROP TYPE IF EXISTS user_role CASCADE;
 CREATE TYPE user_role AS ENUM (
     'tenant',
     'landlord',
     'admin'
 );
 
+DROP TYPE IF EXISTS auth_provider CASCADE;
 CREATE TYPE auth_provider AS ENUM (
     'email',
     'google',
     'apple'
 );
 
+DROP TYPE IF EXISTS verification_status CASCADE;
 CREATE TYPE verification_status AS ENUM (
     'unverified',
     'pending',
@@ -75,20 +82,20 @@ CREATE TABLE IF NOT EXISTS users (
 -- ─── Constraints ─────────────────────────────────────────────────────────────
 
 -- Email uniqueness enforced only on active (non-deleted) rows
-CREATE UNIQUE INDEX idx_users_email_active
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_active
     ON users (email)
     WHERE deleted_at IS NULL;
 
 -- OAuth accounts need a unique (provider, provider_id) tuple
-CREATE UNIQUE INDEX idx_users_oauth
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth
     ON users (auth_provider, oauth_provider_id)
     WHERE oauth_provider_id IS NOT NULL;
 
 -- ─── Indexes ─────────────────────────────────────────────────────────────────
 
-CREATE INDEX idx_users_primary_role ON users (primary_role);
-CREATE INDEX idx_users_created_at   ON users (created_at DESC);
-CREATE INDEX idx_users_deleted_at   ON users (deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_users_primary_role ON users (primary_role);
+CREATE INDEX IF NOT EXISTS idx_users_created_at   ON users (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_users_deleted_at   ON users (deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- ─── Trigger: auto-update updated_at ─────────────────────────────────────────
 
@@ -123,6 +130,7 @@ COMMENT ON COLUMN users.primary_role            IS 'A user who added a property 
 
 -- ─── Enum Types ─────────────────────────────────────────────────────────────
 
+DROP TYPE IF EXISTS property_type CASCADE;
 CREATE TYPE property_type AS ENUM (
     'apartment',
     'duplex',
@@ -136,6 +144,7 @@ CREATE TYPE property_type AS ENUM (
     'commercial'
 );
 
+DROP TYPE IF EXISTS property_status CASCADE;
 CREATE TYPE property_status AS ENUM (
     'draft',            -- Saved but not yet submitted for review
     'pending_review',   -- Submitted; awaiting ownership verification
@@ -145,6 +154,7 @@ CREATE TYPE property_status AS ENUM (
     'suspended'         -- Suspended by an admin
 );
 
+DROP TYPE IF EXISTS rent_period CASCADE;
 CREATE TYPE rent_period AS ENUM (
     'monthly',
     'quarterly',
@@ -204,16 +214,16 @@ CREATE TABLE IF NOT EXISTS properties (
 
 -- ─── Indexes ─────────────────────────────────────────────────────────────────
 
-CREATE INDEX idx_properties_landlord  ON properties (landlord_id);
-CREATE INDEX idx_properties_status    ON properties (status);
-CREATE INDEX idx_properties_city      ON properties (city);
-CREATE INDEX idx_properties_bedrooms  ON properties (bedrooms);
-CREATE INDEX idx_properties_rent      ON properties (rent_amount);
-CREATE INDEX idx_properties_location  ON properties (latitude, longitude)
+CREATE INDEX IF NOT EXISTS idx_properties_landlord  ON properties (landlord_id);
+CREATE INDEX IF NOT EXISTS idx_properties_status    ON properties (status);
+CREATE INDEX IF NOT EXISTS idx_properties_city      ON properties (city);
+CREATE INDEX IF NOT EXISTS idx_properties_bedrooms  ON properties (bedrooms);
+CREATE INDEX IF NOT EXISTS idx_properties_rent      ON properties (rent_amount);
+CREATE INDEX IF NOT EXISTS idx_properties_location  ON properties (latitude, longitude)
     WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
 
 -- Full-text search: combine title + address for fast keyword search
-CREATE INDEX idx_properties_fts ON properties
+CREATE INDEX IF NOT EXISTS idx_properties_fts ON properties
     USING GIN (
         to_tsvector('english', title || ' ' || address_line1 || ' ' || city)
     );
@@ -234,7 +244,7 @@ CREATE TABLE IF NOT EXISTS property_amenities (
     UNIQUE (property_id, amenity)
 );
 
-CREATE INDEX idx_property_amenities_property ON property_amenities (property_id);
+CREATE INDEX IF NOT EXISTS idx_property_amenities_property ON property_amenities (property_id);
 
 -- ─── Table: property_images ──────────────────────────────────────────────────
 
@@ -249,10 +259,10 @@ CREATE TABLE IF NOT EXISTS property_images (
     uploaded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_property_images_property   ON property_images (property_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_property_images_property   ON property_images (property_id, sort_order);
 
 -- Ensure only one cover image per property
-CREATE UNIQUE INDEX idx_property_images_cover
+CREATE UNIQUE INDEX IF NOT EXISTS idx_property_images_cover
     ON property_images (property_id)
     WHERE is_cover = TRUE;
 
@@ -276,6 +286,7 @@ COMMENT ON TABLE  property_images               IS 'Media assets (photos) associ
 
 -- ─── Enum Types ─────────────────────────────────────────────────────────────
 
+DROP TYPE IF EXISTS application_status CASCADE;
 CREATE TYPE application_status AS ENUM (
     'submitted',        -- Tenant has submitted; awaiting landlord review
     'under_review',     -- Landlord has opened the application
@@ -324,16 +335,16 @@ CREATE TABLE IF NOT EXISTS applications (
 -- ─── Constraints ─────────────────────────────────────────────────────────────
 
 -- A tenant can have at most one active (non-rejected, non-withdrawn) application per property
-CREATE UNIQUE INDEX idx_applications_active_unique
+CREATE UNIQUE INDEX IF NOT EXISTS idx_applications_active_unique
     ON applications (property_id, tenant_id)
     WHERE status NOT IN ('rejected', 'withdrawn', 'expired');
 
 -- ─── Indexes ─────────────────────────────────────────────────────────────────
 
-CREATE INDEX idx_applications_property      ON applications (property_id);
-CREATE INDEX idx_applications_tenant        ON applications (tenant_id);
-CREATE INDEX idx_applications_status        ON applications (status);
-CREATE INDEX idx_applications_created       ON applications (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_applications_property      ON applications (property_id);
+CREATE INDEX IF NOT EXISTS idx_applications_tenant        ON applications (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_applications_status        ON applications (status);
+CREATE INDEX IF NOT EXISTS idx_applications_created       ON applications (created_at DESC);
 
 -- ─── Trigger ─────────────────────────────────────────────────────────────────
 
@@ -359,6 +370,7 @@ CREATE TRIGGER trg_application_status_ts
 -- ─── Table: application_documents ───────────────────────────────────────────
 -- Documents the landlord may request (employment letter, guarantor form, etc.)
 
+DROP TYPE IF EXISTS document_type CASCADE;
 CREATE TYPE document_type AS ENUM (
     'employment_letter',
     'guarantor_form',
@@ -370,6 +382,7 @@ CREATE TYPE document_type AS ENUM (
     'other'
 );
 
+DROP TYPE IF EXISTS document_status CASCADE;
 CREATE TYPE document_status AS ENUM (
     'requested',
     'uploaded',
@@ -390,7 +403,7 @@ CREATE TABLE IF NOT EXISTS application_documents (
     reviewed_at     TIMESTAMPTZ
 );
 
-CREATE INDEX idx_app_docs_application ON application_documents (application_id);
+CREATE INDEX IF NOT EXISTS idx_app_docs_application ON application_documents (application_id);
 
 -- ─── Comments ────────────────────────────────────────────────────────────────
 
@@ -481,17 +494,17 @@ CREATE TABLE IF NOT EXISTS leases (
 -- ─── Constraints ─────────────────────────────────────────────────────────────
 
 -- Only one active lease per property at a time
-CREATE UNIQUE INDEX idx_leases_property_active
+CREATE UNIQUE INDEX IF NOT EXISTS idx_leases_property_active
     ON leases (property_id)
     WHERE status = 'active';
 
 -- ─── Indexes ─────────────────────────────────────────────────────────────────
 
-CREATE INDEX idx_leases_property    ON leases (property_id);
-CREATE INDEX idx_leases_tenant      ON leases (tenant_id);
-CREATE INDEX idx_leases_landlord    ON leases (landlord_id);
-CREATE INDEX idx_leases_status      ON leases (status);
-CREATE INDEX idx_leases_end_date    ON leases (end_date);           -- For renewal/expiry jobs
+CREATE INDEX IF NOT EXISTS idx_leases_property    ON leases (property_id);
+CREATE INDEX IF NOT EXISTS idx_leases_tenant      ON leases (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_leases_landlord    ON leases (landlord_id);
+CREATE INDEX IF NOT EXISTS idx_leases_status      ON leases (status);
+CREATE INDEX IF NOT EXISTS idx_leases_end_date    ON leases (end_date);           -- For renewal/expiry jobs
 
 -- ─── Trigger ─────────────────────────────────────────────────────────────────
 
@@ -539,7 +552,7 @@ CREATE TABLE IF NOT EXISTS lease_clauses (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_lease_clauses_lease ON lease_clauses (lease_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_lease_clauses_lease ON lease_clauses (lease_id, sort_order);
 
 -- ─── Comments ────────────────────────────────────────────────────────────────
 
@@ -641,11 +654,11 @@ CREATE TABLE IF NOT EXISTS rent_invoices (
     updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_invoices_lease     ON rent_invoices (lease_id);
-CREATE INDEX idx_invoices_tenant    ON rent_invoices (tenant_id);
-CREATE INDEX idx_invoices_landlord  ON rent_invoices (landlord_id);
-CREATE INDEX idx_invoices_status    ON rent_invoices (status);
-CREATE INDEX idx_invoices_due_date  ON rent_invoices (due_date);
+CREATE INDEX IF NOT EXISTS idx_invoices_lease     ON rent_invoices (lease_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_tenant    ON rent_invoices (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_landlord  ON rent_invoices (landlord_id);
+CREATE INDEX IF NOT EXISTS idx_invoices_status    ON rent_invoices (status);
+CREATE INDEX IF NOT EXISTS idx_invoices_due_date  ON rent_invoices (due_date);
 
 CREATE TRIGGER trg_invoices_updated_at
     BEFORE UPDATE ON rent_invoices
@@ -693,12 +706,12 @@ CREATE RULE no_delete_rent_payments AS
     ON DELETE TO rent_payments
     DO INSTEAD NOTHING;
 
-CREATE INDEX idx_payments_invoice    ON rent_payments (invoice_id);
-CREATE INDEX idx_payments_lease      ON rent_payments (lease_id);
-CREATE INDEX idx_payments_paid_by    ON rent_payments (paid_by);
-CREATE INDEX idx_payments_status     ON rent_payments (status);
-CREATE INDEX idx_payments_initiated  ON rent_payments (initiated_at DESC);
-CREATE INDEX idx_payments_gateway    ON rent_payments (gateway_reference)
+CREATE INDEX IF NOT EXISTS idx_payments_invoice    ON rent_payments (invoice_id);
+CREATE INDEX IF NOT EXISTS idx_payments_lease      ON rent_payments (lease_id);
+CREATE INDEX IF NOT EXISTS idx_payments_paid_by    ON rent_payments (paid_by);
+CREATE INDEX IF NOT EXISTS idx_payments_status     ON rent_payments (status);
+CREATE INDEX IF NOT EXISTS idx_payments_initiated  ON rent_payments (initiated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_gateway    ON rent_payments (gateway_reference)
     WHERE gateway_reference IS NOT NULL;
 
 -- ─── Table: payment_receipts ─────────────────────────────────────────────────
@@ -718,7 +731,7 @@ CREATE TABLE IF NOT EXISTS payment_receipts (
     snapshot_period         TEXT
 );
 
-CREATE INDEX idx_receipts_payment ON payment_receipts (payment_id);
+CREATE INDEX IF NOT EXISTS idx_receipts_payment ON payment_receipts (payment_id);
 
 -- ─── Trigger: update invoice amounts on payment confirmation ─────────────────
 
@@ -836,12 +849,12 @@ CREATE TABLE IF NOT EXISTS maintenance_requests (
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_maint_property     ON maintenance_requests (property_id);
-CREATE INDEX idx_maint_lease        ON maintenance_requests (lease_id);
-CREATE INDEX idx_maint_reported_by  ON maintenance_requests (reported_by);
-CREATE INDEX idx_maint_status       ON maintenance_requests (status);
-CREATE INDEX idx_maint_priority     ON maintenance_requests (priority);
-CREATE INDEX idx_maint_created      ON maintenance_requests (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_maint_property     ON maintenance_requests (property_id);
+CREATE INDEX IF NOT EXISTS idx_maint_lease        ON maintenance_requests (lease_id);
+CREATE INDEX IF NOT EXISTS idx_maint_reported_by  ON maintenance_requests (reported_by);
+CREATE INDEX IF NOT EXISTS idx_maint_status       ON maintenance_requests (status);
+CREATE INDEX IF NOT EXISTS idx_maint_priority     ON maintenance_requests (priority);
+CREATE INDEX IF NOT EXISTS idx_maint_created      ON maintenance_requests (created_at DESC);
 
 CREATE TRIGGER trg_maintenance_updated_at
     BEFORE UPDATE ON maintenance_requests
@@ -886,7 +899,7 @@ CREATE TABLE IF NOT EXISTS maintenance_media (
     uploaded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_maint_media_request ON maintenance_media (request_id, stage);
+CREATE INDEX IF NOT EXISTS idx_maint_media_request ON maintenance_media (request_id, stage);
 
 -- ─── Table: maintenance_timeline ─────────────────────────────────────────────
 -- Immutable audit trail of all status changes and comments
@@ -912,7 +925,7 @@ CREATE TABLE IF NOT EXISTS maintenance_timeline (
     created_at      TIMESTAMPTZ             NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_maint_timeline_request ON maintenance_timeline (request_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_maint_timeline_request ON maintenance_timeline (request_id, created_at DESC);
 
 -- Auto-log status changes to the timeline
 CREATE OR REPLACE FUNCTION log_maintenance_status_change()
@@ -1008,13 +1021,13 @@ CREATE TABLE IF NOT EXISTS reviews (
 );
 
 -- Each party can only review the other once per lease
-CREATE UNIQUE INDEX idx_reviews_unique_per_lease
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_unique_per_lease
     ON reviews (lease_id, reviewer_id, reviewer_role);
 
-CREATE INDEX idx_reviews_reviewer  ON reviews (reviewer_id);
-CREATE INDEX idx_reviews_reviewee  ON reviews (reviewee_id);
-CREATE INDEX idx_reviews_property  ON reviews (property_id);
-CREATE INDEX idx_reviews_status    ON reviews (status);
+CREATE INDEX IF NOT EXISTS idx_reviews_reviewer  ON reviews (reviewer_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_reviewee  ON reviews (reviewee_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_property  ON reviews (property_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_status    ON reviews (status);
 
 CREATE TRIGGER trg_reviews_updated_at
     BEFORE UPDATE ON reviews
@@ -1083,7 +1096,7 @@ CREATE TABLE IF NOT EXISTS review_responses (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_review_responses_review ON review_responses (review_id);
+CREATE INDEX IF NOT EXISTS idx_review_responses_review ON review_responses (review_id);
 
 CREATE TRIGGER trg_review_responses_updated_at
     BEFORE UPDATE ON review_responses
@@ -1161,11 +1174,11 @@ CREATE TABLE IF NOT EXISTS invitations (
     )
 );
 
-CREATE INDEX idx_invitations_sent_by        ON invitations (sent_by);
-CREATE INDEX idx_invitations_recipient_user ON invitations (recipient_user_id);
-CREATE INDEX idx_invitations_token          ON invitations (token);
-CREATE INDEX idx_invitations_status         ON invitations (status);
-CREATE INDEX idx_invitations_property       ON invitations (property_id);
+CREATE INDEX IF NOT EXISTS idx_invitations_sent_by        ON invitations (sent_by);
+CREATE INDEX IF NOT EXISTS idx_invitations_recipient_user ON invitations (recipient_user_id);
+CREATE INDEX IF NOT EXISTS idx_invitations_token          ON invitations (token);
+CREATE INDEX IF NOT EXISTS idx_invitations_status         ON invitations (status);
+CREATE INDEX IF NOT EXISTS idx_invitations_property       ON invitations (property_id);
 
 CREATE TRIGGER trg_invitations_updated_at
     BEFORE UPDATE ON invitations
@@ -1265,12 +1278,12 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 -- Partial index: unread notifications per user — fast badge count queries
-CREATE INDEX idx_notif_user_unread
+CREATE INDEX IF NOT EXISTS idx_notif_user_unread
     ON notifications (user_id, created_at DESC)
     WHERE is_read = FALSE;
 
-CREATE INDEX idx_notif_user_all     ON notifications (user_id, created_at DESC);
-CREATE INDEX idx_notif_type         ON notifications (notification_type);
+CREATE INDEX IF NOT EXISTS idx_notif_user_all     ON notifications (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notif_type         ON notifications (notification_type);
 
 -- Mark read — no update trigger needed; created_at is write-once
 -- Enforce: read_at must be set when is_read flips to TRUE
@@ -1301,7 +1314,7 @@ CREATE TABLE IF NOT EXISTS notification_preferences (
     UNIQUE (user_id, notification_type, channel)
 );
 
-CREATE INDEX idx_notif_prefs_user ON notification_preferences (user_id);
+CREATE INDEX IF NOT EXISTS idx_notif_prefs_user ON notification_preferences (user_id);
 
 -- ─── Comments ────────────────────────────────────────────────────────────────
 
@@ -1358,10 +1371,10 @@ CREATE TABLE IF NOT EXISTS audit_log (
 CREATE RULE no_update_audit_log AS ON UPDATE TO audit_log DO INSTEAD NOTHING;
 CREATE RULE no_delete_audit_log AS ON DELETE TO audit_log DO INSTEAD NOTHING;
 
-CREATE INDEX idx_audit_actor        ON audit_log (actor_id);
-CREATE INDEX idx_audit_entity       ON audit_log (entity_type, entity_id);
-CREATE INDEX idx_audit_created      ON audit_log (created_at DESC);
-CREATE INDEX idx_audit_action       ON audit_log (action);
+CREATE INDEX IF NOT EXISTS idx_audit_actor        ON audit_log (actor_id);
+CREATE INDEX IF NOT EXISTS idx_audit_entity       ON audit_log (entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_created      ON audit_log (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_action       ON audit_log (action);
 
 -- Partition candidate for large deployments:
 -- PARTITION BY RANGE (created_at) -- monthly partitions
@@ -1398,9 +1411,9 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 );
 
 -- Fast lookup by token
-CREATE INDEX idx_sessions_user          ON user_sessions (user_id);
-CREATE INDEX idx_sessions_jti           ON user_sessions (access_token_jti);
-CREATE INDEX idx_sessions_status        ON user_sessions (status, expires_at)
+CREATE INDEX IF NOT EXISTS idx_sessions_user          ON user_sessions (user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_jti           ON user_sessions (access_token_jti);
+CREATE INDEX IF NOT EXISTS idx_sessions_status        ON user_sessions (status, expires_at)
     WHERE status = 'active';
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -1439,10 +1452,10 @@ CREATE TABLE IF NOT EXISTS admin_actions (
     created_at      TIMESTAMPTZ         NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_admin_actions_admin    ON admin_actions (admin_id);
-CREATE INDEX idx_admin_actions_target   ON admin_actions (target_user_id);
-CREATE INDEX idx_admin_actions_type     ON admin_actions (action_type);
-CREATE INDEX idx_admin_actions_created  ON admin_actions (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_admin    ON admin_actions (admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_target   ON admin_actions (target_user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_type     ON admin_actions (action_type);
+CREATE INDEX IF NOT EXISTS idx_admin_actions_created  ON admin_actions (created_at DESC);
 
 -- ─── Comments ────────────────────────────────────────────────────────────────
 
@@ -1470,6 +1483,7 @@ COMMENT ON TABLE  admin_actions         IS 'Log of privileged administrative ope
 --  PART 1: ADMIN ROLE SYSTEM
 -- ─────────────────────────────────────────────────────────────────────────────
 
+DROP TYPE IF EXISTS admin_role CASCADE;
 CREATE TYPE admin_role AS ENUM (
     'super_admin',  -- Full platform access; can promote/demote other admins
     'moderator',    -- Review & listing moderation only
@@ -1544,14 +1558,14 @@ CREATE TABLE IF NOT EXISTS listing_approval_queue (
 
 -- A property should only appear in the queue once per submission cycle
 -- (resolved entries can be re-queued after landlord edits)
-CREATE UNIQUE INDEX idx_laq_property_open
+CREATE UNIQUE INDEX IF NOT EXISTS idx_laq_property_open
     ON listing_approval_queue (property_id)
     WHERE queue_status IN ('queued', 'under_review', 'escalated');
 
-CREATE INDEX idx_laq_status          ON listing_approval_queue (queue_status, submitted_at DESC);
-CREATE INDEX idx_laq_assigned_to     ON listing_approval_queue (assigned_to) WHERE assigned_to IS NOT NULL;
-CREATE INDEX idx_laq_submitted_by    ON listing_approval_queue (submitted_by);
-CREATE INDEX idx_laq_priority        ON listing_approval_queue (priority, submitted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_laq_status          ON listing_approval_queue (queue_status, submitted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_laq_assigned_to     ON listing_approval_queue (assigned_to) WHERE assigned_to IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_laq_submitted_by    ON listing_approval_queue (submitted_by);
+CREATE INDEX IF NOT EXISTS idx_laq_priority        ON listing_approval_queue (priority, submitted_at DESC);
 
 CREATE TRIGGER trg_laq_updated_at
     BEFORE UPDATE ON listing_approval_queue
@@ -1644,14 +1658,14 @@ CREATE TABLE IF NOT EXISTS review_moderation_queue (
 );
 
 -- A user can only file one active report per review (prevents report flooding)
-CREATE UNIQUE INDEX idx_rmq_unique_active_report
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rmq_unique_active_report
     ON review_moderation_queue (review_id, reported_by)
     WHERE queue_status IN ('open', 'under_review', 'escalated');
 
-CREATE INDEX idx_rmq_status         ON review_moderation_queue (queue_status, created_at DESC);
-CREATE INDEX idx_rmq_review         ON review_moderation_queue (review_id);
-CREATE INDEX idx_rmq_assigned_to    ON review_moderation_queue (assigned_to) WHERE assigned_to IS NOT NULL;
-CREATE INDEX idx_rmq_report_reason  ON review_moderation_queue (report_reason);
+CREATE INDEX IF NOT EXISTS idx_rmq_status         ON review_moderation_queue (queue_status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_rmq_review         ON review_moderation_queue (review_id);
+CREATE INDEX IF NOT EXISTS idx_rmq_assigned_to    ON review_moderation_queue (assigned_to) WHERE assigned_to IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_rmq_report_reason  ON review_moderation_queue (report_reason);
 
 CREATE TRIGGER trg_rmq_updated_at
     BEFORE UPDATE ON review_moderation_queue
@@ -1701,6 +1715,7 @@ COMMENT ON COLUMN review_moderation_queue.resolution_reason IS 'May be surfaced 
 --  PART 4: USER MANAGEMENT ACTIONS
 -- ─────────────────────────────────────────────────────────────────────────────
 
+DROP TYPE IF EXISTS user_mgmt_action CASCADE;
 CREATE TYPE user_mgmt_action AS ENUM (
     'suspend',          -- Temporarily restrict login
     'reinstate',        -- Lift a suspension
@@ -1746,10 +1761,10 @@ CREATE TABLE IF NOT EXISTS user_management_actions (
 CREATE RULE no_update_uma AS ON UPDATE TO user_management_actions DO INSTEAD NOTHING;
 CREATE RULE no_delete_uma AS ON DELETE TO user_management_actions DO INSTEAD NOTHING;
 
-CREATE INDEX idx_uma_target_user    ON user_management_actions (target_user_id, created_at DESC);
-CREATE INDEX idx_uma_admin          ON user_management_actions (admin_id);
-CREATE INDEX idx_uma_action         ON user_management_actions (action);
-CREATE INDEX idx_uma_created        ON user_management_actions (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_uma_target_user    ON user_management_actions (target_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_uma_admin          ON user_management_actions (admin_id);
+CREATE INDEX IF NOT EXISTS idx_uma_action         ON user_management_actions (action);
+CREATE INDEX IF NOT EXISTS idx_uma_created        ON user_management_actions (created_at DESC);
 
 -- ─── Comments ─────────────────────────────────────────────────────────────────
 

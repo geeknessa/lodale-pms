@@ -183,6 +183,47 @@ export default function TenantDashboard() {
   });
   const firstName = username.split(" ")[0];
 
+  // Dynamic real-time date formatting
+  const currentDateStr = new Date().toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "short",
+  });
+  const currentMonthYearStr = new Date().toLocaleDateString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
+  // Tenant avatar state (uses User icon by default until user uploads custom photo)
+  const [tenantAvatar, setTenantAvatar] = useState(() => {
+    const emailKey = localStorage.getItem("lastLoggedInEmail");
+    if (emailKey) {
+      const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
+      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
+    }
+    const globalSaved = localStorage.getItem("tenantAvatarUrl");
+    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
+    return "";
+  });
+
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      const emailKey = localStorage.getItem("lastLoggedInEmail");
+      let updated = null;
+      if (emailKey) {
+        updated = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
+      }
+      if (!updated) {
+        updated = localStorage.getItem("tenantAvatarUrl");
+      }
+      if (updated) {
+        setTenantAvatar(updated);
+      }
+    };
+    window.addEventListener("storage", handleAvatarUpdate);
+    return () => window.removeEventListener("storage", handleAvatarUpdate);
+  }, []);
+
   // Welcome Overlay states for new signup animation
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
   const overlayRef = useRef(null);
@@ -491,7 +532,7 @@ export default function TenantDashboard() {
       description: reqDesc || "No description provided.",
       tenantName: username,
       name: username,
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=64&h=64&q=80",
+      avatar: "",
     };
 
     // Load full list to preserve other requests
@@ -532,7 +573,7 @@ export default function TenantDashboard() {
       setTimeout(() => {
         const newPayment = {
           id: "pay-" + Date.now(),
-          month: "August 2026",
+          month: currentMonthYearStr,
           amount: "₦150,000",
           date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
           status: "Paid",
@@ -685,7 +726,7 @@ export default function TenantDashboard() {
                 <div className="modal-body text-left">
                   <div className="invoice-summary">
                     <span className="summary-lbl">Due Period</span>
-                    <span className="summary-val">August 2026</span>
+                    <span className="summary-val">{currentMonthYearStr}</span>
                     <span className="summary-lbl mt-3">Total Rent Amount</span>
                     <span className="summary-val amount text-moss-700 dark:text-[#E5C583]">₦150,000</span>
                     <span className="summary-lbl mt-3">Recipient Landlord</span>
@@ -746,8 +787,12 @@ export default function TenantDashboard() {
             </div>
 
             <div className="modal-body-centered py-4">
-              <div className="db-avatar" style={{ width: "64px", height: "64px", fontSize: "24px", marginBottom: "12px", backgroundColor: "#E4EAE1" }}>
-                <User className="h-7 w-7 text-[#1E382A] dark:text-[#E5C583]" />
+              <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#1E382A] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border-2 border-[#1E382A]/20 dark:border-[#E5C583]/30" style={{ width: "64px", height: "64px", marginBottom: "12px" }}>
+                {tenantAvatar ? (
+                  <img src={tenantAvatar} alt="Tenant Avatar" className="h-full w-full object-cover" />
+                ) : (
+                  <User className="h-7 w-7 text-[#1E382A] dark:text-[#E5C583]" />
+                )}
               </div>
               <h4 className="font-bold text-[18px] text-ink-900 dark:text-white">{username}</h4>
               <span className="px-3 py-1 rounded-full text-[11px] font-bold mt-1 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
@@ -1060,7 +1105,7 @@ export default function TenantDashboard() {
               <div className="db-controls-group">
                 <div className="db-date-selector">
                   <Calendar className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" />
-                  <span>Monday, 27 Jul</span>
+                  <span>{currentDateStr}</span>
                 </div>
 
                 <div className="db-search-trigger" onClick={() => setActiveTab(1)} title="Search">
@@ -1078,8 +1123,12 @@ export default function TenantDashboard() {
                 </div>
 
                 <div className="db-profile-avatar-wrapper" onClick={() => setShowProfileModal(true)} title="Profile settings">
-                  <div className="db-avatar">
-                    <User className="h-4 w-4 text-[#1E382A] dark:text-[#E5C583]" />
+                  <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#1E382A] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border border-[#1E382A]/20 dark:border-[#E5C583]/30">
+                    {tenantAvatar ? (
+                      <img src={tenantAvatar} alt="Tenant Avatar" className="h-full w-full object-cover" />
+                    ) : (
+                      <User className="h-4.5 w-4.5 text-[#1E382A] dark:text-[#E5C583]" />
+                    )}
                   </div>
                   <span className="db-online-indicator" />
                 </div>

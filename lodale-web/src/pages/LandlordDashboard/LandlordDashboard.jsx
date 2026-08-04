@@ -20,10 +20,17 @@ import {
   ArrowUpRight,
   Star,
   Sparkles,
+  User,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  Info,
+  X,
 } from "lucide-react";
 import { Logo } from "../../components/Logo";
 import Button from "../../components/Button";
 import { LISTINGS } from "../../data/listings";
+import { propertyService } from "../../services/propertyService";
 import LandlordProperties from "./LandlordProperties";
 import UserInfo from "./components/UserInfo";
 import RequestInfo from "./components/RequestInfo";
@@ -69,7 +76,7 @@ const TOUR_STEPS = [
     placement: "right",
     tab: 4
   },
-  
+
   // Homepage steps (tab: 0)
   {
     target: ".tour-welcome",
@@ -187,7 +194,7 @@ export default function LandlordDashboard() {
     setActiveTabState(index);
     try {
       localStorage.setItem("landlordActiveTab", index.toString());
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Active top navigation pill
@@ -218,6 +225,53 @@ export default function LandlordDashboard() {
     month: "short",
     year: "numeric"
   });
+
+  // Landlord profile avatar state (persisted across uploads)
+  const [landlordAvatar, setLandlordAvatar] = useState(() => {
+    const emailKey = localStorage.getItem("lastLoggedInEmail");
+    if (emailKey) {
+      const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
+      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
+    }
+    const globalSaved = localStorage.getItem("landlordAvatarUrl");
+    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
+    try {
+      const raw = localStorage.getItem("currentUserProfile");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
+      }
+    } catch (e) {}
+    return "";
+  });
+
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      const emailKey = localStorage.getItem("lastLoggedInEmail");
+      let updated = null;
+      if (emailKey) {
+        updated = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
+      }
+      if (!updated) {
+        updated = localStorage.getItem("landlordAvatarUrl");
+      }
+      if (!updated) {
+        try {
+          const raw = localStorage.getItem("currentUserProfile");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.avatar) updated = parsed.avatar;
+          }
+        } catch (e) {}
+      }
+      if (updated && !updated.includes("unsplash.com")) {
+        setLandlordAvatar(updated);
+      }
+    };
+    handleAvatarUpdate();
+    window.addEventListener("storage", handleAvatarUpdate);
+    return () => window.removeEventListener("storage", handleAvatarUpdate);
+  }, []);
   const [applications, setApplications] = useState(() => {
     const saved = localStorage.getItem("propertyApplications");
     if (saved) {
@@ -230,7 +284,25 @@ export default function LandlordDashboard() {
     return [];
   });
 
-  // Sync username & applications if changed in storage
+  const [notifications, setNotifications] = useState(() => {
+    const saved = localStorage.getItem("landlordNotifications");
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return []; }
+    }
+    return [
+      {
+        id: "n-1",
+        title: "Welcome to Lodale",
+        message: "Your landlord account is active. Submit properties for instant Admin verification.",
+        time: "1 hour ago",
+        type: "info",
+        read: false
+      }
+    ];
+  });
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+
+  // Sync username, applications & notifications if changed in storage
   useEffect(() => {
     const handleStorageChange = () => {
       setUsername(localStorage.getItem("username") || "Landlord User");
@@ -238,18 +310,33 @@ export default function LandlordDashboard() {
       if (savedApps) {
         try {
           setApplications(JSON.parse(savedApps));
-        } catch (e) {}
+        } catch (e) { }
+      }
+      const savedNotifs = localStorage.getItem("landlordNotifications");
+      if (savedNotifs) {
+        try {
+          setNotifications(JSON.parse(savedNotifs));
+        } catch (e) { }
       }
     };
+    handleStorageChange();
     window.addEventListener("storage", handleStorageChange);
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
+
+  const unreadNotifCount = notifications.filter(n => !n.read).length;
+
+  const markAllNotifsRead = () => {
+    const updated = notifications.map(n => ({ ...n, read: true }));
+    setNotifications(updated);
+    localStorage.setItem("landlordNotifications", JSON.stringify(updated));
+  };
 
   // Trigger onboarding welcome overlay if new signup or first time entering
   useEffect(() => {
     const isNew = localStorage.getItem("isNewSignUp") === "true";
     const hasSeen = localStorage.getItem("hasSeenLandlordTour") === "true";
-    
+
     if (isNew || !hasSeen) {
       setShowWelcomeOverlay(true);
       localStorage.setItem("isNewSignUp", "false");
@@ -314,7 +401,7 @@ export default function LandlordDashboard() {
     if (runTour) {
       const stepData = TOUR_STEPS[tourStep];
       const targetEl = document.querySelector(stepData.target);
-      
+
       if (!targetEl) {
         // If element is not rendered yet (e.g. tab transition lag), wait and retry
         const retryTimer = setTimeout(() => {
@@ -328,20 +415,20 @@ export default function LandlordDashboard() {
       if (container && container.contains(targetEl)) {
         const containerRect = container.getBoundingClientRect();
         const targetRect = targetEl.getBoundingClientRect();
-        
+
         // Calculate target scroll position to center the element
         const targetScrollTop = container.scrollTop + (targetRect.top - containerRect.top) - (container.clientHeight / 2) + (targetRect.height / 2);
-        
+
         container.scrollTo({
           top: targetScrollTop,
           behavior: "smooth"
         });
       }
-      
+
       // Wait a brief moment for scroll to complete, then compute coordinates
       const timer = setTimeout(() => {
         const rect = targetEl.getBoundingClientRect();
-        
+
         // Spotlight style highlights the target element relative to viewport
         setSpotlightStyle({
           top: `${rect.top}px`,
@@ -427,7 +514,7 @@ export default function LandlordDashboard() {
     // 1. Add to property tenants mapping
     const saved = localStorage.getItem("propertyTenants");
     const tenantsMap = saved ? JSON.parse(saved) : {};
-    
+
     const newTenant = {
       id: app.id,
       name: app.tenantName,
@@ -446,12 +533,12 @@ export default function LandlordDashboard() {
     if (!tenantsMap[app.propertyId]) {
       tenantsMap[app.propertyId] = [];
     }
-    
+
     // Avoid duplicate approvals
     if (!tenantsMap[app.propertyId].find(t => t.id === newTenant.id)) {
       tenantsMap[app.propertyId].push(newTenant);
     }
-    
+
     localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
 
     // 1.5. Add a maintenance request for this newly accepted tenant so requests update
@@ -461,11 +548,11 @@ export default function LandlordDashboard() {
       tenantName: app.tenantName,
       avatar: app.avatar,
       type: app.tenantName.includes("Fatima") ? "Upgrade" : "Repair",
-      details: app.tenantName.includes("Chidi") 
-        ? "Fix bedroom AC unit blowing warm air" 
-        : app.tenantName.includes("Fatima") 
-        ? "Upgrade kitchen plumbing & sink setup" 
-        : "Fix master bedroom window lock",
+      details: app.tenantName.includes("Chidi")
+        ? "Fix bedroom AC unit blowing warm air"
+        : app.tenantName.includes("Fatima")
+          ? "Upgrade kitchen plumbing & sink setup"
+          : "Fix master bedroom window lock",
       status: "Pending",
       date: "Just now",
       email: app.email,
@@ -492,7 +579,7 @@ export default function LandlordDashboard() {
     // 2. Add to chat threads mapping
     const savedChats = localStorage.getItem("landlordChats");
     const chatsList = savedChats ? JSON.parse(savedChats) : [];
-    
+
     const exists = chatsList.some((c) => c.name === app.tenantName);
     if (!exists) {
       const newChat = {
@@ -517,7 +604,7 @@ export default function LandlordDashboard() {
 
     alert(`Approved ${app.tenantName}'s application for ${app.propertyTitle}`);
     setApplications((prev) => prev.filter((a) => a.id !== app.id));
-    
+
     // Update the requests state immediately in the current tab
     setTimeout(() => {
       loadRequests();
@@ -546,23 +633,23 @@ export default function LandlordDashboard() {
 
   // Filter listings where landlord name matches the username, or fallback to general listings list
   const [displayProperties, setDisplayProperties] = useState([]);
+  const [selectedFeedbackProperty, setSelectedFeedbackProperty] = useState(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("properties");
-    if (saved) {
-      try {
-        const allList = JSON.parse(saved);
-        const userFirstName = username.toLowerCase().split(" ")[0];
-        const filtered = allList.filter(l =>
-          !l.landlord?.name || l.landlord?.name?.toLowerCase().includes(userFirstName) || userFirstName.includes(l.landlord?.name?.toLowerCase().split(" ")[0] || "")
-        );
-        setDisplayProperties(filtered);
-      } catch (e) {
-        setDisplayProperties([]);
-      }
-    } else {
-      setDisplayProperties([]);
+    async function loadProperties() {
+      const apiProps = await propertyService.getLandlordProperties("11111111-1111-1111-1111-111111111111");
+      const saved = localStorage.getItem("properties");
+      const localList = saved ? JSON.parse(saved) : [];
+
+      const apiIds = new Set(apiProps.map(p => p.id));
+      const combined = [
+        ...apiProps,
+        ...localList.filter(l => !apiIds.has(l.id))
+      ];
+
+      setDisplayProperties(combined);
     }
+    loadProperties();
   }, [username]);
 
   const handleUpdateRequestStatus = (requestId, newStatus) => {
@@ -690,7 +777,7 @@ export default function LandlordDashboard() {
               <div className="db-applications-popup">
                 <div className="db-popup-header">
                   <h3>New Rental Applications</h3>
-                  <button 
+                  <button
                     className="db-popup-close-btn"
                     onClick={() => {
                       setActivePill("Overview");
@@ -708,10 +795,10 @@ export default function LandlordDashboard() {
                     <div className="db-popup-list">
                       {applications.map((app) => (
                         <div key={app.id} className="db-popup-item">
-                          <img 
-                            src={app.avatar} 
-                            alt={app.tenantName} 
-                            className="db-popup-avatar cursor-pointer" 
+                          <img
+                            src={app.avatar}
+                            alt={app.tenantName}
+                            className="db-popup-avatar cursor-pointer"
                             onClick={() => {
                               setSelectedTenantForDetails(app);
                               setActivePill("Overview");
@@ -719,7 +806,7 @@ export default function LandlordDashboard() {
                           />
                           <div className="db-popup-info">
                             <div className="db-popup-name-row">
-                              <span 
+                              <span
                                 className="db-popup-name cursor-pointer hover:underline"
                                 onClick={() => {
                                   setSelectedTenantForDetails(app);
@@ -737,13 +824,13 @@ export default function LandlordDashboard() {
                             <span className="db-popup-date">{app.date}</span>
                           </div>
                           <div className="db-popup-actions">
-                            <button 
+                            <button
                               className="db-action-btn approve"
                               onClick={() => handleApproveApplication(app)}
                             >
                               Approve
                             </button>
-                            <button 
+                            <button
                               className="db-action-btn decline"
                               onClick={() => {
                                 alert(`Declined ${app.tenantName}'s application`);
@@ -765,7 +852,7 @@ export default function LandlordDashboard() {
               <div className="db-applications-popup db-payments-popup">
                 <div className="db-popup-header">
                   <h3>Rent Payments History</h3>
-                  <button 
+                  <button
                     className="db-popup-close-btn"
                     onClick={() => {
                       setActivePill("Overview");
@@ -785,23 +872,23 @@ export default function LandlordDashboard() {
                       <span className="db-popup-stats-val overdue">₦200,000</span>
                     </div>
                   </div>
-                  
+
                   {/* Paid/Outstanding Toggle Subtabs */}
                   <div className="payment-subtab-container">
-                    <button 
+                    <button
                       className={`payment-subtab-btn ${paymentSubTab === "Paid" ? "active" : ""}`}
                       onClick={() => setPaymentSubTab("Paid")}
                     >
                       Paid
                     </button>
-                    <button 
+                    <button
                       className={`payment-subtab-btn ${paymentSubTab === "Outstanding" ? "active" : ""}`}
                       onClick={() => setPaymentSubTab("Outstanding")}
                     >
                       Outstanding
                     </button>
                   </div>
-                  
+
                   <div className="db-popup-list">
                     {paymentSubTab === "Paid" ? (
                       <>
@@ -815,7 +902,7 @@ export default function LandlordDashboard() {
                             <span className="db-popup-date">Paid via Bank Transfer • Today, 09:30 AM</span>
                           </div>
                         </div>
-                        
+
                         <div className="db-popup-item">
                           <div className="db-popup-info">
                             <div className="db-popup-name-row">
@@ -826,7 +913,7 @@ export default function LandlordDashboard() {
                             <span className="db-popup-date">Paid via Card • 3 days ago</span>
                           </div>
                         </div>
-                        
+
                         <div className="db-popup-item">
                           <div className="db-popup-info">
                             <div className="db-popup-name-row">
@@ -861,21 +948,17 @@ export default function LandlordDashboard() {
 
         <div className="db-header-right">
           {/* Manager / Admin Avatar Stack */}
-          <div 
-            className="db-avatar-group" 
+          <div
+            className="db-avatar-group cursor-pointer flex items-center -space-x-2"
             onClick={() => setActiveTab(2)}
             title="View Tenants List"
           >
-            <img
-              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=64&h=64&q=80"
-              alt="Manager 1"
-              className="db-avatar-item"
-            />
-            <img
-              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=64&h=64&q=80"
-              alt="Manager 2"
-              className="db-avatar-item"
-            />
+            <div className="w-7 h-7 rounded-full bg-moss-700 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]">
+              <User className="h-3.5 w-3.5" />
+            </div>
+            <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]">
+              <User className="h-3.5 w-3.5" />
+            </div>
             <div className="db-avatar-plus">+3</div>
           </div>
 
@@ -887,13 +970,68 @@ export default function LandlordDashboard() {
           </Button>
 
           {/* Quick Notification Tools */}
-          <div className="db-icon-btn-group">
-            <button className="db-icon-btn" aria-label="Notifications">
+          <div className="db-icon-btn-group relative">
+            <button
+              className="db-icon-btn relative cursor-pointer"
+              aria-label="Notifications"
+              onClick={() => {
+                setShowNotifDropdown(!showNotifDropdown);
+                if (!showNotifDropdown && unreadNotifCount > 0) {
+                  markAllNotifsRead();
+                }
+              }}
+            >
               <Bell className="h-4.5 w-4.5" />
-              <span className="db-badge-dot" />
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[9.5px] font-bold flex items-center justify-center animate-pulse">
+                  {unreadNotifCount}
+                </span>
+              )}
             </button>
-            <button 
-              className="db-icon-btn" 
+
+            {/* Notification Dropdown */}
+            {showNotifDropdown && (
+              <div className="absolute right-0 top-12 z-50 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 shadow-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-ink-100 dark:border-white/10">
+                  <h3 className="font-bold text-sm text-ink-900 dark:text-white flex items-center gap-1.5">
+                    <Bell className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
+                    <span>Notifications ({notifications.length})</span>
+                  </h3>
+                  <button
+                    onClick={() => setShowNotifDropdown(false)}
+                    className="text-xs font-bold text-ink-400 hover:text-ink-900 dark:hover:text-white cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto space-y-2">
+                  {notifications.length === 0 ? (
+                    <p className="text-xs text-ink-400 text-center py-4">No new notifications</p>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        className={`p-3 rounded-xl border text-xs space-y-1 transition-all ${notif.type === 'success'
+                            ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200'
+                            : notif.type === 'warning'
+                              ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/50 text-rose-900 dark:text-rose-200'
+                              : 'bg-cream-50 dark:bg-white/5 border-ink-100 dark:border-white/10 text-ink-900 dark:text-white'
+                          }`}
+                      >
+                        <div className="flex items-center justify-between font-bold">
+                          <span>{notif.title}</span>
+                          <span className="text-[10px] font-normal opacity-70">{notif.time || "Just now"}</span>
+                        </div>
+                        <p className="text-[11.5px] leading-relaxed opacity-90">{notif.message}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+            <button
+              className="db-icon-btn"
               aria-label="Messages"
               onClick={() => setActiveTab(3)}
             >
@@ -902,16 +1040,18 @@ export default function LandlordDashboard() {
           </div>
 
           {/* Logged in landlord user info */}
-          <div 
+          <div
             className="db-user-profile cursor-pointer hover:opacity-85 transition-all duration-150"
             onClick={() => setShowLandlordProfileModal(true)}
             title="View landlord details"
           >
-            <img
-              src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=64&h=64&q=80"
-              alt="User profile"
-              className="db-user-avatar"
-            />
+            <div className="db-user-avatar overflow-hidden rounded-full flex items-center justify-center bg-[#3A5A40]/10 dark:bg-[#1E382A] text-[#2C4633] dark:text-[#E5C583] border border-[#2C4633]/20 dark:border-white/20">
+              {landlordAvatar ? (
+                <img src={landlordAvatar} alt="Landlord profile" className="h-full w-full object-cover" />
+              ) : (
+                <User className="h-4.5 w-4.5 text-[#2C4633] dark:text-[#E5C583]" />
+              )}
+            </div>
             <div className="hidden sm:block text-left">
               <p className="db-user-name">{username}</p>
               <p className="db-user-role">Verified Landlord</p>
@@ -988,7 +1128,7 @@ export default function LandlordDashboard() {
 
               {activeTab === 0 && (
                 /* Filter, search and stats widgets */
-                 <div className="db-controls-group">
+                <div className="db-controls-group">
                   {/* Current Date Display */}
                   <div className="db-date-selector">
                     <Calendar className="h-3.5 w-3.5 text-moss-600" />
@@ -1037,7 +1177,7 @@ export default function LandlordDashboard() {
                   <div className="pro-advantages-panel">
                     <div className="pro-advantages-header">
                       <h4 className="pro-advantages-title">Account Rating</h4>
-                      <span 
+                      <span
                         className="pro-advantages-badge cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
                         onClick={() => setShowRatingModal(true)}
                         title="View rating reviews"
@@ -1045,7 +1185,7 @@ export default function LandlordDashboard() {
                         ★ 4.8
                       </span>
                     </div>
-                    <p 
+                    <p
                       className="pro-advantages-desc cursor-pointer hover:text-[#E4EAE1] transition-colors"
                       onClick={() => setShowRatingModal(true)}
                       title="Click to view tenant reviews"
@@ -1125,31 +1265,68 @@ export default function LandlordDashboard() {
                   </div>
 
                   <div className="properties-vertical-scroll">
-                    {displayProperties.length === 0 ? (
-                      <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--text-muted)", fontSize: "13px", fontWeight: "600" }}>
-                        No properties registered yet.
-                      </div>
-                    ) : (
-                      displayProperties.map((property) => (
-                        <div key={property.id} className="property-mini-item">
-                          <div className="property-mini-img">
-                            <Building2 className="h-5 w-5" />
+                    {(() => {
+                      const activeTenantsMap = (() => {
+                        try {
+                          const saved = localStorage.getItem("propertyTenants");
+                          return saved ? JSON.parse(saved) : {};
+                        } catch (e) {
+                          return {};
+                        }
+                      })();
+
+                      const liveAndOccupiedProps = displayProperties.filter((p) => {
+                        const status = (p.status || "").toLowerCase();
+                        const isLiveOrApproved = status === "active_vacant" || status === "approved" || status === "live" || status === "active";
+                        const isOccupied = status === "occupied" || status === "active_occupied" || (activeTenantsMap[p.id] && activeTenantsMap[p.id].length > 0);
+                        return isLiveOrApproved || isOccupied;
+                      });
+
+                      if (liveAndOccupiedProps.length === 0) {
+                        return (
+                          <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--text-muted)", fontSize: "13px", fontWeight: "600" }}>
+                            No live or occupied properties available.
                           </div>
-                          <div className="property-mini-details">
-                            <p className="property-mini-title">{property.title}</p>
-                            <p className="property-mini-subtitle">{property.location}</p>
-                            <p className="property-mini-price">{property.price}</p>
+                        );
+                      }
+
+                      return liveAndOccupiedProps.map((property) => {
+                        const hasTenants = (activeTenantsMap[property.id] && activeTenantsMap[property.id].length > 0) || property.status === "occupied" || property.status === "active_occupied";
+                        return (
+                          <div key={property.id} className="property-mini-item flex items-center justify-between p-3 rounded-xl border border-ink-100 dark:border-white/10 mb-2">
+                            <div className="flex items-center gap-3">
+                              <div className="property-mini-img p-2 bg-[#3A5A40]/10 rounded-lg">
+                                <Building2 className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" />
+                              </div>
+                              <div className="property-mini-details">
+                                <p className="property-mini-title font-bold text-xs text-ink-900 dark:text-white">{property.title}</p>
+                                <p className="property-mini-subtitle text-[11px] text-ink-500 dark:text-cream-100/70">{property.location}</p>
+                                <p className="property-mini-price text-xs font-bold text-moss-700 dark:text-[#E5C583] mt-0.5">{property.price}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {hasTenants ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-300">
+                                  <Users className="h-3 w-3" /> Occupied
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-300">
+                                  <CheckCircle2 className="h-3 w-3" /> Live
+                                </span>
+                              )}
+                              <button
+                                onClick={() => navigate(`/dashboard/landlord/properties/${property.id}`)}
+                                className="property-mini-btn p-1.5 rounded-lg hover:bg-ink-100 dark:hover:bg-white/10 transition-colors"
+                                title="View details"
+                              >
+                                <ArrowUpRight className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
-                          <button
-                            onClick={() => navigate(`/dashboard/landlord/properties/${property.id}`)}
-                            className="property-mini-btn"
-                            title="View details"
-                          >
-                            <ArrowUpRight className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))
-                    )}
+                        );
+                      });
+                    })()}
                   </div>
                 </section>
               </div>
@@ -1222,12 +1399,12 @@ export default function LandlordDashboard() {
                             className="request-tenant-avatar cursor-pointer"
                             onClick={() => setSelectedTenantForDetails(req)}
                             onError={(e) => {
-                              e.target.src = "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=64&h=64&q=80";
+                              e.target.style.display = 'none';
                             }}
                           />
                           <div className="request-content">
                             <div className="request-tenant-info">
-                              <span 
+                              <span
                                 className="request-tenant-name cursor-pointer hover:underline"
                                 onClick={() => setSelectedTenantForDetails(req)}
                               >
@@ -1241,7 +1418,7 @@ export default function LandlordDashboard() {
                             <span className={`request-status-badge ${req.status.toLowerCase().replace(" ", "-")}`}>
                               {req.status}
                             </span>
-                            <button 
+                            <button
                               className="db-view-request-btn"
                               onClick={() => setSelectedRequestForDetails(req)}
                             >
@@ -1287,9 +1464,9 @@ export default function LandlordDashboard() {
       </div>
 
       {selectedTenantForDetails && (
-        <UserInfo 
-          tenant={selectedTenantForDetails} 
-          onClose={() => setSelectedTenantForDetails(null)} 
+        <UserInfo
+          tenant={selectedTenantForDetails}
+          onClose={() => setSelectedTenantForDetails(null)}
         />
       )}
 
@@ -1305,7 +1482,7 @@ export default function LandlordDashboard() {
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
           <div className="bg-white dark:bg-[#12221C] rounded-3xl border border-[#E4EAE1] dark:border-white/10 max-w-md w-full p-8 shadow-2xl relative text-center">
             {/* Close Button */}
-            <button 
+            <button
               className="absolute top-4 right-4 text-ink-400 dark:text-cream-100 hover:text-ink-900 dark:hover:text-white text-xl font-bold p-1 bg-[#FAF8F6] dark:bg-white/5 rounded-full h-8 w-8 flex items-center justify-center cursor-pointer transition-colors border-none outline-none"
               onClick={() => setShowRatingModal(false)}
             >
@@ -1367,12 +1544,12 @@ export default function LandlordDashboard() {
           </div>
         </div>
       )}
-      
+
       {showLandlordProfileModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
           <div className="bg-white dark:bg-[#12221C] rounded-3xl border border-[#E4EAE1] dark:border-white/10 max-w-sm w-full p-8 shadow-2xl relative text-center">
             {/* Close Button */}
-            <button 
+            <button
               className="absolute top-4 right-4 text-ink-400 dark:text-cream-100 hover:text-ink-900 dark:hover:text-white text-xl font-bold p-1 bg-[#FAF8F6] dark:bg-white/5 rounded-full h-8 w-8 flex items-center justify-center cursor-pointer transition-colors border-none outline-none"
               onClick={() => setShowLandlordProfileModal(false)}
             >
@@ -1381,12 +1558,14 @@ export default function LandlordDashboard() {
 
             {/* Profile Avatar */}
             <div className="relative mx-auto w-24 h-24 mb-4">
-              <img
-                src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&h=120&q=80"
-                alt="Landlord profile"
-                className="w-full h-full rounded-full border-4 border-[#E4EAE1] dark:border-white/10 object-cover"
-              />
-              <span className="absolute bottom-0 right-1 bg-green-500 h-4.5 w-4.5 rounded-full border-2 border-white dark:border-[#12221C]" />
+              <div className="w-full h-full flex items-center justify-center bg-moss-100 dark:bg-forest-900/60 rounded-full border-4 border-[#E4EAE1] dark:border-white/10 text-moss-800 dark:text-[#E5C583] overflow-hidden">
+                {landlordAvatar ? (
+                  <img src={landlordAvatar} alt="Landlord profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-12 h-12" />
+                )}
+              </div>
+              <span className="absolute bottom-0 right-0 bg-green-500 h-5 w-5 rounded-full border-2 border-white dark:border-[#12221C] shadow-sm z-10" />
             </div>
 
             {/* Name & Role */}
@@ -1399,32 +1578,81 @@ export default function LandlordDashboard() {
             <div className="space-y-3.5 text-left border-t border-[#E4EAE1] dark:border-white/10 pt-5">
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Email Address</span>
-                <span className="text-ink-900 dark:text-white font-semibold">ada.k@lodale.com</span>
+                <span className="text-ink-900 dark:text-white font-semibold">
+                  {localStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
+                </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Phone Number</span>
-                <span className="text-ink-900 dark:text-white font-semibold">+234 803 456 7890</span>
+                <span className="text-ink-900 dark:text-white font-semibold">
+                  {(() => {
+                    try {
+                      const p = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      return p.phone || "Not provided";
+                    } catch (e) {
+                      return "Not provided";
+                    }
+                  })()}
+                </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Account Rating</span>
                 <span className="text-ink-900 dark:text-white font-semibold flex items-center gap-1">
-                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> 4.9 <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">(18 reviews)</span>
+                  {(() => {
+                    let score = "5.0";
+                    let count = 1;
+                    try {
+                      const savedReviews = localStorage.getItem("landlordReviews");
+                      if (savedReviews) {
+                        const rList = JSON.parse(savedReviews);
+                        if (Array.isArray(rList) && rList.length > 0) {
+                          score = (rList.reduce((sum, r) => sum + Number(r.rating || 5), 0) / rList.length).toFixed(1);
+                          count = rList.length;
+                        }
+                      }
+                    } catch (e) {}
+                    return (
+                      <>
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> {score}{" "}
+                        <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">({count} {count === 1 ? "review" : "reviews"})</span>
+                      </>
+                    );
+                  })()}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Member Since</span>
-                <span className="text-ink-900 dark:text-white font-semibold">Jan 2026</span>
+                <span className="text-ink-900 dark:text-white font-semibold">
+                  {(() => {
+                    try {
+                      const email = localStorage.getItem("lastLoggedInEmail");
+                      if (email) {
+                        const reg = localStorage.getItem("registeredUser_" + email);
+                        if (reg) {
+                          const uObj = JSON.parse(reg);
+                          if (uObj.createdAt || uObj.joinedDate) {
+                            const d = new Date(uObj.createdAt || uObj.joinedDate);
+                            return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+                          }
+                        }
+                      }
+                    } catch (e) {}
+                    return "Aug 2026";
+                  })()}
+                </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Total Properties</span>
                 <span className="text-ink-900 dark:text-white font-semibold">
                   {(() => {
-                    const saved = localStorage.getItem("properties");
-                    const allList = saved ? JSON.parse(saved) : LISTINGS;
-                    const count = allList.filter(l =>
-                      l.landlord?.name?.toLowerCase().includes(username.toLowerCase().split(" ")[0])
-                    ).length;
-                    return `${count} Units`;
+                    try {
+                      const saved = localStorage.getItem("properties");
+                      const allList = saved ? JSON.parse(saved) : [];
+                      const count = allList.length;
+                      return `${count} ${count === 1 ? "Unit" : "Units"}`;
+                    } catch (e) {
+                      return "0 Units";
+                    }
                   })()}
                 </span>
               </div>
@@ -1468,14 +1696,14 @@ export default function LandlordDashboard() {
               Let us guide you around your landlord panel to show you how to register properties, approve applications, and inspect maintenance requests!
             </p>
             <div className="tour-ask-actions">
-              <button 
-                className="tour-btn-no" 
+              <button
+                className="tour-btn-no"
                 onClick={() => setShowTourAsk(false)}
               >
                 No, thanks
               </button>
-              <button 
-                className="tour-btn-yes" 
+              <button
+                className="tour-btn-yes"
                 onClick={() => {
                   setShowTourAsk(false);
                   setRunTour(true);
@@ -1493,7 +1721,7 @@ export default function LandlordDashboard() {
       {runTour && (
         <div className="tour-portal-backdrop">
           <div className="tour-spotlight-mask" style={spotlightStyle} />
-          
+
           <div className="tour-tooltip-card" style={tooltipStyle}>
             <div className="tour-pointer-arrow" />
             <div className="tour-tooltip-header">
@@ -1502,34 +1730,34 @@ export default function LandlordDashboard() {
                 {tourStep + 1} / {TOUR_STEPS.length}
               </span>
             </div>
-            
+
             <h4 className="tour-tooltip-title">
               {TOUR_STEPS[tourStep]?.title}
             </h4>
             <p className="tour-tooltip-content">
               {TOUR_STEPS[tourStep]?.content}
             </p>
-            
+
             <div className="tour-tooltip-actions">
-              <button 
-                className="tour-btn-skip" 
+              <button
+                className="tour-btn-skip"
                 onClick={() => setRunTour(false)}
               >
                 Skip Tour
               </button>
-              
+
               <div className="tour-nav-buttons">
                 {tourStep > 0 && (
-                  <button 
-                    className="tour-btn-back" 
+                  <button
+                    className="tour-btn-back"
                     onClick={() => setTourStep(prev => prev - 1)}
                   >
                     Back
                   </button>
                 )}
-                
-                <button 
-                  className="tour-btn-next" 
+
+                <button
+                  className="tour-btn-next"
                   onClick={() => {
                     if (tourStep < TOUR_STEPS.length - 1) {
                       setTourStep(prev => prev + 1);
@@ -1546,6 +1774,52 @@ export default function LandlordDashboard() {
         </div>
       )}
 
+      {/* ADMIN REJECTION & FEEDBACK MODAL */}
+      {selectedFeedbackProperty && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-white/10">
+              <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                <AlertTriangle className="h-5 w-5" />
+                <h3 className="font-bold text-base text-ink-900 dark:text-white">Admin Review Feedback</h3>
+              </div>
+              <button
+                onClick={() => setSelectedFeedbackProperty(null)}
+                className="p-1 rounded-lg text-ink-400 hover:text-ink-900 dark:hover:text-white cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-3">
+              <div>
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-400 dark:text-cream-100/50">Property Listing</span>
+                <p className="font-bold text-sm text-ink-900 dark:text-white">{selectedFeedbackProperty.title}</p>
+                <p className="text-xs text-ink-600 dark:text-cream-100/70">{selectedFeedbackProperty.location}</p>
+              </div>
+
+              <div className="p-4 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-xl">
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 mb-1">Reason / Notes from Admin:</span>
+                <p className="text-xs text-rose-900 dark:text-rose-200 leading-relaxed font-medium">
+                  {selectedFeedbackProperty.admin_notes || selectedFeedbackProperty.adminNotes || "Ownership verification could not be confirmed with the provided title documents. Please upload a clearer copy of your Deed of Assignment or Certificate of Occupancy."}
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setSelectedFeedbackProperty(null);
+                  navigate("/dashboard/landlord/add-property");
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-[#3A5A40] hover:bg-[#344E41] rounded-xl cursor-pointer"
+              >
+                Re-submit Property with Papers
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
