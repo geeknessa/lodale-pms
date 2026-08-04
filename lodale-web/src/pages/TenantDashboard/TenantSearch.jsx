@@ -222,7 +222,7 @@ const LANDLORDS = [
     name: "Ada K.",
     score: 4.8,
     reviews: 12,
-    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar: "",
     location: "Victoria Island, Lagos",
     properties: ["Skyline Apartments, Block 4", "Grand Orchard Penthouse"],
     category: "Top Rated Landlords",
@@ -233,7 +233,7 @@ const LANDLORDS = [
     name: "Chidi O.",
     score: 4.5,
     reviews: 8,
-    avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar: "",
     location: "Yaba, Lagos",
     properties: ["Oakwood Residency, Unit 12B", "Standard Studio Yaba"],
     category: "Landlords near you",
@@ -244,7 +244,7 @@ const LANDLORDS = [
     name: "Funke A.",
     score: 4.9,
     reviews: 21,
-    avatar: "https://images.unsplash.com/photo-1580894732444-8fecef2601de?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar: "",
     location: "Lekki Phase 1, Lagos",
     properties: ["Lekki Gardens, Plot 14", "Sunset Haven Duplex"],
     category: "Top Rated Landlords",
@@ -255,7 +255,7 @@ const LANDLORDS = [
     name: "Emeka Obi",
     score: 4.7,
     reviews: 10,
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar: "",
     location: "Maryland, Lagos",
     properties: ["Maryland Heights Duplex", "Maryland Executive Flat"],
     category: "Top Rated Landlords",
@@ -266,7 +266,7 @@ const LANDLORDS = [
     name: "Maren Maureen",
     score: 4.6,
     reviews: 5,
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar: "",
     location: "Ikeja, Lagos",
     properties: ["Ikeja GRA Studio Self-Contained", "GRA Luxury Mansion"],
     category: "Landlords near you",
@@ -277,7 +277,7 @@ const LANDLORDS = [
     name: "Ryan Herwinds",
     score: 4.8,
     reviews: 18,
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80",
+    avatar: "",
     location: "Surulere, Lagos",
     properties: ["Adeniran Ogunsanya Flat", "Surulere Cozy Studio"],
     category: "Top Rated Landlords",
@@ -432,7 +432,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
       const updated = [property, ...filtered].slice(0, 10);
       try {
         localStorage.setItem("lastVisitedListings", JSON.stringify(updated));
-      } catch (e) {}
+      } catch (e) { }
       return updated;
     });
   };

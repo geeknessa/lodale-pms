@@ -532,7 +532,7 @@ export default function TenantDashboard() {
       description: reqDesc || "No description provided.",
       tenantName: username,
       name: username,
-      avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=64&h=64&q=80",
+      avatar: "",
     };
 
     // Load full list to preserve other requests

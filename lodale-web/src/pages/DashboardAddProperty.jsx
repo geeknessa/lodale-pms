@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Sparkles, Loader2, User, Key, Building2, Camera, ImagePlus, Upload, Check } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Sparkles, Loader2, User, Key, Building2, Camera, ImagePlus, Upload, Check, Clock } from "lucide-react";
 import gsap from "gsap";
 import { Logo } from "../components/Logo";
 import Input from "../components/Input";
@@ -26,7 +26,16 @@ export default function DashboardAddProperty() {
   const [photoPreview, setPhotoPreview] = useState(PRESET_PHOTOS[0].url);
   const [photoError, setPhotoError] = useState("");
 
+  // Rent cycle state
+  const [rentCycle, setRentCycle] = useState("annual"); // "annual" | "monthly"
+
+  // Proof of ownership legal papers state
+  const [docType, setDocType] = useState("Deed of Assignment");
+  const [docName, setDocName] = useState("");
+  const [docUploaded, setDocUploaded] = useState(true);
+
   const fileInputRef = useRef(null);
+  const docInputRef = useRef(null);
   const cardRef = useRef(null);
   const titleRef = useRef(null);
   const descRef = useRef(null);
@@ -52,27 +61,35 @@ export default function DashboardAddProperty() {
     }
   }
 
+  function handleDocUpload(e) {
+    const file = e.target.files?.[0];
+    if (file) {
+      setDocName(file.name);
+      setDocUploaded(true);
+    }
+  }
+
   // Mount animation sequence
   useEffect(() => {
     if (!isSubmitted) {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.fromTo(cardRef.current, 
-        { y: 40, opacity: 0 }, 
+      tl.fromTo(cardRef.current,
+        { y: 40, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.8 }
       );
-      tl.fromTo(titleRef.current, 
-        { y: 15, opacity: 0 }, 
-        { y: 0, opacity: 1, duration: 0.5 }, 
+      tl.fromTo(titleRef.current,
+        { y: 15, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5 },
         "-=0.4"
       );
-      tl.fromTo(descRef.current, 
-        { y: 15, opacity: 0 }, 
-        { y: 0, opacity: 1, duration: 0.5 }, 
+      tl.fromTo(descRef.current,
+        { y: 15, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5 },
         "-=0.4"
       );
-      tl.fromTo(".animate-form-field", 
-        { y: 15, opacity: 0 }, 
-        { y: 0, opacity: 1, duration: 0.5, stagger: 0.08 }, 
+      tl.fromTo(".animate-form-field",
+        { y: 15, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.08 },
         "-=0.3"
       );
     }
@@ -84,19 +101,23 @@ export default function DashboardAddProperty() {
     const address = target.elements.address.value;
     const rent = target.elements.rent.value;
     const bedrooms = target.elements.bedrooms.value;
+    const city = target.elements.city?.value || "Lagos";
 
     const numericRent = Number(rent.replace(/[^0-9]/g, "")) || 500000;
+    const ownershipDocString = `${docType} (${docName})`;
 
     const propertyPayload = {
       title: address,
       address_line1: address,
-      city: "Lagos",
+      city: city,
       state: "Lagos",
       rent_amount: numericRent,
       bedrooms: Number(bedrooms) || 1,
       bathrooms: 2,
-      property_type: "apartment",
+      property_type: target.elements.type?.value || "apartment",
       amenities: ["Prepaid Meter", "24/7 Security"],
+      ownership_doc: ownershipDocString,
+      cover_image: propertyPhoto || PRESET_PHOTOS[0].url,
     };
 
     try {
@@ -111,12 +132,13 @@ export default function DashboardAddProperty() {
     const newListing = {
       id: address.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now(),
       title: address,
-      location: "Lagos, Nigeria",
-      price: formattedRent + "/mo",
+      location: `${city}, Nigeria`,
+      price: formattedRent + (rentCycle === "annual" ? "/yr" : "/mo"),
       image: propertyPhoto || PRESET_PHOTOS[0].url,
       beds: Number(bedrooms),
       baths: 2,
       status: "pending_review",
+      ownership_doc: ownershipDocString,
       amenities: ["Prepaid Meter", "24/7 Security"],
       landlord: {
         name: localStorage.getItem("username") || "Ada K.",
@@ -137,14 +159,14 @@ export default function DashboardAddProperty() {
   // Success overlay GSAP animation triggers
   useEffect(() => {
     if (isSubmitted && successOverlayRef.current) {
-      gsap.fromTo(successOverlayRef.current, 
-        { opacity: 0 }, 
+      gsap.fromTo(successOverlayRef.current,
+        { opacity: 0 },
         { opacity: 1, duration: 0.5, ease: "power2.out" }
       );
 
       if (checkIconRef.current) {
-        gsap.fromTo(checkIconRef.current, 
-          { scale: 0, rotation: -45, opacity: 0 }, 
+        gsap.fromTo(checkIconRef.current,
+          { scale: 0, rotation: -45, opacity: 0 },
           { scale: 1, rotation: 0, opacity: 1, duration: 0.7, ease: "back.out(1.7)", delay: 0.3 }
         );
         gsap.to(checkIconRef.current, {
@@ -158,8 +180,8 @@ export default function DashboardAddProperty() {
       }
 
       if (textContainerRef.current) {
-        gsap.fromTo(textContainerRef.current.children, 
-          { y: 20, opacity: 0 }, 
+        gsap.fromTo(textContainerRef.current.children,
+          { y: 20, opacity: 0 },
           { y: 0, opacity: 1, duration: 0.6, stagger: 0.15, ease: "power2.out", delay: 0.6 }
         );
       }
@@ -194,13 +216,17 @@ export default function DashboardAddProperty() {
           </div>
 
           <div ref={textContainerRef} className="dap-success-texts">
-            <h1 className="dap-success-heading">Property Added!</h1>
-            <p className="dap-success-body">
-              Your portfolio list is being updated and details published.
+            <h1 className="dap-success-heading text-2xl font-bold text-white mb-2">Sent for Admin Review!</h1>
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-full font-bold text-xs mb-3">
+              <Clock className="h-3.5 w-3.5 text-amber-300" />
+              <span>Status: Pending Review</span>
+            </div>
+            <p className="dap-success-body text-cream-100/90 text-xs leading-relaxed max-w-sm mx-auto mb-4">
+              Your property listing and proof of ownership legal documents have been enqueued for Admin review. Once reviewed, your listing status will update to <strong>Approved &amp; Live</strong>, <strong>Rejected</strong> (with reason), or <strong>Info Requested</strong> on your Dashboard.
             </p>
             <div className="dap-success-loader-row">
               <Loader2 style={{ animation: "spin 1s linear infinite" }} />
-              <span className="dap-success-loader-lbl">Returning to Dashboard...</span>
+              <span className="dap-success-loader-lbl">Redirecting to Landlord Dashboard...</span>
             </div>
           </div>
         </div>
@@ -216,7 +242,7 @@ export default function DashboardAddProperty() {
       <div className="dap-inner">
         {/* Back Link and Logo */}
         <div className="dap-topbar">
-          <button 
+          <button
             onClick={() => navigate("/dashboard/landlord")}
             className="dap-back-btn"
           >
@@ -240,39 +266,137 @@ export default function DashboardAddProperty() {
           </p>
 
           <form onSubmit={handleSubmit} className="dap-form">
-            
+
             {/* Core Fields */}
             <div className="dap-fields-group animate-form-field">
               <Input
                 id="address"
-                label="Address / Nickname"
-                placeholder="e.g. 2-Bed Flat, Lekki Phase 1"
+                label="Full Address / Street Location *"
+                placeholder="e.g. Admiralty Way, Lekki Phase 1"
                 light={false}
                 required
               />
-              <Input
-                id="type"
-                label="Property Type"
-                placeholder="e.g. Apartment, duplex, duplex villa"
-                light={false}
-                required
-              />
+
               <div className="dap-grid-2">
                 <Input
-                  id="rent"
-                  label="Monthly Rent"
-                  placeholder="₦200,000"
+                  id="city"
+                  label="City / Area *"
+                  placeholder="e.g. Lekki, Victoria Island, Yaba, Ikeja"
                   light={false}
                   required
                 />
                 <Input
+                  id="type"
+                  label="Property Type *"
+                  placeholder="e.g. Apartment, Duplex, Villa, Studio"
+                  light={false}
+                  required
+                />
+              </div>
+
+              <div className="dap-grid-2">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[12px] font-bold text-ink-900 dark:text-white">Asking Rent *</label>
+                    <div className="flex items-center gap-1 bg-[#3A5A40]/10 dark:bg-white/10 p-0.5 rounded-md">
+                      <button
+                        type="button"
+                        onClick={() => setRentCycle("annual")}
+                        className={`px-2 py-0.5 text-[10.5px] font-bold rounded transition-all cursor-pointer border-none outline-none ${rentCycle === "annual"
+                          ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512] shadow-xs"
+                          : "text-ink-700 dark:text-cream-100/70"
+                          }`}
+                      >
+                        Annual
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRentCycle("monthly")}
+                        className={`px-2 py-0.5 text-[10.5px] font-bold rounded transition-all cursor-pointer border-none outline-none ${rentCycle === "monthly"
+                          ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512] shadow-xs"
+                          : "text-ink-700 dark:text-cream-100/70"
+                          }`}
+                      >
+                        Monthly
+                      </button>
+                    </div>
+                  </div>
+                  <Input
+                    id="rent"
+                    placeholder={rentCycle === "annual" ? "₦2,500,000 / year" : "₦200,000 / month"}
+                    light={false}
+                    required
+                  />
+                </div>
+
+                <Input
                   id="bedrooms"
-                  label="Bedrooms"
+                  label="Bedrooms *"
                   type="number"
                   placeholder="2"
                   light={false}
                   required
                 />
+              </div>
+
+              {/* PROOF OF OWNERSHIP LEGAL PAPERS SECTION */}
+              <div className="rounded-xl border border-[#3A5A40]/30 dark:border-white/10 bg-[#3A5A40]/5 dark:bg-white/5 p-5 animate-form-field">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-[13px] font-bold text-ink-900 dark:text-white flex items-center gap-1.5">
+                    <Building2 className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
+                    <span>Proof of Ownership (Legal Papers) *</span>
+                  </label>
+                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <Check className="h-3.5 w-3.5" /> Legal Proof Attached
+                  </span>
+                </div>
+                <p className="text-[12px] text-ink-700 dark:text-cream-100/70 mb-3 leading-relaxed">
+                  Upload legal title documents (Deed of Assignment, Certificate of Occupancy, or Land Title Receipt) for Admin verification before listing.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-500 dark:text-cream-100/60 mb-1">
+                      Document Type
+                    </label>
+                    <select
+                      value={docType}
+                      onChange={(e) => setDocType(e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-semibold rounded-lg bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 text-ink-900 dark:text-white outline-none"
+                    >
+                      <option value="Deed of Assignment">Deed of Assignment</option>
+                      <option value="Certificate of Occupancy (C of O)">Certificate of Occupancy (C of O)</option>
+                      <option value="Governor's Consent">Governor's Consent</option>
+                      <option value="Land Title Receipt / Survey Plan">Land Title Receipt / Survey Plan</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-500 dark:text-cream-100/60 mb-1">
+                      Uploaded File
+                    </label>
+                    <div className="flex items-center gap-2 p-2 bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 rounded-lg text-xs font-mono text-ink-800 dark:text-[#E5C583] truncate">
+                      <span className="truncate">{docName}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <input
+                  ref={docInputRef}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  onChange={handleDocUpload}
+                  className="hidden"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => docInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-[#3A5A40] text-white font-bold text-[12px] hover:bg-[#344E41] transition-all cursor-pointer border-none outline-none"
+                >
+                  <Upload className="h-4 w-4" />
+                  Attach Legal Proof File (PDF / Image)
+                </button>
               </div>
 
               {/* PROPERTY PICTURE PROMPT & PHOTO PICKER */}
@@ -339,11 +463,10 @@ export default function DashboardAddProperty() {
                           setPropertyPhoto(preset.url);
                           setPhotoPreview(preset.url);
                         }}
-                        className={`text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer outline-none ${
-                          photoPreview === preset.url
-                            ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] border-transparent shadow-xs"
-                            : "bg-white dark:bg-[#182C24] text-ink-700 dark:text-cream-100/80 border-ink-200 dark:border-white/10 hover:border-moss-500"
-                        }`}
+                        className={`text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer outline-none ${photoPreview === preset.url
+                          ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] border-transparent shadow-xs"
+                          : "bg-white dark:bg-[#182C24] text-ink-700 dark:text-cream-100/80 border-ink-200 dark:border-white/10 hover:border-moss-500"
+                          }`}
                       >
                         {preset.label}
                       </button>
