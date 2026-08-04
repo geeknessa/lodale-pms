@@ -1,5 +1,5 @@
 import { apiClient } from '../lib/apiClient';
-import { listings as mockListings } from '../data/listings';
+import { LISTINGS as mockListings } from '../data/listings';
 
 /**
  * Property Service for local Express REST API with graceful mock fallback
