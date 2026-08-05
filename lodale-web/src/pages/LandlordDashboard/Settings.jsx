@@ -577,7 +577,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
       localStorage.removeItem("sessionExpiresAt");
       localStorage.removeItem("username");
       localStorage.removeItem("userRole");
-      navigate("/login");
+      navigate("/login", { replace: true });
     }
   };
 

@@ -625,7 +625,7 @@ export default function LandlordDashboard() {
     localStorage.removeItem("sessionExpiresAt");
     localStorage.removeItem("username");
     localStorage.removeItem("userRole");
-    navigate("/login");
+    navigate("/login", { replace: true });
   }
 
   // Sidebar navigation items

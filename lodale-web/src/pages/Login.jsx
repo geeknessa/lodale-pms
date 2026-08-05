@@ -107,6 +107,7 @@ export default function Login() {
   function handleQuickAdminLogin() {
     localStorage.removeItem("failedLoginAttempts");
     localStorage.removeItem("loginLockoutUntil");
+    localStorage.removeItem("explicitAdminSignOut");
     localStorage.setItem("isAuthenticated", "true");
     localStorage.setItem("userRole", "admin");
     localStorage.setItem("lastLoggedInEmail", KNOWN_ADMIN.email);
@@ -137,6 +138,7 @@ export default function Login() {
       if (cleanUsername === KNOWN_ADMIN.username && cleanPassword === KNOWN_ADMIN.password) {
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
+        localStorage.removeItem("explicitAdminSignOut");
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("userRole", "admin");
         localStorage.setItem("adminAuthenticated", "true");
@@ -240,6 +242,7 @@ export default function Login() {
 
       localStorage.removeItem("failedLoginAttempts");
       localStorage.removeItem("loginLockoutUntil");
+      localStorage.removeItem("explicitAdminSignOut");
       localStorage.setItem("isAuthenticated", "true");
       localStorage.setItem("userRole", userRole);
       localStorage.setItem("lastLoggedInEmail", cleanEmail);

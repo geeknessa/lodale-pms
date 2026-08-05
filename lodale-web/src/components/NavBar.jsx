@@ -128,12 +128,15 @@ export default function NavBar() {
     if (localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com") {
       localStorage.removeItem("lastLoggedInEmail");
     }
+    if (isCurrentAdmin) {
+      localStorage.setItem("explicitAdminSignOut", "true");
+    }
     setIsAuthenticated(false);
     setIsOpen(false);
     if (isCurrentAdmin) {
-      navigate("/admin/login");
+      navigate("/admin/login", { replace: true });
     } else {
-      navigate("/explore");
+      navigate("/explore", { replace: true });
     }
   }
 
