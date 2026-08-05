@@ -205,7 +205,7 @@ export default function SignUp() {
           setLoadingStep(0);
         }
       },
-      onComplete: () => {
+      onComplete: async () => {
         setIsVerifying(false);
         setVerified(true);
 
@@ -231,7 +231,7 @@ export default function SignUp() {
           dob: "",
           location: "",
           postalCode: "",
-          nin: ninNumber || ""
+          nin: nin || ""
         };
         localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
         localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
@@ -257,7 +257,7 @@ export default function SignUp() {
 
         // Persist user to PostgreSQL Database via authService
         try {
-          authService.signUp({
+          const res = await authService.signUp({
             email: cleanEmail,
             password: cleanPassword,
             firstName: firstName.trim(),
@@ -265,6 +265,9 @@ export default function SignUp() {
             role: role,
             phone: ""
           });
+          if (res && res.user) {
+            localStorage.setItem("db_user_id", res.user.id);
+          }
         } catch (dbErr) {
           console.warn("Database user persist warning:", dbErr);
         }
