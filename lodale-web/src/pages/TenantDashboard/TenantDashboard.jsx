@@ -595,7 +595,7 @@ export default function TenantDashboard() {
   const handleSignOut = () => {
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("sessionExpiresAt");
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   const [showMobileNav, setShowMobileNav] = useState(false);
