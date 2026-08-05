@@ -195,6 +195,7 @@ export default function Login() {
       localStorage.setItem("lastLoggedInPassword", expectedPassword || cleanPassword);
       localStorage.setItem("userPassword_" + cleanEmail, expectedPassword || cleanPassword);
       localStorage.setItem("username", userFullName);
+      localStorage.setItem("username_" + cleanEmail, userFullName);
 
       const savedProfile = localStorage.getItem("userProfile_" + cleanEmail);
       if (savedProfile) {
@@ -266,6 +267,7 @@ export default function Login() {
     localStorage.setItem("userRole", "tenant");
     localStorage.setItem("lastLoggedInEmail", email);
     localStorage.setItem("username", "Tunde Bakare");
+    localStorage.setItem("username_" + email.toLowerCase(), "Tunde Bakare");
     const demoProf = {
       firstName: "Tunde",
       lastName: "Bakare",

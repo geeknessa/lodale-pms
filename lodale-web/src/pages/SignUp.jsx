@@ -217,6 +217,7 @@ export default function SignUp() {
         localStorage.setItem("lastLoggedInEmail", cleanEmail);
         localStorage.setItem("lastLoggedInPassword", cleanPassword);
         localStorage.setItem("username", cleanName);
+        localStorage.setItem("username_" + cleanEmail, cleanName);
         localStorage.setItem("userRole", role);
         localStorage.setItem("isNewSignUp", "true");
         localStorage.setItem("userPassword_" + cleanEmail, cleanPassword);

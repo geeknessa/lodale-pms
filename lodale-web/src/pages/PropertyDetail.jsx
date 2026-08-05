@@ -104,8 +104,19 @@ export default function PropertyDetail() {
 
         {/* Hero Visual Panel */}
         <div className="flex h-64 items-center justify-center rounded-2xl bg-[#E4EAE1] border border-ink-200/40 relative overflow-hidden">
-          <div className="absolute inset-0 bg-radial-gradient from-white/10 to-[#2C4633]/5 pointer-events-none" />
-          <Building2 className="h-16 w-16 text-[#2C4633]/25" />
+          {property.image || property.cover_image ? (
+            <img
+              src={property.image || property.cover_image}
+              alt={property.title}
+              className="absolute inset-0 h-full w-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+          ) : (
+            <Building2 className="h-16 w-16 text-[#2C4633]/25" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
           <span className="absolute bottom-4 left-6 rounded-full bg-[#2C4633] px-3.5 py-1.5 text-[11px] font-bold text-white uppercase tracking-wider">
             {occupancyStatus}
           </span>
