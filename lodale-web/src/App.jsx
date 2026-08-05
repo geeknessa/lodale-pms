@@ -20,6 +20,7 @@ import DashboardAddProperty from "./pages/DashboardAddProperty";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
 import AdminDashboard from "./pages/AdminDashboard";
+import { LandlordAccessPrompt, TenantAccessPrompt } from "./components/RoleAccessPrompt";
 import LandlordDashboard from "./pages/LandlordDashboard/LandlordDashboard";
 import PropertyDetail from "./pages/PropertyDetail";
 import TenantDashboard from "./pages/TenantDashboard/TenantDashboard";
@@ -150,30 +151,59 @@ function ProtectedRoute({ children }) {
 }
 
 function AdminProtectedRoute({ children }) {
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+    const auth = localStorage.getItem("isAuthenticated") === "true";
+    const role = localStorage.getItem("userRole");
+    const adminAuth = localStorage.getItem("adminAuthenticated") === "true";
+    const expires = localStorage.getItem("sessionExpiresAt");
+
+    if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
+      return false;
+    }
+    return true;
+  });
+
+  const location = useLocation();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const auth = localStorage.getItem("isAuthenticated") === "true";
+      const role = localStorage.getItem("userRole");
+      const adminAuth = localStorage.getItem("adminAuthenticated") === "true";
+      const expires = localStorage.getItem("sessionExpiresAt");
+
+      if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
+        setIsAdminAuthenticated(false);
+      } else {
+        setIsAdminAuthenticated(true);
+      }
+    };
+
+    checkAuth();
+    window.addEventListener("storage", checkAuth);
+    return () => window.removeEventListener("storage", checkAuth);
+  }, [location]);
+
+  if (!isAdminAuthenticated) {
+    return <Navigate to="/admin/login" replace state={{ fromProtected: true }} />;
+  }
+
+  return children;
+}
+
+function LandlordProtectedRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const auth = localStorage.getItem("isAuthenticated") === "true";
     const expires = localStorage.getItem("sessionExpiresAt");
     if (auth && expires && Date.now() > Number(expires)) {
       localStorage.removeItem("isAuthenticated");
       localStorage.removeItem("sessionExpiresAt");
-      localStorage.removeItem("userRole");
       return false;
-    }
-    // Auto-grant admin session if not authenticated when visiting /admin
-    if (!auth) {
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("userRole", "admin");
-      localStorage.setItem("lastLoggedInEmail", "admin@lodale.com");
-      localStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
-      return true;
     }
     return auth;
   });
 
-  const [userRole, setUserRole] = useState(() => {
-    return localStorage.getItem("userRole");
-  });
-
+  const [userRole, setUserRole] = useState(() => localStorage.getItem("userRole"));
   const location = useLocation();
 
   useEffect(() => {
@@ -183,7 +213,6 @@ function AdminProtectedRoute({ children }) {
       if (auth && expires && Date.now() > Number(expires)) {
         localStorage.removeItem("isAuthenticated");
         localStorage.removeItem("sessionExpiresAt");
-        localStorage.removeItem("userRole");
         setIsAuthenticated(false);
         setUserRole(null);
       } else {
@@ -193,24 +222,96 @@ function AdminProtectedRoute({ children }) {
     };
 
     checkAuth();
-
     window.addEventListener("storage", checkAuth);
     return () => window.removeEventListener("storage", checkAuth);
   }, [location]);
 
   if (!isAuthenticated) {
-    // Fallback: silently set admin session and allow through
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userRole", "admin");
-    localStorage.setItem("lastLoggedInEmail", "admin@lodale.com");
-    localStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
-    return children;
+    const expires = localStorage.getItem("sessionExpiresAt");
+    const wasSessionExpired = expires && Date.now() > Number(expires);
+
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("sessionExpiresAt");
+
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          fromProtected: true,
+          sessionExpired: wasSessionExpired,
+        }}
+      />
+    );
   }
 
-  if (userRole !== "admin") {
-    // If logged in as a non-admin, promote to admin silently
-    localStorage.setItem("userRole", "admin");
-    return children;
+  const activeRole = (userRole || localStorage.getItem("userRole") || "").toLowerCase().trim();
+
+  if (activeRole !== "landlord" && activeRole !== "admin") {
+    return <LandlordAccessPrompt />;
+  }
+
+  return children;
+}
+
+function TenantProtectedRoute({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const auth = localStorage.getItem("isAuthenticated") === "true";
+    const expires = localStorage.getItem("sessionExpiresAt");
+    if (auth && expires && Date.now() > Number(expires)) {
+      localStorage.removeItem("isAuthenticated");
+      localStorage.removeItem("sessionExpiresAt");
+      return false;
+    }
+    return auth;
+  });
+
+  const [userRole, setUserRole] = useState(() => localStorage.getItem("userRole"));
+  const location = useLocation();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      const auth = localStorage.getItem("isAuthenticated") === "true";
+      const expires = localStorage.getItem("sessionExpiresAt");
+      if (auth && expires && Date.now() > Number(expires)) {
+        localStorage.removeItem("isAuthenticated");
+        localStorage.removeItem("sessionExpiresAt");
+        setIsAuthenticated(false);
+        setUserRole(null);
+      } else {
+        setIsAuthenticated(auth);
+        setUserRole(localStorage.getItem("userRole"));
+      }
+    };
+
+    checkAuth();
+    window.addEventListener("storage", checkAuth);
+    return () => window.removeEventListener("storage", checkAuth);
+  }, [location]);
+
+  if (!isAuthenticated) {
+    const expires = localStorage.getItem("sessionExpiresAt");
+    const wasSessionExpired = expires && Date.now() > Number(expires);
+
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("sessionExpiresAt");
+
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          fromProtected: true,
+          sessionExpired: wasSessionExpired,
+        }}
+      />
+    );
+  }
+
+  const activeRole = (userRole || localStorage.getItem("userRole") || "").toLowerCase().trim();
+
+  if (activeRole !== "tenant" && activeRole !== "admin") {
+    return <TenantAccessPrompt />;
   }
 
   return children;
@@ -287,57 +388,49 @@ export default function App() {
             <Route
               path="/apply/:listingId"
               element={
-                <ProtectedRoute>
+                <TenantProtectedRoute>
                   <Application />
-                </ProtectedRoute>
+                </TenantProtectedRoute>
               }
             />
             <Route
               path="/add-property"
               element={
-                <ProtectedRoute>
+                <LandlordProtectedRoute>
                   <AddProperty />
-                </ProtectedRoute>
+                </LandlordProtectedRoute>
               }
             />
             <Route
               path="/dashboard/landlord"
               element={
-                <ProtectedRoute>
+                <LandlordProtectedRoute>
                   <LandlordDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/landlord"
-              element={
-                <ProtectedRoute>
-                  <LandlordDashboard />
-                </ProtectedRoute>
+                </LandlordProtectedRoute>
               }
             />
             <Route
               path="/dashboard/landlord/add-property"
               element={
-                <ProtectedRoute>
+                <LandlordProtectedRoute>
                   <DashboardAddProperty />
-                </ProtectedRoute>
+                </LandlordProtectedRoute>
               }
             />
             <Route
               path="/dashboard/landlord/properties/:id"
               element={
-                <ProtectedRoute>
+                <LandlordProtectedRoute>
                   <PropertyDetail />
-                </ProtectedRoute>
+                </LandlordProtectedRoute>
               }
             />
             <Route
               path="/dashboard/tenant"
               element={
-                <ProtectedRoute>
+                <TenantProtectedRoute>
                   <TenantDashboard />
-                </ProtectedRoute>
+                </TenantProtectedRoute>
               }
             />
           </Routes>

@@ -345,7 +345,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
             ))}
           </div>
 
-          <div className="tenants-search-box tour-tenants-search">
+          <div className="tenants-search-box tour-tenants-search relative">
             <Search className="tenants-search-icon h-4 w-4" />
             <input
               type="text"
@@ -354,6 +354,16 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="tenants-search-input"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-900 dark:hover:text-white cursor-pointer transition-colors p-1 flex items-center justify-center border-none bg-transparent outline-none"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
 

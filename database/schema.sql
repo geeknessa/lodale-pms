@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS users (
     first_name          VARCHAR(100)    NOT NULL,
     last_name           VARCHAR(100)    NOT NULL,
     email               VARCHAR(255)    NOT NULL,
-    phone_number        VARCHAR(20),
+    phone_number        VARCHAR(15),
 
     -- Authentication
     password_hash       TEXT,                                   -- NULL for OAuth-only accounts

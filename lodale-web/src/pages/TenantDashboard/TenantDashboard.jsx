@@ -179,7 +179,9 @@ export default function TenantDashboard() {
 
   // Retrieve username with fallback
   const [username, setUsername] = useState(() => {
-    return localStorage.getItem("username") || "Tunde";
+    const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
+    return storedName || localStorage.getItem("username") || "Tunde";
   });
   const firstName = username.split(" ")[0];
 
@@ -207,8 +209,11 @@ export default function TenantDashboard() {
   });
 
   useEffect(() => {
-    const handleAvatarUpdate = () => {
-      const emailKey = localStorage.getItem("lastLoggedInEmail");
+    const handleStorageUpdate = () => {
+      const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+      const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
+      setUsername(storedName || localStorage.getItem("username") || "Tunde");
+
       let updated = null;
       if (emailKey) {
         updated = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
@@ -220,8 +225,8 @@ export default function TenantDashboard() {
         setTenantAvatar(updated);
       }
     };
-    window.addEventListener("storage", handleAvatarUpdate);
-    return () => window.removeEventListener("storage", handleAvatarUpdate);
+    window.addEventListener("storage", handleStorageUpdate);
+    return () => window.removeEventListener("storage", handleStorageUpdate);
   }, []);
 
   // Welcome Overlay states for new signup animation

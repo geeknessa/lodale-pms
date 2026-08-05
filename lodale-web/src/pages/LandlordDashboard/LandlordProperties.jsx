@@ -1,12 +1,88 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info } from "lucide-react";
+import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info, ChevronDown, User } from "lucide-react";
 import { propertyService } from "../../services/propertyService";
 import { LISTINGS } from "../../data/listings";
 import UserInfo from "./components/UserInfo";
 import "./LandlordProperties.css";
 
 
+
+function CustomSelect({ value, onChange, options, placeholder }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => o.value === value);
+
+  return (
+    <div className="relative inline-block text-left" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between gap-2 px-4 py-2.5 bg-white dark:bg-[#16241F] border border-ink-100 dark:border-white/10 text-ink-900 dark:text-white rounded-xl text-[12.5px] font-bold cursor-pointer transition-all duration-200 hover:border-ink-400 dark:hover:border-white/30 hover:bg-ink-50/50 dark:hover:bg-white/5 outline-none select-none min-w-[130px]"
+      >
+        <span>{selectedOption ? selectedOption.label : placeholder}</span>
+        <ChevronDown className={`h-3.5 w-3.5 text-ink-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 mt-1.5 w-full min-w-[160px] bg-white dark:bg-[#12221C] border border-[#E4EAE1] dark:border-white/10 rounded-xl shadow-lg z-50 py-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+          {options.map((option) => {
+            const isSelected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-4 py-2 text-[12.5px] cursor-pointer transition-colors duration-150 flex items-center justify-between select-none ${
+                  isSelected
+                    ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] font-bold"
+                    : "text-ink-700 dark:text-cream-100/80 hover:bg-ink-50 dark:hover:bg-white/5"
+                }`}
+              >
+                <span>{option.label}</span>
+                {isSelected && <span className="text-[10px] font-bold">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const RENT_OPTIONS = [
+  { value: "all", label: "Rent (All)" },
+  { value: "under-200", label: "< ₦200,000" },
+  { value: "200-350", label: "₦200,000 - ₦350,000" },
+  { value: "over-350", label: "> ₦350,000" }
+];
+
+const LOCATION_OPTIONS = [
+  { value: "all", label: "Location (All)" },
+  { value: "island", label: "Victoria Island" },
+  { value: "yaba", label: "Yaba" },
+  { value: "lekki", label: "Lekki" }
+];
+
+const TYPE_OPTIONS = [
+  { value: "all", label: "Type (All)" },
+  { value: "apartment", label: "Apartments" },
+  { value: "house", label: "Houses & Estates" }
+];
 
 export default function LandlordProperties() {
   const navigate = useNavigate();
@@ -122,47 +198,30 @@ export default function LandlordProperties() {
           <div className="ap-filter-row">
             <span className="ap-filter-lbl">Filter by:</span>
 
-            <div className="ap-select-wrapper">
-              <select
-                value={rentFilter}
-                onChange={(e) => setRentFilter(e.target.value)}
-                className="ap-filter-select"
-              >
-                <option value="all">Rent (All)</option>
-                <option value="under-200">&lt; ₦200,000</option>
-                <option value="200-350">₦200,000 - ₦350,000</option>
-                <option value="over-350">&gt; ₦350,000</option>
-              </select>
-            </div>
+            <CustomSelect
+              value={rentFilter}
+              onChange={setRentFilter}
+              options={RENT_OPTIONS}
+              placeholder="Rent (All)"
+            />
 
-            <div className="ap-select-wrapper">
-              <select
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="ap-filter-select"
-              >
-                <option value="all">Location (All)</option>
-                <option value="island">Victoria Island</option>
-                <option value="yaba">Yaba</option>
-                <option value="lekki">Lekki</option>
-              </select>
-            </div>
+            <CustomSelect
+              value={locationFilter}
+              onChange={setLocationFilter}
+              options={LOCATION_OPTIONS}
+              placeholder="Location (All)"
+            />
 
-            <div className="ap-select-wrapper">
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="ap-filter-select"
-              >
-                <option value="all">Type (All)</option>
-                <option value="apartment">Apartments</option>
-                <option value="house">Houses & Estates</option>
-              </select>
-            </div>
+            <CustomSelect
+              value={typeFilter}
+              onChange={setTypeFilter}
+              options={TYPE_OPTIONS}
+              placeholder="Type (All)"
+            />
           </div>
 
           {/* Search Bar */}
-          <div className="ap-search-wrapper">
+          <div className="ap-search-wrapper relative">
             <Search className="ap-search-icon" />
             <input
               type="text"
@@ -171,6 +230,16 @@ export default function LandlordProperties() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="ap-search-input"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-900 dark:hover:text-white cursor-pointer transition-colors p-1 flex items-center justify-center border-none bg-transparent outline-none"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -180,6 +249,8 @@ export default function LandlordProperties() {
             filteredProperties.map((item) => {
               const status = item.status || 'pending_review';
               const imgUrl = item.image || item.cover_image || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80";
+              const propertyTenants = getTenantsForProperty(item.id);
+              const tenantsCount = propertyTenants.length;
 
               return (
                 <div key={item.id} className="ap-property-card bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4">
@@ -197,6 +268,38 @@ export default function LandlordProperties() {
 
                   {/* Center Content */}
                   <div className="ap-card-details flex-1 min-w-0">
+                    {/* Tenants avatar stack button on the top left of card details */}
+                    <div className="mb-2">
+                      <div
+                        className="db-avatar-group cursor-pointer flex items-center -space-x-1.5"
+                        onClick={() => setShowTenantsPopupForProperty(item)}
+                        title="View current tenants"
+                      >
+                        {propertyTenants.slice(0, 2).map((t, idx) => (
+                          <img
+                            key={t.id || idx}
+                            src={t.avatar}
+                            alt={t.name}
+                            className="w-7 h-7 rounded-full object-cover border border-white dark:border-[#16241F]"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        ))}
+                        {tenantsCount === 0 && (
+                          <div className="w-7 h-7 rounded-full bg-moss-700 text-white flex items-center justify-center text-xs font-bold border border-white dark:border-[#16241F]">
+                            <User className="h-3.5 w-3.5" />
+                          </div>
+                        )}
+                        <div
+                          className="db-avatar-plus font-bold text-[10px]"
+                          style={{ height: '28px', width: '28px', minWidth: '28px', border: '1px solid var(--border-light)' }}
+                        >
+                          {tenantsCount}
+                        </div>
+                      </div>
+                    </div>
+
                     <h3 className="ap-property-title text-base font-bold text-ink-900 dark:text-white truncate">{item.title}</h3>
                     <p className="ap-property-desc text-xs text-ink-600 dark:text-cream-100/70 mt-1">
                       {item.beds || 1} Bedrooms • {item.baths || 1} Bathrooms • {Array.isArray(item.amenities) ? item.amenities.join(", ") : "Prepaid Meter, 24/7 Security"}
@@ -258,21 +361,14 @@ export default function LandlordProperties() {
                     </div>
                   </div>
 
-                  {/* Side-by-side action buttons */}
+                  {/* Action button spanning full width */}
                   <div className="ap-card-actions">
                     <button
                       onClick={() => navigate(`/dashboard/landlord/properties/${item.id}`)}
-                      className="ap-action-btn btn-primary"
+                      className="ap-action-btn btn-primary w-full"
                       title="View details"
                     >
                       <ChevronRight className="h-4 w-4 mr-0.5" /> Details
-                    </button>
-                    <button
-                      onClick={() => setShowTenantsPopupForProperty(item)}
-                      className="ap-action-btn btn-secondary"
-                      title="View current tenants"
-                    >
-                      <Users className="h-4 w-4 mr-1" /> Tenants
                     </button>
                   </div>
                 </div>
@@ -287,43 +383,7 @@ export default function LandlordProperties() {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Active Tenants list (matches Online Users) */}
-      <div className="ap-sidebar-col">
-        <div className="ap-sidebar-header">
-          <h3 className="ap-sidebar-title">Active Tenants</h3>
-          <button onClick={() => alert("Loading all clients...")} className="ap-see-all-btn">See all</button>
-        </div>
 
-        <div className="ap-tenants-list">
-          {activeTenants.length > 0 ? (
-            activeTenants.map((tenant) => (
-              <div
-                key={tenant.id}
-                className="ap-tenant-row cursor-pointer hover:bg-cream-100/40 p-1.5 rounded-xl transition-colors"
-                onClick={() => setSelectedTenantForDetails(tenant)}
-              >
-                <img
-                  src={tenant.avatar}
-                  alt={tenant.name}
-                  className="ap-tenant-avatar"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
-                <div className="ap-tenant-info">
-                  <p className="ap-tenant-name hover:underline">{tenant.name}</p>
-                  <p className="ap-tenant-code">{tenant.email}</p>
-                </div>
-                <span className={`ap-status-dot ${tenant.status}`} />
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-6 text-[12px] text-ink-300 font-semibold leading-relaxed">
-              No active tenants yet.<br />Approve applications to add them!
-            </div>
-          )}
-        </div>
-      </div>
 
       {showTenantsPopupForProperty && (
         <div className="ap-popup-overlay" onClick={() => setShowTenantsPopupForProperty(null)}>
