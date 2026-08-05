@@ -15,7 +15,9 @@ export default function TenantSettings({ onSignOut }) {
         return JSON.parse(raw);
       } catch (e) {}
     }
-    const username = localStorage.getItem("username") || "";
+    const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
+    const username = storedName || localStorage.getItem("username") || "";
     const parts = username.split(" ");
     return {
       firstName: parts[0] || "",
@@ -89,6 +91,7 @@ export default function TenantSettings({ onSignOut }) {
     if (activeTab === "personal") {
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
       localStorage.setItem("username", fullName);
+      localStorage.setItem("username_" + email.trim().toLowerCase(), fullName);
       localStorage.setItem("lastLoggedInEmail", email.trim());
       localStorage.setItem("tenantAvatarUrl", avatarUrl);
       if (email) {
