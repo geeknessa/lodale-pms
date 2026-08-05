@@ -26,6 +26,8 @@ import {
   AlertTriangle,
   Info,
   X,
+  Trash2,
+  BellOff,
 } from "lucide-react";
 import { Logo } from "../../components/Logo";
 import Button from "../../components/Button";
@@ -166,7 +168,9 @@ export default function LandlordDashboard() {
 
   // Retrieve username from localStorage with fallback
   const [username, setUsername] = useState(() => {
-    return localStorage.getItem("username") || "Ada";
+    const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
+    return storedName || localStorage.getItem("username") || "Ada";
   });
 
   const getActiveTenantsCount = () => {
@@ -305,7 +309,9 @@ export default function LandlordDashboard() {
   // Sync username, applications & notifications if changed in storage
   useEffect(() => {
     const handleStorageChange = () => {
-      setUsername(localStorage.getItem("username") || "Landlord User");
+      const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+      const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
+      setUsername(storedName || localStorage.getItem("username") || "Landlord User");
       const savedApps = localStorage.getItem("propertyApplications");
       if (savedApps) {
         try {
@@ -991,41 +997,104 @@ export default function LandlordDashboard() {
 
             {/* Notification Dropdown */}
             {showNotifDropdown && (
-              <div className="absolute right-0 top-12 z-50 w-80 sm:w-96 rounded-2xl bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 shadow-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between pb-2 border-b border-ink-100 dark:border-white/10">
-                  <h3 className="font-bold text-sm text-ink-900 dark:text-white flex items-center gap-1.5">
-                    <Bell className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                    <span>Notifications ({notifications.length})</span>
+              <div className="absolute right-0 top-12 z-[100] w-80 sm:w-[380px] rounded-3xl bg-white/95 dark:bg-[#12221C]/95 border border-[#E4EAE1] dark:border-white/10 shadow-2xl p-5 space-y-4 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-200 ease-out">
+                <div className="flex items-center justify-between pb-3 border-b border-[#E4EAE1] dark:border-white/10">
+                  <h3 className="font-bold text-sm text-ink-900 dark:text-white flex items-center gap-2">
+                    <Bell className="h-4.5 w-4.5 text-moss-700 dark:text-[#E5C583]" />
+                    <span>Notifications</span>
+                    {notifications.length > 0 && (
+                      <span className="px-2 py-0.5 text-[10px] font-extrabold bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] rounded-full">
+                        {notifications.length}
+                      </span>
+                    )}
                   </h3>
-                  <button
-                    onClick={() => setShowNotifDropdown(false)}
-                    className="text-xs font-bold text-ink-400 hover:text-ink-900 dark:hover:text-white cursor-pointer"
-                  >
-                    Close
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setNotifications([]);
+                          localStorage.setItem("landlordNotifications", JSON.stringify([]));
+                        }}
+                        className="text-[11.5px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 cursor-pointer transition-colors border-none bg-transparent outline-none p-0"
+                        title="Clear all notifications"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowNotifDropdown(false)}
+                      className="text-xs font-bold text-ink-400 hover:text-ink-900 dark:hover:text-white cursor-pointer transition-colors border-none bg-transparent outline-none p-0"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
 
-                <div className="max-h-72 overflow-y-auto space-y-2">
+                <div className="max-h-80 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-moss-700/20">
                   {notifications.length === 0 ? (
-                    <p className="text-xs text-ink-400 text-center py-4">No new notifications</p>
-                  ) : (
-                    notifications.map((notif) => (
-                      <div
-                        key={notif.id}
-                        className={`p-3 rounded-xl border text-xs space-y-1 transition-all ${notif.type === 'success'
-                            ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-200'
-                            : notif.type === 'warning'
-                              ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/50 text-rose-900 dark:text-rose-200'
-                              : 'bg-cream-50 dark:bg-white/5 border-ink-100 dark:border-white/10 text-ink-900 dark:text-white'
-                          }`}
-                      >
-                        <div className="flex items-center justify-between font-bold">
-                          <span>{notif.title}</span>
-                          <span className="text-[10px] font-normal opacity-70">{notif.time || "Just now"}</span>
-                        </div>
-                        <p className="text-[11.5px] leading-relaxed opacity-90">{notif.message}</p>
+                    <div className="flex flex-col items-center justify-center py-10 text-center space-y-2">
+                      <div className="p-3 bg-ink-50 dark:bg-white/5 rounded-full text-ink-300 dark:text-cream-100/30">
+                        <BellOff className="h-6 w-6" />
                       </div>
-                    ))
+                      <h4 className="font-bold text-[13px] text-ink-900 dark:text-white">All caught up!</h4>
+                      <p className="text-[11.5px] text-ink-400 dark:text-cream-100/50 max-w-[200px] leading-normal">You have no new notifications.</p>
+                    </div>
+                  ) : (
+                    notifications.map((notif) => {
+                      const isSuccess = notif.type === 'success';
+                      const isWarning = notif.type === 'warning';
+                      const borderClass = isSuccess 
+                        ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/10" 
+                        : isWarning 
+                          ? "border-l-4 border-l-rose-500 bg-rose-50/30 dark:bg-rose-950/10" 
+                          : "border-l-4 border-l-moss-700 dark:border-l-[#E5C583] bg-cream-50/30 dark:bg-white/5";
+
+                      const IconComponent = isSuccess 
+                        ? CheckCircle2 
+                        : isWarning 
+                          ? AlertTriangle 
+                          : Info;
+
+                      const iconColorClass = isSuccess 
+                        ? "text-emerald-600 dark:text-emerald-400 bg-emerald-100/40 dark:bg-emerald-950/30" 
+                        : isWarning 
+                          ? "text-rose-600 dark:text-rose-400 bg-rose-100/40 dark:bg-rose-950/30" 
+                          : "text-moss-700 dark:text-[#E5C583] bg-[#E4EAE1]/50 dark:bg-white/10";
+
+                      return (
+                        <div
+                          key={notif.id}
+                          className={`group relative p-3.5 rounded-2xl border border-ink-100/60 dark:border-white/5 flex items-start gap-3 transition-all duration-150 hover:bg-ink-50/30 dark:hover:bg-white/10 ${borderClass}`}
+                        >
+                          <div className={`p-1.5 rounded-lg shrink-0 flex items-center justify-center ${iconColorClass}`}>
+                            <IconComponent className="h-4 w-4" />
+                          </div>
+                          
+                          <div className="flex-1 min-w-0 pr-6">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="font-bold text-[12.5px] text-ink-900 dark:text-white truncate">{notif.title}</span>
+                            </div>
+                            <p className="text-[11.5px] leading-relaxed text-ink-600 dark:text-cream-100/70 mt-1">{notif.message}</p>
+                            <span className="text-[10px] font-semibold text-ink-400 dark:text-cream-100/50 block mt-1.5">{notif.time || "Just now"}</span>
+                          </div>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNotifications(prev => {
+                                const updated = prev.filter(n => n.id !== notif.id);
+                                localStorage.setItem("landlordNotifications", JSON.stringify(updated));
+                                return updated;
+                              });
+                            }}
+                            className="absolute top-3.5 right-3.5 opacity-0 group-hover:opacity-100 focus:opacity-100 text-ink-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-150 p-1 cursor-pointer border-none bg-transparent outline-none"
+                            title="Delete notification"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -1149,32 +1218,14 @@ export default function LandlordDashboard() {
 
           {activeTab === 0 ? (
             /* DASHBOARD CONTENT GRID */
-            <div className="db-grid">
+            <div className="space-y-6">
+              {/* TOP ROW GRID */}
+              <div className="db-grid">
 
-              {/* COLUMN 1: PORTFOLIO SUMMARY CARD */}
-              <div className="db-col">
-                <section className="db-card pro-card">
-                  {/* Header */}
-                  <div className="pro-card-header">
-                    <span className="pro-card-tag">Landlord Rating</span>
-                    <button className="pro-card-close" aria-label="Dismiss">✕</button>
-                  </div>
-
-                  {/* Visual Area */}
-                  <div className="pro-card-visual">
-                    <div className="pro-card-glow" />
-                    <svg width="90" height="90" viewBox="0 0 100 100" className="pro-card-prism">
-                      <polygon points="50,15 80,45 80,85 20,85 20,45" fill="none" stroke="#2C4633" strokeWidth="2.5" />
-                      <polygon points="50,15 50,85" stroke="#3A5A40" strokeWidth="1.5" strokeDasharray="3 3" />
-                      <polygon points="50,15 80,45 50,55 20,45" fill="#E4EAE1" stroke="#2C4633" strokeWidth="1.5" />
-                      <line x1="35" y1="85" x2="35" y2="60" stroke="#3A5A40" strokeWidth="2" />
-                      <line x1="65" y1="85" x2="65" y2="60" stroke="#3A5A40" strokeWidth="2" />
-                      <circle cx="50" cy="35" r="4" fill="#E5C583" />
-                    </svg>
-                  </div>
-
-                  {/* Dark Advantages Overlay Panel */}
-                  <div className="pro-advantages-panel">
+                {/* COLUMN 1: PORTFOLIO SUMMARY CARD */}
+                <div className="db-col">
+                  {/* Landlord Rating Card */}
+                  <div className="pro-advantages-panel" style={{ maxWidth: "360px", width: "100%" }}>
                     <div className="pro-advantages-header">
                       <h4 className="pro-advantages-title">Account Rating</h4>
                       <span
@@ -1208,49 +1259,79 @@ export default function LandlordDashboard() {
                       Join the top-rated landlords on Lodale.
                     </p>
                   </div>
-                </section>
+                </div>
+
+                {/* COLUMN 2: ACTIVITY AND REVENUE STATS */}
+                <div className="db-col">
+                  {/* Activity / Occupancy rate bar chart */}
+                  <section className="db-card activity-card tour-occupancy">
+                    <div className="activity-header">
+                      <h3 className="activity-title">Monthly Activity</h3>
+                      <span className="activity-badge">Monthly logs</span>
+                    </div>
+
+                    <div className="activity-metric">
+                      <span className="activity-val">
+                        {displayProperties.length === 0 ? "0%" : `${Math.min(100, Math.round((getActiveTenantsCount() / Math.max(1, displayProperties.length)) * 100))}%`}
+                      </span>
+                      <span className="activity-sub">Occupancy Rate</span>
+                    </div>
+
+                    {/* Bar Graph */}
+                    <div className="activity-chart-grid">
+                      {[
+                        { day: "Mon", height: "45%", highlight: false },
+                        { day: "Tue", height: "60%", highlight: false },
+                        { day: "Wed", height: "35%", highlight: false },
+                        { day: "Thu", height: "75%", highlight: false },
+                        { day: "Fri", height: "95%", highlight: true }, // Highlighted bar in yellow/green
+                        { day: "Sat", height: "50%", highlight: false },
+                        { day: "Sun", height: "40%", highlight: false },
+                      ].map((bar, index) => (
+                        <div key={index} className="activity-bar-col">
+                          <div className="activity-bar-container">
+                            <div
+                              className={`activity-bar-fill ${bar.highlight ? "highlight" : ""}`}
+                              style={{ height: bar.height }}
+                            />
+                          </div>
+                          <span className="activity-bar-label">{bar.day}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+
+                {/* COLUMN 3: PAYOUT ACCOUNT */}
+                <div className="db-col">
+                  {/* Payout Account Visa Mock Card */}
+                  <div className="visa-card-mock tour-vault">
+                    <div className="visa-card-highlight" />
+
+                    <div className="visa-card-header">
+                      <div>
+                        <p className="visa-card-brand">Available Payouts</p>
+                        <p className="visa-card-holder">{username}</p>
+                      </div>
+                      <span className="visa-card-logo">L.</span>
+                    </div>
+
+                    <div className="visa-card-body">
+                      <p className="visa-card-lbl">Available Balance</p>
+                      <p className="visa-card-amount">₦3,400,000</p>
+                    </div>
+
+                    <div className="visa-card-footer">
+                      <span>•••• 8802</span>
+                      <span>EXP 09/29</span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
-              {/* COLUMN 2: ACTIVITY AND REVENUE STATS */}
-              <div className="db-col">
-                {/* Activity / Occupancy rate bar chart */}
-                <section className="db-card activity-card tour-occupancy">
-                  <div className="activity-header">
-                    <h3 className="activity-title">Monthly Activity</h3>
-                    <span className="activity-badge">Monthly logs</span>
-                  </div>
-
-                  <div className="activity-metric">
-                    <span className="activity-val">
-                      {displayProperties.length === 0 ? "0%" : `${Math.min(100, Math.round((getActiveTenantsCount() / Math.max(1, displayProperties.length)) * 100))}%`}
-                    </span>
-                    <span className="activity-sub">Occupancy Rate</span>
-                  </div>
-
-                  {/* Bar Graph */}
-                  <div className="activity-chart-grid">
-                    {[
-                      { day: "Mon", height: "45%", highlight: false },
-                      { day: "Tue", height: "60%", highlight: false },
-                      { day: "Wed", height: "35%", highlight: false },
-                      { day: "Thu", height: "75%", highlight: false },
-                      { day: "Fri", height: "95%", highlight: true }, // Highlighted bar in yellow/green
-                      { day: "Sat", height: "50%", highlight: false },
-                      { day: "Sun", height: "40%", highlight: false },
-                    ].map((bar, index) => (
-                      <div key={index} className="activity-bar-col">
-                        <div className="activity-bar-container">
-                          <div
-                            className={`activity-bar-fill ${bar.highlight ? "highlight" : ""}`}
-                            style={{ height: bar.height }}
-                          />
-                        </div>
-                        <span className="activity-bar-label">{bar.day}</span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
+              {/* BOTTOM ROW GRID (Properties and Tenant Requests half & half) */}
+              <div className="db-bottom-row">
                 {/* Vertical properties log list */}
                 <section className="db-card properties-list-card tour-property-list">
                   <div className="activity-header">
@@ -1329,46 +1410,6 @@ export default function LandlordDashboard() {
                     })()}
                   </div>
                 </section>
-              </div>
-
-              {/* COLUMN 3: VIRTUAL CARD AND DONUT CHART */}
-              <div className="db-col">
-                {/* Payout Account Visa Mock Card */}
-                <section className="db-card vault-card tour-vault">
-                  <h3 className="activity-title" style={{ marginBottom: "16px" }}>Payout Account</h3>
-
-                  {/* Visa credit card card elements */}
-                  <div className="visa-card-mock">
-                    <div className="visa-card-highlight" />
-
-                    <div className="visa-card-header">
-                      <div>
-                        <p className="visa-card-brand">Available Payouts</p>
-                        <p className="visa-card-holder">{username}</p>
-                      </div>
-                      <span className="visa-card-logo">L.</span>
-                    </div>
-
-                    <div className="visa-card-body">
-                      <p className="visa-card-lbl">Available Balance</p>
-                      <p className="visa-card-amount">₦3,400,000</p>
-                    </div>
-
-                    <div className="visa-card-footer">
-                      <span>•••• 8802</span>
-                      <span>EXP 09/29</span>
-                    </div>
-                  </div>
-
-                  <div className="leases-legend-row" style={{ fontSize: "12px", borderBottom: "1px solid var(--border-light)", paddingBottom: "8px" }}>
-                    <span>Deposits Held</span>
-                    <span className="leases-legend-val">₦1,200,000</span>
-                  </div>
-                  <div className="leases-legend-row" style={{ fontSize: "12px", paddingTop: "8px" }}>
-                    <span>Payout Speed</span>
-                    <span className="leases-legend-val" style={{ color: "var(--active-pill-bg)" }}>Settled (24h)</span>
-                  </div>
-                </section>
 
                 {/* Tenant Requests list */}
                 <section className="db-card requests-card tour-requests">
@@ -1391,42 +1432,69 @@ export default function LandlordDashboard() {
                         </p>
                       </div>
                     ) : (
-                      displayRequests.map((req) => (
-                        <div key={req.id} className="request-item">
-                          <img
-                            src={req.avatar}
-                            alt={req.tenantName}
-                            className="request-tenant-avatar cursor-pointer"
-                            onClick={() => setSelectedTenantForDetails(req)}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                          <div className="request-content">
-                            <div className="request-tenant-info">
-                              <span
-                                className="request-tenant-name cursor-pointer hover:underline"
-                                onClick={() => setSelectedTenantForDetails(req)}
-                              >
-                                {req.tenantName}
-                              </span>
-                              <span className="request-date">{req.date}</span>
+                      displayRequests.map((req) => {
+                        const unitName = req.leaseStatus
+                          ? req.leaseStatus.replace("Active Tenant (", "").replace(")", "")
+                          : "Unit General";
+                        const isUpgrade = (req.type || "").toLowerCase() === "upgrade";
+                        const typeBadgeClass = isUpgrade
+                          ? "request-type-badge upgrade"
+                          : "request-type-badge repair";
+
+                        return (
+                          <div key={req.id} className="request-item">
+                            <img
+                              src={req.avatar}
+                              alt={req.tenantName}
+                              className="request-tenant-avatar cursor-pointer"
+                              onClick={() => setSelectedTenantForDetails(req)}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                            <div className="request-content">
+                              <div className="request-header-row">
+                                <span
+                                  className="request-tenant-name cursor-pointer hover:underline"
+                                  onClick={() => setSelectedTenantForDetails(req)}
+                                >
+                                  {req.tenantName}
+                                </span>
+                                {req.reliabilityScore && (
+                                  <span className="request-score" title="Reliability Score">
+                                    ★ {req.reliabilityScore}
+                                  </span>
+                                )}
+                                <span className="request-date">• {req.date}</span>
+                              </div>
+
+                              <div className="request-meta-tags">
+                                <span className="request-unit-badge">
+                                  {unitName}
+                                </span>
+                                {req.type && (
+                                  <span className={typeBadgeClass}>
+                                    {req.type}
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="request-details">{req.details}</p>
                             </div>
-                            <p className="request-details">{req.details}</p>
+                            <div className="request-actions-col">
+                              <span className={`request-status-badge ${req.status.toLowerCase().replace(" ", "-")}`}>
+                                {req.status}
+                              </span>
+                              <button
+                                className="db-view-request-btn"
+                                onClick={() => setSelectedRequestForDetails(req)}
+                              >
+                                Inspect
+                              </button>
+                            </div>
                           </div>
-                          <div className="request-actions-col">
-                            <span className={`request-status-badge ${req.status.toLowerCase().replace(" ", "-")}`}>
-                              {req.status}
-                            </span>
-                            <button
-                              className="db-view-request-btn"
-                              onClick={() => setSelectedRequestForDetails(req)}
-                            >
-                              Inspect
-                            </button>
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 

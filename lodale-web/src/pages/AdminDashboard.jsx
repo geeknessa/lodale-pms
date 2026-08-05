@@ -778,13 +778,10 @@ export default function AdminDashboard() {
         >
           <div>
             {/* Top Logo Container */}
-            <div className="p-6 border-b border-[#3A5A40] dark:border-[#262626] flex items-center justify-between">
+            <div className="p-4 border-b border-[#3A5A40] dark:border-[#262626] flex items-center justify-between">
               <div className="flex flex-col">
                 <div className="flex items-center gap-3">
                   <Logo variant="white" className="scale-90 origin-left" />
-                </div>
-                <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#3A5A40] dark:bg-[#1C3028] text-[11px] text-[#DAD7CD] dark:text-[#E5C583] font-medium uppercase tracking-wider w-max">
-                  <ShieldAlert className="h-3 w-3" /> Admin Portal
                 </div>
               </div>
               {/* Close Button inside the drawer */}
@@ -851,7 +848,7 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Building2 className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-                  <span className="truncate">2. Listing Oversight</span>
+                  <span className="truncate">Listings</span>
                 </div>
                 {pendingListingsCount > 0 && (
                   <span className="text-[11px] bg-amber-600 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
@@ -1311,7 +1308,7 @@ export default function AdminDashboard() {
             <div className="space-y-6">
               <div>
                 <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
-                  2. Listing Oversight
+                  Listings
                 </h1>
                 <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
                   Review new listings waiting to go live, approve or reject submissions, or remove fraudulent listings.

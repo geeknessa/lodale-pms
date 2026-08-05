@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
 /* Settings.css - Remodeled Settings Layout based on Setting ref.jpg */
 
 .set-ref-container {
@@ -433,4 +434,79 @@ body.dark .set-ref-theme-toggle-row {
 body.dark .set-ref-theme-toggle-btn.active {
   background-color: #12221C;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Document Agreement Generator Styles */
+.doc-gen-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.doc-gen-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .doc-gen-split {
+    grid-template-columns: 1.1fr 1fr;
+  }
+}
+
+.doc-gen-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.doc-gen-clauses {
+  background-color: rgba(38, 38, 38, 0.02);
+  border: 1.5px solid var(--border-light);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+body.dark .doc-gen-clauses {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.doc-preview-card {
+  position: sticky;
+  top: 24px;
+  width: 100%;
+}
+
+.doc-paper {
+  background-color: #FAF8F6; /* Warm parchment off-white */
+  border-radius: 20px;
+}
+/* Custom scrollbar inside the preview paper box */
+.doc-paper::-webkit-scrollbar {
+  width: 6px;
+}
+.doc-paper::-webkit-scrollbar-track {
+  background: transparent;
+}
+.doc-paper::-webkit-scrollbar-thumb {
+  background: rgba(44, 70, 51, 0.15);
+  border-radius: 4px;
+}
+body.dark .doc-paper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Digital E-Signature styles */
+.doc-e-signature {
+  font-family: 'Great Vibes', cursive !important;
+  color: #1A365D !important; /* Elegant signature ink blue */
+}
+
+body.dark .doc-e-signature {
+  color: #E5C583 !important; /* Gold cursive signature in dark mode */
+}
+
+.doc-sig-status {
+  letter-spacing: 0.05em;
 }

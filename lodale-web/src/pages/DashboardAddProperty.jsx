@@ -106,6 +106,8 @@ export default function DashboardAddProperty() {
     const numericRent = Number(rent.replace(/[^0-9]/g, "")) || 500000;
     const ownershipDocString = `${docType} (${docName})`;
 
+    const dbUserId = localStorage.getItem("db_user_id");
+
     const propertyPayload = {
       title: address,
       address_line1: address,
@@ -118,6 +120,7 @@ export default function DashboardAddProperty() {
       amenities: ["Prepaid Meter", "24/7 Security"],
       ownership_doc: ownershipDocString,
       cover_image: propertyPhoto || PRESET_PHOTOS[0].url,
+      ...(dbUserId ? { landlord_id: dbUserId } : {}),
     };
 
     try {
