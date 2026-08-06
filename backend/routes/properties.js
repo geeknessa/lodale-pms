@@ -128,7 +128,7 @@ router.get('/:id', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { title, description, address_line1, city, state, rent_amount, bedrooms, bathrooms, property_type, amenities, landlord_id } = req.body;
+    const { title, description, address_line1, city, state, rent_amount, bedrooms, bathrooms, property_type, amenities, landlord_id, ownership_doc, ownership_doc_url } = req.body;
 
     if (!title || !address_line1 || !rent_amount) {
       return res.status(400).json({ error: 'Title, address, and rent amount are required.' });
@@ -139,13 +139,14 @@ router.post('/', async (req, res) => {
 
     // 1. Insert property with status = 'pending_review'
     const insertRes = await pool.query(`
-      INSERT INTO properties (landlord_id, title, slug, description, property_type, address_line1, city, state, bedrooms, bathrooms, rent_amount, status)
-      VALUES ($1, $2, $3, $4, $5::property_type, $6, $7, $8, $9, $10, $11, $12::property_status)
+      INSERT INTO properties (landlord_id, title, slug, description, property_type, address_line1, city, state, bedrooms, bathrooms, rent_amount, status, ownership_doc, ownership_doc_url)
+      VALUES ($1, $2, $3, $4, $5::property_type, $6, $7, $8, $9, $10, $11, $12::property_status, $13, $14)
       RETURNING *
     `, [
       effectiveLandlordId, title, slug, description || '',
       property_type || 'apartment', address_line1, city || 'Lagos', state || 'Lagos',
-      Number(bedrooms) || 1, Number(bathrooms) || 1, Number(rent_amount), 'pending_review'
+      Number(bedrooms) || 1, Number(bathrooms) || 1, Number(rent_amount), 'pending_review',
+      ownership_doc || null, ownership_doc_url || null
     ]);
 
     const property = insertRes.rows[0];

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { triggerToast } from "../../context/ToastContext";
 import {
   LayoutDashboard,
   Search,
@@ -174,7 +175,7 @@ export default function TenantDashboard() {
     setActiveTabState(index);
     try {
       localStorage.setItem("tenantActiveTab", index.toString());
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Retrieve username with fallback
@@ -245,7 +246,7 @@ export default function TenantDashboard() {
   const [activeLease, setActiveLease] = useState(() => {
     const saved = localStorage.getItem("tenantLease");
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { return JSON.parse(saved); } catch (e) { }
     }
     const apps = localStorage.getItem("propertyApplications");
     if (apps) {
@@ -253,7 +254,7 @@ export default function TenantDashboard() {
         const parsed = JSON.parse(apps);
         const approved = parsed.find(a => a.status === "Approved" || a.status === "Leased");
         if (approved) return approved;
-      } catch (e) {}
+      } catch (e) { }
     }
     return null;
   });
@@ -566,7 +567,7 @@ export default function TenantDashboard() {
     setReqTitle("");
     setReqDesc("");
 
-    alert(`Success: Maintenance request for "${newRequest.title}" submitted to landlord!`);
+    triggerToast(`Maintenance request for "${newRequest.title}" submitted to landlord!`, "success", "Work Order Logged");
     window.dispatchEvent(new Event("storage"));
   };
 
@@ -1122,7 +1123,7 @@ export default function TenantDashboard() {
                   <span className="db-badge-dot" />
                 </div>
 
-                <div className="db-icon-btn-wrapper" onClick={() => alert("You have 2 new notifications")} title="Notifications">
+                <div className="db-icon-btn-wrapper" onClick={() => triggerToast("You have 2 new unread portal notifications.", "info", "Notifications")} title="Notifications">
                   <Bell className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
                   <span className="db-badge-dot pulse" />
                 </div>
@@ -1140,7 +1141,7 @@ export default function TenantDashboard() {
 
                 <Button
                   variant="secondary"
-                  onClick={() => alert("Creating tenant ledger summary...")}
+                  onClick={() => triggerToast("Creating tenant ledger summary PDF export...", "info", "Ledger Export")}
                   className="px-4 py-2 bg-white dark:bg-[#12221C] text-[12.5px] ml-2"
                 >
                   Download Summary
@@ -1434,9 +1435,9 @@ export default function TenantDashboard() {
                           disabled={!activeLease || rentPaid}
                           onClick={() => {
                             if (!activeLease) {
-                              alert("No active lease or rent due.");
+                              triggerToast("No active lease or rent due.", "warning", "Rent Status");
                             } else if (rentPaid) {
-                              alert("Rent is already paid!");
+                              triggerToast("Rent for this period is already paid!", "info", "Rent Paid");
                             } else {
                               setShowPayModal(true);
                             }
@@ -1632,7 +1633,7 @@ export default function TenantDashboard() {
                           setTourStep(tourStep + 1);
                         } else {
                           setRunTour(false);
-                          alert("Guide completed! Welcome to your Lodale tenant portal.");
+                          triggerToast("Guide completed! Welcome to your Lodale tenant portal.", "success", "Welcome");
                         }
                       }}
                       className="tour-btn-next"

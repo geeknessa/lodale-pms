@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Sparkles, Loader2, User, Key, Building2, Camera, ImagePlus, Upload, Check, Clock } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Sparkles, Loader2, User, Key, Building2, Camera, ImagePlus, Upload, Check, Clock, AlertCircle } from "lucide-react";
 import gsap from "gsap";
 import { Logo } from "../components/Logo";
 import Input from "../components/Input";
@@ -20,6 +20,7 @@ export default function DashboardAddProperty() {
   const navigate = useNavigate();
   const [occupied, setOccupied] = useState(null); // null | true | false
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formError, setFormError] = useState("");
 
   // Property picture prompt state
   const [propertyPhoto, setPropertyPhoto] = useState(PRESET_PHOTOS[0].url);
@@ -32,7 +33,8 @@ export default function DashboardAddProperty() {
   // Proof of ownership legal papers state
   const [docType, setDocType] = useState("Deed of Assignment");
   const [docName, setDocName] = useState("");
-  const [docUploaded, setDocUploaded] = useState(true);
+  const [docDataUrl, setDocDataUrl] = useState("");
+  const [docUploaded, setDocUploaded] = useState(false);
 
   const fileInputRef = useRef(null);
   const docInputRef = useRef(null);
@@ -66,6 +68,12 @@ export default function DashboardAddProperty() {
     if (file) {
       setDocName(file.name);
       setDocUploaded(true);
+      setFormError("");
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        setDocDataUrl(evt.target.result);
+      };
+      reader.readAsDataURL(file);
     }
   }
 
@@ -97,15 +105,48 @@ export default function DashboardAddProperty() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    setFormError("");
+
     const target = e.target;
-    const address = target.elements.address.value;
-    const rent = target.elements.rent.value;
-    const bedrooms = target.elements.bedrooms.value;
-    const city = target.elements.city?.value || "Lagos";
+    const address = target.elements.address?.value?.trim() || "";
+    const city = target.elements.city?.value?.trim() || "";
+    const type = target.elements.type?.value?.trim() || "";
+    const rent = target.elements.rent?.value?.trim() || "";
+    const bedrooms = target.elements.bedrooms?.value?.trim() || "";
 
-    const numericRent = Number(rent.replace(/[^0-9]/g, "")) || 500000;
+    const numericRent = Number(rent.replace(/[^0-9]/g, ""));
+    const numericBedrooms = Number(bedrooms);
+
+    if (!address) {
+      setFormError("Property Address / Street Location is required.");
+      return;
+    }
+    if (!city) {
+      setFormError("City / Area is required.");
+      return;
+    }
+    if (!type) {
+      setFormError("Property Type is required.");
+      return;
+    }
+    if (!rent || isNaN(numericRent) || numericRent <= 0) {
+      setFormError("A valid Rent Amount is required.");
+      return;
+    }
+    if (!bedrooms || isNaN(numericBedrooms) || numericBedrooms <= 0) {
+      setFormError("Number of Bedrooms is required.");
+      return;
+    }
+    if (!docName || !docName.trim()) {
+      setFormError("Please upload your proof of ownership legal document (PDF / Image) before submitting.");
+      return;
+    }
+    if (!propertyPhoto) {
+      setFormError("Please attach a property photo before submitting.");
+      return;
+    }
+
     const ownershipDocString = `${docType} (${docName})`;
-
     const dbUserId = localStorage.getItem("db_user_id");
 
     const propertyPayload = {
@@ -114,11 +155,12 @@ export default function DashboardAddProperty() {
       city: city,
       state: "Lagos",
       rent_amount: numericRent,
-      bedrooms: Number(bedrooms) || 1,
+      bedrooms: numericBedrooms,
       bathrooms: 2,
-      property_type: target.elements.type?.value || "apartment",
+      property_type: type,
       amenities: ["Prepaid Meter", "24/7 Security"],
       ownership_doc: ownershipDocString,
+      ownership_doc_url: docDataUrl,
       cover_image: propertyPhoto || PRESET_PHOTOS[0].url,
       ...(dbUserId ? { landlord_id: dbUserId } : {}),
     };
@@ -142,6 +184,10 @@ export default function DashboardAddProperty() {
       baths: 2,
       status: "pending_review",
       ownership_doc: ownershipDocString,
+      ownership_doc_url: docDataUrl,
+      docType: docType,
+      docName: docName,
+      docDataUrl: docDataUrl,
       amenities: ["Prepaid Meter", "24/7 Security"],
       landlord: {
         name: localStorage.getItem("username") || "Ada K.",
@@ -269,6 +315,13 @@ export default function DashboardAddProperty() {
           </p>
 
           <form onSubmit={handleSubmit} className="dap-form">
+
+            {formError && (
+              <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 text-rose-900 dark:text-rose-200 text-xs font-bold flex items-start gap-2.5">
+                <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <span>{formError}</span>
+              </div>
+            )}
 
             {/* Core Fields */}
             <div className="dap-fields-group animate-form-field">

@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { User, Lock, LogOut, Pencil, Calendar, ChevronDown, CheckCircle2 } from "lucide-react";
 import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
+import { triggerToast } from "../../context/ToastContext";
 import "./TenantSettings.css";
 
 export default function TenantSettings({ onSignOut }) {
@@ -13,7 +14,7 @@ export default function TenantSettings({ onSignOut }) {
     if (raw) {
       try {
         return JSON.parse(raw);
-      } catch (e) {}
+      } catch (e) { }
     }
     const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
     const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
@@ -115,24 +116,24 @@ export default function TenantSettings({ onSignOut }) {
       if (email) {
         localStorage.setItem("userProfile_" + email.toLowerCase(), JSON.stringify(updatedProfile));
       }
-      
+
       // Dispatch storage event so layout header/sidebar updates
       window.dispatchEvent(new Event("storage"));
-      alert("Personal information saved successfully!");
+      triggerToast("Personal profile information updated successfully!", "success", "Profile Saved");
     } else {
       if (!currentPassword) {
-        alert("Please enter your current password.");
+        triggerToast("Please enter your current password.", "warning", "Security");
         return;
       }
       if (newPassword !== confirmPassword) {
-        alert("New password and confirm password do not match.");
+        triggerToast("New password and confirmation do not match.", "error", "Password Mismatch");
         return;
       }
       if (newPassword.length < 6) {
-        alert("Password must be at least 6 characters.");
+        triggerToast("Password must be at least 6 characters long.", "warning", "Security");
         return;
       }
-      alert("Password updated successfully!");
+      triggerToast("Password updated successfully!", "success", "Password Changed");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -162,7 +163,7 @@ export default function TenantSettings({ onSignOut }) {
       setNewPassword("");
       setConfirmPassword("");
     }
-    alert("Changes discarded.");
+    triggerToast("Unsaved changes discarded.", "info", "Form Reset");
   };
 
   return (

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ThemeProvider } from "./context/ThemeContext";
+import { ToastProvider } from "./context/ToastContext";
 import {
   BrowserRouter,
   Routes,
@@ -344,98 +345,100 @@ export default function App() {
   }, []);
 
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <ErrorBoundary>
-          <ScrollToTop />
-          <Routes>
-            <Route path="/" element={<Navigate to="/explore" replace />} />
-            <Route path="/explore" element={<GuestDashboard />} />
-            <Route path="/listings/:id" element={<ListingDetail />} />
-            <Route path="/how-it-works" element={<HowItWorks />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/verify" element={<Navigate to="/signup" replace />} />
-            <Route path="/admin/login" element={<Login />} />
-            <Route path="/access-denied" element={<AccessDenied />} />
+    <ToastProvider>
+      <ThemeProvider>
+        <BrowserRouter>
+          <ErrorBoundary>
+            <ScrollToTop />
+            <Routes>
+              <Route path="/" element={<Navigate to="/explore" replace />} />
+              <Route path="/explore" element={<GuestDashboard />} />
+              <Route path="/listings/:id" element={<ListingDetail />} />
+              <Route path="/how-it-works" element={<HowItWorks />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/verify" element={<Navigate to="/signup" replace />} />
+              <Route path="/admin/login" element={<Login />} />
+              <Route path="/access-denied" element={<AccessDenied />} />
 
-            {/* Protected Routes */}
-            <Route
-              path="/admin"
-              element={
-                <AdminProtectedRoute>
-                  <AdminDashboard />
-                </AdminProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/dashboard"
-              element={
-                <AdminProtectedRoute>
-                  <AdminDashboard />
-                </AdminProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/admin"
-              element={
-                <AdminProtectedRoute>
-                  <AdminDashboard />
-                </AdminProtectedRoute>
-              }
-            />
-            <Route
-              path="/apply/:listingId"
-              element={
-                <TenantProtectedRoute>
-                  <Application />
-                </TenantProtectedRoute>
-              }
-            />
-            <Route
-              path="/add-property"
-              element={
-                <LandlordProtectedRoute>
-                  <AddProperty />
-                </LandlordProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/landlord"
-              element={
-                <LandlordProtectedRoute>
-                  <LandlordDashboard />
-                </LandlordProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/landlord/add-property"
-              element={
-                <LandlordProtectedRoute>
-                  <DashboardAddProperty />
-                </LandlordProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/landlord/properties/:id"
-              element={
-                <LandlordProtectedRoute>
-                  <PropertyDetail />
-                </LandlordProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/tenant"
-              element={
-                <TenantProtectedRoute>
-                  <TenantDashboard />
-                </TenantProtectedRoute>
-              }
-            />
-          </Routes>
-        </ErrorBoundary>
-      </BrowserRouter>
-    </ThemeProvider>
+              {/* Protected Routes */}
+              <Route
+                path="/admin"
+                element={
+                  <AdminProtectedRoute>
+                    <AdminDashboard />
+                  </AdminProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/dashboard"
+                element={
+                  <AdminProtectedRoute>
+                    <AdminDashboard />
+                  </AdminProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/admin"
+                element={
+                  <AdminProtectedRoute>
+                    <AdminDashboard />
+                  </AdminProtectedRoute>
+                }
+              />
+              <Route
+                path="/apply/:listingId"
+                element={
+                  <TenantProtectedRoute>
+                    <Application />
+                  </TenantProtectedRoute>
+                }
+              />
+              <Route
+                path="/add-property"
+                element={
+                  <LandlordProtectedRoute>
+                    <AddProperty />
+                  </LandlordProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/landlord"
+                element={
+                  <LandlordProtectedRoute>
+                    <LandlordDashboard />
+                  </LandlordProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/landlord/add-property"
+                element={
+                  <LandlordProtectedRoute>
+                    <DashboardAddProperty />
+                  </LandlordProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/landlord/properties/:id"
+                element={
+                  <LandlordProtectedRoute>
+                    <PropertyDetail />
+                  </LandlordProtectedRoute>
+                }
+              />
+              <Route
+                path="/dashboard/tenant"
+                element={
+                  <TenantProtectedRoute>
+                    <TenantDashboard />
+                  </TenantProtectedRoute>
+                }
+              />
+            </Routes>
+          </ErrorBoundary>
+        </BrowserRouter>
+      </ThemeProvider>
+    </ToastProvider>
   );
 }

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2 } from "lucide-react";
 import Button from "../../components/Button";
+import { propertyService } from "../../services/propertyService";
+import { triggerToast } from "../../context/ToastContext";
 import "./TenantSearch.css";
 
 // Rich Mock Dataset for search and recommendation swipers
@@ -397,6 +399,87 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchContainerRef = useRef(null);
 
+  // Dynamic approved listings loaded from backend API & localStorage
+  const [allListings, setAllListings] = useState(() => {
+    try {
+      const saved = localStorage.getItem("properties");
+      const localProps = saved ? JSON.parse(saved) : [];
+      const combined = [...SEARCH_LISTINGS, ...localProps];
+      const approvedOnly = combined.filter((p) => {
+        if (!p) return false;
+        const status = (p.status || "").toLowerCase();
+        if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected") {
+          return false;
+        }
+        return true;
+      });
+      return approvedOnly;
+    } catch (e) {
+      return SEARCH_LISTINGS;
+    }
+  });
+
+  useEffect(() => {
+    async function loadTenantProperties() {
+      try {
+        let apiProps = [];
+        try {
+          const apiRes = await propertyService.getProperties();
+          if (Array.isArray(apiRes)) {
+            apiProps = apiRes;
+          } else if (apiRes && Array.isArray(apiRes.properties)) {
+            apiProps = apiRes.properties;
+          }
+        } catch (e) { }
+
+        const saved = localStorage.getItem("properties");
+        const localProps = saved ? JSON.parse(saved) : [];
+
+        const mergedMap = new Map();
+        [...SEARCH_LISTINGS, ...localProps, ...apiProps].forEach((item) => {
+          if (!item) return;
+          const key = String(item.id || item.title);
+          const formatted = {
+            id: item.id || key,
+            title: item.title || item.address_line1 || "Property",
+            location: item.location || item.city || "Lagos, Nigeria",
+            price: typeof item.price === "number" ? item.price : Number(String(item.price || item.rent_amount || "350000").replace(/[^0-9]/g, "")) || 350000,
+            beds: item.beds || item.bedrooms || 2,
+            baths: item.baths || item.bathrooms || 2,
+            type: item.type || item.property_type || "apartment",
+            image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
+            amenities: item.amenities || ["Prepaid Meter", "24/7 Security"],
+            landlord: typeof item.landlord === "object" ? item.landlord : { name: item.landlord || "Ada K.", score: 4.8, reviews: 12 },
+            status: item.status,
+            isPending: item.isPending,
+            recommendationCategory: item.recommendationCategory || "Popular properties"
+          };
+          mergedMap.set(key, formatted);
+        });
+
+        const combined = Array.from(mergedMap.values());
+
+        // STRICT FILTER: Only approved/live properties go to tenant search
+        const approvedOnly = combined.filter((p) => {
+          if (!p) return false;
+          const status = (p.status || "").toLowerCase();
+          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected") {
+            return false;
+          }
+          return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
+        });
+
+        setAllListings(approvedOnly.length > 0 ? approvedOnly : SEARCH_LISTINGS);
+      } catch (err) {
+        console.warn("Failed to load tenant search listings:", err);
+      }
+    }
+
+    loadTenantProperties();
+    window.addEventListener("storage", loadTenantProperties);
+    return () => window.removeEventListener("storage", loadTenantProperties);
+  }, []);
+
   useEffect(() => {
     function handleClickOutside(e) {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
@@ -457,7 +540,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
 
     // 2. Filter match on any of the landlord's properties
     if (filterPrice !== "" || filterBeds !== "" || filterType !== "") {
-      const landlordProperties = SEARCH_LISTINGS.filter(p => p.landlord.name === landlord.name);
+      const landlordProperties = allListings.filter(p => (p.landlord?.name || p.landlord) === landlord.name);
       const hasMatchingProperty = landlordProperties.some(listing => {
         if (filterPrice !== "") {
           const maxPrice = parseFloat(filterPrice);
@@ -490,7 +573,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
   const hasActiveFilters = searchQuery.trim() !== "" || filterPrice !== "" || filterBeds !== "" || filterType !== "" || filterLandlordTenure !== "";
 
   // Perform search filtering
-  const filteredListings = SEARCH_LISTINGS.filter(listing => {
+  const filteredListings = allListings.filter(listing => {
     // 1. Text Search matching
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
@@ -543,11 +626,8 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
   })();
 
   const allAvailableProperties = (() => {
-    const saved = localStorage.getItem("properties");
-    const addedProps = saved ? JSON.parse(saved) : [];
-    const combined = [...addedProps, ...SEARCH_LISTINGS];
     const seen = new Set();
-    return combined.filter(p => {
+    return allListings.filter(p => {
       if (!p) return false;
       const key = (p.id || p.title || "").toLowerCase().trim();
       if (seen.has(key)) return false;
@@ -1191,7 +1271,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               </Button>
               <Button
                 onClick={() => {
-                  alert("Application submitted! Pre-verified NIN profile shared with landlord.");
+                  triggerToast("Application submitted successfully! Your pre-verified NIN profile has been shared with the landlord.", "success", "Application Sent");
                   setShowPropertyDetailsModal(false);
                 }}
                 className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"

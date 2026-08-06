@@ -3,6 +3,7 @@ import {
   Search, Phone, Video, MoreHorizontal, Send, Paperclip, 
   Mic, Play, Pause, ChevronRight, Building2, ArrowLeft
 } from "lucide-react";
+import { triggerToast } from "../../context/ToastContext";
 import gsap from "gsap";
 import "./TenantChat.css";
 
@@ -218,10 +219,10 @@ export default function TenantChat() {
             </div>
 
             <div className="lc-header-actions">
-              <button className="lc-header-btn" title="Phone Call" onClick={() => alert(`Calling ${activeChat.name}...`)}>
+              <button className="lc-header-btn" title="Phone Call" onClick={() => triggerToast(`Initiating direct phone call with ${activeChat.name}...`, "info", "Phone Call")}>
                 <Phone className="h-4.5 w-4.5" />
               </button>
-              <button className="lc-header-btn" title="Video Call" onClick={() => alert(`Starting video call with ${activeChat.name}...`)}>
+              <button className="lc-header-btn" title="Video Call" onClick={() => triggerToast(`Starting video meeting with ${activeChat.name}...`, "info", "Video Call")}>
                 <Video className="h-4.5 w-4.5" />
               </button>
               <button className="lc-header-btn" title="More Options">
@@ -289,7 +290,7 @@ export default function TenantChat() {
 
           {/* Form input */}
           <form className="lc-input-form" onSubmit={handleSendMessage}>
-            <button type="button" className="lc-input-btn" title="Add Attachment" onClick={() => alert("Select document or image...")}>
+            <button type="button" className="lc-input-btn" title="Add Attachment" onClick={() => triggerToast("Select an image or PDF document to attach.", "info", "Attachment")}>
               <Paperclip className="h-5 w-5" />
             </button>
             
@@ -301,7 +302,7 @@ export default function TenantChat() {
               className="lc-input-field text-[13.5px]"
             />
 
-            <button type="button" className="lc-input-btn" title="Record Audio" onClick={() => alert("Recording audio note...")}>
+            <button type="button" className="lc-input-btn" title="Record Audio" onClick={() => triggerToast("Recording voice note. Release to send.", "info", "Audio Note")}>
               <Mic className="h-5 w-5" />
             </button>
             <button type="submit" className="lc-send-btn" title="Send Message">

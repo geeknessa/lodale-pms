@@ -75,26 +75,65 @@ export default function GuestDashboard() {
   const heroContentRef = useRef(null);
 
   const [allListings, setAllListings] = useState(() => {
-    const saved = localStorage.getItem("properties");
-    if (saved) return JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem("properties");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const approvedOnly = parsed.filter(
+          (p) => p && (p.status === "active_vacant" || p.status === "Approved" || p.status === "Live" || p.status === "active" || (!p.status && !p.isPending))
+        );
+        if (approvedOnly.length > 0) return approvedOnly;
+      }
+    } catch (e) {}
     return LISTINGS;
   });
 
   useEffect(() => {
     async function fetchPublicListings() {
       try {
+        let apiProps = [];
+        try {
+          const apiRes = await propertyService.getProperties();
+          if (Array.isArray(apiRes)) {
+            apiProps = apiRes;
+          } else if (apiRes && Array.isArray(apiRes.properties)) {
+            apiProps = apiRes.properties;
+          }
+        } catch (e) {}
+
         const saved = localStorage.getItem("properties");
-        const localProps = saved ? JSON.parse(saved) : LISTINGS;
-        // Exclude unapproved / rejected listings from guest view unless explicitly active
-        const approvedOnly = localProps.filter(
-          (p) => !p.status || p.status === "active_vacant" || p.status === "Approved" || p.status === "Live"
-        );
+        const localProps = saved ? JSON.parse(saved) : [];
+
+        // Combine default listings, local storage properties, and API properties
+        const mergedMap = new Map();
+        [...LISTINGS, ...localProps, ...apiProps].forEach((item) => {
+          if (item && (item.id || item.title)) {
+            const key = String(item.id || item.title);
+            mergedMap.set(key, item);
+          }
+        });
+
+        const combined = Array.from(mergedMap.values());
+
+        // STRICT FILTER: Exclude unapproved / pending / rejected listings from guest view
+        const approvedOnly = combined.filter((p) => {
+          if (!p) return false;
+          const status = (p.status || "").toLowerCase();
+          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected") {
+            return false;
+          }
+          return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
+        });
+
         setAllListings(approvedOnly.length > 0 ? approvedOnly : LISTINGS);
       } catch (err) {
         console.warn("Failed to load public listings:", err);
       }
     }
+
     fetchPublicListings();
+    window.addEventListener("storage", fetchPublicListings);
+    return () => window.removeEventListener("storage", fetchPublicListings);
   }, []);
 
   const filteredListings = allListings.filter((listing) => {

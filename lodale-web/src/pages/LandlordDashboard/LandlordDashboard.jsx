@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { triggerToast } from "../../context/ToastContext";
 import gsap from "gsap";
 import {
   LayoutDashboard,
@@ -102,16 +103,16 @@ const TOUR_STEPS = [
     tab: 0
   },
   {
-    target: ".pro-card",
+    target: ".pro-advantages-panel",
     title: "Landlord Rating Star Index",
-    content: "Based on anonymous check-out feedback and tenant satisfaction indices. Maintain a stellar rating to attract premium applicants!",
+    content: "Shows your landlord reliability rating based on tenant reviews. New accounts display 'New Account' until tenant reviews are recorded.",
     placement: "bottom",
     tab: 0
   },
   {
     target: ".tour-occupancy",
-    title: "Monthly Occupancy Log",
-    content: "Analyzes occupancy percentages and active tenancy ratios over time.",
+    title: "Weekly Activity & Occupancy",
+    content: "Displays your portfolio's active Occupancy Rate alongside daily tenant interactions (maintenance requests, messages, and inquiry logs) for each day of the week (Mon–Sun). When occupancy is 0%, daily activity stays at 0%.",
     placement: "right",
     tab: 0
   },
@@ -173,16 +174,38 @@ export default function LandlordDashboard() {
     return storedName || localStorage.getItem("username") || "Ada";
   });
 
-  const getActiveTenantsCount = () => {
+  const getActiveTenantsList = () => {
     try {
       const saved = localStorage.getItem("propertyTenants");
-      if (!saved) return 0;
+      if (!saved) return [];
       const parsed = JSON.parse(saved);
-      return Object.values(parsed).flat().length;
+      return Object.values(parsed).flat().filter(t => t && t.status !== "past" && t.status !== "inactive");
     } catch (e) {
-      return 0;
+      return [];
     }
   };
+
+  const getActiveTenantsCount = () => {
+    return getActiveTenantsList().length;
+  };
+
+  const getLandlordRatingData = () => {
+    try {
+      const saved = localStorage.getItem("landlordReviews");
+      if (!saved) return { hasReviews: false, rating: "New", count: 0, reviews: [] };
+      const list = JSON.parse(saved);
+      if (!Array.isArray(list) || list.length === 0) {
+        return { hasReviews: false, rating: "New", count: 0, reviews: [] };
+      }
+      const sum = list.reduce((acc, r) => acc + Number(r.rating || 5), 0);
+      const avg = (sum / list.length).toFixed(1);
+      return { hasReviews: true, rating: avg, count: list.length, reviews: list };
+    } catch (e) {
+      return { hasReviews: false, rating: "New", count: 0, reviews: [] };
+    }
+  };
+
+  const ratingData = getLandlordRatingData();
 
   // Keep track of active sidebar tab (persisted on page reload)
   const [activeTab, setActiveTabState] = useState(() => {
@@ -245,7 +268,7 @@ export default function LandlordDashboard() {
         const parsed = JSON.parse(raw);
         if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
       }
-    } catch (e) {}
+    } catch (e) { }
     return "";
   });
 
@@ -266,7 +289,7 @@ export default function LandlordDashboard() {
             const parsed = JSON.parse(raw);
             if (parsed.avatar) updated = parsed.avatar;
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       if (updated && !updated.includes("unsplash.com")) {
         setLandlordAvatar(updated);
@@ -402,99 +425,114 @@ export default function LandlordDashboard() {
     }
   }, [runTour, tourStep, activeTab]);
 
-  // Tour positioning and resizing effect
+  // Tour positioning calculation function
+  const updateTourPosition = () => {
+    if (!runTour) return;
+    const stepData = TOUR_STEPS[tourStep];
+    if (!stepData) return;
+
+    const targetEl = document.querySelector(stepData.target);
+    if (!targetEl) return;
+
+    const rect = targetEl.getBoundingClientRect();
+
+    setSpotlightStyle({
+      top: `${rect.top}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+      borderRadius: getComputedStyle(targetEl).borderRadius || "8px",
+    });
+
+    let tTop = 0;
+    let tLeft = 0;
+    const gap = 16;
+    const tooltipWidth = 340;
+    const tooltipHeight = 270;
+
+    let placement = stepData.placement;
+    if (placement === "bottom" && rect.bottom + tooltipHeight + gap > window.innerHeight) {
+      placement = "top";
+    } else if (placement === "top" && rect.top - tooltipHeight - gap < 0) {
+      placement = "bottom";
+    } else if (placement === "right" && rect.right + tooltipWidth + gap > window.innerWidth) {
+      placement = "left";
+    } else if (placement === "left" && rect.left - tooltipWidth - gap < 0) {
+      placement = "right";
+    }
+
+    if (placement === "right") {
+      tTop = rect.top + (rect.height / 2) - (tooltipHeight / 2);
+      tLeft = rect.left + rect.width + gap;
+    } else if (placement === "left") {
+      tTop = rect.top + (rect.height / 2) - (tooltipHeight / 2);
+      tLeft = rect.left - tooltipWidth - gap;
+    } else if (placement === "bottom") {
+      tTop = rect.top + rect.height + gap;
+      tLeft = rect.left + (rect.width / 2) - (tooltipWidth / 2);
+    } else {
+      tTop = rect.top - tooltipHeight - gap;
+      tLeft = rect.left + (rect.width / 2) - (tooltipWidth / 2);
+    }
+
+    if (tLeft < 16) tLeft = 16;
+    if (tLeft + tooltipWidth > window.innerWidth - 16) {
+      tLeft = window.innerWidth - tooltipWidth - 16;
+    }
+    if (tTop < 16) tTop = 16;
+    if (tTop + tooltipHeight > window.innerHeight - 16) {
+      tTop = window.innerHeight - tooltipHeight - 16;
+    }
+
+    setTooltipStyle({
+      top: `${tTop}px`,
+      left: `${tLeft}px`,
+    });
+  };
+
+  // Tour positioning and scrolling effect with instant execution & rAF frame tracking
   useEffect(() => {
     if (runTour) {
       const stepData = TOUR_STEPS[tourStep];
-      const targetEl = document.querySelector(stepData.target);
+      const targetEl = document.querySelector(stepData?.target);
 
       if (!targetEl) {
-        // If element is not rendered yet (e.g. tab transition lag), wait and retry
         const retryTimer = setTimeout(() => {
           setRecalcTrigger((prev) => prev + 1);
-        }, 150);
+        }, 100);
         return () => clearTimeout(retryTimer);
       }
 
-      // Scroll the main content container if element is inside it
+      // Calculate position IMMEDIATELY with zero delay
+      updateTourPosition();
+
+      // Scroll main content container if target is inside it
       const container = document.querySelector(".db-main-content");
       if (container && container.contains(targetEl)) {
         const containerRect = container.getBoundingClientRect();
         const targetRect = targetEl.getBoundingClientRect();
-
-        // Calculate target scroll position to center the element
         const targetScrollTop = container.scrollTop + (targetRect.top - containerRect.top) - (container.clientHeight / 2) + (targetRect.height / 2);
 
         container.scrollTo({
-          top: targetScrollTop,
+          top: Math.max(0, targetScrollTop),
           behavior: "smooth"
         });
       }
 
-      // Wait a brief moment for scroll to complete, then compute coordinates
-      const timer = setTimeout(() => {
-        const rect = targetEl.getBoundingClientRect();
-
-        // Spotlight style highlights the target element relative to viewport
-        setSpotlightStyle({
-          top: `${rect.top}px`,
-          left: `${rect.left}px`,
-          width: `${rect.width}px`,
-          height: `${rect.height}px`,
-          borderRadius: getComputedStyle(targetEl).borderRadius || "8px",
-        });
-
-        // Position tooltip relative to targeted element (viewport fixed bounds)
-        let tTop = 0;
-        let tLeft = 0;
-        const gap = 16;
-        const tooltipWidth = 340;
-        const tooltipHeight = 280; // Safe height estimate to prevent next button cut-off
-
-        // 1. Dynamic collision detection / switching placement if bounds overflow
-        let placement = stepData.placement;
-        if (placement === "bottom" && rect.bottom + tooltipHeight + gap > window.innerHeight) {
-          placement = "top";
-        } else if (placement === "top" && rect.top - tooltipHeight - gap < 0) {
-          placement = "bottom";
-        } else if (placement === "right" && rect.right + tooltipWidth + gap > window.innerWidth) {
-          placement = "left";
-        } else if (placement === "left" && rect.left - tooltipWidth - gap < 0) {
-          placement = "right";
+      // Smoothly update position on every frame while scrolling
+      let animId;
+      let startTime = performance.now();
+      const tick = (now) => {
+        updateTourPosition();
+        if (now - startTime < 350) {
+          animId = requestAnimationFrame(tick);
         }
+      };
+      animId = requestAnimationFrame(tick);
 
-        // 2. Base positioning calculation
-        if (placement === "right") {
-          tTop = rect.top + (rect.height / 2) - (tooltipHeight / 2);
-          tLeft = rect.left + rect.width + gap;
-        } else if (placement === "left") {
-          tTop = rect.top + (rect.height / 2) - (tooltipHeight / 2);
-          tLeft = rect.left - tooltipWidth - gap;
-        } else if (placement === "bottom") {
-          tTop = rect.top + rect.height + gap;
-          tLeft = rect.left + (rect.width / 2) - (tooltipWidth / 2);
-        } else {
-          // top
-          tTop = rect.top - tooltipHeight - gap;
-          tLeft = rect.left + (rect.width / 2) - (tooltipWidth / 2);
-        }
-
-        // 3. Strict Viewport Bounds Containment (keeps card 100% visible)
-        if (tLeft < 20) tLeft = 20;
-        if (tLeft + tooltipWidth > window.innerWidth - 20) {
-          tLeft = window.innerWidth - tooltipWidth - 20;
-        }
-        if (tTop < 20) tTop = 20;
-        if (tTop + tooltipHeight > window.innerHeight - 20) {
-          tTop = window.innerHeight - tooltipHeight - 20;
-        }
-
-        setTooltipStyle({
-          top: `${tTop}px`,
-          left: `${tLeft}px`,
-        });
-      }, 350);
-      return () => clearTimeout(timer);
+      return () => {
+        cancelAnimationFrame(animId);
+      };
     }
   }, [runTour, tourStep, recalcTrigger, activeTab]);
 
@@ -515,6 +553,39 @@ export default function LandlordDashboard() {
       }
     };
   }, [runTour, activeTab]);
+
+  // Interactive click-to-jump step listener during tour
+  useEffect(() => {
+    if (!runTour) return;
+
+    const handleTourClick = (e) => {
+      // Don't intercept clicks inside the tour tooltip card or ask card
+      if (e.target.closest(".tour-tooltip-card") || e.target.closest(".tour-ask-card")) {
+        return;
+      }
+
+      // Check if clicked element or any ancestor matches any TOUR_STEPS target
+      for (let i = 0; i < TOUR_STEPS.length; i++) {
+        const step = TOUR_STEPS[i];
+        const targetEl = document.querySelector(step.target);
+        if (targetEl && (targetEl.contains(e.target) || e.target.closest(step.target))) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Jump immediately to this step!
+          setTourStep(i);
+          setRecalcTrigger((prev) => prev + 1);
+          break;
+        }
+      }
+    };
+
+    // Attach click listener in capture phase so it catches clicks on cards/nav items instantly
+    document.addEventListener("click", handleTourClick, true);
+    return () => {
+      document.removeEventListener("click", handleTourClick, true);
+    };
+  }, [runTour]);
 
   const handleApproveApplication = (app) => {
     // 1. Add to property tenants mapping
@@ -608,7 +679,7 @@ export default function LandlordDashboard() {
       localStorage.setItem("landlordChats", JSON.stringify(chatsList));
     }
 
-    alert(`Approved ${app.tenantName}'s application for ${app.propertyTitle}`);
+    triggerToast(`Approved ${app.tenantName}'s application for ${app.propertyTitle}!`, "success", "Application Approved");
     setApplications((prev) => prev.filter((a) => a.id !== app.id));
 
     // Update the requests state immediately in the current tab
@@ -657,6 +728,31 @@ export default function LandlordDashboard() {
     }
     loadProperties();
   }, [username]);
+
+  // Dynamic calculation for dashboard numbers & activity
+  const activeTenantsList = getActiveTenantsList();
+  const activeTenantsCount = activeTenantsList.length;
+  const totalPropertiesCount = displayProperties.length;
+  const occupancyRate = totalPropertiesCount === 0 ? 0 : Math.min(100, Math.round((activeTenantsCount / Math.max(1, totalPropertiesCount)) * 100));
+
+  const parseTenantRent = (t) => {
+    if (t.rentAmount && !isNaN(Number(t.rentAmount))) return Number(t.rentAmount);
+    if (t.income) {
+      const match = t.income.match(/[\d,]+/);
+      if (match) {
+        const val = Number(match[0].replace(/,/g, ""));
+        if (!isNaN(val) && val > 0) return Math.min(val, 500000);
+      }
+    }
+    return 250000;
+  };
+
+  const paidTenants = activeTenantsList.filter(t => t.paymentStatus === "Paid" || !t.paymentStatus || t.paymentStatus?.toLowerCase() === "paid");
+  const overdueTenants = activeTenantsList.filter(t => t.paymentStatus === "Overdue" || t.paymentStatus === "Outstanding");
+
+  const collectedAmount = paidTenants.reduce((sum, t) => sum + parseTenantRent(t), 0);
+  const outstandingAmount = overdueTenants.reduce((sum, t) => sum + parseTenantRent(t), 0);
+  const availablePayoutBalance = activeTenantsCount === 0 ? 0 : collectedAmount;
 
   const handleUpdateRequestStatus = (requestId, newStatus) => {
     setTenantRequests((prevRequests) => {
@@ -839,7 +935,7 @@ export default function LandlordDashboard() {
                             <button
                               className="db-action-btn decline"
                               onClick={() => {
-                                alert(`Declined ${app.tenantName}'s application`);
+                                triggerToast(`Declined ${app.tenantName}'s application.`, "info", "Application Declined");
                                 setApplications((prev) => prev.filter((a) => a.id !== app.id));
                               }}
                             >
@@ -871,11 +967,11 @@ export default function LandlordDashboard() {
                   <div className="db-popup-stats-summary">
                     <div style={{ flex: 1 }}>
                       <span className="db-popup-stats-lbl">Collected (Month)</span>
-                      <span className="db-popup-stats-val">₦525,000</span>
+                      <span className="db-popup-stats-val">₦{collectedAmount.toLocaleString()}</span>
                     </div>
                     <div style={{ flex: 1, borderLeft: "1.5px solid var(--border-light)", paddingLeft: "16px" }}>
                       <span className="db-popup-stats-lbl">Outstanding</span>
-                      <span className="db-popup-stats-val overdue">₦200,000</span>
+                      <span className="db-popup-stats-val overdue">₦{outstandingAmount.toLocaleString()}</span>
                     </div>
                   </div>
 
@@ -885,65 +981,63 @@ export default function LandlordDashboard() {
                       className={`payment-subtab-btn ${paymentSubTab === "Paid" ? "active" : ""}`}
                       onClick={() => setPaymentSubTab("Paid")}
                     >
-                      Paid
+                      Paid ({paidTenants.length})
                     </button>
                     <button
                       className={`payment-subtab-btn ${paymentSubTab === "Outstanding" ? "active" : ""}`}
                       onClick={() => setPaymentSubTab("Outstanding")}
                     >
-                      Outstanding
+                      Outstanding ({overdueTenants.length})
                     </button>
                   </div>
 
                   <div className="db-popup-list">
                     {paymentSubTab === "Paid" ? (
-                      <>
-                        <div className="db-popup-item">
-                          <div className="db-popup-info">
-                            <div className="db-popup-name-row">
-                              <span className="db-popup-name">Emeka Obi</span>
-                              <span className="db-popup-status-text paid">+₦375,000</span>
-                            </div>
-                            <p className="db-popup-property">Skyline Apartments, Block 4 (Unit 4B)</p>
-                            <span className="db-popup-date">Paid via Bank Transfer • Today, 09:30 AM</span>
-                          </div>
+                      paidTenants.length === 0 ? (
+                        <div className="p-6 text-center text-ink-400 dark:text-cream-100/60">
+                          <p className="text-xs font-semibold">No collected rent payments recorded.</p>
+                          <p className="text-[11px] mt-1 opacity-70">Payments will appear here when active tenants pay rent.</p>
                         </div>
-
-                        <div className="db-popup-item">
-                          <div className="db-popup-info">
-                            <div className="db-popup-name-row">
-                              <span className="db-popup-name">Maren Maureen</span>
-                              <span className="db-popup-status-text paid">+₦150,000</span>
+                      ) : (
+                        paidTenants.map((t, idx) => {
+                          const amount = parseTenantRent(t);
+                          return (
+                            <div key={t.id || idx} className="db-popup-item">
+                              <div className="db-popup-info">
+                                <div className="db-popup-name-row">
+                                  <span className="db-popup-name">{t.name || t.tenantName}</span>
+                                  <span className="db-popup-status-text paid">+₦{amount.toLocaleString()}</span>
+                                </div>
+                                <p className="db-popup-property">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
+                                <span className="db-popup-date">Paid • {t.dueDate || "Monthly Rent"}</span>
+                              </div>
                             </div>
-                            <p className="db-popup-property">Oakwood Residency, Unit 12B</p>
-                            <span className="db-popup-date">Paid via Card • 3 days ago</span>
-                          </div>
-                        </div>
-
-                        <div className="db-popup-item">
-                          <div className="db-popup-info">
-                            <div className="db-popup-name-row">
-                              <span className="db-popup-name">Past Tenant (Adebayo)</span>
-                              <span className="db-popup-status-text refunded">-₦200,000</span>
-                            </div>
-                            <p className="db-popup-property">Lekki Gardens, Plot 14</p>
-                            <span className="db-popup-date">Refunded Security Deposit • Jan 5, 2026</span>
-                          </div>
-                        </div>
-                      </>
+                          );
+                        })
+                      )
                     ) : (
-                      <>
-                        <div className="db-popup-item">
-                          <div className="db-popup-info">
-                            <div className="db-popup-name-row">
-                              <span className="db-popup-name">Ryan Herwinds</span>
-                              <span className="db-popup-status-text overdue">₦200,000</span>
-                            </div>
-                            <p className="db-popup-property">Lekki Gardens, Plot 14</p>
-                            <span className="db-popup-date overdue">Rent Overdue since July 15, 2026</span>
-                          </div>
+                      overdueTenants.length === 0 ? (
+                        <div className="p-6 text-center text-ink-400 dark:text-cream-100/60">
+                          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">All tenant payments are up to date! 🎉</p>
+                          <p className="text-[11px] mt-1 opacity-70">No outstanding rent balances currently.</p>
                         </div>
-                      </>
+                      ) : (
+                        overdueTenants.map((t, idx) => {
+                          const amount = parseTenantRent(t);
+                          return (
+                            <div key={t.id || idx} className="db-popup-item">
+                              <div className="db-popup-info">
+                                <div className="db-popup-name-row">
+                                  <span className="db-popup-name">{t.name || t.tenantName}</span>
+                                  <span className="db-popup-status-text overdue">₦{amount.toLocaleString()}</span>
+                                </div>
+                                <p className="db-popup-property">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
+                                <span className="db-popup-date overdue">Rent Outstanding</span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )
                     )}
                   </div>
                 </div>
@@ -1043,22 +1137,22 @@ export default function LandlordDashboard() {
                     notifications.map((notif) => {
                       const isSuccess = notif.type === 'success';
                       const isWarning = notif.type === 'warning';
-                      const borderClass = isSuccess 
-                        ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/10" 
-                        : isWarning 
-                          ? "border-l-4 border-l-rose-500 bg-rose-50/30 dark:bg-rose-950/10" 
+                      const borderClass = isSuccess
+                        ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/10"
+                        : isWarning
+                          ? "border-l-4 border-l-rose-500 bg-rose-50/30 dark:bg-rose-950/10"
                           : "border-l-4 border-l-moss-700 dark:border-l-[#E5C583] bg-cream-50/30 dark:bg-white/5";
 
-                      const IconComponent = isSuccess 
-                        ? CheckCircle2 
-                        : isWarning 
-                          ? AlertTriangle 
+                      const IconComponent = isSuccess
+                        ? CheckCircle2
+                        : isWarning
+                          ? AlertTriangle
                           : Info;
 
-                      const iconColorClass = isSuccess 
-                        ? "text-emerald-600 dark:text-emerald-400 bg-emerald-100/40 dark:bg-emerald-950/30" 
-                        : isWarning 
-                          ? "text-rose-600 dark:text-rose-400 bg-rose-100/40 dark:bg-rose-950/30" 
+                      const iconColorClass = isSuccess
+                        ? "text-emerald-600 dark:text-emerald-400 bg-emerald-100/40 dark:bg-emerald-950/30"
+                        : isWarning
+                          ? "text-rose-600 dark:text-rose-400 bg-rose-100/40 dark:bg-rose-950/30"
                           : "text-moss-700 dark:text-[#E5C583] bg-[#E4EAE1]/50 dark:bg-white/10";
 
                       return (
@@ -1069,7 +1163,7 @@ export default function LandlordDashboard() {
                           <div className={`p-1.5 rounded-lg shrink-0 flex items-center justify-center ${iconColorClass}`}>
                             <IconComponent className="h-4 w-4" />
                           </div>
-                          
+
                           <div className="flex-1 min-w-0 pr-6">
                             <div className="flex items-baseline justify-between gap-2">
                               <span className="font-bold text-[12.5px] text-ink-900 dark:text-white truncate">{notif.title}</span>
@@ -1206,7 +1300,7 @@ export default function LandlordDashboard() {
 
                   <Button
                     variant="secondary"
-                    onClick={() => alert("Creating report parameters...")}
+                    onClick={() => triggerToast("Generating property portfolio financial report...", "info", "Report Generator")}
                     className="px-4 py-2 bg-white text-[12.5px]"
                   >
                     Create Report
@@ -1225,7 +1319,7 @@ export default function LandlordDashboard() {
                 {/* COLUMN 1: PORTFOLIO SUMMARY CARD */}
                 <div className="db-col">
                   {/* Landlord Rating Card */}
-                  <div className="pro-advantages-panel" style={{ maxWidth: "360px", width: "100%" }}>
+                  <div className="pro-advantages-panel">
                     <div className="pro-advantages-header">
                       <h4 className="pro-advantages-title">Account Rating</h4>
                       <span
@@ -1233,7 +1327,7 @@ export default function LandlordDashboard() {
                         onClick={() => setShowRatingModal(true)}
                         title="View rating reviews"
                       >
-                        ★ 4.8
+                        {ratingData.hasReviews ? `★ ${ratingData.rating}` : "New Account"}
                       </span>
                     </div>
                     <p
@@ -1241,7 +1335,9 @@ export default function LandlordDashboard() {
                       onClick={() => setShowRatingModal(true)}
                       title="Click to view tenant reviews"
                     >
-                      Based on verified tenant reviews and on-time payouts.
+                      {ratingData.hasReviews
+                        ? `Based on ${ratingData.count} verified tenant ${ratingData.count === 1 ? "review" : "reviews"} and on-time payouts.`
+                        : "No tenant reviews yet. Complete active leases to build your platform reliability score."}
                     </p>
 
                     <div className="pro-advantages-chart-row">
@@ -1256,7 +1352,7 @@ export default function LandlordDashboard() {
                     </div>
 
                     <p className="pro-advantages-footer-text">
-                      Join the top-rated landlords on Lodale.
+                      {ratingData.hasReviews ? "Join the top-rated landlords on Lodale." : "Build your landlord reputation on Lodale."}
                     </p>
                   </div>
                 </div>
@@ -1266,38 +1362,49 @@ export default function LandlordDashboard() {
                   {/* Activity / Occupancy rate bar chart */}
                   <section className="db-card activity-card tour-occupancy">
                     <div className="activity-header">
-                      <h3 className="activity-title">Monthly Activity</h3>
-                      <span className="activity-badge">Monthly logs</span>
+                      <div>
+                        <h3 className="activity-title">Weekly Activity</h3>
+                        <p className="text-[11.5px] text-ink-400 dark:text-cream-100/60 font-medium mt-0.5">
+                          Daily tenant interactions & unit occupancy
+                        </p>
+                      </div>
+                      <span className="activity-badge">Weekly logs</span>
                     </div>
 
                     <div className="activity-metric">
                       <span className="activity-val">
-                        {displayProperties.length === 0 ? "0%" : `${Math.min(100, Math.round((getActiveTenantsCount() / Math.max(1, displayProperties.length)) * 100))}%`}
+                        {displayProperties.length === 0 ? "0%" : `${occupancyRate}%`}
                       </span>
                       <span className="activity-sub">Occupancy Rate</span>
                     </div>
 
-                    {/* Bar Graph */}
+                    {/* Bar Graph - Dynamically scaled based on Occupancy Rate */}
                     <div className="activity-chart-grid">
                       {[
-                        { day: "Mon", height: "45%", highlight: false },
-                        { day: "Tue", height: "60%", highlight: false },
-                        { day: "Wed", height: "35%", highlight: false },
-                        { day: "Thu", height: "75%", highlight: false },
-                        { day: "Fri", height: "95%", highlight: true }, // Highlighted bar in yellow/green
-                        { day: "Sat", height: "50%", highlight: false },
-                        { day: "Sun", height: "40%", highlight: false },
-                      ].map((bar, index) => (
-                        <div key={index} className="activity-bar-col">
-                          <div className="activity-bar-container">
-                            <div
-                              className={`activity-bar-fill ${bar.highlight ? "highlight" : ""}`}
-                              style={{ height: bar.height }}
-                            />
+                        { day: "Mon", base: 45, highlight: false },
+                        { day: "Tue", base: 60, highlight: false },
+                        { day: "Wed", base: 35, highlight: false },
+                        { day: "Thu", base: 75, highlight: false },
+                        { day: "Fri", base: 95, highlight: true }, // Highlighted bar
+                        { day: "Sat", base: 50, highlight: false },
+                        { day: "Sun", base: 40, highlight: false },
+                      ].map((bar, index) => {
+                        const barHeight = occupancyRate === 0
+                          ? "0%"
+                          : `${Math.max(12, Math.round(bar.base * (occupancyRate / 100)))}%`;
+
+                        return (
+                          <div key={index} className="activity-bar-col">
+                            <div className="activity-bar-container">
+                              <div
+                                className={`activity-bar-fill ${bar.highlight && occupancyRate > 0 ? "highlight" : ""}`}
+                                style={{ height: barHeight }}
+                              />
+                            </div>
+                            <span className="activity-bar-label">{bar.day}</span>
                           </div>
-                          <span className="activity-bar-label">{bar.day}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </section>
                 </div>
@@ -1318,7 +1425,7 @@ export default function LandlordDashboard() {
 
                     <div className="visa-card-body">
                       <p className="visa-card-lbl">Available Balance</p>
-                      <p className="visa-card-amount">₦3,400,000</p>
+                      <p className="visa-card-amount">₦{availablePayoutBalance.toLocaleString()}</p>
                     </div>
 
                     <div className="visa-card-footer">
@@ -1564,43 +1671,41 @@ export default function LandlordDashboard() {
             </div>
 
             <h3 className="font-display text-xl font-bold text-ink-900 dark:text-white mb-1">Landlord Reviews & Ratings</h3>
-            <p className="text-[12.5px] text-ink-400 dark:text-cream-100/70 mb-5 flex items-center justify-center gap-1">
-              Overall score: <strong className="text-ink-900 dark:text-white font-bold flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> 4.8 / 5.0</strong> based on 12 verified tenant reviews.
-            </p>
+            {ratingData.hasReviews ? (
+              <p className="text-[12.5px] text-ink-400 dark:text-cream-100/70 mb-5 flex items-center justify-center gap-1">
+                Overall score: <strong className="text-ink-900 dark:text-white font-bold flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> {ratingData.rating} / 5.0</strong> based on {ratingData.count} verified tenant {ratingData.count === 1 ? "review" : "reviews"}.
+              </p>
+            ) : (
+              <p className="text-[12.5px] text-ink-400 dark:text-cream-100/70 mb-5">
+                Your account is currently rated <strong className="text-moss-700 dark:text-[#E5C583]">New</strong> with no tenant reviews yet.
+              </p>
+            )}
 
             <div className="space-y-4 text-left max-h-[300px] overflow-y-auto pr-1 border-t border-[#E4EAE1] dark:border-white/10 pt-4">
-              <div className="border-b border-[#E4EAE1]/60 dark:border-white/5 pb-3">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[13px] font-bold text-ink-900 dark:text-white">Maren Maureen</span>
-                  <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> 5.0</span>
+              {!ratingData.hasReviews ? (
+                <div className="text-center py-8 text-ink-400 dark:text-cream-100/60 space-y-2">
+                  <Star className="h-8 w-8 mx-auto text-amber-400/40" />
+                  <p className="text-xs font-semibold text-ink-800 dark:text-white">No tenant reviews yet</p>
+                  <p className="text-[11.5px] max-w-[260px] mx-auto opacity-70">
+                    When tenants submit reviews upon check-out or lease renewal, ratings will appear here.
+                  </p>
                 </div>
-                <p className="text-[12px] text-ink-600 dark:text-cream-100/80 leading-relaxed">
-                  "Ada K. is an outstanding landlord. Every maintenance request I submitted was sorted out in less than a day. Super professional and pleasant to deal with."
-                </p>
-                <span className="text-[10px] text-ink-400 dark:text-cream-100/50">Tenant since Jan 2026 • 2 weeks ago</span>
-              </div>
-
-              <div className="border-b border-[#E4EAE1]/60 dark:border-white/5 pb-3">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[13px] font-bold text-ink-900 dark:text-white">Emeka Obi</span>
-                  <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> 4.0</span>
-                </div>
-                <p className="text-[12px] text-ink-600 dark:text-cream-100/80 leading-relaxed">
-                  "Great landlord, very responsive with repairs. The property and amenities are exactly as advertised. Minor delays in unit key handover at start but overall excellent."
-                </p>
-                <span className="text-[10px] text-ink-400 dark:text-cream-100/50">Tenant since Jan 2025 • 1 month ago</span>
-              </div>
-
-              <div className="pb-1">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[13px] font-bold text-ink-900 dark:text-white">Ryan Herwinds</span>
-                  <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> 5.0</span>
-                </div>
-                <p className="text-[12px] text-ink-600 dark:text-cream-100/80 leading-relaxed">
-                  "Very simple onboarding and smooth lease renewal. Ada respects privacy and responds quickly to emergency lock checks."
-                </p>
-                <span className="text-[10px] text-ink-400 dark:text-cream-100/50">Tenant since 2024 • 3 months ago</span>
-              </div>
+              ) : (
+                ratingData.reviews.map((rev, i) => (
+                  <div key={i} className="border-b border-[#E4EAE1]/60 dark:border-white/5 pb-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[13px] font-bold text-ink-900 dark:text-white">{rev.tenantName || rev.author || "Anonymous Tenant"}</span>
+                      <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1">
+                        <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> {rev.rating || "5.0"}
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-ink-600 dark:text-cream-100/80 leading-relaxed">
+                      "{rev.comment || rev.text || "Great landlord experience."}"
+                    </p>
+                    <span className="text-[10px] text-ink-400 dark:text-cream-100/50">{rev.date || "Recent review"}</span>
+                  </div>
+                ))
+              )}
             </div>
 
             <button
@@ -1678,7 +1783,7 @@ export default function LandlordDashboard() {
                           count = rList.length;
                         }
                       }
-                    } catch (e) {}
+                    } catch (e) { }
                     return (
                       <>
                         <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> {score}{" "}
@@ -1704,7 +1809,7 @@ export default function LandlordDashboard() {
                           }
                         }
                       }
-                    } catch (e) {}
+                    } catch (e) { }
                     return "Aug 2026";
                   })()}
                 </span>

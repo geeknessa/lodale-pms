@@ -3,6 +3,7 @@ import {
   Search, Phone, Video, MoreHorizontal, Send, Paperclip, 
   Mic, Play, Pause, ChevronRight, Building2
 } from "lucide-react";
+import { triggerToast } from "../../../context/ToastContext";
 import gsap from "gsap";
 import "./Landllordchat.css";
 
@@ -102,7 +103,7 @@ export default function LandlordChat() {
         {/* Tabs */}
         <div className="lc-tabs">
           <button className="lc-tab active">Tenants</button>
-          <button className="lc-tab" onClick={() => alert("Applicants list is populated via top applications bar.")}>Applicants</button>
+          <button className="lc-tab" onClick={() => triggerToast("Applicants list is populated via the top applications bar.", "info", "Applicants Filter")}>Applicants</button>
         </div>
 
         {/* Sort & Search */}
@@ -175,10 +176,10 @@ export default function LandlordChat() {
             </div>
 
             <div className="lc-header-actions">
-              <button className="lc-header-btn" title="Phone Call" onClick={() => alert(`Calling ${activeChat.name}...`)}>
+              <button className="lc-header-btn" title="Phone Call" onClick={() => triggerToast(`Initiating direct call with ${activeChat.name}...`, "info", "Voice Call")}>
                 <Phone className="h-4.5 w-4.5" />
               </button>
-              <button className="lc-header-btn" title="Video Call" onClick={() => alert(`Starting video call with ${activeChat.name}...`)}>
+              <button className="lc-header-btn" title="Video Call" onClick={() => triggerToast(`Starting video meeting with ${activeChat.name}...`, "info", "Video Call")}>
                 <Video className="h-4.5 w-4.5" />
               </button>
               <button className="lc-header-btn" title="More Options">
@@ -216,7 +217,7 @@ export default function LandlordChat() {
                   );
                 })}
 
-                {/* Audio Waveform mock message bubble matching JPG design - only show if there are messages */}
+                {/* Audio Waveform mock message bubble */}
                 <div className="lc-bubble-wrapper incoming">
                   <img src={activeChat.avatar} alt={activeChat.name} className="lc-bubble-avatar" />
                   <div className="lc-bubble-content">
@@ -224,7 +225,6 @@ export default function LandlordChat() {
                       <button className="lc-audio-play-btn" onClick={() => setAudioPlaying(!audioPlaying)}>
                         {audioPlaying ? <Pause className="h-4 w-4 fill-white text-white" /> : <Play className="h-4 w-4 fill-white text-white ml-0.5" />}
                       </button>
-                      {/* Dynamic waveform visualization container */}
                       <div className="lc-waveform">
                         {[12, 18, 14, 25, 30, 20, 16, 22, 28, 12, 14, 20, 26, 32, 15, 10, 18, 22, 14, 20, 12, 16, 24, 18, 14, 10, 12, 16, 14, 12, 10].map((h, i) => (
                           <span 
@@ -242,12 +242,33 @@ export default function LandlordChat() {
               </>
             )}
 
+            {/* Application quick action bar if tenant */}
+            {activeChat.linkedProperty && (
+              <>
+                <div className="lc-linked-property-card">
+                  <div>
+                    <span className="lc-[#E5C583]">Linked Listing:</span>
+                    <h4 className="lc-prop-title">{activeChat.linkedProperty}</h4>
+                  </div>
+                  <span className="lc-prop-badge">Lease Active</span>
+                </div>
+
+                <div className="lc-quick-actions">
+                  <span className="lc-qa-lbl">Landlord Quick Actions:</span>
+                  <div className="lc-qa-btns">
+                    <button className="lc-qa-btn approve">Approve Lease</button>
+                    <button className="lc-qa-btn decline">Decline</button>
+                  </div>
+                </div>
+              </>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
           {/* Form input */}
           <form className="lc-input-form" onSubmit={handleSendMessage}>
-            <button type="button" className="lc-input-btn" title="Add Attachment" onClick={() => alert("Select document or image...")}>
+            <button type="button" className="lc-input-btn" title="Add Attachment" onClick={() => triggerToast("File attachment dialog ready. Select image or document.", "info", "Attach File")}>
               <Paperclip className="h-5 w-5" />
             </button>
             
@@ -259,7 +280,7 @@ export default function LandlordChat() {
               className="lc-input-field text-[13.5px]"
             />
 
-            <button type="button" className="lc-input-btn" title="Record Audio" onClick={() => alert("Recording audio note...")}>
+            <button type="button" className="lc-input-btn" title="Record Audio" onClick={() => triggerToast("Recording voice note. Release to send.", "info", "Voice Note")}>
               <Mic className="h-5 w-5" />
             </button>
             <button type="submit" className="lc-send-btn" title="Send Message">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { triggerToast } from "../context/ToastContext";
 import { ArrowLeft, Building2, BedDouble, Bath, Wrench, User, Wallet, Calendar, Sliders, PenSquare } from "lucide-react";
 import NavBar from "../components/NavBar";
 import Button from "../components/Button";
@@ -278,8 +279,9 @@ export default function PropertyDetail() {
               <div className="flex flex-col gap-2.5">
                 <Button
                   onClick={() => {
+                    const statusMsg = isAcceptingApps ? "Applications paused for this property." : "Applications active for this property.";
                     setIsAcceptingApps(!isAcceptingApps);
-                    alert(isAcceptingApps ? "Applications paused for this property." : "Applications active for this property.");
+                    triggerToast(statusMsg, "info", "Property Status");
                   }}
                   variant={isAcceptingApps ? "primary" : "secondary"}
                   className="w-full text-[12.5px] py-2.5 cursor-pointer"
@@ -288,7 +290,7 @@ export default function PropertyDetail() {
                 </Button>
 
                 <Button
-                  onClick={() => alert("Form to log a new maintenance work order is under construction.")}
+                  onClick={() => triggerToast("Form to log a new maintenance work order is under construction.", "info", "Maintenance Work Order")}
                   variant="secondary"
                   className="w-full text-[12.5px] py-2.5 gap-2 cursor-pointer"
                 >
@@ -296,7 +298,7 @@ export default function PropertyDetail() {
                 </Button>
 
                 <Button
-                  onClick={() => alert("Property edit panel is under active construction.")}
+                  onClick={() => triggerToast("Property edit panel is under active construction.", "info", "Property Specs")}
                   variant="secondary"
                   className="w-full text-[12.5px] py-2.5 gap-2 cursor-pointer"
                 >

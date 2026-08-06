@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Sparkles, Loader2, Camera, ImagePlus, Upload, Check, Clock } from "lucide-react";
+import { CheckCircle2, Sparkles, Loader2, Camera, ImagePlus, Upload, Check, Clock, AlertCircle } from "lucide-react";
 import gsap from "gsap";
 import { Logo } from "../components/Logo";
 import Input from "../components/Input";
@@ -20,6 +20,7 @@ export default function AddProperty() {
   const [occupied, setOccupied] = useState(null); // null | true | false
   const [rentCycle, setRentCycle] = useState("annual"); // "annual" | "monthly"
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formError, setFormError] = useState("");
   
   // Property picture prompt state
   const [propertyPhoto, setPropertyPhoto] = useState(PRESET_PHOTOS[0].url);
@@ -28,8 +29,9 @@ export default function AddProperty() {
 
   // Proof of ownership legal papers state
   const [docType, setDocType] = useState("Deed of Assignment");
-  const [docName, setDocName] = useState("Deed_of_Assignment_Signed.pdf");
-  const [docUploaded, setDocUploaded] = useState(true);
+  const [docName, setDocName] = useState("");
+  const [docDataUrl, setDocDataUrl] = useState("");
+  const [docUploaded, setDocUploaded] = useState(false);
 
   const fileInputRef = useRef(null);
   const docInputRef = useRef(null);
@@ -60,17 +62,53 @@ export default function AddProperty() {
     if (file) {
       setDocName(file.name);
       setDocUploaded(true);
+      setFormError("");
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        setDocDataUrl(evt.target.result);
+      };
+      reader.readAsDataURL(file);
     }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const target = e.target;
-    const address = target.elements.address.value;
-    const rent = target.elements.rent.value;
-    const bedrooms = target.elements.bedrooms.value;
+    setFormError("");
 
-    const numericRent = Number(rent.replace(/[^0-9]/g, "")) || 500000;
+    const target = e.target;
+    const address = target.elements.address?.value?.trim() || "";
+    const type = target.elements.type?.value?.trim() || "";
+    const rent = target.elements.rent?.value?.trim() || "";
+    const bedrooms = target.elements.bedrooms?.value?.trim() || "";
+
+    const numericRent = Number(rent.replace(/[^0-9]/g, ""));
+    const numericBedrooms = Number(bedrooms);
+
+    if (!address) {
+      setFormError("Property Address / Title is required.");
+      return;
+    }
+    if (!type) {
+      setFormError("Property Type is required.");
+      return;
+    }
+    if (!rent || isNaN(numericRent) || numericRent <= 0) {
+      setFormError("A valid Rent Amount is required.");
+      return;
+    }
+    if (!bedrooms || isNaN(numericBedrooms) || numericBedrooms <= 0) {
+      setFormError("Number of Bedrooms is required.");
+      return;
+    }
+    if (!docName || !docName.trim()) {
+      setFormError("Please upload your proof of ownership legal document (PDF / Image) before submitting.");
+      return;
+    }
+    if (!propertyPhoto) {
+      setFormError("Please attach a property photo before submitting.");
+      return;
+    }
+
     const ownershipDocString = `${docType} (${docName})`;
 
     const dbUserId = localStorage.getItem("db_user_id");
@@ -81,11 +119,12 @@ export default function AddProperty() {
       city: "Lagos",
       state: "Lagos",
       rent_amount: numericRent,
-      bedrooms: Number(bedrooms) || 1,
+      bedrooms: numericBedrooms,
       bathrooms: 2,
-      property_type: "apartment",
+      property_type: type,
       amenities: ["Prepaid Meter", "24/7 Security"],
       ownership_doc: ownershipDocString,
+      ownership_doc_url: docDataUrl,
       cover_image: propertyPhoto || PRESET_PHOTOS[0].url,
       ...(dbUserId ? { landlord_id: dbUserId } : {}),
     };
@@ -109,6 +148,10 @@ export default function AddProperty() {
       baths: 2,
       status: "pending_review",
       ownership_doc: ownershipDocString,
+      ownership_doc_url: docDataUrl,
+      docType: docType,
+      docName: docName,
+      docDataUrl: docDataUrl,
       amenities: ["Prepaid Meter", "24/7 Security"],
       landlord: {
         name: localStorage.getItem("username") || "Ada K.",
@@ -237,6 +280,13 @@ export default function AddProperty() {
             No agency needed — list it yourself, whether it&rsquo;s vacant or
             already has a tenant.
           </p>
+
+          {formError && (
+            <div className="mt-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs font-bold flex items-start gap-2.5">
+              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+              <span>{formError}</span>
+            </div>
+          )}
 
           <div className="mt-6 space-y-5">
             <Input

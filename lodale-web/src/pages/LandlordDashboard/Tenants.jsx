@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2 } from "lucide-react";
 import { LISTINGS } from "../../data/listings";
+import { triggerToast } from "../../context/ToastContext";
 import "./Tenants.css";
 
 export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
@@ -78,7 +79,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
   // Search & Filter logic
   const filteredTenants = tenantsList.filter((tenant) => {
     // 1. Search Query filter
-    const matchesSearch = 
+    const matchesSearch =
       tenant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tenant.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tenant.propertyTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -91,7 +92,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     if (activeFilter === "Active") return tenant.status === "active";
     if (activeFilter === "Pending") return tenant.status === "pending" || tenant.leaseStatus?.toLowerCase().includes("pending");
     if (activeFilter === "Past") return tenant.status === "past" || tenant.status === "inactive";
-    
+
     return true;
   });
 
@@ -105,7 +106,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
   const handleAddTenant = (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.propertyId) {
-      alert("Please fill in all required fields (Name, Email, and Property)");
+      triggerToast("Please fill in all required fields (Name, Email, and Property)", "warning", "Missing Fields");
       return;
     }
 
@@ -147,7 +148,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     const savedChats = localStorage.getItem("landlordChats");
     const chatsList = savedChats ? JSON.parse(savedChats) : [];
     const chatExists = chatsList.some((c) => c.name === formData.name);
-    
+
     if (!chatExists) {
       const newChat = {
         id: formData.name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
@@ -196,7 +197,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
 
     // Notify other components/tabs
     window.dispatchEvent(new Event("storage"));
-    alert(`Successfully added tenant ${formData.name}`);
+    triggerToast(`Successfully registered ${formData.name} as active tenant!`, "success", "Tenant Registered");
   };
 
   // Direct contact helper -> goes to chat tab
@@ -204,7 +205,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     // 1. Check if chat thread exists, if not create it
     const savedChats = localStorage.getItem("landlordChats");
     const chatsList = savedChats ? JSON.parse(savedChats) : [];
-    
+
     let chat = chatsList.find((c) => c.name === tenantName);
     if (!chat) {
       chat = {
@@ -238,7 +239,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     // We write to localStorage, and LandlordChat can load it on render
     localStorage.setItem("activeChatTenantName", tenantName);
     window.dispatchEvent(new Event("storage"));
-    
+
     // 3. Change tab to Chat (Tab index 3)
     setActiveTab(3);
   };
@@ -289,7 +290,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
 
       tenantsMap[propertyId] = updatedList;
       localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
-      
+
       // Close modal & reset fields
       setTenantToRate(null);
       setRating(0);
@@ -298,7 +299,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
 
       loadData();
       window.dispatchEvent(new Event("storage"));
-      alert("Lease successfully ended.");
+      triggerToast("Lease agreement successfully ended.", "info", "Lease Ended");
     } catch (error) {
       console.error("Error rating and ending lease:", error);
     }
@@ -322,7 +323,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
       localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
       loadData();
       window.dispatchEvent(new Event("storage"));
-      alert("Tenant removed successfully.");
+      triggerToast("Tenant record removed successfully.", "success", "Tenant Removed");
     } catch (e) {
       console.error("Error removing tenant:", e);
     }
@@ -367,7 +368,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
           </div>
         </div>
 
-        <button 
+        <button
           className="invite-tenant-btn"
           onClick={() => setShowAddModal(true)}
         >
@@ -390,7 +391,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
         <div className="tenants-grid tour-tenants-list">
           {filteredTenants.map((tenant) => (
             <div key={tenant.id} className="tenant-card">
-              
+
               {/* Card Header */}
               <div className="tenant-card-header">
                 <div className="tenant-card-profile">
@@ -502,11 +503,11 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
       {showAddModal && (
         <div className="tenant-modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="tenant-modal-card" onClick={(e) => e.stopPropagation()}>
-            
+
             {/* Modal Header */}
             <div className="tenant-modal-header">
               <h3 className="tenant-modal-title">Add New Tenant</h3>
-              <button 
+              <button
                 className="tenant-modal-close"
                 onClick={() => setShowAddModal(false)}
               >
@@ -518,7 +519,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
             <form onSubmit={handleAddTenant}>
               <div className="tenant-modal-body">
                 <div className="tenant-form-grid">
-                  
+
                   {/* Property Dropdown (Required) */}
                   <div className="tenant-form-group tenant-form-full">
                     <label className="tenant-form-label">Assign Property *</label>
@@ -687,11 +688,11 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
       {tenantToRate && (
         <div className="tenant-modal-overlay" onClick={() => setTenantToRate(null)}>
           <div className="tenant-modal-card" onClick={(e) => e.stopPropagation()}>
-            
+
             {/* Modal Header */}
             <div className="tenant-modal-header">
               <h3 className="tenant-modal-title">End Lease & Rate Tenant</h3>
-              <button 
+              <button
                 className="tenant-modal-close"
                 onClick={() => setTenantToRate(null)}
               >

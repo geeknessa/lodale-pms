@@ -3,6 +3,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { User, Lock, LogOut, Calendar, ChevronDown, CheckCircle2, Camera, Pencil, Sun, Moon, FileText, Send, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
+import { triggerToast } from "../../context/ToastContext";
 import "./Settings.css";
 
 export default function Settings() {
@@ -491,7 +492,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
 
   const handleSendToTenant = () => {
     if (!tenantName) {
-      alert("Please select or enter a tenant name first.");
+      triggerToast("Please select or enter a tenant name first.", "warning", "Missing Tenant");
       return;
     }
 
@@ -512,6 +513,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
     window.dispatchEvent(new Event("storage"));
 
     setSaveSuccess(true);
+    triggerToast(`Agreement successfully sent to ${tenantName} for signing!`, "success", "Agreement Sent");
     setToastMessage(`Agreement successfully sent to ${tenantName} for signing!`);
     setTimeout(() => {
       setSaveSuccess(false);
@@ -543,6 +545,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
     }
 
     setSaveSuccess(true);
+    triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
     window.dispatchEvent(new Event("storage"));
     setTimeout(() => setSaveSuccess(false), 3000);
   };
@@ -550,10 +553,10 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
   const handleSavePassword = (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      alert("New password and confirmation do not match.");
+      triggerToast("New password and confirmation do not match.", "error", "Password Mismatch");
       return;
     }
-    alert("Password updated successfully!");
+    triggerToast("Security password updated successfully!", "success", "Password Changed");
     setCurrPassword("");
     setNewPassword("");
     setConfirmPassword("");

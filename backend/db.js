@@ -100,6 +100,11 @@ export async function initDb() {
       console.log('[PostgreSQL] Seeding complete!');
     }
 
+    await client.query(`
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS ownership_doc TEXT;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS ownership_doc_url TEXT;
+    `);
+
     client.release();
   } catch (error) {
     console.error('[PostgreSQL Connection Error]:', error.message);

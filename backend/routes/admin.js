@@ -48,6 +48,8 @@ router.get('/properties/pending', async (req, res) => {
         description: p.description,
         amenities: amenitiesRes.rows.map(a => a.amenity),
         adminNotes: p.admin_notes,
+        ownershipDoc: p.ownership_doc,
+        ownershipDocUrl: p.ownership_doc_url,
       };
     }));
 
