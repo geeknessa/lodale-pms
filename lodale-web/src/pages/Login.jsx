@@ -153,8 +153,7 @@ export default function Login() {
       }
     }
 
-    // For non-admin logins, clear any leftover admin auth state
-    localStorage.removeItem("adminAuthenticated");
+    // Non-admin user login handling
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
