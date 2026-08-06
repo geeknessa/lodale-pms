@@ -216,16 +216,42 @@ export default function NavBar() {
 
           {/* Desktop Controls */}
           {isAuthenticated ? (
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-2">
               <button
-                onClick={handleDashboardNavigate}
-                className="text-[14px] font-medium text-ink-700 hover:text-ink-900 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors"
+                onClick={() => navigate("/dashboard/tenant")}
+                className={`text-[13px] font-medium rounded-lg px-2.5 py-1.5 transition-colors outline-none ${
+                  location.pathname === "/dashboard/tenant"
+                    ? "bg-moss-100 text-moss-800 font-bold dark:bg-moss-700 dark:text-white"
+                    : "text-ink-700 hover:text-ink-900 dark:text-cream-100/80 dark:hover:text-white"
+                }`}
               >
-                Dashboard
+                Tenant Dashboard
               </button>
+              <button
+                onClick={() => navigate("/dashboard/landlord")}
+                className={`text-[13px] font-medium rounded-lg px-2.5 py-1.5 transition-colors outline-none ${
+                  location.pathname.startsWith("/dashboard/landlord")
+                    ? "bg-moss-100 text-moss-800 font-bold dark:bg-moss-700 dark:text-white"
+                    : "text-ink-700 hover:text-ink-900 dark:text-cream-100/80 dark:hover:text-white"
+                }`}
+              >
+                Landlord Dashboard
+              </button>
+              {(userRole === "admin" || localStorage.getItem("adminAuthenticated") === "true") && (
+                <button
+                  onClick={() => navigate("/admin/dashboard")}
+                  className={`text-[13px] font-medium rounded-lg px-2.5 py-1.5 transition-colors outline-none ${
+                    location.pathname.startsWith("/admin")
+                      ? "bg-amber-500/20 text-amber-700 font-bold dark:bg-amber-500/30 dark:text-amber-300"
+                      : "text-amber-700 dark:text-[#E5C583] hover:underline"
+                  }`}
+                >
+                  Admin Portal
+                </button>
+              )}
               <Button
                 onClick={handleSignOut}
-                className="px-5 py-2.5 text-[14px] focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white"
+                className="px-4 py-2 text-[13px] ml-1 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white"
               >
                 Sign Out
               </Button>
@@ -309,11 +335,34 @@ export default function NavBar() {
           {isAuthenticated ? (
             <div className="flex flex-col gap-3.5 pt-3">
               <button
-                onClick={handleDashboardNavigate}
-                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 focus-visible:ring-2 focus-visible:ring-moss-600 outline-none"
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate("/dashboard/tenant");
+                }}
+                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 outline-none"
               >
-                Dashboard
+                Tenant Dashboard
               </button>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  navigate("/dashboard/landlord");
+                }}
+                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 outline-none"
+              >
+                Landlord Dashboard
+              </button>
+              {(userRole === "admin" || localStorage.getItem("adminAuthenticated") === "true") && (
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    navigate("/admin/dashboard");
+                  }}
+                  className="text-[14px] font-semibold text-amber-600 dark:text-[#E5C583] hover:underline text-left py-1 outline-none"
+                >
+                  Admin Portal
+                </button>
+              )}
               <Button
                 className="px-5 py-2.5 text-[14px]"
                 onClick={handleSignOut}

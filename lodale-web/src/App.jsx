@@ -204,7 +204,6 @@ function LandlordProtectedRoute({ children }) {
     return auth;
   });
 
-  const [userRole, setUserRole] = useState(() => localStorage.getItem("userRole"));
   const location = useLocation();
 
   useEffect(() => {
@@ -215,10 +214,8 @@ function LandlordProtectedRoute({ children }) {
         localStorage.removeItem("isAuthenticated");
         localStorage.removeItem("sessionExpiresAt");
         setIsAuthenticated(false);
-        setUserRole(null);
       } else {
         setIsAuthenticated(auth);
-        setUserRole(localStorage.getItem("userRole"));
       }
     };
 
@@ -244,12 +241,6 @@ function LandlordProtectedRoute({ children }) {
         }}
       />
     );
-  }
-
-  const activeRole = (userRole || localStorage.getItem("userRole") || "").toLowerCase().trim();
-
-  if (activeRole !== "landlord" && activeRole !== "admin") {
-    return <LandlordAccessPrompt />;
   }
 
   return children;
@@ -267,7 +258,6 @@ function TenantProtectedRoute({ children }) {
     return auth;
   });
 
-  const [userRole, setUserRole] = useState(() => localStorage.getItem("userRole"));
   const location = useLocation();
 
   useEffect(() => {
@@ -278,10 +268,8 @@ function TenantProtectedRoute({ children }) {
         localStorage.removeItem("isAuthenticated");
         localStorage.removeItem("sessionExpiresAt");
         setIsAuthenticated(false);
-        setUserRole(null);
       } else {
         setIsAuthenticated(auth);
-        setUserRole(localStorage.getItem("userRole"));
       }
     };
 
@@ -307,12 +295,6 @@ function TenantProtectedRoute({ children }) {
         }}
       />
     );
-  }
-
-  const activeRole = (userRole || localStorage.getItem("userRole") || "").toLowerCase().trim();
-
-  if (activeRole !== "tenant" && activeRole !== "admin") {
-    return <TenantAccessPrompt />;
   }
 
   return children;
