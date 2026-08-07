@@ -1,0 +1,11 @@
+{
+  "name": "lodale-pms",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix lodale-web run dev",
+    "build": "npm --prefix lodale-web run build",
+    "server": "npm --prefix backend start",
+    "dev:backend": "npm --prefix backend run dev"
+  }
+}

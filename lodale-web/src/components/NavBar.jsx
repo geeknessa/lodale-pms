@@ -20,8 +20,7 @@ export default function NavBar() {
     );
   });
   const [activeSection, setActiveSection] = useState("");
-
-
+  const userRole = localStorage.getItem("userRole") || "tenant";
 
   useEffect(() => {
     const handleAuth = () => {
@@ -117,6 +116,15 @@ export default function NavBar() {
       ? "text-moss-700 dark:text-[#E5C583] font-bold bg-moss-100/70 dark:bg-[#1C3328]/80 relative after:content-[''] after:absolute after:-bottom-1.5 after:left-2 after:right-2 after:h-[2.5px] after:bg-moss-700 dark:after:bg-[#E5C583] after:rounded-full shadow-xs"
       : "text-ink-700 dark:text-cream-100/70 hover:text-ink-900 dark:hover:text-white font-medium hover:bg-black/5 dark:hover:bg-white/5"
       }`;
+  };
+
+  const mobileLinkClass = (path, hash = "") => {
+    const active = checkIsActive(path, hash);
+    return `flex items-center justify-between text-[15px] font-medium py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-moss-600 outline-none rounded-md ${
+      active
+        ? "text-moss-700 dark:text-[#E5C583] font-bold"
+        : "text-theme-text hover:text-moss-600 dark:hover:text-white"
+    }`;
   };
 
 
