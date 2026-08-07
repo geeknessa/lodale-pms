@@ -24,7 +24,6 @@ export default function NavBar() {
     return r === "admin" || email === "admin@lodale.com" || sessionStorage.getItem("adminAuthenticated") === "true";
   });
   const [activeSection, setActiveSection] = useState("");
-  const userRole = localStorage.getItem("userRole") || "tenant";
 
   useEffect(() => {
     const handleAuth = () => {
