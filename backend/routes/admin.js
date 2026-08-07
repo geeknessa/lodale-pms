@@ -126,4 +126,38 @@ router.post('/properties/:id/review', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/admin/users
+ * Fetch all registered users from database
+ */
+router.get('/users', async (req, res) => {
+  try {
+    const userRes = await pool.query(`
+      SELECT id, first_name, last_name, email, phone_number, primary_role, id_verification_status, created_at
+      FROM users
+      ORDER BY created_at DESC
+    `);
+
+    const formatted = userRes.rows.map(u => ({
+      id: u.id,
+      name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
+      email: u.email,
+      phone: u.phone_number || '',
+      role: (u.primary_role || 'Tenant').toLowerCase().includes('landlord') ? 'Landlord' : ((u.primary_role || '').toLowerCase().includes('admin') ? 'Admin' : 'Tenant'),
+      status: 'Active',
+      joinedDate: u.created_at ? new Date(u.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      listingsCount: (u.primary_role || '').toLowerCase().includes('landlord') ? 1 : 0,
+      verifications: [
+        u.id_verification_status === 'verified' ? 'ID Verified' : 'ID Pending',
+        'Email Verified'
+      ]
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('[Admin Users Route Error]:', error);
+    res.status(500).json({ error: 'Failed to fetch registered users.' });
+  }
+});
+
 export default router;

@@ -15,12 +15,52 @@ const PRESET_PHOTOS = [
   { label: "Cozy Studio", url: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80" },
 ];
 
+const COMMON_AMENITIES = [
+  "Prepaid Meter",
+  "24/7 Security",
+  "24/7 Power / Generator",
+  "Clean Water / Borehole",
+  "Air Conditioning",
+  "Parking Space",
+  "Fitted Kitchen",
+  "POP Ceiling",
+  "Swimming Pool",
+  "Gym / Fitness Facility",
+  "Balcony",
+  "CCTV Surveillance",
+];
+
 export default function AddProperty() {
   const navigate = useNavigate();
   const [occupied, setOccupied] = useState(null); // null | true | false
   const [rentCycle, setRentCycle] = useState("annual"); // "annual" | "monthly"
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formError, setFormError] = useState("");
+
+  // Dynamic Property Specifications State
+  const [selectedAmenities, setSelectedAmenities] = useState(["Prepaid Meter", "24/7 Security"]);
+  const [customAmenityInput, setCustomAmenityInput] = useState("");
+  const [bathrooms, setBathrooms] = useState("2");
+  const [description, setDescription] = useState("");
+  const [stateName, setStateName] = useState("Lagos");
+  const [cityName, setCityName] = useState("Lagos");
+
+  const toggleAmenity = (amenity) => {
+    setSelectedAmenities((prev) =>
+      prev.includes(amenity)
+        ? prev.filter((a) => a !== amenity)
+        : [...prev, amenity]
+    );
+  };
+
+  const handleAddCustomAmenity = (e) => {
+    e.preventDefault();
+    const trimmed = customAmenityInput.trim();
+    if (trimmed && !selectedAmenities.includes(trimmed)) {
+      setSelectedAmenities((prev) => [...prev, trimmed]);
+      setCustomAmenityInput("");
+    }
+  };
   
   // Property picture prompt state
   const [propertyPhoto, setPropertyPhoto] = useState(PRESET_PHOTOS[0].url);
@@ -80,9 +120,14 @@ export default function AddProperty() {
     const type = target.elements.type?.value?.trim() || "";
     const rent = target.elements.rent?.value?.trim() || "";
     const bedrooms = target.elements.bedrooms?.value?.trim() || "";
+    const bathsVal = target.elements.bathrooms?.value?.trim() || bathrooms || "1";
+    const cityVal = target.elements.city?.value?.trim() || cityName || "Lagos";
+    const stateVal = target.elements.state?.value?.trim() || stateName || "Lagos";
+    const descVal = target.elements.description?.value?.trim() || description.trim() || "";
 
     const numericRent = Number(rent.replace(/[^0-9]/g, ""));
     const numericBedrooms = Number(bedrooms);
+    const numericBathrooms = Number(bathsVal);
 
     if (!address) {
       setFormError("Property Address / Title is required.");
@@ -100,6 +145,10 @@ export default function AddProperty() {
       setFormError("Number of Bedrooms is required.");
       return;
     }
+    if (!bathsVal || isNaN(numericBathrooms) || numericBathrooms <= 0) {
+      setFormError("Number of Bathrooms is required.");
+      return;
+    }
     if (!docName || !docName.trim()) {
       setFormError("Please upload your proof of ownership legal document (PDF / Image) before submitting.");
       return;
@@ -110,19 +159,22 @@ export default function AddProperty() {
     }
 
     const ownershipDocString = `${docType} (${docName})`;
-
     const dbUserId = localStorage.getItem("db_user_id");
+
+    const amenitiesList = selectedAmenities.length > 0 ? selectedAmenities : ["Basic Amenities"];
+    const finalDescription = descVal || `${numericBedrooms} Bedroom, ${numericBathrooms} Bathroom ${type} located at ${address}, ${cityVal}.`;
 
     const propertyPayload = {
       title: address,
+      description: finalDescription,
       address_line1: address,
-      city: "Lagos",
-      state: "Lagos",
+      city: cityVal,
+      state: stateVal,
       rent_amount: numericRent,
       bedrooms: numericBedrooms,
-      bathrooms: 2,
-      property_type: type,
-      amenities: ["Prepaid Meter", "24/7 Security"],
+      bathrooms: numericBathrooms,
+      property_type: type.toLowerCase().replace(/\s+/g, '_'),
+      amenities: amenitiesList,
       ownership_doc: ownershipDocString,
       ownership_doc_url: docDataUrl,
       cover_image: propertyPhoto || PRESET_PHOTOS[0].url,
@@ -141,18 +193,19 @@ export default function AddProperty() {
     const newListing = {
       id: address.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now(),
       title: address,
-      location: "Lagos, Nigeria",
-      price: formattedRent + "/mo",
+      description: finalDescription,
+      location: `${cityVal}, ${stateVal}`,
+      price: formattedRent + (rentCycle === "annual" ? "/yr" : "/mo"),
       image: propertyPhoto || PRESET_PHOTOS[0].url,
-      beds: Number(bedrooms),
-      baths: 2,
+      beds: numericBedrooms,
+      baths: numericBathrooms,
       status: "pending_review",
       ownership_doc: ownershipDocString,
       ownership_doc_url: docDataUrl,
       docType: docType,
       docName: docName,
       docDataUrl: docDataUrl,
-      amenities: ["Prepaid Meter", "24/7 Security"],
+      amenities: amenitiesList,
       landlord: {
         name: localStorage.getItem("username") || "Ada K.",
         score: 5.0,
@@ -291,25 +344,45 @@ export default function AddProperty() {
           <div className="mt-6 space-y-5">
             <Input
               id="address"
-              label="Address / nickname"
-              placeholder="2-Bed Flat, Lekki Phase 1"
-              required
-            />
-            <Input
-              id="type"
-              label="Property type"
-              placeholder="Apartment, duplex, etc."
+              label="Full Address / Street Location *"
+              placeholder="e.g. Admiralty Way, Lekki Phase 1"
               required
             />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                id="city"
+                label="City / Area *"
+                value={cityName}
+                onChange={(e) => setCityName(e.target.value)}
+                placeholder="e.g. Lekki, Victoria Island, Yaba, Ikeja"
+                required
+              />
+              <Input
+                id="state"
+                label="State / Region *"
+                value={stateName}
+                onChange={(e) => setStateName(e.target.value)}
+                placeholder="e.g. Lagos, Abuja, Rivers"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                id="type"
+                label="Property Type *"
+                placeholder="Apartment, duplex, villa, studio"
+                required
+              />
+
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label
                     htmlFor="rent"
                     className="block text-[13px] font-medium text-ink-700"
                   >
-                    Rent amount ({rentCycle === "annual" ? "per annum" : "per month"})
+                    Asking Rent * ({rentCycle === "annual" ? "per annum" : "per month"})
                   </label>
                   <div className="inline-flex p-0.5 bg-cream-100 border border-ink-200 rounded-md">
                     <button
@@ -344,15 +417,93 @@ export default function AddProperty() {
                   required
                 />
               </div>
+            </div>
 
-              <div>
-                <Input
-                  id="bedrooms"
-                  label="Bedrooms"
-                  type="number"
-                  placeholder="2"
-                  required
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                id="bedrooms"
+                label="Bedrooms *"
+                type="number"
+                placeholder="e.g. 2"
+                required
+              />
+              <Input
+                id="bathrooms"
+                label="Bathrooms *"
+                type="number"
+                value={bathrooms}
+                onChange={(e) => setBathrooms(e.target.value)}
+                placeholder="e.g. 2"
+                required
+              />
+            </div>
+
+            {/* Property Description */}
+            <div>
+              <label className="block text-[13px] font-medium text-ink-700 mb-1">
+                Property Description / Special Details
+              </label>
+              <textarea
+                id="description"
+                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe your property layout, unique features, or rental guidelines..."
+                className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-white border border-ink-200 text-ink-900 placeholder-ink-400 outline-none focus:border-moss-700 transition-all"
+              />
+            </div>
+
+            {/* PROPERTY AMENITIES SELECTION SECTION */}
+            <div className="rounded-xl border border-moss-700/20 bg-moss-700/[0.03] p-5">
+              <label className="block text-[13px] font-bold text-ink-900 mb-2 flex items-center gap-1.5">
+                <Sparkles className="h-4 w-4 text-moss-700" />
+                <span>Property Amenities & Features *</span>
+              </label>
+              <p className="text-[12px] text-ink-700 mb-3 leading-relaxed">
+                Select available building utilities or type custom features to highlight for prospective tenants.
+              </p>
+
+              <div className="flex flex-wrap gap-2 mb-3">
+                {COMMON_AMENITIES.map((amenity) => {
+                  const isSelected = selectedAmenities.includes(amenity);
+                  return (
+                    <button
+                      key={amenity}
+                      type="button"
+                      onClick={() => toggleAmenity(amenity)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer border ${isSelected
+                        ? "bg-moss-700 text-white border-moss-700 shadow-xs"
+                        : "bg-white text-ink-800 border-ink-200 hover:border-moss-700"
+                        }`}
+                    >
+                      {isSelected ? "✓ " : "+ "}
+                      {amenity}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={customAmenityInput}
+                  onChange={(e) => setCustomAmenityInput(e.target.value)}
+                  placeholder="Add custom amenity (e.g. Jacuzzi, Smart Lock)"
+                  className="flex-1 px-3 py-2 text-xs rounded-lg bg-white border border-ink-200 text-ink-900 outline-none"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddCustomAmenity(e);
+                    }
+                  }}
                 />
+                <button
+                  type="button"
+                  onClick={handleAddCustomAmenity}
+                  className="px-4 py-2 rounded-lg bg-moss-700 text-white font-bold text-xs hover:bg-moss-800 transition-all cursor-pointer"
+                >
+                  Add
+                </button>
               </div>
             </div>
 

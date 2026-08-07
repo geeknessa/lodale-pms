@@ -13,22 +13,22 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState("profile"); // profile | password
   const [gender, setGender] = useState("male"); // male | female
 
-  // Landlord Name splitting
+  // Landlord Name splitting with per-tab sessionStorage priority
   const [userProfile, setUserProfile] = useState(() => {
-    const raw = localStorage.getItem("currentUserProfile");
+    const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
     if (raw) {
       try {
         return JSON.parse(raw);
       } catch (e) { }
     }
-    const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
     const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    const username = storedName || localStorage.getItem("username") || "";
+    const username = sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "";
     const parts = username.split(" ");
     return {
       firstName: parts[0] || "",
       lastName: parts.slice(1).join(" ") || "",
-      email: localStorage.getItem("lastLoggedInEmail") || "",
+      email: sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "",
       phone: "",
       address: "",
       dob: "",
@@ -42,12 +42,12 @@ export default function Settings() {
   
   // Scoped helper to define landlord fullName cleanly
   const getFullName = () => {
-    const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
     const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    return `${firstName} ${lastName}`.trim() || storedName || localStorage.getItem("username") || "Landlord User";
+    return `${firstName} ${lastName}`.trim() || sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "Landlord User";
   };
   const fullName = getFullName();
-  const [email] = useState(userProfile.email || localStorage.getItem("lastLoggedInEmail") || "");
+  const [email] = useState(userProfile.email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "");
   const [address, setAddress] = useState(userProfile.address || "");
   const [phone, setPhone] = useState(userProfile.phone || "");
   const [dob, setDob] = useState(userProfile.dob || "");

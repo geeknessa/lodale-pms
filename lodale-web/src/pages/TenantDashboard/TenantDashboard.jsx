@@ -184,7 +184,9 @@ export default function TenantDashboard() {
 
   // Retrieve username with fallback
   const [username, setUsername] = useState(() => {
-    const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+    const sessName = sessionStorage.getItem("username");
+    if (sessName) return sessName;
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
     const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
     return storedName || localStorage.getItem("username") || "Tunde";
   });
@@ -203,28 +205,35 @@ export default function TenantDashboard() {
 
   // Tenant avatar state (uses User icon by default until user uploads custom photo)
   const [tenantAvatar, setTenantAvatar] = useState(() => {
-    const emailKey = localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
     }
-    const globalSaved = localStorage.getItem("tenantAvatarUrl");
+    const globalSaved = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
     if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
     return "";
   });
 
   useEffect(() => {
-    const handleStorageUpdate = () => {
-      const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
-      const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-      setUsername(storedName || localStorage.getItem("username") || "Tunde");
+    const handleStorageUpdate = (e) => {
+      const sessEmail = sessionStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+      // If this tab is locked to a specific logged-in email, ignore storage changes for other emails
+      if (sessEmail && e?.key === "lastLoggedInEmail" && e?.newValue?.toLowerCase() !== sessEmail) {
+        return;
+      }
+      const emailKey = sessEmail || localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+      const storedName = sessionStorage.getItem("username") || (emailKey ? localStorage.getItem("username_" + emailKey) : null);
+      if (storedName) {
+        setUsername(storedName);
+      }
 
       let updated = null;
       if (emailKey) {
         updated = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       }
       if (!updated) {
-        updated = localStorage.getItem("tenantAvatarUrl");
+        updated = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
       }
       if (updated) {
         setTenantAvatar(updated);
@@ -1238,7 +1247,7 @@ export default function TenantDashboard() {
         {/* COLUMN 1: LEFT NAVIGATION SIDEBAR */}
         <aside className="tenant-sidebar">
           <div className="sidebar-top-group">
-            <div className="sidebar-logo-mark mb-6">
+            <div className="sidebar-logo-mark mb-6 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate("/explore")} title="Go to Public Guest Dashboard">
               <LogoMark className="h-9 w-9" />
             </div>
 
@@ -1285,7 +1294,13 @@ export default function TenantDashboard() {
             <div className="db-sub-header-row">
               <div className="db-page-header tour-welcome">
                 <div className="db-breadcrumb">
-                  <span>Home Page</span>
+                  <span
+                    className="cursor-pointer hover:underline hover:opacity-80 transition-all text-moss-700 dark:text-[#E5C583]"
+                    onClick={() => navigate("/explore")}
+                    title="Go to Public Guest Dashboard"
+                  >
+                    Home Page
+                  </span>
                   <span>→</span>
                   <span className="db-breadcrumb-active">Dashboard</span>
                 </div>
