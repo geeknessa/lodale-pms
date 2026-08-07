@@ -17,6 +17,18 @@ export const adminService = {
   },
 
   /**
+   * Fetch all registered users
+   */
+  async getUsers() {
+    try {
+      return await apiClient('/admin/users');
+    } catch (error) {
+      console.warn('[AdminService] Failed to fetch users:', error.message);
+      return [];
+    }
+  },
+
+  /**
    * Execute admin review decision (approve, reject, request_info)
    */
   async reviewProperty(propertyId, action, notes = '') {

@@ -136,13 +136,20 @@ export default function Login() {
       const cleanPassword = password.trim();
 
       if (cleanUsername === KNOWN_ADMIN.username && cleanPassword === KNOWN_ADMIN.password) {
+        sessionStorage.setItem("isAuthenticated", "true");
+        sessionStorage.setItem("userRole", "admin");
+        sessionStorage.setItem("adminAuthenticated", "true");
+        sessionStorage.setItem("lastLoggedInEmail", "admin@lodale.com");
+        sessionStorage.setItem("username", "System Admin");
+        sessionStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
+
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
         localStorage.removeItem("explicitAdminSignOut");
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("userRole", "admin");
         localStorage.setItem("adminAuthenticated", "true");
-        localStorage.setItem("lastLoggedInEmail", "admin");
+        localStorage.setItem("lastLoggedInEmail", "admin@lodale.com");
         localStorage.setItem("username", "System Admin");
         localStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
         navigate("/admin/dashboard");
@@ -165,6 +172,13 @@ export default function Login() {
         const userRole = res.user.primary_role || "tenant";
         const userFullName = `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "User";
 
+        sessionStorage.setItem("isAuthenticated", "true");
+        sessionStorage.setItem("userRole", userRole);
+        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
+        sessionStorage.setItem("lastLoggedInPassword", cleanPassword);
+        sessionStorage.setItem("username", userFullName);
+        sessionStorage.setItem("db_user_id", res.user.id);
+
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
         localStorage.setItem("isAuthenticated", "true");
@@ -186,8 +200,28 @@ export default function Login() {
           location: "",
           postalCode: "",
         };
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
+        sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
         localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
         localStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
+
+        const userRecord = {
+          id: res.user.id || "usr-" + Math.floor(Math.random() * 100000),
+          name: userFullName,
+          email: cleanEmail,
+          phone: res.user.phone_number || "",
+          role: userRole,
+          username: userFullName,
+          profile: profileObj
+        };
+        localStorage.setItem("registeredUser_" + cleanEmail, JSON.stringify(userRecord));
+        try {
+          const existingStr = localStorage.getItem("registeredUsers");
+          let existing = existingStr ? JSON.parse(existingStr) : [];
+          existing = existing.filter(u => u && u.email && u.email.toLowerCase() !== cleanEmail);
+          existing.push(userRecord);
+          localStorage.setItem("registeredUsers", JSON.stringify(existing));
+        } catch (e) {}
 
         navigate(`/dashboard/${userRole}`);
         return;
@@ -239,6 +273,13 @@ export default function Login() {
       const userRole = registeredUser?.role || localStorage.getItem("userRole") || "tenant";
       const userFullName = registeredUser?.username || localStorage.getItem("username") || "User";
 
+      sessionStorage.setItem("isAuthenticated", "true");
+      sessionStorage.setItem("userRole", userRole);
+      sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
+      sessionStorage.setItem("lastLoggedInPassword", expectedPassword || cleanPassword);
+      sessionStorage.setItem("username", userFullName);
+      sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
+
       localStorage.removeItem("failedLoginAttempts");
       localStorage.removeItem("loginLockoutUntil");
       localStorage.removeItem("explicitAdminSignOut");
@@ -252,6 +293,7 @@ export default function Login() {
 
       const savedProfile = localStorage.getItem("userProfile_" + cleanEmail);
       if (savedProfile) {
+        sessionStorage.setItem("currentUserProfile", savedProfile);
         localStorage.setItem("currentUserProfile", savedProfile);
       } else {
         const fallbackProf = registeredUser?.profile || {
@@ -265,6 +307,7 @@ export default function Login() {
           location: "",
           postalCode: "",
         };
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(fallbackProf));
         localStorage.setItem("currentUserProfile", JSON.stringify(fallbackProf));
       }
 

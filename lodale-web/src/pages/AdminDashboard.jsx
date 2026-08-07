@@ -275,7 +275,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function loadAdminData() {
-      // 1. Load Pending / Local Properties
+      // 1. Load Pending / Local Properties from API + LocalStorage scan
       let apiPending = [];
       try {
         apiPending = await adminService.getPendingProperties();
@@ -286,55 +286,141 @@ export default function AdminDashboard() {
       let localProps = [];
       try {
         const saved = localStorage.getItem("properties");
-        if (saved) localProps = JSON.parse(saved);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) localProps.push(...parsed);
+        }
+      } catch (err) {}
+
+      // Scan localStorage for any extra property key
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key !== "properties" && (key.startsWith("properties_") || key.startsWith("landlordProperties_") || key.includes("property"))) {
+            if (key === "propertyTenants") continue;
+            const raw = localStorage.getItem(key);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) {
+                localProps.push(...parsed);
+              } else if (parsed && parsed.id && parsed.title) {
+                localProps.push(parsed);
+              }
+            }
+          }
+        }
       } catch (err) {}
 
       setListings((prev) => {
         const existingMap = new Map(prev.map(l => [l.id, l]));
 
         localProps.forEach((p) => {
-          if (!existingMap.has(p.id)) {
-            existingMap.set(p.id, {
-              ...p,
-              status: p.status === 'pending_review' ? 'Pending Approval' : (p.status || 'Pending Approval'),
-              ownershipDoc: p.ownership_doc || p.ownershipDoc || 'Deed of Assignment',
-              ownershipDocUrl: p.ownership_doc_url || p.ownershipDocUrl || p.docDataUrl,
-              docName: p.docName || p.ownership_doc || 'Legal_Document.pdf',
-              docDataUrl: p.docDataUrl || p.ownership_doc_url,
-              deedVerified: true,
-              type: p.property_type || p.type || 'Apartment',
-              rent: p.price || (p.rent_amount ? `₦${Number(p.rent_amount).toLocaleString()}/yr` : '₦2,500,000/yr'),
-              landlord: p.landlord || { name: 'Ada K.', score: 5.0, reviews: 1 }
-            });
-          }
+          if (!p || !p.id) return;
+          const formattedProp = {
+            ...p,
+            status: p.status === 'pending_review' ? 'Pending Approval' : (p.status || 'Pending Approval'),
+            ownershipDoc: p.ownership_doc || p.ownershipDoc || 'Deed of Assignment',
+            ownershipDocUrl: p.ownership_doc_url || p.ownershipDocUrl || p.docDataUrl,
+            docName: p.docName || p.ownership_doc || 'Legal_Document.pdf',
+            docDataUrl: p.docDataUrl || p.ownership_doc_url,
+            deedVerified: true,
+            type: p.property_type || p.type || 'Apartment',
+            rent: p.price || (p.rent_amount ? `₦${Number(p.rent_amount).toLocaleString()}/yr` : '₦2,500,000/yr'),
+            landlord: p.landlord || { name: 'Ada K.', score: 5.0, reviews: 1 }
+          };
+          existingMap.set(p.id, formattedProp);
         });
 
         apiPending.forEach((p) => {
-          if (!existingMap.has(p.id)) {
-            existingMap.set(p.id, {
-              ...p,
-              status: 'Pending Approval',
-              ownershipDoc: p.ownershipDoc || p.ownership_doc || 'Deed of Assignment',
-              ownershipDocUrl: p.ownershipDocUrl || p.ownership_doc_url,
-              docName: p.docName || p.ownership_doc || 'Legal_Document.pdf',
-              docDataUrl: p.docDataUrl || p.ownership_doc_url,
-              deedVerified: true,
-              type: p.property_type || 'Apartment',
-              rent: `₦${Number(p.rent_amount || 2500000).toLocaleString()}/yr`,
-              landlord: p.landlord || { name: 'Ada K.', score: 5.0, reviews: 1 }
-            });
-          }
+          if (!p || !p.id) return;
+          const formattedProp = {
+            ...p,
+            status: 'Pending Approval',
+            ownershipDoc: p.ownershipDoc || p.ownership_doc || 'Deed of Assignment',
+            ownershipDocUrl: p.ownershipDocUrl || p.ownership_doc_url,
+            docName: p.docName || p.ownership_doc || 'Legal_Document.pdf',
+            docDataUrl: p.docDataUrl || p.ownership_doc_url,
+            deedVerified: true,
+            type: p.property_type || 'Apartment',
+            rent: `₦${Number(p.rent_amount || 2500000).toLocaleString()}/yr`,
+            landlord: p.landlord || { name: 'Ada K.', score: 5.0, reviews: 1 }
+          };
+          existingMap.set(p.id, formattedProp);
         });
 
         return Array.from(existingMap.values());
       });
 
-      // 2. Load Registered Users & Landlords
-      let registeredUsers = [];
+      // 2. Load Registered Users from Backend API + LocalStorage Scan
+      let apiUsers = [];
+      try {
+        apiUsers = await adminService.getUsers();
+      } catch (err) {
+        console.warn("Backend API users fallback:", err);
+      }
+
+      // Collect all users from localStorage (registeredUsers array + registeredUser_* keys + userProfile_* keys)
+      let localUsers = [];
       try {
         const savedUsers = localStorage.getItem("registeredUsers");
-        if (savedUsers) registeredUsers = JSON.parse(savedUsers);
-      } catch (err) {}
+        if (savedUsers) {
+          const parsed = JSON.parse(savedUsers);
+          if (Array.isArray(parsed)) localUsers.push(...parsed);
+        }
+      } catch (e) {}
+
+      // Scan localStorage for any registeredUser_, userProfile_, or username_ key
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key) {
+            if (key.startsWith("registeredUser_") || key.startsWith("userProfile_")) {
+              const raw = localStorage.getItem(key);
+              if (raw) {
+                const uObj = JSON.parse(raw);
+                if (uObj && (uObj.email || key.includes("@"))) {
+                  localUsers.push({
+                    email: uObj.email || key.replace(/^registeredUser_|^userProfile_/, ""),
+                    name: uObj.name || uObj.username || `${uObj.firstName || ""} ${uObj.lastName || ""}`.trim() || uObj.email,
+                    phone: uObj.phone || uObj.profile?.phone || "",
+                    role: uObj.role || uObj.profile?.role || "Tenant",
+                    id: uObj.id
+                  });
+                }
+              }
+            } else if (key.startsWith("username_")) {
+              const uEmail = key.replace("username_", "").trim();
+              const uName = localStorage.getItem(key);
+              if (uEmail && uEmail.includes("@")) {
+                localUsers.push({
+                  email: uEmail,
+                  name: uName || uEmail,
+                  role: "Tenant"
+                });
+              }
+            }
+          }
+        }
+      } catch (e) {}
+
+      // Scan propertyTenants map for tenants registered by landlords
+      try {
+        const savedPropTenants = localStorage.getItem("propertyTenants");
+        if (savedPropTenants) {
+          const parsedObj = JSON.parse(savedPropTenants);
+          Object.values(parsedObj).flat().forEach((t) => {
+            if (t && (t.email || t.name)) {
+              localUsers.push({
+                email: t.email || `${t.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@tenant.lodale.com`,
+                name: t.name,
+                phone: t.phone || "",
+                role: "Tenant",
+                id: t.id
+              });
+            }
+          });
+        }
+      } catch (e) {}
 
       const activeUsername = localStorage.getItem("username");
       const activeEmail = localStorage.getItem("lastLoggedInEmail");
@@ -343,16 +429,25 @@ export default function AdminDashboard() {
       setUsers((prev) => {
         const existingMap = new Map(prev.map((u) => [u.email?.toLowerCase(), u]));
 
-        // Add from registeredUsers list
-        registeredUsers.forEach((r) => {
+        // Add users fetched from Database API
+        apiUsers.forEach((u) => {
+          if (u && u.email) {
+            existingMap.set(u.email.toLowerCase(), u);
+          }
+        });
+
+        // Add from localUsers list
+        localUsers.forEach((r) => {
           if (r && r.email) {
             const emailKey = r.email.toLowerCase();
+            const userRole = (r.role || r.profile?.role || "Tenant").toLowerCase();
+            const formattedRole = userRole.includes("landlord") ? "Landlord" : (userRole.includes("admin") ? "Admin" : "Tenant");
+            const nameStr = r.name || r.username || (r.profile ? `${r.profile.firstName || ''} ${r.profile.lastName || ''}`.trim() : null) || "Registered User";
+
             if (!existingMap.has(emailKey)) {
-              const userRole = (r.role || r.profile?.role || "Landlord").toLowerCase();
-              const formattedRole = userRole.includes("landlord") ? "Landlord" : "Tenant";
               existingMap.set(emailKey, {
                 id: r.id || "usr-" + Math.floor(Math.random() * 100000),
-                name: r.name || r.username || r.profile?.name || "Registered User",
+                name: nameStr,
                 email: r.email,
                 phone: r.phone || r.profile?.phone || "",
                 role: formattedRole,
@@ -361,6 +456,14 @@ export default function AdminDashboard() {
                 listingsCount: formattedRole === "Landlord" ? 1 : 0,
                 verifications: ["ID Verified", "Email Verified"],
               });
+            } else {
+              const existing = existingMap.get(emailKey);
+              if (nameStr && nameStr !== "Registered User" && existing.name === "Registered User") {
+                existing.name = nameStr;
+              }
+              if (r.phone && !existing.phone) {
+                existing.phone = r.phone;
+              }
             }
           }
         });
@@ -406,7 +509,11 @@ export default function AdminDashboard() {
 
     loadAdminData();
     window.addEventListener("storage", loadAdminData);
-    return () => window.removeEventListener("storage", loadAdminData);
+    window.addEventListener("focus", loadAdminData);
+    return () => {
+      window.removeEventListener("storage", loadAdminData);
+      window.removeEventListener("focus", loadAdminData);
+    };
   }, []);
 
   // Filters & Search
@@ -789,7 +896,7 @@ export default function AdminDashboard() {
             {/* Top Logo Container */}
             <div className="p-4 border-b border-[#3A5A40] dark:border-[#262626] flex items-center justify-between">
               <div className="flex flex-col">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate("/explore")} title="Go to Public Guest Dashboard">
                   <Logo variant="white" className="scale-90 origin-left" />
                 </div>
               </div>

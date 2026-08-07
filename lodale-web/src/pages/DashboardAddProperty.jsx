@@ -16,11 +16,50 @@ const PRESET_PHOTOS = [
   { label: "Cozy Studio", url: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80" },
 ];
 
+const COMMON_AMENITIES = [
+  "Prepaid Meter",
+  "24/7 Security",
+  "24/7 Power / Generator",
+  "Clean Water / Borehole",
+  "Air Conditioning",
+  "Parking Space",
+  "Fitted Kitchen",
+  "POP Ceiling",
+  "Swimming Pool",
+  "Gym / Fitness Facility",
+  "Balcony",
+  "CCTV Surveillance",
+];
+
 export default function DashboardAddProperty() {
   const navigate = useNavigate();
   const [occupied, setOccupied] = useState(null); // null | true | false
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formError, setFormError] = useState("");
+
+  // Dynamic Property Specifications State
+  const [selectedAmenities, setSelectedAmenities] = useState(["Prepaid Meter", "24/7 Security"]);
+  const [customAmenityInput, setCustomAmenityInput] = useState("");
+  const [bathrooms, setBathrooms] = useState("2");
+  const [description, setDescription] = useState("");
+  const [stateName, setStateName] = useState("Lagos");
+
+  const toggleAmenity = (amenity) => {
+    setSelectedAmenities((prev) =>
+      prev.includes(amenity)
+        ? prev.filter((a) => a !== amenity)
+        : [...prev, amenity]
+    );
+  };
+
+  const handleAddCustomAmenity = (e) => {
+    e.preventDefault();
+    const trimmed = customAmenityInput.trim();
+    if (trimmed && !selectedAmenities.includes(trimmed)) {
+      setSelectedAmenities((prev) => [...prev, trimmed]);
+      setCustomAmenityInput("");
+    }
+  };
 
   // Property picture prompt state
   const [propertyPhoto, setPropertyPhoto] = useState(PRESET_PHOTOS[0].url);
@@ -110,12 +149,16 @@ export default function DashboardAddProperty() {
     const target = e.target;
     const address = target.elements.address?.value?.trim() || "";
     const city = target.elements.city?.value?.trim() || "";
+    const stateVal = target.elements.state?.value?.trim() || stateName || "Lagos";
     const type = target.elements.type?.value?.trim() || "";
     const rent = target.elements.rent?.value?.trim() || "";
     const bedrooms = target.elements.bedrooms?.value?.trim() || "";
+    const bathsVal = target.elements.bathrooms?.value?.trim() || bathrooms || "1";
+    const descVal = target.elements.description?.value?.trim() || description.trim() || "";
 
     const numericRent = Number(rent.replace(/[^0-9]/g, ""));
     const numericBedrooms = Number(bedrooms);
+    const numericBathrooms = Number(bathsVal);
 
     if (!address) {
       setFormError("Property Address / Street Location is required.");
@@ -137,6 +180,10 @@ export default function DashboardAddProperty() {
       setFormError("Number of Bedrooms is required.");
       return;
     }
+    if (!bathsVal || isNaN(numericBathrooms) || numericBathrooms <= 0) {
+      setFormError("Number of Bathrooms is required.");
+      return;
+    }
     if (!docName || !docName.trim()) {
       setFormError("Please upload your proof of ownership legal document (PDF / Image) before submitting.");
       return;
@@ -149,16 +196,20 @@ export default function DashboardAddProperty() {
     const ownershipDocString = `${docType} (${docName})`;
     const dbUserId = localStorage.getItem("db_user_id");
 
+    const amenitiesList = selectedAmenities.length > 0 ? selectedAmenities : ["Basic Amenities"];
+    const finalDescription = descVal || `${numericBedrooms} Bedroom, ${numericBathrooms} Bathroom ${type} located at ${address}, ${city}.`;
+
     const propertyPayload = {
       title: address,
+      description: finalDescription,
       address_line1: address,
       city: city,
-      state: "Lagos",
+      state: stateVal,
       rent_amount: numericRent,
       bedrooms: numericBedrooms,
-      bathrooms: 2,
-      property_type: type,
-      amenities: ["Prepaid Meter", "24/7 Security"],
+      bathrooms: numericBathrooms,
+      property_type: type.toLowerCase().replace(/\s+/g, '_'),
+      amenities: amenitiesList,
       ownership_doc: ownershipDocString,
       ownership_doc_url: docDataUrl,
       cover_image: propertyPhoto || PRESET_PHOTOS[0].url,
@@ -177,18 +228,19 @@ export default function DashboardAddProperty() {
     const newListing = {
       id: address.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now(),
       title: address,
-      location: `${city}, Nigeria`,
+      description: finalDescription,
+      location: `${city}, ${stateVal}`,
       price: formattedRent + (rentCycle === "annual" ? "/yr" : "/mo"),
       image: propertyPhoto || PRESET_PHOTOS[0].url,
-      beds: Number(bedrooms),
-      baths: 2,
+      beds: numericBedrooms,
+      baths: numericBathrooms,
       status: "pending_review",
       ownership_doc: ownershipDocString,
       ownership_doc_url: docDataUrl,
       docType: docType,
       docName: docName,
       docDataUrl: docDataUrl,
-      amenities: ["Prepaid Meter", "24/7 Security"],
+      amenities: amenitiesList,
       landlord: {
         name: localStorage.getItem("username") || "Ada K.",
         score: 5.0,
@@ -218,64 +270,44 @@ export default function DashboardAddProperty() {
           { scale: 0, rotation: -45, opacity: 0 },
           { scale: 1, rotation: 0, opacity: 1, duration: 0.7, ease: "back.out(1.7)", delay: 0.3 }
         );
-        gsap.to(checkIconRef.current, {
-          scale: 1.05,
-          duration: 1,
-          repeat: -1,
-          yoyo: true,
-          ease: "sine.inOut",
-          delay: 1
-        });
       }
 
       if (textContainerRef.current) {
-        gsap.fromTo(textContainerRef.current.children,
+        gsap.fromTo(textContainerRef.current,
           { y: 20, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.6, stagger: 0.15, ease: "power2.out", delay: 0.6 }
+          { y: 0, opacity: 1, duration: 0.5, delay: 0.5 }
         );
       }
-
-      const timer = setTimeout(() => {
-        gsap.to(successOverlayRef.current, {
-          opacity: 0,
-          duration: 0.4,
-          ease: "power2.inOut",
-          onComplete: () => {
-            navigate("/dashboard/landlord");
-          }
-        });
-      }, 3200);
-
-      return () => clearTimeout(timer);
     }
-  }, [isSubmitted, navigate]);
+  }, [isSubmitted]);
 
   if (isSubmitted) {
     return (
-      <div ref={successOverlayRef} className="dap-success-screen">
-        <div className="dap-success-glow-1" />
-        <div className="dap-success-glow-2" />
-
-        <div className="dap-success-inner">
-          <div ref={checkIconRef} className="dap-success-icon-ring">
-            <CheckCircle2 className="check" />
-            <div className="dap-success-sparkle">
-              <Sparkles style={{ animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite" }} />
-            </div>
+      <div ref={successOverlayRef} className="dap-success-overlay">
+        <div className="dap-success-card">
+          <div ref={checkIconRef} className="dap-success-icon-wrap">
+            <CheckCircle2 style={{ height: 48, width: 48 }} />
           </div>
 
-          <div ref={textContainerRef} className="dap-success-texts">
-            <h1 className="dap-success-heading text-2xl font-bold text-white mb-2">Sent for Admin Review!</h1>
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-full font-bold text-xs mb-3">
-              <Clock className="h-3.5 w-3.5 text-amber-300" />
-              <span>Status: Pending Review</span>
+          <div ref={textContainerRef}>
+            <div className="dap-sparkle-tag">
+              <Sparkles style={{ height: 14, width: 14 }} />
+              Pending Admin Review
             </div>
-            <p className="dap-success-body text-cream-100/90 text-xs leading-relaxed max-w-sm mx-auto mb-4">
-              Your property listing and proof of ownership legal documents have been enqueued for Admin review. Once reviewed, your listing status will update to <strong>Approved &amp; Live</strong>, <strong>Rejected</strong> (with reason), or <strong>Info Requested</strong> on your Dashboard.
+
+            <h2 className="dap-success-title">Property Submitted!</h2>
+            <p className="dap-success-desc">
+              Your property registration has been queued for verification. Once approved by the system admin, it will go live on the tenant search portal.
             </p>
-            <div className="dap-success-loader-row">
-              <Loader2 style={{ animation: "spin 1s linear infinite" }} />
-              <span className="dap-success-loader-lbl">Redirecting to Landlord Dashboard...</span>
+
+            <div className="dap-success-actions">
+              <Button
+                variant="primary"
+                onClick={() => navigate("/dashboard/landlord")}
+                className="w-full flex items-center justify-center gap-2 py-3 cursor-pointer"
+              >
+                Go to Landlord Control Panel
+              </Button>
             </div>
           </div>
         </div>
@@ -342,15 +374,25 @@ export default function DashboardAddProperty() {
                   required
                 />
                 <Input
-                  id="type"
-                  label="Property Type *"
-                  placeholder="e.g. Apartment, Duplex, Villa, Studio"
+                  id="state"
+                  label="State / Region *"
+                  value={stateName}
+                  onChange={(e) => setStateName(e.target.value)}
+                  placeholder="e.g. Lagos, Abuja, Rivers"
                   light={false}
                   required
                 />
               </div>
 
               <div className="dap-grid-2">
+                <Input
+                  id="type"
+                  label="Property Type *"
+                  placeholder="e.g. Apartment, Duplex, Villa, Studio"
+                  light={false}
+                  required
+                />
+
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[12px] font-bold text-ink-900 dark:text-white">Asking Rent *</label>
@@ -384,15 +426,96 @@ export default function DashboardAddProperty() {
                     required
                   />
                 </div>
+              </div>
 
+              <div className="dap-grid-2">
                 <Input
                   id="bedrooms"
                   label="Bedrooms *"
                   type="number"
-                  placeholder="2"
+                  placeholder="e.g. 2"
                   light={false}
                   required
                 />
+                <Input
+                  id="bathrooms"
+                  label="Bathrooms *"
+                  type="number"
+                  value={bathrooms}
+                  onChange={(e) => setBathrooms(e.target.value)}
+                  placeholder="e.g. 2"
+                  light={false}
+                  required
+                />
+              </div>
+
+              {/* Property Description */}
+              <div>
+                <label className="block text-[12px] font-bold text-ink-900 dark:text-white mb-1">
+                  Property Description / Special Details
+                </label>
+                <textarea
+                  id="description"
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe your property layout, unique features, or rental guidelines..."
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 text-ink-900 dark:text-white placeholder-ink-400 dark:placeholder-cream-100/40 outline-none focus:border-moss-600 dark:focus:border-[#E5C583] transition-all"
+                />
+              </div>
+
+              {/* PROPERTY AMENITIES SELECTION SECTION */}
+              <div className="rounded-xl border border-[#3A5A40]/30 dark:border-white/10 bg-[#3A5A40]/5 dark:bg-white/5 p-5 animate-form-field">
+                <label className="block text-[13px] font-bold text-ink-900 dark:text-white mb-2 flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
+                  <span>Property Amenities & Features *</span>
+                </label>
+                <p className="text-[12px] text-ink-700 dark:text-cream-100/70 mb-3 leading-relaxed">
+                  Select available building utilities or type custom features to highlight for prospective tenants.
+                </p>
+
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {COMMON_AMENITIES.map((amenity) => {
+                    const isSelected = selectedAmenities.includes(amenity);
+                    return (
+                      <button
+                        key={amenity}
+                        type="button"
+                        onClick={() => toggleAmenity(amenity)}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer border ${isSelected
+                          ? "bg-[#3A5A40] text-white border-[#3A5A40] dark:bg-[#E5C583] dark:text-[#0B1512] dark:border-[#E5C583] shadow-xs"
+                          : "bg-white dark:bg-[#16241F] text-ink-800 dark:text-cream-100 border-ink-200 dark:border-white/15 hover:border-moss-600"
+                          }`}
+                      >
+                        {isSelected ? "✓ " : "+ "}
+                        {amenity}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={customAmenityInput}
+                    onChange={(e) => setCustomAmenityInput(e.target.value)}
+                    placeholder="Add custom amenity (e.g. Jacuzzi, Smart Lock)"
+                    className="flex-1 px-3 py-2 text-xs rounded-lg bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 text-ink-900 dark:text-white outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddCustomAmenity(e);
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomAmenity}
+                    className="px-4 py-2 rounded-lg bg-[#3A5A40] text-white font-bold text-xs hover:bg-[#344E41] transition-all cursor-pointer"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
 
               {/* PROOF OF OWNERSHIP LEGAL PAPERS SECTION */}

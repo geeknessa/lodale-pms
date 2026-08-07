@@ -144,6 +144,25 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     tenantsMap[formData.propertyId].push(newTenantObj);
     localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
 
+    // Register tenant into global users list for Admin visibility
+    try {
+      const tenantEmail = (formData.email || `${formData.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@tenant.lodale.com`).toLowerCase();
+      const tenantRecord = {
+        id: newTenantObj.id,
+        name: formData.name,
+        email: tenantEmail,
+        phone: formData.phone || '',
+        role: 'Tenant',
+        status: 'Active'
+      };
+      localStorage.setItem("registeredUser_" + tenantEmail, JSON.stringify(tenantRecord));
+      const existingStr = localStorage.getItem("registeredUsers");
+      let existing = existingStr ? JSON.parse(existingStr) : [];
+      existing = existing.filter(u => u && u.email && u.email.toLowerCase() !== tenantEmail);
+      existing.push(tenantRecord);
+      localStorage.setItem("registeredUsers", JSON.stringify(existing));
+    } catch (e) {}
+
     // Seed chat thread for this tenant
     const savedChats = localStorage.getItem("landlordChats");
     const chatsList = savedChats ? JSON.parse(savedChats) : [];
