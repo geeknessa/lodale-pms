@@ -20,23 +20,21 @@ import {
 import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import { triggerToast } from "../../context/ToastContext";
+import { getRoleProfile, saveRoleProfile } from "../../utils/sessionHelper";
 import "./TenantSettings.css";
 
 export default function TenantSettings({ onSignOut }) {
   const [activeTab, setActiveTab] = useState("personal"); // "personal" | "security" | "documents"
   const [docSubTab, setDocSubTab] = useState("pending"); // "pending" | "signed"
 
-  // Load initial settings with per-tab sessionStorage priority
+  // Load initial settings with tenant role isolation
   const [userProfile, setUserProfile] = useState(() => {
-    const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
-    if (raw) {
-      try {
-        return JSON.parse(raw);
-      } catch (e) { }
-    }
+    const roleProf = getRoleProfile("tenant");
+    if (roleProf) return roleProf;
+
     const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    const username = sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "";
+    const storedName = emailKey ? localStorage.getItem("username_tenant_" + emailKey) : null;
+    const username = sessionStorage.getItem("username_tenant") || storedName || localStorage.getItem("username_tenant") || "";
     const parts = username.split(" ");
     return {
       firstName: parts[0] || "Roland",
@@ -147,10 +145,7 @@ export default function TenantSettings({ onSignOut }) {
         avatar: avatarUrl
       };
       setUserProfile(updatedProfile);
-      localStorage.setItem("currentUserProfile", JSON.stringify(updatedProfile));
-      if (email) {
-        localStorage.setItem("userProfile_" + email.toLowerCase(), JSON.stringify(updatedProfile));
-      }
+      saveRoleProfile("tenant", updatedProfile);
 
       window.dispatchEvent(new Event("storage"));
       triggerToast("Personal profile information updated successfully!", "success", "Profile Saved");

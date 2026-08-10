@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Logo } from "../components/Logo";
 import { useTheme } from "../context/ThemeContext";
 import { adminService } from "../services/adminService";
+import { getRoleProfile, saveRoleProfile } from "../utils/sessionHelper";
 import {
   LayoutDashboard,
   Users,
@@ -545,12 +546,16 @@ export default function AdminDashboard() {
   };
 
   // --- SETTINGS FORM STATES ---
-  const [profileForm, setProfileForm] = useState({
-    name: "Tunde Bakare",
-    username: "tundebakare_admin",
-    email: "tunde.b@lodale.com",
-    phone: "+234 809 333 2211",
-    avatarPreview: null,
+  const [profileForm, setProfileForm] = useState(() => {
+    const roleProf = getRoleProfile("admin");
+    if (roleProf) return roleProf;
+    return {
+      name: "Tunde Bakare",
+      username: "tundebakare_admin",
+      email: "tunde.b@lodale.com",
+      phone: "+234 809 333 2211",
+      avatarPreview: null,
+    };
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -559,12 +564,11 @@ export default function AdminDashboard() {
     confirmPassword: "",
   });
 
-
-
   // Handlers for Settings
   const handleSaveProfile = (e) => {
     e.preventDefault();
-    showToast("Profile information saved successfully!");
+    saveRoleProfile("admin", profileForm);
+    showToast("Admin profile information saved successfully!");
   };
 
   const handleUpdatePassword = (e) => {

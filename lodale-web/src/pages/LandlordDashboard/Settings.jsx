@@ -4,6 +4,7 @@ import { User, Lock, LogOut, Calendar, ChevronDown, CheckCircle2, Camera, Pencil
 import { useNavigate } from "react-router-dom";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import { triggerToast } from "../../context/ToastContext";
+import { getRoleProfile, saveRoleProfile } from "../../utils/sessionHelper";
 import "./Settings.css";
 
 export default function Settings() {
@@ -13,17 +14,14 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState("profile"); // profile | password
   const [gender, setGender] = useState("male"); // male | female
 
-  // Landlord Name splitting with per-tab sessionStorage priority
+  // Landlord Name splitting with landlord role isolation
   const [userProfile, setUserProfile] = useState(() => {
-    const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
-    if (raw) {
-      try {
-        return JSON.parse(raw);
-      } catch (e) { }
-    }
+    const roleProf = getRoleProfile("landlord");
+    if (roleProf) return roleProf;
+
     const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    const username = sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "";
+    const storedName = emailKey ? localStorage.getItem("username_landlord_" + emailKey) : null;
+    const username = sessionStorage.getItem("username_landlord") || storedName || localStorage.getItem("username_landlord") || "";
     const parts = username.split(" ");
     return {
       firstName: parts[0] || "",
@@ -539,10 +537,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
       postalCode: postalCode.trim()
     };
     setUserProfile(updatedProfile);
-    localStorage.setItem("currentUserProfile", JSON.stringify(updatedProfile));
-    if (email) {
-      localStorage.setItem("userProfile_" + email.toLowerCase(), JSON.stringify(updatedProfile));
-    }
+    saveRoleProfile("landlord", updatedProfile);
 
     setSaveSuccess(true);
     triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
