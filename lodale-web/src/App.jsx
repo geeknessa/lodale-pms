@@ -9,6 +9,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import GuestDashboard from "./pages/GuestDashboard";
+import LandingPage from "./pages/LandingPage";
 import ListingDetail from "./pages/ListingDetail";
 import HowItWorks from "./pages/HowItWorks";
 import About from "./pages/About";
@@ -333,7 +334,8 @@ export default function App() {
           <ErrorBoundary>
             <ScrollToTop />
             <Routes>
-              <Route path="/" element={<Navigate to="/explore" replace />} />
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/landing" element={<LandingPage />} />
               <Route path="/explore" element={<GuestDashboard />} />
               <Route path="/listings/:id" element={<ListingDetail />} />
               <Route path="/how-it-works" element={<HowItWorks />} />
