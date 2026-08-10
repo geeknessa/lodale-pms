@@ -128,6 +128,15 @@ export default function NavBar() {
       }`;
   };
 
+  const mobileLinkClass = (path, hash = "") => {
+    const active = checkIsActive(path, hash);
+    return `flex items-center justify-between text-[15px] font-medium py-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-moss-600 outline-none rounded-md ${
+      active
+        ? "text-moss-700 dark:text-[#E5C583] font-bold"
+        : "text-theme-text hover:text-moss-600 dark:hover:text-white"
+    }`;
+  };
+
 
 
   function handleSignOut() {
