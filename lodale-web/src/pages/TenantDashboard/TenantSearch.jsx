@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2 } from "lucide-react";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
@@ -383,6 +384,7 @@ function LandlordCard({ landlord, onInspect }) {
 }
 
 export default function TenantSearch({ setShowProfileModal, onStartChat }) {
+  const navigate = useNavigate();
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("property"); // "property" | "landlord"
@@ -740,7 +742,13 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
         <div className="db-sub-header-row">
           <div className="db-page-header tour-search-header">
             <div className="db-breadcrumb">
-              <span>Home Page</span>
+              <span
+                className="cursor-pointer hover:underline hover:opacity-80 transition-all text-moss-700 dark:text-[#E5C583]"
+                onClick={() => navigate("/explore")}
+                title="Go to Public Guest Dashboard"
+              >
+                Home Page
+              </span>
               <span>→</span>
               <span className="db-breadcrumb-active">Search Properties</span>
             </div>

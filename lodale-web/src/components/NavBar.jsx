@@ -11,21 +11,30 @@ export default function NavBar() {
   const { isDark, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    if (sessAuth !== null) return sessAuth === "true";
     return localStorage.getItem("isAuthenticated") === "true";
   });
+  const [userRole, setUserRole] = useState(() => {
+    return (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+  });
   const [isAdmin, setIsAdmin] = useState(() => {
-    return (
-      localStorage.getItem("userRole") === "admin" ||
-      localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com"
-    );
+    const r = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+    const email = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "";
+    return r === "admin" || email === "admin@lodale.com" || sessionStorage.getItem("adminAuthenticated") === "true";
   });
   const [activeSection, setActiveSection] = useState("");
 
-
-
   useEffect(() => {
     const handleAuth = () => {
-      setIsAuthenticated(localStorage.getItem("isAuthenticated") === "true");
+      const sessAuth = sessionStorage.getItem("isAuthenticated");
+      const auth = sessAuth !== null ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+      const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+      const email = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "";
+
+      setIsAuthenticated(auth);
+      setUserRole(role);
+      setIsAdmin(role === "admin" || email === "admin@lodale.com" || sessionStorage.getItem("adminAuthenticated") === "true");
     };
 
     handleAuth();
@@ -141,9 +150,15 @@ export default function NavBar() {
   }
 
   function handleDashboardNavigate() {
-    const userRole = localStorage.getItem("userRole") || "tenant";
     setIsOpen(false);
-    navigate(`/dashboard/${userRole}`);
+    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || userRole || "tenant").toLowerCase().trim();
+    if (role === "admin") {
+      navigate("/admin/dashboard");
+    } else if (role === "landlord") {
+      navigate("/dashboard/landlord");
+    } else {
+      navigate("/dashboard/tenant");
+    }
   }
 
   return (
@@ -216,39 +231,14 @@ export default function NavBar() {
 
           {/* Desktop Controls */}
           {isAuthenticated ? (
-            <div className="hidden md:flex items-center gap-2">
-              <button
-                onClick={() => navigate("/dashboard/tenant")}
-                className={`text-[13px] font-medium rounded-lg px-2.5 py-1.5 transition-colors outline-none ${
-                  location.pathname === "/dashboard/tenant"
-                    ? "bg-moss-100 text-moss-800 font-bold dark:bg-moss-700 dark:text-white"
-                    : "text-ink-700 hover:text-ink-900 dark:text-cream-100/80 dark:hover:text-white"
-                }`}
+            <div className="hidden md:flex items-center gap-3">
+              <Button
+                onClick={handleDashboardNavigate}
+                variant="secondary"
+                className="px-4 py-2 text-[13px] font-bold border border-moss-700/30 dark:border-[#E5C583]/40 text-moss-800 dark:text-[#E5C583] hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] transition-all cursor-pointer"
               >
-                Tenant Dashboard
-              </button>
-              <button
-                onClick={() => navigate("/dashboard/landlord")}
-                className={`text-[13px] font-medium rounded-lg px-2.5 py-1.5 transition-colors outline-none ${
-                  location.pathname.startsWith("/dashboard/landlord")
-                    ? "bg-moss-100 text-moss-800 font-bold dark:bg-moss-700 dark:text-white"
-                    : "text-ink-700 hover:text-ink-900 dark:text-cream-100/80 dark:hover:text-white"
-                }`}
-              >
-                Landlord Dashboard
-              </button>
-              {(userRole === "admin" || localStorage.getItem("adminAuthenticated") === "true") && (
-                <button
-                  onClick={() => navigate("/admin/dashboard")}
-                  className={`text-[13px] font-medium rounded-lg px-2.5 py-1.5 transition-colors outline-none ${
-                    location.pathname.startsWith("/admin")
-                      ? "bg-amber-500/20 text-amber-700 font-bold dark:bg-amber-500/30 dark:text-amber-300"
-                      : "text-amber-700 dark:text-[#E5C583] hover:underline"
-                  }`}
-                >
-                  Admin Portal
-                </button>
-              )}
+                Dashboard
+              </Button>
               <Button
                 onClick={handleSignOut}
                 className="px-4 py-2 text-[13px] ml-1 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white"
@@ -334,35 +324,12 @@ export default function NavBar() {
 
           {isAuthenticated ? (
             <div className="flex flex-col gap-3.5 pt-3">
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  navigate("/dashboard/tenant");
-                }}
-                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 outline-none"
+              <Button
+                onClick={handleDashboardNavigate}
+                className="w-full py-2.5 text-[14px] font-bold"
               >
-                Tenant Dashboard
-              </button>
-              <button
-                onClick={() => {
-                  setIsOpen(false);
-                  navigate("/dashboard/landlord");
-                }}
-                className="text-[14px] font-semibold text-theme-text hover:text-moss-600 text-left py-1 outline-none"
-              >
-                Landlord Dashboard
-              </button>
-              {(userRole === "admin" || localStorage.getItem("adminAuthenticated") === "true") && (
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    navigate("/admin/dashboard");
-                  }}
-                  className="text-[14px] font-semibold text-amber-600 dark:text-[#E5C583] hover:underline text-left py-1 outline-none"
-                >
-                  Admin Portal
-                </button>
-              )}
+                Go to Dashboard
+              </Button>
               <Button
                 className="px-5 py-2.5 text-[14px]"
                 onClick={handleSignOut}

@@ -154,10 +154,10 @@ function ProtectedRoute({ children }) {
 
 function AdminProtectedRoute({ children }) {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    const auth = localStorage.getItem("isAuthenticated") === "true";
-    const role = localStorage.getItem("userRole");
-    const adminAuth = localStorage.getItem("adminAuthenticated") === "true";
-    const expires = localStorage.getItem("sessionExpiresAt");
+    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
+    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+    const adminAuth = (sessionStorage.getItem("adminAuthenticated") || localStorage.getItem("adminAuthenticated")) === "true";
+    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
 
     if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
       return false;
@@ -169,10 +169,10 @@ function AdminProtectedRoute({ children }) {
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = localStorage.getItem("isAuthenticated") === "true";
-      const role = localStorage.getItem("userRole");
-      const adminAuth = localStorage.getItem("adminAuthenticated") === "true";
-      const expires = localStorage.getItem("sessionExpiresAt");
+      const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
+      const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+      const adminAuth = (sessionStorage.getItem("adminAuthenticated") || localStorage.getItem("adminAuthenticated")) === "true";
+      const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
 
       if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
         setIsAdminAuthenticated(false);
@@ -195,11 +195,9 @@ function AdminProtectedRoute({ children }) {
 
 function LandlordProtectedRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const auth = localStorage.getItem("isAuthenticated") === "true";
-    const expires = localStorage.getItem("sessionExpiresAt");
+    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
+    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
     if (auth && expires && Date.now() > Number(expires)) {
-      localStorage.removeItem("isAuthenticated");
-      localStorage.removeItem("sessionExpiresAt");
       return false;
     }
     return auth;
@@ -209,11 +207,9 @@ function LandlordProtectedRoute({ children }) {
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = localStorage.getItem("isAuthenticated") === "true";
-      const expires = localStorage.getItem("sessionExpiresAt");
+      const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
+      const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
       if (auth && expires && Date.now() > Number(expires)) {
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("sessionExpiresAt");
         setIsAuthenticated(false);
       } else {
         setIsAuthenticated(auth);
@@ -226,11 +222,8 @@ function LandlordProtectedRoute({ children }) {
   }, [location]);
 
   if (!isAuthenticated) {
-    const expires = localStorage.getItem("sessionExpiresAt");
+    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
     const wasSessionExpired = expires && Date.now() > Number(expires);
-
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
 
     return (
       <Navigate
@@ -249,11 +242,9 @@ function LandlordProtectedRoute({ children }) {
 
 function TenantProtectedRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const auth = localStorage.getItem("isAuthenticated") === "true";
-    const expires = localStorage.getItem("sessionExpiresAt");
+    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
+    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
     if (auth && expires && Date.now() > Number(expires)) {
-      localStorage.removeItem("isAuthenticated");
-      localStorage.removeItem("sessionExpiresAt");
       return false;
     }
     return auth;
@@ -263,11 +254,9 @@ function TenantProtectedRoute({ children }) {
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = localStorage.getItem("isAuthenticated") === "true";
-      const expires = localStorage.getItem("sessionExpiresAt");
+      const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
+      const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
       if (auth && expires && Date.now() > Number(expires)) {
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("sessionExpiresAt");
         setIsAuthenticated(false);
       } else {
         setIsAuthenticated(auth);
@@ -280,11 +269,8 @@ function TenantProtectedRoute({ children }) {
   }, [location]);
 
   if (!isAuthenticated) {
-    const expires = localStorage.getItem("sessionExpiresAt");
+    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
     const wasSessionExpired = expires && Date.now() > Number(expires);
-
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
 
     return (
       <Navigate

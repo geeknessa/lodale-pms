@@ -167,9 +167,11 @@ const TOUR_STEPS = [
 export default function LandlordDashboard() {
   const navigate = useNavigate();
 
-  // Retrieve username from localStorage with fallback
+  // Retrieve username with per-tab sessionStorage priority & localStorage fallback
   const [username, setUsername] = useState(() => {
-    const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+    const sessName = sessionStorage.getItem("username");
+    if (sessName) return sessName;
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
     const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
     return storedName || localStorage.getItem("username") || "Ada";
   });
@@ -854,7 +856,9 @@ export default function LandlordDashboard() {
       {/* HEADER BAR */}
       <header className="db-header">
         <div className="db-header-left">
-          <Logo variant="moss" />
+          <div className="cursor-pointer hover:opacity-85 transition-opacity" onClick={() => navigate("/explore")} title="Go to Public Guest Dashboard">
+            <Logo variant="moss" />
+          </div>
 
           {/* Top category nav pills */}
           <div className="relative">
@@ -1047,20 +1051,51 @@ export default function LandlordDashboard() {
         </div>
 
         <div className="db-header-right">
-          {/* Manager / Admin Avatar Stack */}
-          <div
-            className="db-avatar-group cursor-pointer flex items-center -space-x-2"
-            onClick={() => setActiveTab(2)}
-            title="View Tenants List"
-          >
-            <div className="w-7 h-7 rounded-full bg-moss-700 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]">
-              <User className="h-3.5 w-3.5" />
-            </div>
-            <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]">
-              <User className="h-3.5 w-3.5" />
-            </div>
-            <div className="db-avatar-plus">+3</div>
-          </div>
+          {/* Active Tenants Avatar Stack */}
+          {(() => {
+            const activeTenants = getActiveTenantsList();
+            const displayTenants = activeTenants.slice(0, 2);
+
+            return (
+              <div
+                className="db-avatar-group cursor-pointer flex items-center -space-x-2"
+                onClick={() => setActiveTab(2)}
+                title="View Tenants List"
+              >
+                {displayTenants.length > 0 ? (
+                  displayTenants.map((t, idx) =>
+                    t.avatar ? (
+                      <img
+                        key={t.id || idx}
+                        src={t.avatar}
+                        alt={t.name || "Tenant"}
+                        className="w-7 h-7 rounded-full object-cover border-2 border-white dark:border-[#0B1512]"
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div
+                        key={t.id || idx}
+                        className={`w-7 h-7 rounded-full ${idx % 2 === 0 ? "bg-moss-700" : "bg-amber-600"} text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]`}
+                      >
+                        <User className="h-3.5 w-3.5" />
+                      </div>
+                    )
+                  )
+                ) : (
+                  <>
+                    <div className="w-7 h-7 rounded-full bg-moss-700 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]">
+                      <User className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]">
+                      <User className="h-3.5 w-3.5" />
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           <Button
             onClick={() => navigate("/dashboard/landlord/add-property")}
@@ -1276,7 +1311,13 @@ export default function LandlordDashboard() {
               <div className="db-page-header tour-welcome">
                 {/* Breadcrumb */}
                 <div className="db-breadcrumb">
-                  <span>Home Page</span>
+                  <span
+                    className="cursor-pointer hover:underline hover:opacity-80 transition-all text-moss-700 dark:text-[#E5C583]"
+                    onClick={() => navigate("/explore")}
+                    title="Go to Public Guest Dashboard"
+                  >
+                    Home Page
+                  </span>
                   <span>→</span>
                   <span className="db-breadcrumb-active">
                     {activeTab === 0 ? "Dashboard" : activeTab === 1 ? "Properties" : activeTab === 2 ? "Tenants" : activeTab === 4 ? "Settings" : "Section"}

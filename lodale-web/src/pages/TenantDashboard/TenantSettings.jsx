@@ -8,22 +8,22 @@ import "./TenantSettings.css";
 export default function TenantSettings({ onSignOut }) {
   const [activeTab, setActiveTab] = useState("personal"); // "personal" | "security"
 
-  // Load initial settings
+  // Load initial settings with per-tab sessionStorage priority
   const [userProfile, setUserProfile] = useState(() => {
-    const raw = localStorage.getItem("currentUserProfile");
+    const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
     if (raw) {
       try {
         return JSON.parse(raw);
       } catch (e) { }
     }
-    const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
     const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    const username = storedName || localStorage.getItem("username") || "";
+    const username = sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "";
     const parts = username.split(" ");
     return {
       firstName: parts[0] || "",
       lastName: parts.slice(1).join(" ") || "",
-      email: localStorage.getItem("lastLoggedInEmail") || "",
+      email: sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "",
       phone: "",
       address: "",
       dob: "",
@@ -35,7 +35,7 @@ export default function TenantSettings({ onSignOut }) {
   const [gender, setGender] = useState("Male");
   const [firstName, setFirstName] = useState(userProfile.firstName || "");
   const [lastName, setLastName] = useState(userProfile.lastName || "");
-  const [email, setEmail] = useState(userProfile.email || localStorage.getItem("lastLoggedInEmail") || "");
+  const [email, setEmail] = useState(userProfile.email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "");
   const [address, setAddress] = useState(userProfile.address || "");
   const [phone, setPhone] = useState(userProfile.phone || "");
   const [dob, setDob] = useState(userProfile.dob || "");
@@ -44,12 +44,12 @@ export default function TenantSettings({ onSignOut }) {
 
   // Profile avatar states (uses User vector icon until user uploads their custom photo)
   const [avatarUrl, setAvatarUrl] = useState(() => {
-    const emailKey = localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
     }
-    const globalSaved = localStorage.getItem("tenantAvatarUrl");
+    const globalSaved = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
     if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
     return userProfile.avatar && !userProfile.avatar.includes("unsplash.com") ? userProfile.avatar : "";
   });

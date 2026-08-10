@@ -275,28 +275,32 @@ export default function LandlordProperties() {
                         onClick={() => setShowTenantsPopupForProperty(item)}
                         title="View current tenants"
                       >
-                        {propertyTenants.slice(0, 2).map((t, idx) => (
-                          <img
-                            key={t.id || idx}
-                            src={t.avatar}
-                            alt={t.name}
-                            className="w-7 h-7 rounded-full object-cover border border-white dark:border-[#16241F]"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        ))}
-                        {tenantsCount === 0 && (
+                        {propertyTenants.length > 0 ? (
+                          propertyTenants.slice(0, 2).map((t, idx) => (
+                            t.avatar ? (
+                              <img
+                                key={t.id || idx}
+                                src={t.avatar}
+                                alt={t.name}
+                                className="w-7 h-7 rounded-full object-cover border border-white dark:border-[#16241F]"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <div
+                                key={t.id || idx}
+                                className={`w-7 h-7 rounded-full ${idx % 2 === 0 ? 'bg-moss-700' : 'bg-amber-600'} text-white flex items-center justify-center text-xs font-bold border border-white dark:border-[#16241F]`}
+                              >
+                                <User className="h-3.5 w-3.5" />
+                              </div>
+                            )
+                          ))
+                        ) : (
                           <div className="w-7 h-7 rounded-full bg-moss-700 text-white flex items-center justify-center text-xs font-bold border border-white dark:border-[#16241F]">
                             <User className="h-3.5 w-3.5" />
                           </div>
                         )}
-                        <div
-                          className="db-avatar-plus font-bold text-[10px]"
-                          style={{ height: '28px', width: '28px', minWidth: '28px', border: '1px solid var(--border-light)' }}
-                        >
-                          {tenantsCount}
-                        </div>
                       </div>
                     </div>
 
