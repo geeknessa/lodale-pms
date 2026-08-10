@@ -496,7 +496,7 @@ export default function About() {
       <footer
         className="pt-16 pb-8 text-white mt-auto"
         style={{
-          background: isDark ? "#000000" : "#0A1710",
+          background: isDark ? "#040C07" : "#0A1710",
           borderTop: `1px solid ${isDark ? C.border : "rgba(255,255,255,0.1)"}`,
         }}
       >

@@ -708,7 +708,7 @@ function Footer({ C, isDark }) {
     { Icon:Link2,    label:"LinkedIn"   },
   ];
 
-  const footerBg = isDark ? "#000000" : "#0A1710";
+  const footerBg = isDark ? "#040C07" : "#0A1710";
 
   return (
     <footer className="pt-16 pb-8 text-white" style={{ background: footerBg, borderTop:`1px solid ${isDark ? C.border : "rgba(255,255,255,0.1)"}` }}>
