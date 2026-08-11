@@ -293,7 +293,7 @@ body.dark .db-breadcrumb-active {
 /* LEFT COLUMN WIDGETS */
 /* Glassmorphic Pro Card */
 .pro-card {
-  height: 440px;
+  min-height: 275px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0.3) 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -666,27 +666,29 @@ body.dark .wallet-progress-fill {
   background-color: #E5C583;
 }
 
-/* Visa Credit Card */
+/* Visa Credit Card - Standalone Card matching Property Card size */
 .visa-card-widget {
   background: linear-gradient(135deg, #C5E2D1 0%, #A2CBB6 100%);
-  border-radius: 24px;
-  padding: 20px;
+  border: 1.5px solid rgba(44, 70, 51, 0.15);
+  border-radius: 32px;
+  padding: 24px;
   color: #1E382A;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 150px;
-  aspect-ratio: 1.58 / 1;
-  max-width: 325px;
+  min-height: 260px;
   width: 100%;
   position: relative;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.04);
   box-sizing: border-box;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 body.dark .visa-card-widget {
   background: linear-gradient(135deg, #1C3326 0%, #2A4D3B 100%);
+  border: 1.5px solid rgba(229, 197, 131, 0.2);
   color: #FFFFFF;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }
 
 .visa-header {
@@ -713,11 +715,61 @@ body.dark .visa-logo {
   color: #E5C583;
 }
 
-.visa-balance {
-  font-size: 22px;
-  font-weight: 850;
+.visa-balance-group {
   margin: 12px 0 8px 0;
+}
+
+.visa-balance-sub {
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+.visa-balance {
+  font-size: 28px;
+  font-weight: 850;
+  margin: 4px 0 0 0;
   letter-spacing: -0.02em;
+}
+
+.visa-progress-group {
+  margin: 12px 0 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.visa-progress-lbl {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11.5px;
+  font-weight: 750;
+  opacity: 0.9;
+}
+
+.visa-progress-track {
+  width: 100%;
+  height: 7px;
+  background-color: rgba(30, 56, 42, 0.15);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+body.dark .visa-progress-track {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.visa-progress-fill {
+  height: 100%;
+  border-radius: 10px;
+  background-color: #1E382A;
+  transition: width 0.5s ease;
+}
+
+body.dark .visa-progress-fill {
+  background-color: #E5C583;
 }
 
 .visa-footer {
@@ -725,9 +777,11 @@ body.dark .visa-logo {
   justify-content: space-between;
   align-items: flex-end;
   font-family: monospace;
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  opacity: 0.8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+  margin-top: 8px;
 }
 
 .visa-pay-btn {
@@ -736,7 +790,7 @@ body.dark .visa-logo {
   border: none;
   font-size: 10.5px;
   font-weight: 800;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -752,10 +806,99 @@ body.dark .visa-pay-btn {
   transform: scale(1.03);
 }
 
-/* Rent Breakdown Doughnut Card */
+/* Equalized heights for Column 1, 2, and 3 cards for perfect grid alignment */
+.pro-card {
+  min-height: 475px;
+}
+
+.property-info-card,
+.visa-card-widget {
+  min-height: 275px;
+}
+
+.tour-tracker,
 .breakdown-card {
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
+  min-height: 285px;
+}
+
+/* Compact Rectangular Streak Preview Card */
+.streak-widget-card {
+  padding: 18px 22px;
+  border-radius: 28px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.streak-widget-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(245, 158, 11, 0.15);
+}
+
+/* Cowrywise-style On-Time Rent Payment Streak Card */
+.streak-months-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin: 12px 0 4px 0;
+}
+
+.streak-month-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border-radius: 14px;
+  background-color: var(--tenant-light-grey);
+  border: 1px solid var(--tenant-border);
+  transition: all 0.2s ease;
+}
+
+.streak-month-pill.paid {
+  background-color: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+body.dark .streak-month-pill.paid {
+  background-color: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.streak-month-pill.current {
+  background-color: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.15);
+}
+
+body.dark .streak-month-pill.current {
+  background-color: rgba(229, 197, 131, 0.15);
+  border-color: rgba(229, 197, 131, 0.4);
+}
+
+.month-lbl {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--tenant-text-sec);
+  text-transform: uppercase;
+}
+
+.streak-month-pill.paid .month-lbl {
+  color: #047857;
+}
+
+body.dark .streak-month-pill.paid .month-lbl {
+  color: #34D399;
+}
+
+.streak-month-pill.current .month-lbl {
+  color: #B45309;
+}
+
+body.dark .streak-month-pill.current .month-lbl {
+  color: #E5C583;
 }
 
 .doughnut-chart-wrapper {
@@ -824,6 +967,7 @@ body.dark .visa-pay-btn {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 200px;
   max-height: 240px;
   overflow-y: auto;
   padding-right: 4px;

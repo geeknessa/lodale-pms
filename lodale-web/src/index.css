@@ -183,8 +183,8 @@ body.dark select:focus::placeholder {
 }
 
 body.dark footer {
-  background: var(--color-forest-700) !important;
-  border-color: var(--color-moss-600) !important;
+  background: #000000 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
   color: var(--color-cream-100) !important;
 }
 
