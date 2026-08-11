@@ -619,19 +619,7 @@ export default function LandingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const listingsGridRef = useRef(null);
 
-  let themeState;
-  try {
-    themeState = useTheme();
-  } catch {
-    const [theme, setTheme] = useState("dark");
-    themeState = {
-      theme,
-      isDark: theme === "dark",
-      toggleTheme: () => setTheme(t => t === "dark" ? "light" : "dark")
-    };
-  }
-
-  const { isDark, toggleTheme } = themeState;
+  const { isDark, toggleTheme } = useTheme();
 
   useEffect(() => {
     const link = document.createElement("link");

@@ -256,6 +256,15 @@ export default function TenantDashboard() {
   const [tooltipStyle, setTooltipStyle] = useState({});
   const [spotlightStyle, setSpotlightStyle] = useState({});
 
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [notifications, setNotifications] = useState(() => {
+    const saved = localStorage.getItem("tenantNotifications");
+    return saved ? JSON.parse(saved) : [
+      { id: 1, text: "Your rent payment was successful.", read: false },
+      { id: 2, text: "Maintenance request #42 updated.", read: false }
+    ];
+  });
+
   const [activeLease, setActiveLease] = useState(() => {
     const saved = localStorage.getItem("tenantLease");
     if (saved) {
@@ -730,6 +739,52 @@ export default function TenantDashboard() {
             >
               Get Started
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* NOTIFICATIONS MODAL */}
+      {showNotificationsModal && (
+        <div className="tenant-modal-backdrop" onClick={() => setShowNotificationsModal(false)}>
+          <div className="bg-white dark:bg-[#13221C] border border-ink-100 dark:border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-ink-900 dark:text-white">Notifications</h3>
+              <button className="text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold" onClick={() => setShowNotificationsModal(false)}>&times;</button>
+            </div>
+            <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
+              {notifications.length > 0 ? notifications.map((n, i) => (
+                <div key={i} className={`p-3 rounded-xl border ${n.read ? 'bg-neutral-50 dark:bg-white/5 border-transparent' : 'bg-moss-50 dark:bg-[#E5C583]/10 border-moss-200 dark:border-[#E5C583]/20'}`}>
+                  <p className="text-[13px] text-ink-900 dark:text-white font-medium leading-relaxed">{n.message || n.text || "Notification"}</p>
+                </div>
+              )) : (
+                <p className="text-sm text-ink-400 dark:text-cream-100/50 py-4 text-center">No new notifications.</p>
+              )}
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              {notifications.length > 0 && (
+                <Button
+                  onClick={() => {
+                    setNotifications([]);
+                    localStorage.setItem("tenantNotifications", JSON.stringify([]));
+                  }}
+                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-[#1D2D26] dark:hover:bg-[#253930] text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl transition-colors"
+                >
+                  Clear All
+                </Button>
+              )}
+              <Button
+                onClick={() => {
+                  setShowNotificationsModal(false);
+                  const updated = notifications.map(n => ({ ...n, read: true }));
+                  setNotifications(updated);
+                  localStorage.setItem("tenantNotifications", JSON.stringify(updated));
+                }}
+                className={`${notifications.length > 0 ? 'flex-[2]' : 'w-full'} bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl`}
+              >
+                Close Notifications
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -1317,14 +1372,14 @@ export default function TenantDashboard() {
                   <Search className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
                 </div>
 
+                <div className="db-icon-btn-wrapper" onClick={() => setShowNotificationsModal(true)} title="Notifications">
+                  <Bell className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
+                  {notifications.filter(n => !n.read).length > 0 && <span className="db-badge-dot" />}
+                </div>
+
                 <div className="db-icon-btn-wrapper" onClick={() => setActiveTab(2)} title="Messages">
                   <MessageSquare className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
                   <span className="db-badge-dot" />
-                </div>
-
-                <div className="db-icon-btn-wrapper" onClick={() => triggerToast("You have 2 new unread portal notifications.", "info", "Notifications")} title="Notifications">
-                  <Bell className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                  <span className="db-badge-dot pulse" />
                 </div>
 
                 <div className="db-profile-avatar-wrapper" onClick={() => setShowProfileModal(true)} title="Profile settings">
@@ -1431,60 +1486,6 @@ export default function TenantDashboard() {
                       </div>
                     </div>
                   </div>
-                </section>
-
-                {/* Redesigned Quick Repair Request Form */}
-                <section className="db-card tour-dispatch">
-                  <div className="db-card-header">
-                    <h3 className="db-card-title">Quick Repair Dispatch</h3>
-                    <Wrench className="h-4.5 w-4.5 text-moss-600 dark:text-[#E5C583]" />
-                  </div>
-                  <form onSubmit={handleSubmitRequest} className="form-input-container">
-                    <div>
-                      <label className="form-lbl">Issue Summary</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="e.g. Broken faucet, toilet clog..."
-                        value={reqTitle}
-                        onChange={(e) => setReqTitle(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="flex-1">
-                        <label className="form-lbl">Category</label>
-                        <select className="form-input" value={reqCategory} onChange={(e) => setReqCategory(e.target.value)}>
-                          <option value="Plumbing">Plumbing</option>
-                          <option value="Electrical">Electrical</option>
-                          <option value="Appliance">Appliance</option>
-                          <option value="Structural">Structural</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                      <div className="flex-grow w-24">
-                        <label className="form-lbl">Urgency</label>
-                        <select className="form-input" value={reqUrgency} onChange={(e) => setReqUrgency(e.target.value)}>
-                          <option value="Low">Low</option>
-                          <option value="Medium">Medium</option>
-                          <option value="High">High</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="form-lbl">Issue Details</label>
-                      <textarea
-                        rows={2}
-                        className="form-input"
-                        placeholder="Provide details about the issue..."
-                        value={reqDesc}
-                        onChange={(e) => setReqDesc(e.target.value)}
-                      />
-                    </div>
-                    <Button type="submit" className="w-full bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl">
-                      Send Repair Dispatch
-                    </Button>
-                  </form>
                 </section>
 
                 {/* Small Rectangular Payment Streak Card (Triggers Center Popup) */}

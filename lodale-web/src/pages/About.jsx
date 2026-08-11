@@ -25,20 +25,9 @@ import { useTheme } from "../context/ThemeContext";
 export default function About() {
   const navigate = useNavigate();
 
-  // Try using ThemeContext, fallback to local state if missing
-  let themeState;
-  try {
-    themeState = useTheme();
-  } catch {
-    const [theme, setTheme] = useState("dark");
-    themeState = {
-      theme,
-      isDark: theme === "dark",
-      toggleTheme: () => setTheme((t) => (t === "dark" ? "light" : "dark")),
-    };
-  }
+  // Use ThemeContext for theming
+  const { isDark, toggleTheme } = useTheme();
 
-  const { isDark, toggleTheme } = themeState;
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
