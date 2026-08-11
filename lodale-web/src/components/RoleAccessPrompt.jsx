@@ -7,7 +7,7 @@ import { useTheme } from "../context/ThemeContext";
 /**
  * Single unified access prompt component for role restriction (Landlord / Tenant)
  */
-export default function RoleAccessPrompt({ requiredRole = "landlord" }) {
+function RoleAccessPrompt({ requiredRole = "landlord" }) {
   useTheme();
   const navigate = useNavigate();
   const userEmail = localStorage.getItem("lastLoggedInEmail") || "your account";
@@ -25,7 +25,7 @@ export default function RoleAccessPrompt({ requiredRole = "landlord" }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F6] dark:bg-[#0B1512] text-ink-900 dark:text-white flex flex-col items-center justify-center p-4 sm:p-6 text-center font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-[#FAF8F6] dark:bg-[#263b33] text-ink-900 dark:text-white flex flex-col items-center justify-center p-4 sm:p-6 text-center font-sans transition-colors duration-200">
       <div className="w-full max-w-md space-y-4 sm:space-y-6 relative z-10 animate-fade-in">
         {/* Top Logo Branding */}
         <div className="flex justify-center">
@@ -66,7 +66,7 @@ export default function RoleAccessPrompt({ requiredRole = "landlord" }) {
           <div className="space-y-3 pt-2">
             <Button
               onClick={handleCreateAccount}
-              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#0B1512] border-0 font-bold py-3 rounded-xl text-[13.5px] cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 outline-none shadow-sm"
+              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-3 rounded-xl text-[13.5px] cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 flex items-center justify-center gap-2 outline-none shadow-sm"
             >
               <PlusCircle className="h-4 w-4" />
               Create a {requiredRoleName} Account

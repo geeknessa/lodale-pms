@@ -215,12 +215,9 @@ export default function SignUp() {
 
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("lastLoggedInEmail", cleanEmail);
-        localStorage.setItem("lastLoggedInPassword", cleanPassword);
         localStorage.setItem("username", cleanName);
-        localStorage.setItem("username_" + cleanEmail, cleanName);
         localStorage.setItem("userRole", role);
         localStorage.setItem("isNewSignUp", "true");
-        localStorage.setItem("userPassword_" + cleanEmail, cleanPassword);
 
         const profileObj = {
           firstName: firstName.trim(),
@@ -236,25 +233,6 @@ export default function SignUp() {
         };
         localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
         localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-
-        const userRecord = {
-          email: cleanEmail,
-          role,
-          username: cleanName,
-          password: cleanPassword,
-          profile: profileObj
-        };
-
-        localStorage.setItem("registeredUser_" + cleanEmail, JSON.stringify(userRecord));
-
-        // Store in global registeredUsers array for cross-page lookup
-        try {
-          const existingStr = localStorage.getItem("registeredUsers");
-          let existing = existingStr ? JSON.parse(existingStr) : [];
-          existing = existing.filter(u => u && u.email && u.email.toLowerCase() !== cleanEmail);
-          existing.push(userRecord);
-          localStorage.setItem("registeredUsers", JSON.stringify(existing));
-        } catch (e) {}
 
         // Persist user to PostgreSQL Database via authService
         try {
@@ -300,7 +278,7 @@ export default function SignUp() {
       }}
     >
       {/* Background Overlay */}
-      <div className="absolute inset-0 bg-[#FAF8F6]/55 dark:bg-[#0B1512]/90 transition-colors duration-200" />
+      <div className="absolute inset-0 bg-[#FAF8F6]/55 dark:bg-[#263b33]/90 transition-colors duration-200" />
       {/* Floating Back Button */}
       <button
         onClick={() => {
@@ -337,7 +315,7 @@ export default function SignUp() {
                 </button>
                 <button
                   type="button"
-                  className="flex-1 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-bold tracking-wider rounded-lg uppercase bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512] shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer outline-none"
+                  className="flex-1 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-bold tracking-wider rounded-lg uppercase bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33] shadow-sm transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer outline-none"
                 >
                   Sign Up
                 </button>
@@ -351,7 +329,7 @@ export default function SignUp() {
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <span
                 className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold shrink-0 ${step === 1
-                  ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                  ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33]"
                   : "border border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100/70"
                   }`}
               >
@@ -374,7 +352,7 @@ export default function SignUp() {
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <span
                 className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold shrink-0 ${step === 2
-                  ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                  ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33]"
                   : "border border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100/70"
                   }`}
               >
@@ -397,7 +375,7 @@ export default function SignUp() {
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <span
                 className={`h-5 w-5 sm:h-6 sm:w-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-bold shrink-0 ${step === 3
-                  ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                  ? "bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33]"
                   : "border border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100/70"
                   }`}
               >
@@ -479,7 +457,7 @@ export default function SignUp() {
                   <button
                     type="button"
                     onClick={() => setStep(2)}
-                    className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#0B1512] border-0 font-bold py-2.5 sm:py-3.5 mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
+                    className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2.5 sm:py-3.5 mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
                   >
                     Continue
                   </button>
@@ -545,8 +523,10 @@ export default function SignUp() {
                         <input
                           id="firstName"
                           type="text"
+                          maxLength={50}
                           placeholder="Jane"
                           value={firstName}
+                          onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
                           onChange={(e) => setFirstName(e.target.value)}
                           className="w-full h-[42px] sm:h-[50px] pl-10 sm:pl-11 pr-4 rounded-xl border border-ink-200 hover:border-ink-400 dark:border-white/15 dark:hover:border-white/25 bg-transparent text-ink-900 dark:text-white placeholder-ink-400 dark:placeholder-white/30 text-[14px] sm:text-[15px] outline-none focus:border-moss-700 dark:focus:border-[#E5C583] focus-visible:ring-1 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] transition-all duration-200 hover:scale-[1.005]"
                         />
@@ -564,8 +544,10 @@ export default function SignUp() {
                         <input
                           id="lastName"
                           type="text"
+                          maxLength={50}
                           placeholder="Doe"
                           value={lastName}
+                          onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
                           onChange={(e) => setLastName(e.target.value)}
                           className="w-full h-[42px] sm:h-[50px] pl-10 sm:pl-11 pr-4 rounded-xl border border-ink-200 hover:border-ink-400 dark:border-white/15 dark:hover:border-white/25 bg-transparent text-ink-900 dark:text-white placeholder-ink-400 dark:placeholder-white/30 text-[14px] sm:text-[15px] outline-none focus:border-moss-700 dark:focus:border-[#E5C583] focus-visible:ring-1 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] transition-all duration-200 hover:scale-[1.005]"
                         />
@@ -586,6 +568,7 @@ export default function SignUp() {
                       <input
                         id="email"
                         type="email"
+                        maxLength={100}
                         placeholder="janedoe@example.com"
                         value={email}
                         onChange={(e) => {
@@ -610,6 +593,7 @@ export default function SignUp() {
                       <input
                         id="password"
                         type={showPassword ? "text" : "password"}
+                        maxLength={128}
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => {
@@ -710,7 +694,7 @@ export default function SignUp() {
                 <Button
                   type="button"
                   onClick={handleGoToStep3}
-                  className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#0B1512] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
+                  className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
                 >
                   Continue
                 </Button>
@@ -817,6 +801,7 @@ export default function SignUp() {
                           maxLength={11}
                           placeholder="12345678901"
                           value={nin}
+                          onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
                           onChange={(e) => {
                             setNin(e.target.value);
                             setInlineError("");
@@ -828,7 +813,7 @@ export default function SignUp() {
                     </div>
                     <Button
                       type="submit"
-                      className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#0B1512] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
+                      className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
                     >
                       Verify Now
                     </Button>
@@ -858,7 +843,7 @@ export default function SignUp() {
 
                     <Button
                       onClick={handleCompleteSignUp}
-                      className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#0B1512] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
+                      className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
                     >
                       Continue
                     </Button>

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, ChevronDown, MapPin, Check } from "lucide-react";
 
-export const NIGERIAN_LOCATIONS = [
+const NIGERIAN_LOCATIONS = [
   "Lagos - Lekki Phase 1",
   "Lagos - Victoria Island",
   "Lagos - Yaba",

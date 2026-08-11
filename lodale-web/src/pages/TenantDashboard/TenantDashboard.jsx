@@ -19,22 +19,24 @@ import {
   Sun,
   Moon,
   ChevronDown,
-  Sparkles,
   Calendar,
   HelpCircle,
   Bell,
   Menu,
   Check,
+  CheckCircle2,
 } from "lucide-react";
 import gsap from "gsap";
 import { Logo, LogoMark } from "../../components/Logo";
 import Button from "../../components/Button";
+import { formatDateShort } from "../../utils/formatters";
 import { useTheme } from "../../context/ThemeContext";
 import "./TenantDashboard.css";
 
 import TenantSearch from "./TenantSearch";
 import TenantChat from "./TenantChat";
 import TenantSettings from "./TenantSettings";
+import DashboardSkeleton from "../DashboardSkeleton";
 
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
@@ -206,8 +208,6 @@ export default function TenantDashboard() {
       const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
     }
-    const globalSaved = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
-    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
     return "";
   });
 
@@ -228,15 +228,21 @@ export default function TenantDashboard() {
       if (emailKey) {
         updated = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       }
-      if (!updated) {
-        updated = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
-      }
       if (updated) {
         setTenantAvatar(updated);
       }
     };
     window.addEventListener("storage", handleStorageUpdate);
     return () => window.removeEventListener("storage", handleStorageUpdate);
+  }, []);
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 600);
+    return () => clearTimeout(timer);
   }, []);
 
   // Welcome Overlay states for new signup animation
@@ -313,6 +319,39 @@ export default function TenantDashboard() {
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
 
+  const [notifications, setNotifications] = useState(() => {
+    try {
+      const saved = localStorage.getItem("tenantNotifications");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+
+  useEffect(() => {
+    const handleGlobalToast = (e) => {
+      if (e.detail) {
+        const { message, type, title } = e.detail;
+        const newNotif = {
+          id: Date.now() + Math.random().toString(36).substring(2, 9),
+          message,
+          type,
+          title: title || (type === "success" ? "Success" : type === "error" ? "Action Failed" : type === "warning" ? "Notice" : "Update"),
+          createdAt: Date.now(),
+          read: false
+        };
+        setNotifications((prev) => {
+          const updated = [newNotif, ...prev].slice(0, 50);
+          localStorage.setItem("tenantNotifications", JSON.stringify(updated));
+          return updated;
+        });
+      }
+    };
+    window.addEventListener("lodale-toast", handleGlobalToast);
+    return () => window.removeEventListener("lodale-toast", handleGlobalToast);
+  }, []);
+
   // GSAP animation references
   const mainContentRef = useRef(null);
 
@@ -339,7 +378,7 @@ export default function TenantDashboard() {
           return reqUser.includes(currentName) || currentName.includes(reqUser);
         });
         setRequests(filtered);
-      } catch (e) {
+      } catch {
         setRequests([]);
       }
     } else {
@@ -556,7 +595,7 @@ export default function TenantDashboard() {
     if (saved) {
       try {
         allRequests = JSON.parse(saved);
-      } catch (e) {
+      } catch {
         allRequests = [];
       }
     }
@@ -590,7 +629,7 @@ export default function TenantDashboard() {
           id: "pay-" + Date.now(),
           month: currentMonthYearStr,
           amount: "₦150,000",
-          date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          date: formatDateShort(new Date()),
           status: "Paid",
           method: "Card"
         };
@@ -605,6 +644,11 @@ export default function TenantDashboard() {
   const handleSignOut = () => {
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("sessionExpiresAt");
+    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("userRole");
+    window.dispatchEvent(new Event("storage"));
     navigate("/login", { replace: true });
   };
 
@@ -616,6 +660,10 @@ export default function TenantDashboard() {
     if (activeTab === 3) return "Settings";
     return "";
   };
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="tenant-wrapper">
@@ -689,7 +737,7 @@ export default function TenantDashboard() {
         <div className="tenant-welcome-overlay" ref={overlayRef}>
           <div className="tenant-welcome-card" ref={contentRef}>
             <div className="welcome-sparkle-icon">
-              <Sparkles className="h-6 w-6 text-[#E5C583]" />
+              <CheckCircle2 className="h-6 w-6 text-[#E5C583]" />
             </div>
             <h2 className="welcome-title font-display">Welcome to Lodale, {firstName}!</h2>
             <p className="welcome-subtitle">Your tenant portal is completely setup. Here is what we have customized for you:</p>
@@ -720,7 +768,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={handleDismissWelcome}
-              className="w-full bg-[#E5C583] hover:bg-[#D8B672] text-[#0B1512] font-bold py-3.5 mt-4 transition-all duration-150 transform hover:scale-[1.01]"
+              className="w-full bg-[#E5C583] hover:bg-[#D8B672] text-[#263b33] font-bold py-3.5 mt-4 transition-all duration-150 transform hover:scale-[1.01]"
             >
               Get Started
             </Button>
@@ -745,7 +793,7 @@ export default function TenantDashboard() {
                     <span className="summary-lbl mt-3">Total Rent Amount</span>
                     <span className="summary-val amount text-moss-700 dark:text-[#E5C583]">₦150,000</span>
                     <span className="summary-lbl mt-3">Recipient Landlord</span>
-                    <span className="summary-val">Ada K. (Skyline Apartments)</span>
+                    <span className="summary-val">{activeLease?.landlord || "Verified Landlord"}</span>
                   </div>
 
                   <div className="payment-card-input-group mt-5">
@@ -765,7 +813,7 @@ export default function TenantDashboard() {
 
                   <Button
                     onClick={handlePayRentSubmit}
-                    className="w-full mt-6 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px]"
+                    className="w-full mt-6 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px]"
                   >
                     Authorize Payment (₦150,000)
                   </Button>
@@ -827,7 +875,7 @@ export default function TenantDashboard() {
                     try {
                       const prof = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
                       return prof.phone || "Not provided";
-                    } catch (e) {
+                    } catch {
                       return "Not provided";
                     }
                   })()}
@@ -845,7 +893,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={() => setShowProfileModal(false)}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
+              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
             >
               Close Profile Details
             </Button>
@@ -944,7 +992,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={() => { setShowTicketModal(false); setSelectedTicket(null); }}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
+              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
             >
               Close Ticket
             </Button>
@@ -1047,7 +1095,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={() => setShowRatingModal(false)}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
+              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
             >
               Close Details
             </Button>
@@ -1055,7 +1103,74 @@ export default function TenantDashboard() {
         </div>
       )}
 
+      {/* NOTIFICATIONS MODAL */}
+      {showNotificationsModal && (
+        <div className="tenant-modal-backdrop" onClick={() => {
+          setShowNotificationsModal(false);
+          const updated = notifications.map(n => ({ ...n, read: true }));
+          setNotifications(updated);
+          localStorage.setItem("tenantNotifications", JSON.stringify(updated));
+        }}>
+          <div className="tenant-modal-content text-left" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Notification History</h3>
+              <button className="close-btn" onClick={() => {
+                setShowNotificationsModal(false);
+                const updated = notifications.map(n => ({ ...n, read: true }));
+                setNotifications(updated);
+                localStorage.setItem("tenantNotifications", JSON.stringify(updated));
+              }}>&times;</button>
+            </div>
+            
+            <div className="modal-scroll-area">
+              {notifications.length === 0 ? (
+                <p className="text-[13px] text-[#6C6E73] dark:text-[#A3BCA7] py-6 text-center">No notifications yet.</p>
+              ) : (
+                <div className="flex flex-col gap-3 mt-4 pr-2">
+                  {notifications.map(notif => (
+                    <div key={notif.id} className={`p-3 rounded-xl border ${notif.read ? 'bg-neutral-50 dark:bg-[#1D2D26]/20 border-neutral-100 dark:border-neutral-800/40' : 'bg-white dark:bg-[#1D2D26]/60 border-moss-200 dark:border-[#E5C583]/30 shadow-sm'}`}>
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-[13px] font-bold text-ink-900 dark:text-white">{notif.title}</span>
+                        <span className="text-[11px] text-[#6C6E73] dark:text-[#A3BCA7] whitespace-nowrap ml-2">
+                          {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] leading-relaxed">
+                        {notif.message}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
+            <div className="flex gap-3 mt-6">
+              {notifications.length > 0 && (
+                <Button
+                  onClick={() => {
+                    setNotifications([]);
+                    localStorage.setItem("tenantNotifications", JSON.stringify([]));
+                  }}
+                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-[#1D2D26] dark:hover:bg-[#253930] text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl transition-colors"
+                >
+                  Clear All
+                </Button>
+              )}
+              <Button
+                onClick={() => {
+                  setShowNotificationsModal(false);
+                  const updated = notifications.map(n => ({ ...n, read: true }));
+                  setNotifications(updated);
+                  localStorage.setItem("tenantNotifications", JSON.stringify(updated));
+                }}
+                className={`${notifications.length > 0 ? 'flex-[2]' : 'w-full'} bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl`}
+              >
+                Close Notifications
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CORE CONTAINER */}
       <div className="tenant-container">
@@ -1138,9 +1253,9 @@ export default function TenantDashboard() {
                   <span className="db-badge-dot" />
                 </div>
 
-                <div className="db-icon-btn-wrapper" onClick={() => triggerToast("You have 2 new unread portal notifications.", "info", "Notifications")} title="Notifications">
+                <div className="db-icon-btn-wrapper" onClick={() => setShowNotificationsModal(true)} title="Notifications">
                   <Bell className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                  <span className="db-badge-dot pulse" />
+                  {notifications.some(n => !n.read) && <span className="db-badge-dot pulse" />}
                 </div>
 
                 <div className="db-profile-avatar-wrapper" onClick={() => setShowProfileModal(true)} title="Profile settings">
@@ -1292,7 +1407,7 @@ export default function TenantDashboard() {
                       />
                     </div>
 
-                    <Button type="submit" className="w-full bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px]">
+                    <Button type="submit" className="w-full bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px]">
                       Send Repair Dispatch
                     </Button>
                   </form>
@@ -1357,7 +1472,7 @@ export default function TenantDashboard() {
                       </p>
                       <Button
                         onClick={() => setActiveTab(1)}
-                        className="mt-4 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] text-[12px] px-4 py-2"
+                        className="mt-4 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12px] px-4 py-2"
                       >
                         Search Properties
                       </Button>
@@ -1545,7 +1660,7 @@ export default function TenantDashboard() {
           /* TAB 4+: UNDER DEVELOPMENT VIEWS */
           <div className="under-development-wrapper flex-1 flex items-center justify-center">
             <div className="under-dev-card text-center">
-              <div className="sparkle-icon flex justify-center"><Sparkles className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>
+              <div className="sparkle-icon flex justify-center"><CheckCircle2 className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>
               <span className="tag mb-2 inline-block">Under Development</span>
               <h2 className="font-display text-2xl font-bold text-ink-900 dark:text-white mb-2">
                 {getTabName()} Section
@@ -1553,7 +1668,7 @@ export default function TenantDashboard() {
               <p className="text-[13px] text-muted max-w-sm mb-6 leading-relaxed">
                 This page is currently under construction. We will notify you once these tenant features are pushed to production.
               </p>
-              <Button onClick={() => setActiveTab(0)} className="dev-home-btn bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] font-bold px-6 py-2.5 rounded-xl text-[12.5px]">
+              <Button onClick={() => setActiveTab(0)} className="dev-home-btn bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold px-6 py-2.5 rounded-xl text-[12.5px]">
                 Back to Dashboard
               </Button>
             </div>
@@ -1570,7 +1685,7 @@ export default function TenantDashboard() {
             <div className="tour-ask-backdrop">
               <div className="tour-ask-card">
                 <div className="tour-ask-icon">
-                  <Sparkles className="h-6 w-6" />
+                  <HelpCircle className="h-6 w-6" />
                 </div>
                 <h3 className="tour-ask-title">Dashboard Onboarding</h3>
                 <p className="tour-ask-desc">
@@ -1620,7 +1735,7 @@ export default function TenantDashboard() {
 
                 {/* Floating hand/pointer direction arrows */}
                 <div className={`tour-pointer-arrow tour-pointer-${TOUR_STEPS[tourStep].placement}`}>
-                  <Sparkles className="h-3 w-3 text-white" />
+                  <Check className="h-3 w-3 text-white" />
                 </div>
 
                 <div className="tour-tooltip-actions">

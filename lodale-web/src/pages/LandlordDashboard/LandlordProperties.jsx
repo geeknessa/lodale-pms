@@ -49,7 +49,7 @@ function CustomSelect({ value, onChange, options, placeholder }) {
                 }}
                 className={`w-full text-left px-4 py-2 text-[12.5px] cursor-pointer transition-colors duration-150 flex items-center justify-between select-none ${
                   isSelected
-                    ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] font-bold"
+                    ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#263b33] font-bold"
                     : "text-ink-700 dark:text-cream-100/80 hover:bg-ink-50 dark:hover:bg-white/5"
                 }`}
               >

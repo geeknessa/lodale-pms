@@ -110,7 +110,7 @@ body.dark {
 
 body.dark .tenant-sidebar-btn.active {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #263b33;
 }
 
 .tenant-sidebar-tooltip {
@@ -132,7 +132,7 @@ body.dark .tenant-sidebar-btn.active {
 
 body.dark .tenant-sidebar-tooltip {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #263b33;
 }
 
 .tenant-sidebar-btn:hover .tenant-sidebar-tooltip {
@@ -745,7 +745,7 @@ body.dark .visa-logo {
 
 body.dark .visa-pay-btn {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #263b33;
 }
 
 .visa-pay-btn:hover {
@@ -1401,7 +1401,7 @@ body.dark .stepper-line-fill {
 body.dark .stepper-step.active .step-circle {
   background-color: #E5C583;
   border-color: #E5C583;
-  color: #0B1512;
+  color: #263b33;
   box-shadow: 0 0 0 4px rgba(229, 197, 131, 0.2);
 }
 
@@ -1824,7 +1824,7 @@ body.dark .welcome-sparkle-icon {
 
 body.dark .welcome-checklist li .chk-icon {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #263b33;
 }
 
 .welcome-checklist li strong {
@@ -1995,7 +1995,7 @@ body.dark .welcome-checklist li .chk-icon {
 }
 
 body.dark .tour-btn-next {
-  color: #0B1512 !important;
+  color: #263b33 !important;
 }
 
 .tour-btn-prev {
@@ -2170,7 +2170,7 @@ body.dark .tour-btn-next {
 }
 
 body.dark .tour-ask-btn-yes {
-  color: #0B1512 !important;
+  color: #263b33 !important;
 }
 
 

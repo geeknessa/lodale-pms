@@ -4,6 +4,7 @@ import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2 } f
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { triggerToast } from "../../context/ToastContext";
+import { formatCurrency } from "../../utils/formatters";
 import "./TenantSearch.css";
 
 // Rich Mock Dataset for search and recommendation swipers
@@ -288,16 +289,7 @@ const LANDLORDS = [
   }
 ];
 
-const formatPrice = (priceVal) => {
-  if (priceVal === null || priceVal === undefined) return "₦0/mo";
-  let str = String(priceVal).trim();
-  str = str.replace(/^[₦N\s]+/, "").replace(/\/mo.*$/i, "").trim();
-  const numeric = parseFloat(str.replace(/,/g, ""));
-  if (!isNaN(numeric)) {
-    return `₦${numeric.toLocaleString()}/mo`;
-  }
-  return `₦${str}/mo`;
-};
+// formatCurrency imported from formatters.js
 
 // Helper Property Card Component
 function PropertyCard({ property, onInspect }) {
@@ -306,7 +298,7 @@ function PropertyCard({ property, onInspect }) {
       <div className="property-card-image-wrapper">
         <img src={property.image} alt={property.title} className="property-card-image" />
         <span className="property-card-price-tag">
-          {formatPrice(property.price)}
+          {formatCurrency(property.price, "/mo")}
         </span>
       </div>
 
@@ -451,7 +443,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
             type: item.type || item.property_type || "apartment",
             image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
             amenities: item.amenities || ["Prepaid Meter", "24/7 Security"],
-            landlord: typeof item.landlord === "object" ? item.landlord : { name: item.landlord || "Ada K.", score: 4.8, reviews: 12 },
+            landlord: typeof item.landlord === "object" ? item.landlord : { name: item.landlord || "Verified Landlord", score: 5.0, reviews: 1 },
             status: item.status,
             isPending: item.isPending,
             recommendationCategory: item.recommendationCategory || "Popular properties"
@@ -623,7 +615,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
         const prof = JSON.parse(raw);
         return prof.location || "";
       }
-    } catch (e) { }
+    } catch { }
     return "";
   })();
 
@@ -705,7 +697,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     const locLower = userLocationStr.toLowerCase().trim();
     if (locLower) {
       const allTokens = locLower
-        .split(/[\s,\-\(\)]+/)
+        .split(/[\s,\-()]+/)
         .filter(k => k.length > 2 && !["usa", "states", "united", "atlanta", "london", "york"].includes(k));
 
       // Prefer specific area tokens over generic "lagos", "fct", "state"
@@ -862,7 +854,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
             )}
             {filterPrice && (
               <div className="filter-chip">
-                <span>Max: ₦{parseFloat(filterPrice).toLocaleString()}</span>
+                <span>Max: {formatCurrency(parseFloat(filterPrice), "/mo")}</span>
                 <button className="chip-remove" onClick={() => setFilterPrice("")}>&times;</button>
               </div>
             )}
@@ -945,7 +937,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                       onClick={() => {
                         setViewAllListings(true);
                       }}
-                      className="bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] text-[12.5px] font-bold px-5 py-2.5 rounded-xl"
+                      className="bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12.5px] font-bold px-5 py-2.5 rounded-xl"
                     >
                       View Available Listings
                     </Button>
@@ -1181,7 +1173,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               </Button>
               <Button
                 onClick={() => setShowFilterModal(false)}
-                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] font-bold py-3.5 text-[13px] rounded-xl"
+                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold py-3.5 text-[13px] rounded-xl"
               >
                 Apply Filters
               </Button>
@@ -1204,7 +1196,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               <div className="property-banner-overlay" style={{ height: "180px", borderRadius: "18px", overflow: "hidden", position: "relative", marginBottom: "16px" }}>
                 <img src={selectedProperty.image} alt={selectedProperty.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 <span className="property-card-price-tag" style={{ position: "absolute", bottom: "12px", right: "12px" }}>
-                  {formatPrice(selectedProperty.price)}
+                  {formatCurrency(selectedProperty.price, "/mo")}
                 </span>
               </div>
 
@@ -1282,7 +1274,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                   triggerToast("Application submitted successfully! Your pre-verified NIN profile has been shared with the landlord.", "success", "Application Sent");
                   setShowPropertyDetailsModal(false);
                 }}
-                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
+                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
               >
                 Apply to Rent
               </Button>
@@ -1375,7 +1367,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                   setSearchQuery(selectedLandlord.name);
                   setShowLandlordDetailsModal(false);
                 }}
-                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
+                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
               >
                 View Properties
               </Button>

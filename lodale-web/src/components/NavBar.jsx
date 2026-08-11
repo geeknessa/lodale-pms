@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Sun, Moon, Menu, X } from "lucide-react";
-import { Logo } from "./Logo";
 import Button from "./Button";
 import { useTheme } from "../context/ThemeContext";
+import { Logo } from "./Logo";
 
-export default function NavBar() {
+export default function NavBar({ transparentMode = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
@@ -24,6 +24,7 @@ export default function NavBar() {
     return r === "admin" || email === "admin@lodale.com" || sessionStorage.getItem("adminAuthenticated") === "true";
   });
   const [activeSection, setActiveSection] = useState("");
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     const handleAuth = () => {
@@ -54,12 +55,18 @@ export default function NavBar() {
     const handleScroll = () => {
       const tenantElem = document.getElementById("for-tenants");
       const landlordElem = document.getElementById("for-landlords");
+      const blogElem = document.getElementById("blog");
       const scrollPos = window.scrollY;
 
       const tenantTop = tenantElem ? tenantElem.offsetTop - 180 : Infinity;
       const landlordTop = landlordElem ? landlordElem.offsetTop - 180 : Infinity;
+      const blogTop = blogElem ? blogElem.offsetTop - 180 : Infinity;
 
-      if (scrollPos >= landlordTop) {
+      setIsScrolled(scrollPos > 50);
+
+      if (scrollPos >= blogTop) {
+        setActiveSection("#blog");
+      } else if (scrollPos >= landlordTop) {
         setActiveSection("#for-landlords");
       } else if (scrollPos >= tenantTop) {
         setActiveSection("#for-tenants");
@@ -118,22 +125,32 @@ export default function NavBar() {
     return location.pathname === path;
   };
 
-
+  const isActuallyTransparent = transparentMode && !isScrolled;
 
   const desktopLinkClass = (path, hash = "") => {
-    const active = checkIsActive(path, hash);
-    return `transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none rounded-md px-2.5 py-1 ${active
-      ? "text-moss-700 dark:text-[#E5C583] font-bold bg-moss-100/70 dark:bg-[#1C3328]/80 relative after:content-[''] after:absolute after:-bottom-1.5 after:left-2 after:right-2 after:h-[2.5px] after:bg-moss-700 dark:after:bg-[#E5C583] after:rounded-full shadow-xs"
-      : "text-ink-700 dark:text-cream-100/70 hover:text-ink-900 dark:hover:text-white font-medium hover:bg-black/5 dark:hover:bg-white/5"
-      }`;
+    const isActive = checkIsActive(path, hash);
+    const inactiveColor = isActuallyTransparent
+      ? (isDark ? "text-white/90 hover:text-white" : "text-[#405448]/90 hover:text-[#405448]")
+      : "text-[#405448] dark:text-cream-100 hover:text-moss-700 dark:hover:text-white";
+    const activeColor = isActuallyTransparent
+      ? (isDark ? "text-white font-bold" : "text-[#405448] font-bold")
+      : "text-[#405448] font-bold dark:text-white";
+    const underlineColor = isActuallyTransparent
+      ? (isDark ? "after:bg-white" : "after:bg-[#405448]")
+      : "after:bg-[#405448] dark:after:bg-[#E5C583]";
+
+    return `relative transition-colors pb-1 text-[13px] font-medium focus-visible:ring-2 focus-visible:ring-moss-600 outline-none ${isActive ? activeColor : inactiveColor
+      } ${isActive ? `after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full ${underlineColor}` : ""}`;
   };
 
-
-
   function handleSignOut() {
-    const isCurrentAdmin = isAdmin || localStorage.getItem("userRole") === "admin";
+    const isCurrentAdmin = isAdmin || localStorage.getItem("userRole") === "admin" || sessionStorage.getItem("userRole") === "admin";
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("sessionExpiresAt");
+    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("userRole");
     if (localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com") {
       localStorage.removeItem("lastLoggedInEmail");
     }
@@ -142,6 +159,8 @@ export default function NavBar() {
     }
     setIsAuthenticated(false);
     setIsOpen(false);
+    window.dispatchEvent(new Event("storage"));
+
     if (isCurrentAdmin) {
       navigate("/admin/login", { replace: true });
     } else {
@@ -161,15 +180,26 @@ export default function NavBar() {
     }
   }
 
+  const mobileLinkClass = (path, hash = "") => {
+    const active = checkIsActive(path, hash);
+    return `flex items-center justify-between py-2 text-[16px] font-semibold transition-colors ${active ? "text-moss-700 dark:text-[#E5C583]" : "text-theme-text"
+      }`;
+  };
+
   return (
-    <header className="sticky top-0 z-[100] border-b border-ink-200/30 bg-white/85 dark:bg-[#0B1512]/85 backdrop-blur-md transition-colors">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link to="/explore" onClick={handleHomeClick}>
-          <Logo />
+    <header
+      className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${isActuallyTransparent
+        ? "bg-transparent border-b border-white/20 pt-4 pb-4"
+        : "bg-white/90 dark:bg-[#263b33]/90 backdrop-blur-md border-b border-ink-200/30 py-4 shadow-sm"
+        }`}
+    >
+      <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 md:px-12">
+        <Link to="/explore" onClick={handleHomeClick} className="flex-shrink-0">
+          <Logo variant={isActuallyTransparent ? (isDark ? "white" : "moss") : "default"} />
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden items-center gap-8 text-[14px] md:flex">
+        <nav className="hidden items-center gap-10 md:flex">
           <Link
             to="/explore"
             onClick={handleHomeClick}
@@ -192,16 +222,17 @@ export default function NavBar() {
             For Landlords
           </Link>
           <Link
+            to="/explore#blog"
+            onClick={(e) => handleSectionClick(e, "#blog")}
+            className={desktopLinkClass("/explore", "#blog")}
+          >
+            Blog
+          </Link>
+          <Link
             to="/how-it-works"
             className={desktopLinkClass("/how-it-works")}
           >
             How It Works
-          </Link>
-          <Link
-            to="/about"
-            className={desktopLinkClass("/about")}
-          >
-            About
           </Link>
         </nav>
 
@@ -209,20 +240,30 @@ export default function NavBar() {
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-cream-50 hover:bg-cream-100 transition-colors text-ink-700 dark:bg-moss-700 dark:text-white dark:hover:bg-moss-600 mr-2 focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white"
+            className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors mr-2 focus-visible:ring-2 focus-visible:ring-white outline-none ${isActuallyTransparent
+              ? (isDark
+                ? "bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm"
+                : "bg-moss-700/10 hover:bg-moss-700/20 text-moss-800 backdrop-blur-sm")
+              : "bg-cream-50 hover:bg-cream-100 text-ink-700 dark:bg-moss-700 dark:text-white dark:hover:bg-moss-600"
+              }`}
             aria-label="Toggle dark theme"
           >
             {isDark ? (
-              <Sun className="h-4.5 w-4.5" />
+              <Sun className="h-4 w-4" />
             ) : (
-              <Moon className="h-4.5 w-4.5" />
+              <Moon className="h-4 w-4" />
             )}
           </button>
 
           {/* Mobile Hamburger Toggle */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-cream-50 hover:bg-cream-100 text-ink-700 dark:bg-moss-700 dark:text-white dark:hover:bg-moss-600 md:hidden focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white"
+            className={`flex h-9 w-9 items-center justify-center rounded-lg md:hidden focus-visible:ring-2 outline-none transition-colors ${isActuallyTransparent
+              ? (isDark
+                ? "text-white bg-white/10 hover:bg-white/20 focus-visible:ring-white"
+                : "text-moss-800 bg-moss-700/10 hover:bg-moss-700/20 focus-visible:ring-moss-800")
+              : "bg-cream-50 hover:bg-cream-100 text-ink-700 dark:bg-moss-700 dark:text-white dark:hover:bg-moss-600 focus-visible:ring-moss-600"
+              }`}
             aria-label="Toggle navigation menu"
             aria-expanded={isOpen}
           >
@@ -235,7 +276,10 @@ export default function NavBar() {
               <Button
                 onClick={handleDashboardNavigate}
                 variant="secondary"
-                className="px-4 py-2 text-[13px] font-bold border border-moss-700/30 dark:border-[#E5C583]/40 text-moss-800 dark:text-[#E5C583] hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] transition-all cursor-pointer"
+                className={`px-4 py-2 text-[13px] font-bold border ${isActuallyTransparent
+                  ? (isDark ? "border-white/30 text-white hover:bg-white hover:text-moss-900" : "border-moss-800/30 text-moss-800 hover:bg-moss-800 hover:text-white")
+                  : "border-moss-700/30 dark:border-[#E5C583]/40 text-moss-800 dark:text-[#E5C583] hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#263b33]"
+                  } transition-all cursor-pointer`}
               >
                 Dashboard
               </Button>
@@ -250,18 +294,21 @@ export default function NavBar() {
             <div className="hidden md:flex items-center gap-3">
               <button
                 onClick={() => navigate("/login")}
-                className={`text-[14px] font-medium focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white rounded-[6px] px-2.5 py-1.5 transition-colors ${location.pathname === "/login"
-                  ? "text-moss-700 dark:text-[#E5C583] font-bold"
-                  : "text-ink-700 hover:text-ink-900"
+                className={`text-[13px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white rounded-full px-4 py-2 ${isActuallyTransparent
+                  ? (isDark ? "text-white/90 hover:text-white" : "text-[#405448]/90 hover:text-[#405448]")
+                  : "text-ink-700 hover:text-ink-900 dark:text-cream-100 dark:hover:text-white"
                   }`}
               >
                 Log In
               </button>
               <Button
-                className="px-5 py-2.5 text-[14px] focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2 outline-none dark:focus-visible:ring-white"
-                onClick={() => navigate("/signup")}
+                onClick={() => navigate("/login")}
+                className={`px-4 py-2 text-[13px] font-semibold transition-all rounded-full ${isActuallyTransparent
+                  ? (isDark ? "bg-white text-ink-900 hover:bg-white/90" : "bg-moss-800 text-white hover:bg-moss-900")
+                  : ""
+                  }`}
               >
-                Sign Up
+                Sign In
               </Button>
             </div>
           )}
@@ -302,22 +349,22 @@ export default function NavBar() {
             )}
           </Link>
           <Link
+            to="/explore#blog"
+            onClick={(e) => handleSectionClick(e, "#blog")}
+            className={mobileLinkClass("/explore", "#blog")}
+          >
+            <span>Blog</span>
+            {checkIsActive("/explore", "#blog") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
+          </Link>
+          <Link
             to="/how-it-works"
             onClick={() => setIsOpen(false)}
             className={mobileLinkClass("/how-it-works")}
           >
             <span>How It Works</span>
             {checkIsActive("/how-it-works") && (
-              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
-            )}
-          </Link>
-          <Link
-            to="/about"
-            onClick={() => setIsOpen(false)}
-            className={mobileLinkClass("/about")}
-          >
-            <span>About</span>
-            {checkIsActive("/about") && (
               <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
             )}
           </Link>

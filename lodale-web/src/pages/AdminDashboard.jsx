@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Logo } from "../components/Logo";
 import { useTheme } from "../context/ThemeContext";
 import { adminService } from "../services/adminService";
+import { formatCurrency, formatDate } from "../utils/formatters";
 import {
   LayoutDashboard,
   Users,
@@ -17,7 +18,6 @@ import {
   UserCheck,
   UserX,
   Trash2,
-  ShieldAlert,
   Clock,
   ChevronRight,
   X,
@@ -37,11 +37,7 @@ import {
   User,
   KeyRound,
   Upload,
-  Camera,
-  Laptop,
-  Smartphone,
-  Shield,
-  Menu,
+  Menu
 } from "lucide-react";
 
 // --- MOCK INITIAL DATA ---
@@ -236,7 +232,7 @@ const INITIAL_REVIEWS = [
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { themePreference, setThemePreference, effectiveTheme, isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
 
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -290,7 +286,7 @@ export default function AdminDashboard() {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) localProps.push(...parsed);
         }
-      } catch (err) {}
+      } catch (_err) {}
 
       // Scan localStorage for any extra property key
       try {
@@ -309,7 +305,7 @@ export default function AdminDashboard() {
             }
           }
         }
-      } catch (err) {}
+      } catch (_err) {}
 
       setListings((prev) => {
         const existingMap = new Map(prev.map(l => [l.id, l]));
@@ -325,8 +321,8 @@ export default function AdminDashboard() {
             docDataUrl: p.docDataUrl || p.ownership_doc_url,
             deedVerified: true,
             type: p.property_type || p.type || 'Apartment',
-            rent: p.price || (p.rent_amount ? `₦${Number(p.rent_amount).toLocaleString()}/yr` : '₦2,500,000/yr'),
-            landlord: p.landlord || { name: 'Ada K.', score: 5.0, reviews: 1 }
+            rent: p.price || (p.rent_amount ? formatCurrency(p.rent_amount, "/yr") : '₦2,500,000/yr'),
+            landlord: p.landlord || { name: 'Verified Landlord', score: 5.0, reviews: 1 }
           };
           existingMap.set(p.id, formattedProp);
         });
@@ -342,8 +338,8 @@ export default function AdminDashboard() {
             docDataUrl: p.docDataUrl || p.ownership_doc_url,
             deedVerified: true,
             type: p.property_type || 'Apartment',
-            rent: `₦${Number(p.rent_amount || 2500000).toLocaleString()}/yr`,
-            landlord: p.landlord || { name: 'Ada K.', score: 5.0, reviews: 1 }
+            rent: formatCurrency(p.rent_amount || 2500000, "/yr"),
+            landlord: p.landlord || { name: 'Verified Landlord', score: 5.0, reviews: 1 }
           };
           existingMap.set(p.id, formattedProp);
         });
@@ -367,7 +363,7 @@ export default function AdminDashboard() {
           const parsed = JSON.parse(savedUsers);
           if (Array.isArray(parsed)) localUsers.push(...parsed);
         }
-      } catch (e) {}
+      } catch (_e) {}
 
       // Scan localStorage for any registeredUser_, userProfile_, or username_ key
       try {
@@ -401,7 +397,7 @@ export default function AdminDashboard() {
             }
           }
         }
-      } catch (e) {}
+      } catch (_e) {}
 
       // Scan propertyTenants map for tenants registered by landlords
       try {
@@ -420,7 +416,7 @@ export default function AdminDashboard() {
             }
           });
         }
-      } catch (e) {}
+      } catch (_e) {}
 
       const activeUsername = localStorage.getItem("username");
       const activeEmail = localStorage.getItem("lastLoggedInEmail");
@@ -473,7 +469,7 @@ export default function AdminDashboard() {
           const formattedRole = (activeRole || "landlord").toLowerCase().includes("landlord") ? "Landlord" : "Tenant";
           existingMap.set(activeEmail.toLowerCase(), {
             id: "usr-" + Math.floor(Math.random() * 100000),
-            name: activeUsername || "Ada K.",
+            name: activeUsername || "Verified Landlord",
             email: activeEmail,
             phone: "",
             role: formattedRole,
@@ -663,7 +659,7 @@ export default function AdminDashboard() {
         );
         localStorage.setItem("properties", JSON.stringify(updated));
       }
-    } catch (err) {}
+    } catch (_err) {}
 
     // Send notification to landlord
     try {
@@ -679,7 +675,7 @@ export default function AdminDashboard() {
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
       window.dispatchEvent(new Event("storage"));
-    } catch (err) {}
+    } catch (_err) {}
 
     showToast(`Listing "${propertyTitle}" approved and is now live!`);
     if (selectedListing?.id === listingId) {
@@ -714,7 +710,7 @@ export default function AdminDashboard() {
         );
         localStorage.setItem("properties", JSON.stringify(updated));
       }
-    } catch (err) {}
+    } catch (_err) {}
 
     // Send notification to landlord
     try {
@@ -730,7 +726,7 @@ export default function AdminDashboard() {
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
       window.dispatchEvent(new Event("storage"));
-    } catch (err) {}
+    } catch (_err) {}
 
     showToast(`Listing "${propertyTitle}" rejected.`);
     setIsRejectingModalOpen(false);
@@ -1439,7 +1435,7 @@ export default function AdminDashboard() {
                       key={tab}
                       onClick={() => setListingFilter(tab)}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${listingFilter === tab
-                        ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                        ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33]"
                         : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
                         }`}
                     >
@@ -1584,7 +1580,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setReviewFilter("All")}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "All"
-                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33]"
                       : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
                       }`}
                   >
@@ -1642,7 +1638,7 @@ export default function AdminDashboard() {
                         </p>
 
                         <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                          By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {new Date(rev.submittedAt).toLocaleDateString()}
+                          By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {formatDate(rev.submittedAt, { year: 'numeric', month: 'numeric', day: 'numeric' })}
                         </div>
 
                         {rev.flagged && (
@@ -1767,7 +1763,9 @@ export default function AdminDashboard() {
                       </label>
                       <input
                         type="text"
+                        maxLength={50}
                         value={profileForm.name}
+                        onInput={(e) => setProfileForm({ ...profileForm, name: e.target.value.replace(/[0-9]/g, '') })}
                         onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
                         required
                         className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
@@ -1780,6 +1778,7 @@ export default function AdminDashboard() {
                       </label>
                       <input
                         type="text"
+                        maxLength={50}
                         value={profileForm.username}
                         onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
                         required
@@ -1793,6 +1792,7 @@ export default function AdminDashboard() {
                       </label>
                       <input
                         type="email"
+                        maxLength={100}
                         value={profileForm.email}
                         onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
                         required
@@ -1805,8 +1805,10 @@ export default function AdminDashboard() {
                         Phone Number
                       </label>
                       <input
-                        type="text"
+                        type="tel"
+                        maxLength={15}
                         value={profileForm.phone}
+                        onInput={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/[^0-9+]/g, '') })}
                         onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                         className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
                       />
@@ -2071,7 +2073,7 @@ export default function AdminDashboard() {
                         const docUrl = selectedListing.ownership_doc_url || selectedListing.ownershipDocUrl || selectedListing.docDataUrl;
                         if (!docUrl) {
                           e.preventDefault();
-                          const sampleContent = `LODALE PROPERTY MANAGEMENT SYSTEM\nLegal Ownership Verification Record\n\nProperty Title: ${selectedListing.title}\nProperty ID: ${selectedListing.id}\nLandlord: ${selectedListing.landlord?.name || 'Ada K.'}\nDocument Type: ${selectedListing.ownership_doc || 'Certificate of Ownership'}\nVerification Status: Verified & Stored on Lodale PMS Database.\nTimestamp: ${new Date().toISOString()}`;
+                          const sampleContent = `LODALE PROPERTY MANAGEMENT SYSTEM\nLegal Ownership Verification Record\n\nProperty Title: ${selectedListing.title}\nProperty ID: ${selectedListing.id}\nLandlord: ${selectedListing.landlord?.name || 'Verified Landlord'}\nDocument Type: ${selectedListing.ownership_doc || 'Certificate of Ownership'}\nVerification Status: Verified & Stored on Lodale PMS Database.\nTimestamp: ${new Date().toISOString()}`;
                           const blob = new Blob([sampleContent], { type: 'text/plain' });
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement('a');

@@ -100,7 +100,7 @@ body.dark {
 }
 
 body.dark .settings-avatar-edit-badge {
-  color: #0B1512;
+  color: #263b33;
 }
 
 .settings-profile-name {
@@ -382,7 +382,7 @@ body.dark .settings-avatar-edit-badge {
 }
 
 body.dark .settings-btn-save {
-  color: #0B1512 !important;
+  color: #263b33 !important;
 }
 
 .settings-btn-save:hover {

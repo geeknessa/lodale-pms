@@ -49,8 +49,6 @@ export default function TenantSettings({ onSignOut }) {
       const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
     }
-    const globalSaved = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
-    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
     return userProfile.avatar && !userProfile.avatar.includes("unsplash.com") ? userProfile.avatar : "";
   });
   const fileInputRef = useRef(null);
@@ -71,7 +69,6 @@ export default function TenantSettings({ onSignOut }) {
       reader.onload = (evt) => {
         const base64Data = evt.target.result;
         setAvatarUrl(base64Data);
-        localStorage.setItem("tenantAvatarUrl", base64Data);
         const emailKey = email || localStorage.getItem("lastLoggedInEmail");
         if (emailKey) {
           localStorage.setItem("tenantAvatar_" + emailKey.toLowerCase(), base64Data);
@@ -94,7 +91,6 @@ export default function TenantSettings({ onSignOut }) {
       localStorage.setItem("username", fullName);
       localStorage.setItem("username_" + email.trim().toLowerCase(), fullName);
       localStorage.setItem("lastLoggedInEmail", email.trim());
-      localStorage.setItem("tenantAvatarUrl", avatarUrl);
       if (email) {
         localStorage.setItem("tenantAvatar_" + email.trim().toLowerCase(), avatarUrl);
       }
@@ -261,7 +257,9 @@ export default function TenantSettings({ onSignOut }) {
                 <label className="settings-input-label">First Name</label>
                 <input
                   type="text"
+                  maxLength={50}
                   value={firstName}
+                  onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
                   onChange={(e) => setFirstName(e.target.value)}
                   className="settings-form-input"
                   placeholder="First Name"
@@ -273,7 +271,9 @@ export default function TenantSettings({ onSignOut }) {
                 <label className="settings-input-label">Last Name</label>
                 <input
                   type="text"
+                  maxLength={50}
                   value={lastName}
+                  onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
                   onChange={(e) => setLastName(e.target.value)}
                   className="settings-form-input"
                   placeholder="Last Name"
@@ -286,6 +286,7 @@ export default function TenantSettings({ onSignOut }) {
                 <div className="settings-input-with-icon">
                   <input
                     type="email"
+                    maxLength={100}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="settings-form-input email-input"
@@ -303,6 +304,7 @@ export default function TenantSettings({ onSignOut }) {
                 <label className="settings-input-label">Address</label>
                 <input
                   type="text"
+                  maxLength={255}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   className="settings-form-input"
@@ -313,8 +315,10 @@ export default function TenantSettings({ onSignOut }) {
               <div className="settings-form-group">
                 <label className="settings-input-label">Phone Number</label>
                 <input
-                  type="text"
+                  type="tel"
+                  maxLength={15}
                   value={phone}
+                  onInput={(e) => e.target.value = e.target.value.replace(/[^0-9+]/g, '')}
                   onChange={(e) => setPhone(e.target.value)}
                   className="settings-form-input"
                   placeholder="Phone Number"
@@ -348,6 +352,7 @@ export default function TenantSettings({ onSignOut }) {
                 <label className="settings-input-label">Postal Code</label>
                 <input
                   type="text"
+                  maxLength={20}
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
                   className="settings-form-input"
@@ -383,6 +388,7 @@ export default function TenantSettings({ onSignOut }) {
                 <label className="settings-input-label">Current Password</label>
                 <input
                   type="password"
+                  maxLength={128}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   className="settings-form-input"
@@ -395,6 +401,7 @@ export default function TenantSettings({ onSignOut }) {
                 <label className="settings-input-label">New Password</label>
                 <input
                   type="password"
+                  maxLength={128}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="settings-form-input"
@@ -407,6 +414,7 @@ export default function TenantSettings({ onSignOut }) {
                 <label className="settings-input-label">Confirm New Password</label>
                 <input
                   type="password"
+                  maxLength={128}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="settings-form-input"

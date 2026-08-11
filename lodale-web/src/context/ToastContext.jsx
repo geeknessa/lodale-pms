@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, Sparkles, X } from "lucide-react";
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
 
 const ToastContext = createContext(null);
 
@@ -89,7 +89,7 @@ function ToastItem({ toast, onClose }) {
     ? AlertCircle
     : isWarning
     ? AlertTriangle
-    : Sparkles;
+    : Info;
 
   const bgClasses = isSuccess
     ? "bg-[#0E2018] border-emerald-500/50 text-emerald-100 shadow-[0_10px_30px_rgba(16,185,129,0.25)]"
@@ -130,7 +130,7 @@ function ToastItem({ toast, onClose }) {
   );
 }
 
-export function useToast() {
+function useToast() {
   const ctx = useContext(ToastContext);
   if (!ctx) {
     return {

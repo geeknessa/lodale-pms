@@ -7,17 +7,18 @@ export default function ListingCard({ listing }) {
   return (
     <Link
       to={`/listings/${listing.id}`}
-      className="group block overflow-hidden rounded-2xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#16241F] transition-all duration-300 ease-out hover:scale-[1.015] hover:border-moss-500/40 shadow-xs hover:shadow-md"
+      className="group block overflow-hidden rounded-2xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#16241F] transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-xl hover:border-moss-500/50 dark:hover:border-[#E5C583]/50 cursor-pointer"
     >
       <div className="flex h-48 w-full items-center justify-center bg-ink-100 dark:bg-white/10 overflow-hidden relative">
         <img
           src={imgUrl}
           alt={listing.title}
-          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="h-full w-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
           onError={(e) => {
             e.target.src = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80";
           }}
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
@@ -40,10 +41,10 @@ export default function ListingCard({ listing }) {
         </div>
 
         <div className="mt-4 flex items-center justify-between rounded-xl bg-moss-50 dark:bg-white/5 px-3 py-2 group-hover:bg-moss-700 dark:group-hover:bg-[#E5C583] transition-all duration-300">
-          <span className="text-[12px] font-semibold text-moss-800 dark:text-cream-100 group-hover:text-white dark:group-hover:text-[#0B1512] transition-colors duration-300">
-            {listing.landlord?.name || "Ada K."}
+          <span className="text-[12px] font-semibold text-moss-800 dark:text-cream-100 group-hover:text-white dark:group-hover:text-[#263b33] transition-colors duration-300">
+            {listing.landlord?.name || "Verified Landlord"}
           </span>
-          <span className="flex items-center gap-1 text-[12px] font-bold text-moss-800 dark:text-[#E5C583] group-hover:text-white dark:group-hover:text-[#0B1512] transition-colors duration-300">
+          <span className="flex items-center gap-1 text-[12px] font-bold text-moss-800 dark:text-[#E5C583] group-hover:text-white dark:group-hover:text-[#263b33] transition-colors duration-300">
             <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 group-hover:fill-amber-300 transition-colors duration-300" />
             {listing.landlord?.score || 5.0}
           </span>

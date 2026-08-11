@@ -1,5 +1,11 @@
 import pg from 'pg';
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -14,6 +20,16 @@ export async function initDb() {
   try {
     const client = await pool.connect();
     console.log('[PostgreSQL] Connected to local PostgreSQL database: lodale_db');
+
+    // Initialize Schema
+    try {
+      const schemaPath = path.join(__dirname, 'schema.sql');
+      const schemaSql = fs.readFileSync(schemaPath, 'utf-8');
+      await client.query(schemaSql);
+      console.log('[PostgreSQL] Schema synchronized.');
+    } catch (err) {
+      console.error('[PostgreSQL] Error running schema.sql:', err.message);
+    }
 
     // Seed default properties if table is empty
     const res = await client.query('SELECT COUNT(*) FROM properties');
@@ -103,6 +119,7 @@ export async function initDb() {
     await client.query(`
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS ownership_doc TEXT;
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS ownership_doc_url TEXT;
+      ALTER TABLE properties ALTER COLUMN property_type TYPE TEXT USING property_type::text;
     `);
 
     client.release();

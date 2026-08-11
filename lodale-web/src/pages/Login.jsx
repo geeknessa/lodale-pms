@@ -13,40 +13,19 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Simulated known credentials
-  const KNOWN_USER = {
-    email: "user@example.com",
-    password: "Password123!",
-  };
-
-  const KNOWN_ADMIN = {
-    username: "admin",
-    password: "555555",
-  };
-
   // State to toggle between User and Admin login modes
   const [isAdminMode] = useState(() => {
     return location.pathname === "/admin/login" || location.search.includes("role=admin");
   });
 
-  // Pre-fill email/username from previous session
+  // Pre-fill email only (never passwords) from previous session
   const [email, setEmail] = useState(() => {
     if (location.pathname === "/admin/login" || location.search.includes("role=admin")) {
       return "";
     }
     return localStorage.getItem("lastLoggedInEmail") || "";
   });
-  const [password, setPassword] = useState(() => {
-    if (location.pathname === "/admin/login" || location.search.includes("role=admin")) {
-      return "";
-    }
-    const cleanInitial = (localStorage.getItem("lastLoggedInEmail") || "").trim().toLowerCase();
-    if (cleanInitial) {
-      const savedPass = localStorage.getItem("userPassword_" + cleanInitial) || localStorage.getItem("lastLoggedInPassword");
-      if (savedPass) return savedPass;
-    }
-    return "";
-  });
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   // Error and Notification states
@@ -104,17 +83,6 @@ export default function Login() {
     }
   }, [navigate, location.pathname, location.search]);
 
-  function handleQuickAdminLogin() {
-    localStorage.removeItem("failedLoginAttempts");
-    localStorage.removeItem("loginLockoutUntil");
-    localStorage.removeItem("explicitAdminSignOut");
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userRole", "admin");
-    localStorage.setItem("lastLoggedInEmail", KNOWN_ADMIN.email);
-    localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
-    navigate("/admin/dashboard");
-  }
-
   async function handleLoginSubmit(e) {
     e.preventDefault();
     setInlineError("");
@@ -130,32 +98,39 @@ export default function Login() {
       return;
     }
 
-    // Check if logging in as Admin
+    // Admin login — authenticate via API
     if (isAdminMode) {
       const cleanUsername = email.trim().toLowerCase();
       const cleanPassword = password.trim();
 
-      if (cleanUsername === KNOWN_ADMIN.username && cleanPassword === KNOWN_ADMIN.password) {
-        sessionStorage.setItem("isAuthenticated", "true");
-        sessionStorage.setItem("userRole", "admin");
-        sessionStorage.setItem("adminAuthenticated", "true");
-        sessionStorage.setItem("lastLoggedInEmail", "admin@lodale.com");
-        sessionStorage.setItem("username", "System Admin");
-        sessionStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
+      try {
+        const res = await authService.signIn({ email: cleanUsername, password: cleanPassword });
+        if (res && res.user && res.user.primary_role === "admin") {
+          sessionStorage.setItem("isAuthenticated", "true");
+          sessionStorage.setItem("userRole", "admin");
+          sessionStorage.setItem("adminAuthenticated", "true");
+          sessionStorage.setItem("lastLoggedInEmail", cleanUsername);
+          sessionStorage.setItem("username", `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "Admin");
+          sessionStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
+          sessionStorage.setItem("db_user_id", res.user.id);
 
-        localStorage.removeItem("failedLoginAttempts");
-        localStorage.removeItem("loginLockoutUntil");
-        localStorage.removeItem("explicitAdminSignOut");
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userRole", "admin");
-        localStorage.setItem("adminAuthenticated", "true");
-        localStorage.setItem("lastLoggedInEmail", "admin@lodale.com");
-        localStorage.setItem("username", "System Admin");
-        localStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
-        navigate("/admin/dashboard");
-        return;
-      } else {
-        setInlineError("Invalid admin credentials. Please enter username: admin and password: 555555.");
+          localStorage.removeItem("failedLoginAttempts");
+          localStorage.removeItem("loginLockoutUntil");
+          localStorage.removeItem("explicitAdminSignOut");
+          localStorage.setItem("isAuthenticated", "true");
+          localStorage.setItem("userRole", "admin");
+          localStorage.setItem("adminAuthenticated", "true");
+          localStorage.setItem("lastLoggedInEmail", cleanUsername);
+          localStorage.setItem("username", `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "Admin");
+          localStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
+          navigate("/admin/dashboard");
+          return;
+        } else {
+          setInlineError("This account does not have admin privileges.");
+          return;
+        }
+      } catch (apiErr) {
+        setInlineError("Invalid admin credentials. Please check your username and password.");
         return;
       }
     }
@@ -165,7 +140,7 @@ export default function Login() {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
 
-    // Try Express Backend API authentication first
+    // Authenticate via Express Backend API
     try {
       const res = await authService.signIn({ email: cleanEmail, password: cleanPassword });
       if (res && res.user) {
@@ -175,7 +150,6 @@ export default function Login() {
         sessionStorage.setItem("isAuthenticated", "true");
         sessionStorage.setItem("userRole", userRole);
         sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
-        sessionStorage.setItem("lastLoggedInPassword", cleanPassword);
         sessionStorage.setItem("username", userFullName);
         sessionStorage.setItem("db_user_id", res.user.id);
 
@@ -184,8 +158,6 @@ export default function Login() {
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("userRole", userRole);
         localStorage.setItem("lastLoggedInEmail", cleanEmail);
-        localStorage.setItem("lastLoggedInPassword", cleanPassword);
-        localStorage.setItem("userPassword_" + cleanEmail, cleanPassword);
         localStorage.setItem("username", userFullName);
         localStorage.setItem("db_user_id", res.user.id);
 
@@ -205,119 +177,10 @@ export default function Login() {
         localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
         localStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
 
-        const userRecord = {
-          id: res.user.id || "usr-" + Math.floor(Math.random() * 100000),
-          name: userFullName,
-          email: cleanEmail,
-          phone: res.user.phone_number || "",
-          role: userRole,
-          username: userFullName,
-          profile: profileObj
-        };
-        localStorage.setItem("registeredUser_" + cleanEmail, JSON.stringify(userRecord));
-        try {
-          const existingStr = localStorage.getItem("registeredUsers");
-          let existing = existingStr ? JSON.parse(existingStr) : [];
-          existing = existing.filter(u => u && u.email && u.email.toLowerCase() !== cleanEmail);
-          existing.push(userRecord);
-          localStorage.setItem("registeredUsers", JSON.stringify(existing));
-        } catch (e) {}
-
         navigate(`/dashboard/${userRole}`);
         return;
       }
     } catch (apiErr) {
-      if (apiErr.message && apiErr.message.includes("Invalid email or password")) {
-        setInlineError("Invalid email or password.");
-        return;
-      }
-      console.warn("Express backend authentication failed, attempting local fallback:", apiErr.message);
-    }
-
-    // 1. Direct user key lookup
-    let registeredUser = null;
-    const regUserKey = "registeredUser_" + cleanEmail;
-    const regUserData = localStorage.getItem(regUserKey);
-    if (regUserData) {
-      try {
-        registeredUser = JSON.parse(regUserData);
-      } catch (err) {}
-    }
-
-    // 2. Global registeredUsers array lookup fallback
-    if (!registeredUser) {
-      try {
-        const listStr = localStorage.getItem("registeredUsers");
-        if (listStr) {
-          const list = JSON.parse(listStr);
-          registeredUser = list.find(u => u && u.email && u.email.toLowerCase() === cleanEmail);
-        }
-      } catch (e) {}
-    }
-
-    const savedUserPassword = localStorage.getItem("userPassword_" + cleanEmail) || (registeredUser ? registeredUser.password : null);
-
-    // Registered user login logic
-    if (registeredUser || savedUserPassword) {
-      const expectedPassword = ((registeredUser && registeredUser.password) || savedUserPassword || "").trim();
-      
-      if (expectedPassword && cleanPassword !== expectedPassword && password !== expectedPassword) {
-        const newAttempts = failedAttempts + 1;
-        setFailedAttempts(newAttempts);
-        localStorage.setItem("failedLoginAttempts", newAttempts.toString());
-        setInlineError("The password you entered is incorrect. Please try again.");
-        return;
-      }
-
-      // Login Successful!
-      const userRole = registeredUser?.role || localStorage.getItem("userRole") || "tenant";
-      const userFullName = registeredUser?.username || localStorage.getItem("username") || "User";
-
-      sessionStorage.setItem("isAuthenticated", "true");
-      sessionStorage.setItem("userRole", userRole);
-      sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
-      sessionStorage.setItem("lastLoggedInPassword", expectedPassword || cleanPassword);
-      sessionStorage.setItem("username", userFullName);
-      sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
-
-      localStorage.removeItem("failedLoginAttempts");
-      localStorage.removeItem("loginLockoutUntil");
-      localStorage.removeItem("explicitAdminSignOut");
-      localStorage.setItem("isAuthenticated", "true");
-      localStorage.setItem("userRole", userRole);
-      localStorage.setItem("lastLoggedInEmail", cleanEmail);
-      localStorage.setItem("lastLoggedInPassword", expectedPassword || cleanPassword);
-      localStorage.setItem("userPassword_" + cleanEmail, expectedPassword || cleanPassword);
-      localStorage.setItem("username", userFullName);
-      localStorage.setItem("username_" + cleanEmail, userFullName);
-
-      const savedProfile = localStorage.getItem("userProfile_" + cleanEmail);
-      if (savedProfile) {
-        sessionStorage.setItem("currentUserProfile", savedProfile);
-        localStorage.setItem("currentUserProfile", savedProfile);
-      } else {
-        const fallbackProf = registeredUser?.profile || {
-          firstName: userFullName.split(" ")[0] || "",
-          lastName: userFullName.split(" ").slice(1).join(" ") || "",
-          email: cleanEmail,
-          role: userRole,
-          phone: "",
-          address: "",
-          dob: "",
-          location: "",
-          postalCode: "",
-        };
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(fallbackProf));
-        localStorage.setItem("currentUserProfile", JSON.stringify(fallbackProf));
-      }
-
-      localStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
-      navigate(`/dashboard/${userRole}`);
-      return;
-    }
-
-    if (email !== KNOWN_USER.email && email.toLowerCase() !== KNOWN_ADMIN.email) {
-      // Email not found
       const newAttempts = failedAttempts + 1;
       setFailedAttempts(newAttempts);
       localStorage.setItem("failedLoginAttempts", newAttempts.toString());
@@ -330,56 +193,11 @@ export default function Login() {
           "Too many failed login attempts. Please try again in 15 minutes or reset your password."
         );
       } else {
-        setInlineError("We couldn’t find an account with that email address.");
+        setInlineError("Invalid email or password. Please try again.");
       }
       return;
     }
 
-    if (email === KNOWN_USER.email && password !== KNOWN_USER.password) {
-      // Password incorrect
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
-      localStorage.setItem("failedLoginAttempts", newAttempts.toString());
-
-      if (newAttempts >= 10) {
-        const lockDuration = Date.now() + 15 * 60 * 1000;
-        setLockoutTime(lockDuration);
-        localStorage.setItem("loginLockoutUntil", lockDuration.toString());
-        setInlineError(
-          "Too many failed login attempts. Please try again in 15 minutes or reset your password."
-        );
-      } else {
-        setInlineError(
-          "The password you entered is incorrect. Please try again or reset your password."
-        );
-      }
-      return;
-    }
-
-    // Success Known Demo User Login!
-    localStorage.removeItem("failedLoginAttempts");
-    localStorage.removeItem("loginLockoutUntil");
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userRole", "tenant");
-    localStorage.setItem("lastLoggedInEmail", email);
-    localStorage.setItem("username", "Tunde Bakare");
-    localStorage.setItem("username_" + email.toLowerCase(), "Tunde Bakare");
-    const demoProf = {
-      firstName: "Tunde",
-      lastName: "Bakare",
-      email,
-      phone: "",
-      role: "tenant",
-      address: "",
-      dob: "",
-      location: "Lagos, Nigeria",
-      postalCode: ""
-    };
-    localStorage.setItem("currentUserProfile", JSON.stringify(demoProf));
-    localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
-
-    // Redirect to tenant dashboard
-    navigate(`/dashboard/tenant`);
   }
 
   function handleForgotPassword() {
@@ -411,7 +229,7 @@ export default function Login() {
       }}
     >
       {/* Background Overlay */}
-      <div className="absolute inset-0 bg-[#FAF8F6]/55 dark:bg-[#0B1512]/90 transition-colors duration-200" />
+      <div className="absolute inset-0 bg-[#FAF8F6]/55 dark:bg-[#263b33]/90 transition-colors duration-200" />
 
       {/* Floating Back Button */}
       <button
@@ -490,6 +308,7 @@ export default function Login() {
                   <input
                     id="email"
                     type={isAdminMode ? "text" : "email"}
+                    maxLength={100}
                     placeholder={isAdminMode ? "admin" : "ada@example.com"}
                     value={email}
                     onChange={(e) => {
@@ -516,6 +335,7 @@ export default function Login() {
                     id="password"
                     ref={passwordRef}
                     type={showPassword ? "text" : "password"}
+                    maxLength={128}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => {
@@ -556,7 +376,7 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#0B1512] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 hover:scale-[1.015] active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer"
+              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 hover:scale-[1.015] active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer"
             >
               {isAdminMode ? "Log In as Admin" : "Log In"}
             </Button>

@@ -1,34 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Sparkles, Loader2, Camera, ImagePlus, Upload, Check, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle2, Loader2, Camera, ImagePlus, Upload, Check, Clock, AlertCircle } from "lucide-react";
 import gsap from "gsap";
 import { Logo } from "../components/Logo";
 import Input from "../components/Input";
 import Button from "../components/Button";
-import { LISTINGS } from "../data/listings";
-import { propertyService } from "../services/propertyService";
-
-const PRESET_PHOTOS = [
-  { label: "Modern Villa", url: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80" },
-  { label: "Luxury Apartment", url: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80" },
-  { label: "Gated Residency", url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80" },
-  { label: "Cozy Studio", url: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80" },
-];
-
-const COMMON_AMENITIES = [
-  "Prepaid Meter",
-  "24/7 Security",
-  "24/7 Power / Generator",
-  "Clean Water / Borehole",
-  "Air Conditioning",
-  "Parking Space",
-  "Fitted Kitchen",
-  "POP Ceiling",
-  "Swimming Pool",
-  "Gym / Fitness Facility",
-  "Balcony",
-  "CCTV Surveillance",
-];
+import { formatCurrency } from "../utils/formatters";
+import { handlePropertySubmit, PRESET_PHOTOS, COMMON_AMENITIES } from "../utils/propertyUtils";
 
 export default function AddProperty() {
   const navigate = useNavigate();
@@ -112,114 +90,21 @@ export default function AddProperty() {
   }
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setFormError("");
-
-    const target = e.target;
-    const address = target.elements.address?.value?.trim() || "";
-    const type = target.elements.type?.value?.trim() || "";
-    const rent = target.elements.rent?.value?.trim() || "";
-    const bedrooms = target.elements.bedrooms?.value?.trim() || "";
-    const bathsVal = target.elements.bathrooms?.value?.trim() || bathrooms || "1";
-    const cityVal = target.elements.city?.value?.trim() || cityName || "Lagos";
-    const stateVal = target.elements.state?.value?.trim() || stateName || "Lagos";
-    const descVal = target.elements.description?.value?.trim() || description.trim() || "";
-
-    const numericRent = Number(rent.replace(/[^0-9]/g, ""));
-    const numericBedrooms = Number(bedrooms);
-    const numericBathrooms = Number(bathsVal);
-
-    if (!address) {
-      setFormError("Property Address / Title is required.");
-      return;
-    }
-    if (!type) {
-      setFormError("Property Type is required.");
-      return;
-    }
-    if (!rent || isNaN(numericRent) || numericRent <= 0) {
-      setFormError("A valid Rent Amount is required.");
-      return;
-    }
-    if (!bedrooms || isNaN(numericBedrooms) || numericBedrooms <= 0) {
-      setFormError("Number of Bedrooms is required.");
-      return;
-    }
-    if (!bathsVal || isNaN(numericBathrooms) || numericBathrooms <= 0) {
-      setFormError("Number of Bathrooms is required.");
-      return;
-    }
-    if (!docName || !docName.trim()) {
-      setFormError("Please upload your proof of ownership legal document (PDF / Image) before submitting.");
-      return;
-    }
-    if (!propertyPhoto) {
-      setFormError("Please attach a property photo before submitting.");
-      return;
-    }
-
-    const ownershipDocString = `${docType} (${docName})`;
-    const dbUserId = localStorage.getItem("db_user_id");
-
-    const amenitiesList = selectedAmenities.length > 0 ? selectedAmenities : ["Basic Amenities"];
-    const finalDescription = descVal || `${numericBedrooms} Bedroom, ${numericBathrooms} Bathroom ${type} located at ${address}, ${cityVal}.`;
-
-    const propertyPayload = {
-      title: address,
-      description: finalDescription,
-      address_line1: address,
-      city: cityVal,
-      state: stateVal,
-      rent_amount: numericRent,
-      bedrooms: numericBedrooms,
-      bathrooms: numericBathrooms,
-      property_type: type.toLowerCase().replace(/\s+/g, '_'),
-      amenities: amenitiesList,
-      ownership_doc: ownershipDocString,
-      ownership_doc_url: docDataUrl,
-      cover_image: propertyPhoto || PRESET_PHOTOS[0].url,
-      ...(dbUserId ? { landlord_id: dbUserId } : {}),
-    };
-
-    try {
-      await propertyService.createProperty(propertyPayload);
-    } catch (err) {
-      console.warn("Backend API error, storing locally fallback:", err);
-    }
-
-    const formattedRent = rent.startsWith("₦") ? rent : "₦" + numericRent.toLocaleString();
-
-    // Create a new listing object
-    const newListing = {
-      id: address.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now(),
-      title: address,
-      description: finalDescription,
-      location: `${cityVal}, ${stateVal}`,
-      price: formattedRent + (rentCycle === "annual" ? "/yr" : "/mo"),
-      image: propertyPhoto || PRESET_PHOTOS[0].url,
-      beds: numericBedrooms,
-      baths: numericBathrooms,
-      status: "pending_review",
-      ownership_doc: ownershipDocString,
-      ownership_doc_url: docDataUrl,
-      docType: docType,
-      docName: docName,
-      docDataUrl: docDataUrl,
-      amenities: amenitiesList,
-      landlord: {
-        name: localStorage.getItem("username") || "Ada K.",
-        score: 5.0,
-        reviews: 1,
-      },
-    };
-
-    // Load existing list, append and save back to localStorage
-    const saved = localStorage.getItem("properties");
-    const currentListings = saved ? JSON.parse(saved) : [];
-    const updatedListings = [newListing, ...currentListings];
-    localStorage.setItem("properties", JSON.stringify(updatedListings));
-
-    setIsSubmitted(true);
+    await handlePropertySubmit({
+      e,
+      stateName,
+      cityName,
+      bathrooms,
+      description,
+      selectedAmenities,
+      docType,
+      docName,
+      docDataUrl,
+      propertyPhoto,
+      rentCycle,
+      setFormError,
+      setIsSubmitted
+    });
   }
 
   useEffect(() => {
@@ -275,22 +160,18 @@ export default function AddProperty() {
     return (
       <div
         ref={successOverlayRef}
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0B1512] text-white font-sans px-6"
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#263b33] text-white font-sans px-6"
       >
         {/* Background glow animations */}
         <div className="absolute top-1/4 left-1/4 h-80 w-80 rounded-full bg-moss-600/10 blur-[100px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 h-80 w-80 rounded-full bg-cream-50/5 blur-[100px] pointer-events-none" />
 
         <div className="flex flex-col items-center max-w-sm text-center relative z-10">
-          {/* Animated Outer Ring */}
           <div
             ref={checkIconRef}
             className="flex h-24 w-24 items-center justify-center rounded-full bg-moss-800 border-2 border-moss-500/30 mb-8 relative shadow-[0_0_50px_rgba(58,90,64,0.25)]"
           >
             <CheckCircle2 className="h-12 w-12 text-[#E5C583]" />
-            <div className="absolute -top-1 -right-1">
-              <Sparkles className="h-6 w-6 text-amber-300 animate-pulse" />
-            </div>
           </div>
 
           <div ref={textContainerRef} className="space-y-3">
@@ -346,6 +227,7 @@ export default function AddProperty() {
               id="address"
               label="Full Address / Street Location *"
               placeholder="e.g. Admiralty Way, Lekki Phase 1"
+              maxLength={255}
               required
             />
 
@@ -356,6 +238,7 @@ export default function AddProperty() {
                 value={cityName}
                 onChange={(e) => setCityName(e.target.value)}
                 placeholder="e.g. Lekki, Victoria Island, Yaba, Ikeja"
+                maxLength={100}
                 required
               />
               <Input
@@ -364,6 +247,7 @@ export default function AddProperty() {
                 value={stateName}
                 onChange={(e) => setStateName(e.target.value)}
                 placeholder="e.g. Lagos, Abuja, Rivers"
+                maxLength={50}
                 required
               />
             </div>
@@ -373,6 +257,7 @@ export default function AddProperty() {
                 id="type"
                 label="Property Type *"
                 placeholder="Apartment, duplex, villa, studio"
+                maxLength={50}
                 required
               />
 
@@ -409,10 +294,12 @@ export default function AddProperty() {
                 </div>
                 <Input
                   id="rent"
+                  type="number"
+                  min="0"
                   placeholder={
                     rentCycle === "annual"
-                      ? "₦2,500,000 / year"
-                      : "₦200,000 / month"
+                      ? "2500000"
+                      : "200000"
                   }
                   required
                 />
@@ -424,6 +311,7 @@ export default function AddProperty() {
                 id="bedrooms"
                 label="Bedrooms *"
                 type="number"
+                min="0"
                 placeholder="e.g. 2"
                 required
               />
@@ -431,6 +319,7 @@ export default function AddProperty() {
                 id="bathrooms"
                 label="Bathrooms *"
                 type="number"
+                min="0"
                 value={bathrooms}
                 onChange={(e) => setBathrooms(e.target.value)}
                 placeholder="e.g. 2"
@@ -446,6 +335,7 @@ export default function AddProperty() {
               <textarea
                 id="description"
                 rows={3}
+                maxLength={1000}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe your property layout, unique features, or rental guidelines..."
@@ -456,7 +346,7 @@ export default function AddProperty() {
             {/* PROPERTY AMENITIES SELECTION SECTION */}
             <div className="rounded-xl border border-moss-700/20 bg-moss-700/[0.03] p-5">
               <label className="block text-[13px] font-bold text-ink-900 mb-2 flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-moss-700" />
+                <CheckCircle2 className="h-4 w-4 text-moss-700" />
                 <span>Property Amenities & Features *</span>
               </label>
               <p className="text-[12px] text-ink-700 mb-3 leading-relaxed">
@@ -486,6 +376,7 @@ export default function AddProperty() {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
+                  maxLength={100}
                   value={customAmenityInput}
                   onChange={(e) => setCustomAmenityInput(e.target.value)}
                   placeholder="Add custom amenity (e.g. Jacuzzi, Smart Lock)"
@@ -693,12 +584,15 @@ export default function AddProperty() {
                 id="tenantName"
                 label="Tenant's name"
                 placeholder="Emeka O."
+                maxLength={50}
+                onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
                 required
               />
               <Input
                 id="tenantContact"
                 label="Tenant's phone or email"
                 placeholder="emeka@example.com"
+                maxLength={100}
                 required
               />
               <Input

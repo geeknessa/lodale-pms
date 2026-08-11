@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2 } from "lucide-react";
 import { LISTINGS } from "../../data/listings";
 import { triggerToast } from "../../context/ToastContext";
+import { formatCurrency } from "../../utils/formatters";
 import "./Tenants.css";
 
 export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
@@ -123,7 +124,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
       phone: formData.phone || "",
       reliabilityScore: (4.5 + Math.random() * 0.5).toFixed(1), // Auto-generate score 4.5-5.0
       occupation: formData.occupation || "Independent Professional",
-      income: formData.income ? `₦${Number(formData.income).toLocaleString()}/mo` : "₦450,000/mo",
+      income: formData.income ? formatCurrency(formData.income, "/mo") : "₦450,000/mo",
       notes: formData.notes || "NIN verified. Clean background check.",
       leaseStatus: `Active Tenant (${formData.unit ? "Unit " + formData.unit : "Main Unit"})`,
       paymentStatus: formData.paymentStatus,
@@ -369,6 +370,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
             <Search className="tenants-search-icon h-4 w-4" />
             <input
               type="text"
+              maxLength={255}
               placeholder="Search tenants, properties..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -564,7 +566,9 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                     <input
                       type="text"
                       name="name"
+                      maxLength={50}
                       value={formData.name}
+                      onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
                       onChange={handleInputChange}
                       placeholder="e.g. John Doe"
                       className="tenant-form-input"
@@ -578,6 +582,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                     <input
                       type="email"
                       name="email"
+                      maxLength={100}
                       value={formData.email}
                       onChange={handleInputChange}
                       placeholder="e.g. john.doe@email.com"
@@ -590,9 +595,11 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                   <div className="tenant-form-group">
                     <label className="tenant-form-label">Phone Number</label>
                     <input
-                      type="text"
+                      type="tel"
                       name="phone"
+                      maxLength={15}
                       value={formData.phone}
+                      onInput={(e) => e.target.value = e.target.value.replace(/[^0-9+]/g, '')}
                       onChange={handleInputChange}
                       placeholder="e.g. +234 803 123 4567"
                       className="tenant-form-input"
@@ -605,6 +612,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                     <input
                       type="text"
                       name="unit"
+                      maxLength={50}
                       value={formData.unit}
                       onChange={handleInputChange}
                       placeholder="e.g. Unit 4B"
@@ -618,6 +626,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                     <input
                       type="text"
                       name="occupation"
+                      maxLength={100}
                       value={formData.occupation}
                       onChange={handleInputChange}
                       placeholder="e.g. Software Engineer"
@@ -631,6 +640,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                     <input
                       type="number"
                       name="income"
+                      min="0"
                       value={formData.income}
                       onChange={handleInputChange}
                       placeholder="e.g. 500000"
