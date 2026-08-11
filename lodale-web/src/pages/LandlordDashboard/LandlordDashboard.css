@@ -20,7 +20,7 @@
 }
 
 body.dark {
-  --db-bg: #263b33;
+  --db-bg: #0B1512;
   --card-bg: #12221C;
   --active-pill-bg: #E5C583;
   --active-btn-bg: #E5C583;
@@ -49,7 +49,7 @@ body.dark .db-sidebar-btn.active {
 
 body.dark .db-sidebar-tooltip {
   background-color: #E5C583;
-  color: #263b33;
+  color: #0B1512;
 }
 
 body.dark .db-icon-btn {
@@ -70,7 +70,7 @@ body.dark .db-card:hover {
 
 body.dark .pro-card-tag {
   background-color: var(--active-pill-bg);
-  color: #263b33 !important;
+  color: #0B1512 !important;
 }
 
 body.dark .pro-card-close {
@@ -94,7 +94,7 @@ body.dark .pro-card-prism polygon[fill="#E4EAE1"] {
 
 body.dark .pro-advantages-btn {
   background-color: #E5C583;
-  color: #263b33;
+  color: #0B1512;
 }
 
 body.dark .pro-advantages-btn:hover {
@@ -118,7 +118,7 @@ body.dark .db-popup-item:hover {
 }
 
 body.dark .db-action-btn.approve {
-  color: #263b33 !important;
+  color: #0B1512 !important;
 }
 
 body.dark .db-action-btn.approve:hover {
@@ -126,7 +126,7 @@ body.dark .db-action-btn.approve:hover {
 }
 
 body.dark .db-nav-pill.active .db-pill-badge {
-  background-color: #263b33;
+  background-color: #0B1512;
   color: #E5C583;
 }
 
@@ -393,7 +393,7 @@ body.dark .ap-filter-select option {
 
 body.dark .db-sidebar-tooltip {
   background-color: #E5C583;
-  color: #263b33;
+  color: #0B1512;
 }
 
 .db-sidebar-btn:hover .db-sidebar-tooltip {
@@ -2543,7 +2543,7 @@ body.dark .landlord-rent-again-box {
 
 body.dark .reliability-close-btn {
   background-color: #E5C583;
-  color: #263b33;
+  color: #0B1512;
 }
 
 .reliability-close-btn:hover {
@@ -2593,7 +2593,7 @@ body.dark .payment-subtab-container {
 }
 
 body.dark .payment-subtab-btn.active {
-  color: #263b33;
+  color: #0B1512;
 }
 
 /* Redesigned empty state for overview card */
@@ -2753,7 +2753,7 @@ body.dark .welcome-modal-icon-wrapper {
 }
 
 body.dark .welcome-modal-btn {
-  color: #263b33 !important;
+  color: #0B1512 !important;
 }
 
 .tour-ask-overlay {
@@ -2857,7 +2857,7 @@ body.dark .tour-btn-no:hover {
 }
 
 body.dark .tour-btn-yes {
-  color: #263b33 !important;
+  color: #0B1512 !important;
 }
 
 /* Tour Portal Backdrop spotlight */
@@ -3011,7 +3011,7 @@ body.dark .tour-btn-back:hover {
 }
 
 body.dark .tour-btn-next {
-  color: #263b33 !important;
+  color: #0B1512 !important;
 }
 
 /* Floating pointer indicator hand/arrow */

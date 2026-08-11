@@ -10,6 +10,7 @@ import {
   Wrench,
   CreditCard,
   FileText,
+  PieChart,
   User,
   Building2,
   Clock,
@@ -19,24 +20,25 @@ import {
   Sun,
   Moon,
   ChevronDown,
+  Sparkles,
   Calendar,
   HelpCircle,
   Bell,
   Menu,
   Check,
-  CheckCircle2,
+  Flame,
+  ShieldCheck,
+  Award,
 } from "lucide-react";
 import gsap from "gsap";
 import { Logo, LogoMark } from "../../components/Logo";
 import Button from "../../components/Button";
-import { formatDateShort } from "../../utils/formatters";
 import { useTheme } from "../../context/ThemeContext";
 import "./TenantDashboard.css";
 
 import TenantSearch from "./TenantSearch";
 import TenantChat from "./TenantChat";
 import TenantSettings from "./TenantSettings";
-import DashboardSkeleton from "../DashboardSkeleton";
 
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
@@ -106,7 +108,7 @@ const TOUR_STEPS = [
     tab: 0
   },
   {
-    target: ".wallet-card-container",
+    target: ".tour-visa",
     title: "Rent Wallet & Visa Debit Card",
     content: "Submit monthly rent dues instantly and view ledger payment ratios.",
     placement: "left",
@@ -208,6 +210,8 @@ export default function TenantDashboard() {
       const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
     }
+    const globalSaved = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
+    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
     return "";
   });
 
@@ -228,21 +232,15 @@ export default function TenantDashboard() {
       if (emailKey) {
         updated = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       }
+      if (!updated) {
+        updated = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
+      }
       if (updated) {
         setTenantAvatar(updated);
       }
     };
     window.addEventListener("storage", handleStorageUpdate);
     return () => window.removeEventListener("storage", handleStorageUpdate);
-  }, []);
-
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
   }, []);
 
   // Welcome Overlay states for new signup animation
@@ -314,43 +312,12 @@ export default function TenantDashboard() {
   const [payingState, setPayingState] = useState("idle"); // idle | processing | success
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // Ticket detail modal states
+  // Ticket detail & modal states
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
-
-  const [notifications, setNotifications] = useState(() => {
-    try {
-      const saved = localStorage.getItem("tenantNotifications");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
-
-  useEffect(() => {
-    const handleGlobalToast = (e) => {
-      if (e.detail) {
-        const { message, type, title } = e.detail;
-        const newNotif = {
-          id: Date.now() + Math.random().toString(36).substring(2, 9),
-          message,
-          type,
-          title: title || (type === "success" ? "Success" : type === "error" ? "Action Failed" : type === "warning" ? "Notice" : "Update"),
-          createdAt: Date.now(),
-          read: false
-        };
-        setNotifications((prev) => {
-          const updated = [newNotif, ...prev].slice(0, 50);
-          localStorage.setItem("tenantNotifications", JSON.stringify(updated));
-          return updated;
-        });
-      }
-    };
-    window.addEventListener("lodale-toast", handleGlobalToast);
-    return () => window.removeEventListener("lodale-toast", handleGlobalToast);
-  }, []);
+  const [showDispatchModal, setShowDispatchModal] = useState(false);
+  const [showStreakModal, setShowStreakModal] = useState(false);
 
   // GSAP animation references
   const mainContentRef = useRef(null);
@@ -378,7 +345,7 @@ export default function TenantDashboard() {
           return reqUser.includes(currentName) || currentName.includes(reqUser);
         });
         setRequests(filtered);
-      } catch {
+      } catch (e) {
         setRequests([]);
       }
     } else {
@@ -595,7 +562,7 @@ export default function TenantDashboard() {
     if (saved) {
       try {
         allRequests = JSON.parse(saved);
-      } catch {
+      } catch (e) {
         allRequests = [];
       }
     }
@@ -629,7 +596,7 @@ export default function TenantDashboard() {
           id: "pay-" + Date.now(),
           month: currentMonthYearStr,
           amount: "₦150,000",
-          date: formatDateShort(new Date()),
+          date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
           status: "Paid",
           method: "Card"
         };
@@ -644,11 +611,6 @@ export default function TenantDashboard() {
   const handleSignOut = () => {
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("userRole");
-    sessionStorage.removeItem("isAuthenticated");
-    sessionStorage.removeItem("sessionExpiresAt");
-    sessionStorage.removeItem("userRole");
-    window.dispatchEvent(new Event("storage"));
     navigate("/login", { replace: true });
   };
 
@@ -660,10 +622,6 @@ export default function TenantDashboard() {
     if (activeTab === 3) return "Settings";
     return "";
   };
-
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
 
   return (
     <div className="tenant-wrapper">
@@ -737,7 +695,7 @@ export default function TenantDashboard() {
         <div className="tenant-welcome-overlay" ref={overlayRef}>
           <div className="tenant-welcome-card" ref={contentRef}>
             <div className="welcome-sparkle-icon">
-              <CheckCircle2 className="h-6 w-6 text-[#E5C583]" />
+              <Sparkles className="h-6 w-6 text-[#E5C583]" />
             </div>
             <h2 className="welcome-title font-display">Welcome to Lodale, {firstName}!</h2>
             <p className="welcome-subtitle">Your tenant portal is completely setup. Here is what we have customized for you:</p>
@@ -768,7 +726,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={handleDismissWelcome}
-              className="w-full bg-[#E5C583] hover:bg-[#D8B672] text-[#263b33] font-bold py-3.5 mt-4 transition-all duration-150 transform hover:scale-[1.01]"
+              className="w-full bg-[#E5C583] hover:bg-[#D8B672] text-[#0B1512] font-bold py-3.5 mt-4 transition-all duration-150 transform hover:scale-[1.01]"
             >
               Get Started
             </Button>
@@ -793,7 +751,7 @@ export default function TenantDashboard() {
                     <span className="summary-lbl mt-3">Total Rent Amount</span>
                     <span className="summary-val amount text-moss-700 dark:text-[#E5C583]">₦150,000</span>
                     <span className="summary-lbl mt-3">Recipient Landlord</span>
-                    <span className="summary-val">{activeLease?.landlord || "Verified Landlord"}</span>
+                    <span className="summary-val">Ada K. (Skyline Apartments)</span>
                   </div>
 
                   <div className="payment-card-input-group mt-5">
@@ -813,7 +771,7 @@ export default function TenantDashboard() {
 
                   <Button
                     onClick={handlePayRentSubmit}
-                    className="w-full mt-6 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px]"
+                    className="w-full mt-6 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px]"
                   >
                     Authorize Payment (₦150,000)
                   </Button>
@@ -875,7 +833,7 @@ export default function TenantDashboard() {
                     try {
                       const prof = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
                       return prof.phone || "Not provided";
-                    } catch {
+                    } catch (e) {
                       return "Not provided";
                     }
                   })()}
@@ -893,7 +851,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={() => setShowProfileModal(false)}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
+              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
             >
               Close Profile Details
             </Button>
@@ -992,7 +950,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={() => { setShowTicketModal(false); setSelectedTicket(null); }}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
+              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
             >
               Close Ticket
             </Button>
@@ -1095,7 +1053,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={() => setShowRatingModal(false)}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
+              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
             >
               Close Details
             </Button>
@@ -1103,74 +1061,185 @@ export default function TenantDashboard() {
         </div>
       )}
 
-      {/* NOTIFICATIONS MODAL */}
-      {showNotificationsModal && (
-        <div className="tenant-modal-backdrop" onClick={() => {
-          setShowNotificationsModal(false);
-          const updated = notifications.map(n => ({ ...n, read: true }));
-          setNotifications(updated);
-          localStorage.setItem("tenantNotifications", JSON.stringify(updated));
-        }}>
+      {/* QUICK REPAIR DISPATCH POPUP MODAL */}
+      {showDispatchModal && (
+        <div className="tenant-modal-backdrop" onClick={() => setShowDispatchModal(false)}>
           <div className="tenant-modal-content text-left" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Notification History</h3>
-              <button className="close-btn" onClick={() => {
-                setShowNotificationsModal(false);
-                const updated = notifications.map(n => ({ ...n, read: true }));
-                setNotifications(updated);
-                localStorage.setItem("tenantNotifications", JSON.stringify(updated));
-              }}>&times;</button>
-            </div>
-            
-            <div className="modal-scroll-area">
-              {notifications.length === 0 ? (
-                <p className="text-[13px] text-[#6C6E73] dark:text-[#A3BCA7] py-6 text-center">No notifications yet.</p>
-              ) : (
-                <div className="flex flex-col gap-3 mt-4 pr-2">
-                  {notifications.map(notif => (
-                    <div key={notif.id} className={`p-3 rounded-xl border ${notif.read ? 'bg-neutral-50 dark:bg-[#1D2D26]/20 border-neutral-100 dark:border-neutral-800/40' : 'bg-white dark:bg-[#1D2D26]/60 border-moss-200 dark:border-[#E5C583]/30 shadow-sm'}`}>
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="text-[13px] font-bold text-ink-900 dark:text-white">{notif.title}</span>
-                        <span className="text-[11px] text-[#6C6E73] dark:text-[#A3BCA7] whitespace-nowrap ml-2">
-                          {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] leading-relaxed">
-                        {notif.message}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <h3>Quick Repair Dispatch</h3>
+              <button className="close-btn" onClick={() => setShowDispatchModal(false)}>&times;</button>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              {notifications.length > 0 && (
+            <form
+              onSubmit={(e) => {
+                handleSubmitRequest(e);
+                setShowDispatchModal(false);
+              }}
+              className="form-input-container space-y-4 mt-4"
+            >
+              <div>
+                <label className="form-lbl">Issue Summary</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Broken faucet, toilet clog..."
+                  value={reqTitle}
+                  onChange={(e) => setReqTitle(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="form-lbl">Category</label>
+                  <select className="form-input" value={reqCategory} onChange={(e) => setReqCategory(e.target.value)}>
+                    <option value="Plumbing">Plumbing</option>
+                    <option value="Electrical">Electrical</option>
+                    <option value="Appliance">Appliance</option>
+                    <option value="Structural">Structural</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div className="flex-grow w-24">
+                  <label className="form-lbl">Urgency</label>
+                  <select className="form-input" value={reqUrgency} onChange={(e) => setReqUrgency(e.target.value)}>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="form-lbl">Issue Details</label>
+                <textarea
+                  rows={3}
+                  className="form-input"
+                  placeholder="Provide details about the issue..."
+                  value={reqDesc}
+                  onChange={(e) => setReqDesc(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
                 <Button
-                  onClick={() => {
-                    setNotifications([]);
-                    localStorage.setItem("tenantNotifications", JSON.stringify([]));
-                  }}
-                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-[#1D2D26] dark:hover:bg-[#253930] text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl transition-colors"
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setShowDispatchModal(false)}
+                  className="flex-1 py-3 text-[13px] font-bold"
                 >
-                  Clear All
+                  Cancel
                 </Button>
-              )}
-              <Button
-                onClick={() => {
-                  setShowNotificationsModal(false);
-                  const updated = notifications.map(n => ({ ...n, read: true }));
-                  setNotifications(updated);
-                  localStorage.setItem("tenantNotifications", JSON.stringify(updated));
-                }}
-                className={`${notifications.length > 0 ? 'flex-[2]' : 'w-full'} bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl`}
-              >
-                Close Notifications
-              </Button>
-            </div>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3 font-bold text-[13px]"
+                >
+                  Send Dispatch
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+      {/* ON-TIME PAYMENT STREAK CENTER POPUP MODAL */}
+      {showStreakModal && (
+        <div className="tenant-modal-backdrop" onClick={() => setShowStreakModal(false)}>
+          <div className="tenant-modal-content text-left max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header flex items-center justify-between pb-3 border-b border-ink-100/30 dark:border-white/10">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500/15 dark:bg-amber-500/25 text-amber-500">
+                  <Flame className="h-5 w-5 fill-amber-500 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-ink-900 dark:text-white">Payment Streak Details</h3>
+                  <p className="text-[11px] text-ink-400 dark:text-cream-100/50">Lodale Verified Punctuality Ledger</p>
+                </div>
+              </div>
+              <button className="close-btn text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold" onClick={() => setShowStreakModal(false)}>&times;</button>
+            </div>
+
+            <div className="py-4 space-y-4">
+              {/* Main Metric Counter */}
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20">
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">Active Streak</span>
+                  <div className="flex items-baseline gap-2 mt-0.5">
+                    <span className="text-3xl font-black text-ink-900 dark:text-white tracking-tight">
+                      {activeLease ? "184 Days" : "0 Days"}
+                    </span>
+                    <span className="text-xs font-extrabold text-amber-600 dark:text-[#E5C583]">
+                      ({activeLease ? "6 Months" : "0 Months"})
+                    </span>
+                  </div>
+                  <p className="text-[11.5px] text-ink-600 dark:text-cream-100/70 mt-1">
+                    {activeLease ? "No late payments recorded in 2026" : "Complete your next rent payment on time to build your streak."}
+                  </p>
+                </div>
+                <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-500">
+                  <Flame className="h-8 w-8 fill-amber-500 animate-bounce" />
+                </div>
+              </div>
+
+              {/* 6-Month Cowrywise Grid */}
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-400 dark:text-cream-100/60 mb-2">
+                  Monthly Punctuality History
+                </h4>
+                <div className="streak-months-grid">
+                  {[
+                    { month: "Mar", status: "paid" },
+                    { month: "Apr", status: "paid" },
+                    { month: "May", status: "paid" },
+                    { month: "Jun", status: "paid" },
+                    { month: "Jul", status: "paid" },
+                    { month: "Aug", status: activeLease ? "current" : "upcoming" }
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className={`streak-month-pill ${
+                        item.status === "paid"
+                          ? "paid"
+                          : item.status === "current"
+                          ? "current"
+                          : "upcoming"
+                      }`}
+                    >
+                      <span className="month-lbl">{item.month}</span>
+                      <div className="status-dot">
+                        {item.status === "paid" ? (
+                          <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300 stroke-[3]" />
+                        ) : item.status === "current" ? (
+                          <Flame className="h-3 w-3 text-amber-500 fill-amber-500 animate-bounce" />
+                        ) : (
+                          <span className="h-1.5 w-1.5 rounded-full bg-ink-200 dark:bg-white/20" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Perks & Rewards */}
+              <div className="p-3.5 rounded-2xl bg-moss-50/50 dark:bg-white/5 border border-moss-200/50 dark:border-white/10 flex items-center justify-between text-[12px]">
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-amber-500" />
+                  <span className="font-semibold text-ink-700 dark:text-cream-100/80">Next Reward: Tier 1 Verified Badge</span>
+                </div>
+                <span className="font-extrabold text-moss-700 dark:text-[#E5C583]">{activeLease ? "+150 Pts" : "0 Pts"}</span>
+              </div>
+            </div>
+
+            <Button
+              onClick={() => setShowStreakModal(false)}
+              className="w-full mt-2 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
+            >
+              Close Details
+            </Button>
+          </div>
+        </div>
+      )}
+
+
 
       {/* CORE CONTAINER */}
       <div className="tenant-container">
@@ -1253,9 +1322,9 @@ export default function TenantDashboard() {
                   <span className="db-badge-dot" />
                 </div>
 
-                <div className="db-icon-btn-wrapper" onClick={() => setShowNotificationsModal(true)} title="Notifications">
+                <div className="db-icon-btn-wrapper" onClick={() => triggerToast("You have 2 new unread portal notifications.", "info", "Notifications")} title="Notifications">
                   <Bell className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                  {notifications.some(n => !n.read) && <span className="db-badge-dot pulse" />}
+                  <span className="db-badge-dot pulse" />
                 </div>
 
                 <div className="db-profile-avatar-wrapper" onClick={() => setShowProfileModal(true)} title="Profile settings">
@@ -1270,9 +1339,17 @@ export default function TenantDashboard() {
                 </div>
 
                 <Button
+                  onClick={() => setShowDispatchModal(true)}
+                  className="flex items-center gap-1.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d8b672] text-white dark:text-[#0B1512] px-3.5 py-2 text-[12.5px] font-bold transition-all duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer tour-dispatch"
+                >
+                  <Wrench className="h-3.5 w-3.5" />
+                  <span>Quick Dispatch</span>
+                </Button>
+
+                <Button
                   variant="secondary"
                   onClick={() => triggerToast("Creating tenant ledger summary PDF export...", "info", "Ledger Export")}
-                  className="px-4 py-2 bg-white dark:bg-[#12221C] text-[12.5px] ml-2"
+                  className="px-4 py-2 bg-white dark:bg-[#12221C] text-[12.5px] ml-1"
                 >
                   Download Summary
                 </Button>
@@ -1374,7 +1451,6 @@ export default function TenantDashboard() {
                         required
                       />
                     </div>
-
                     <div className="flex gap-3">
                       <div className="flex-1">
                         <label className="form-lbl">Category</label>
@@ -1395,7 +1471,6 @@ export default function TenantDashboard() {
                         </select>
                       </div>
                     </div>
-
                     <div>
                       <label className="form-lbl">Issue Details</label>
                       <textarea
@@ -1406,12 +1481,43 @@ export default function TenantDashboard() {
                         onChange={(e) => setReqDesc(e.target.value)}
                       />
                     </div>
-
-                    <Button type="submit" className="w-full bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px]">
+                    <Button type="submit" className="w-full bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl">
                       Send Repair Dispatch
                     </Button>
                   </form>
                 </section>
+
+                {/* Small Rectangular Payment Streak Card (Triggers Center Popup) */}
+                <div
+                  className="db-card streak-widget-card tour-streak cursor-pointer hover:scale-[1.01] transition-all"
+                  onClick={() => setShowStreakModal(true)}
+                  title="Click to view payment streak details"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-2xl bg-amber-500/15 dark:bg-amber-500/25 text-amber-500">
+                        <Flame className="h-5 w-5 fill-amber-500 animate-pulse" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl font-black text-ink-900 dark:text-white tracking-tight">
+                            {activeLease ? "184 Days" : "0 Days"}
+                          </span>
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#E5C583] bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                            🔥 Streak
+                          </span>
+                        </div>
+                        <p className="text-[11.5px] text-ink-400 dark:text-cream-100/60 font-medium mt-0.5">
+                          {activeLease ? "On-Time Rent Payment Record" : "Start your on-time payment streak"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="pro-arrow-circle">
+                      <ArrowRight className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
               {/* COLUMN 2: UTILITY ACTIVITY & TOTAL SPENT LEDGER */}
@@ -1472,7 +1578,7 @@ export default function TenantDashboard() {
                       </p>
                       <Button
                         onClick={() => setActiveTab(1)}
-                        className="mt-4 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12px] px-4 py-2"
+                        className="mt-4 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] text-[12px] px-4 py-2"
                       >
                         Search Properties
                       </Button>
@@ -1480,16 +1586,18 @@ export default function TenantDashboard() {
                   )}
                 </section>
 
-                {/* Sleek scrollable repair tickets timeline feed */}
+                {/* Sleek scrollable maintenance tickets timeline feed */}
                 <section className="db-card tour-tracker">
                   <div className="db-card-header">
-                    <h3 className="db-card-title">Repair Ticket Tracker</h3>
+                    <h3 className="db-card-title">Maintenance</h3>
                     <span className="text-[12px] text-ink-400 dark:text-cream-100/50 font-bold">{requests.length} Active</span>
                   </div>
 
                   <div className="ticket-feed-list">
                     {requests.length === 0 ? (
-                      <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">No active repair tickets filed.</p>
+                      <div className="flex flex-col items-center justify-center py-8 flex-1 text-center">
+                        <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">No active maintenance requests filed.</p>
+                      </div>
                     ) : (
                       requests.map((r) => (
                         <div key={r.id} className="ticket-feed-item">
@@ -1501,7 +1609,7 @@ export default function TenantDashboard() {
                                 setShowTicketModal(true);
                               }}
                             >
-                              {r.title || r.details || "Repair Request"}
+                              {r.title || r.details || "Maintenance Request"}
                             </p>
                             <p className="ticket-feed-meta">{r.category || r.type || "General"} • {r.date}</p>
                           </div>
@@ -1518,74 +1626,53 @@ export default function TenantDashboard() {
               {/* COLUMN 3: VIRTUAL CARD & RENT BREAKDOWN */}
               <div className="db-col">
 
-                {/* Redesigned Visa Card & Wallet Balance widget */}
-                <section className="db-card wallet-card-container">
-                  <div className="db-card-header">
-                    <h3 className="db-card-title">Rent Wallet</h3>
-                    <CreditCard className="h-4.5 w-4.5 text-moss-600 dark:text-[#E5C583]" />
+                {/* Standalone Visa Debit Card Widget with Embedded Progress Bar */}
+                <section className="visa-card-widget tour-visa">
+                  <div className="visa-header">
+                    <div className="flex items-center gap-2">
+                      <span className="visa-brand">Visa Debit</span>
+                      <CreditCard className="h-4 w-4 opacity-80" />
+                    </div>
+                    <button
+                      className="visa-pay-btn"
+                      disabled={!activeLease || rentPaid}
+                      onClick={() => {
+                        if (!activeLease) {
+                          triggerToast("No active lease or rent due.", "warning", "Rent Status");
+                        } else if (rentPaid) {
+                          triggerToast("Rent for this period is already paid!", "info", "Rent Paid");
+                        } else {
+                          setShowPayModal(true);
+                        }
+                      }}
+                    >
+                      {!activeLease ? "No Rent Due" : rentPaid ? "Settled" : "Pay Rent"}
+                    </button>
                   </div>
 
-                  <div className="wallet-card-row">
-                    {/* Wallet Balance Details */}
-                    <div className="wallet-balance-pane">
-                      <div>
-                        <h5 className="activity-metric-sub">Ledger Balance</h5>
-                        <h3 className="wallet-balance-amount">{activeLease ? "₦150,000" : "₦0"}</h3>
-                      </div>
-
-                      <div className="wallet-progress-group">
-                        <div className="wallet-progress-item">
-                          <div className="wallet-progress-lbl">
-                            <span>Rent Paid</span>
-                            <span>{activeLease ? "100%" : "0%"}</span>
-                          </div>
-                          <div className="wallet-progress-track">
-                            <div className="wallet-progress-fill" style={{ width: activeLease ? "100%" : "0%" }} />
-                          </div>
-                        </div>
-
-                        <div className="wallet-progress-item">
-                          <div className="wallet-progress-lbl">
-                            <span>Utilities</span>
-                            <span>0%</span>
-                          </div>
-                          <div className="wallet-progress-track">
-                            <div className="wallet-progress-fill" style={{ width: "0%" }} />
-                          </div>
-                        </div>
-                      </div>
+                  <div className="visa-balance-group">
+                    <span className="visa-balance-sub">Ledger Balance</span>
+                    <div className="visa-balance">
+                      {!activeLease || rentPaid ? "₦0.00" : "₦150,000"}
                     </div>
+                  </div>
 
-                    {/* Premium Debit Card */}
-                    <div className="visa-card-widget">
-                      <div className="visa-header">
-                        <span className="visa-brand">Visa Debit</span>
-                        <button
-                          className="visa-pay-btn"
-                          disabled={!activeLease || rentPaid}
-                          onClick={() => {
-                            if (!activeLease) {
-                              triggerToast("No active lease or rent due.", "warning", "Rent Status");
-                            } else if (rentPaid) {
-                              triggerToast("Rent for this period is already paid!", "info", "Rent Paid");
-                            } else {
-                              setShowPayModal(true);
-                            }
-                          }}
-                        >
-                          {!activeLease ? "No Rent Due" : rentPaid ? "Settled" : "Pay Rent"}
-                        </button>
-                      </div>
-
-                      <div className="visa-balance">
-                        {!activeLease || rentPaid ? "₦0.00" : "₦150,000"}
-                      </div>
-
-                      <div className="visa-footer">
-                        <span>•••• 6802</span>
-                        <span>09/28</span>
-                      </div>
+                  <div className="visa-progress-group">
+                    <div className="visa-progress-lbl">
+                      <span>Rent Paid</span>
+                      <span>{activeLease ? (rentPaid ? "100%" : "0%") : "0%"}</span>
                     </div>
+                    <div className="visa-progress-track">
+                      <div
+                        className="visa-progress-fill"
+                        style={{ width: activeLease ? (rentPaid ? "100%" : "0%") : "0%" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="visa-footer">
+                    <span>•••• 6802</span>
+                    <span>09/28</span>
                   </div>
                 </section>
 
@@ -1629,9 +1716,13 @@ export default function TenantDashboard() {
                       </div>
                     </>
                   ) : (
-                    <div className="py-6 text-center px-4">
-                      <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">
-                        No active rent breakdown. Monthly budget splits for rent and utilities will appear once you have an active lease.
+                    <div className="flex flex-col items-center justify-center flex-1 py-10 px-4 text-center my-auto">
+                      <div className="p-3 bg-moss-50 dark:bg-white/5 rounded-full text-moss-700 dark:text-[#E5C583] mb-2">
+                        <PieChart className="h-6 w-6" />
+                      </div>
+                      <h4 className="font-bold text-[13px] text-ink-900 dark:text-white mb-1">No Active Rent Breakdown</h4>
+                      <p className="text-[11.5px] text-ink-400 dark:text-cream-100/50 max-w-[220px] leading-relaxed">
+                        Monthly budget splits for rent and utilities will appear once you have an active lease.
                       </p>
                     </div>
                   )}
@@ -1660,7 +1751,7 @@ export default function TenantDashboard() {
           /* TAB 4+: UNDER DEVELOPMENT VIEWS */
           <div className="under-development-wrapper flex-1 flex items-center justify-center">
             <div className="under-dev-card text-center">
-              <div className="sparkle-icon flex justify-center"><CheckCircle2 className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>
+              <div className="sparkle-icon flex justify-center"><Sparkles className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>
               <span className="tag mb-2 inline-block">Under Development</span>
               <h2 className="font-display text-2xl font-bold text-ink-900 dark:text-white mb-2">
                 {getTabName()} Section
@@ -1668,7 +1759,7 @@ export default function TenantDashboard() {
               <p className="text-[13px] text-muted max-w-sm mb-6 leading-relaxed">
                 This page is currently under construction. We will notify you once these tenant features are pushed to production.
               </p>
-              <Button onClick={() => setActiveTab(0)} className="dev-home-btn bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold px-6 py-2.5 rounded-xl text-[12.5px]">
+              <Button onClick={() => setActiveTab(0)} className="dev-home-btn bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] font-bold px-6 py-2.5 rounded-xl text-[12.5px]">
                 Back to Dashboard
               </Button>
             </div>
@@ -1685,7 +1776,7 @@ export default function TenantDashboard() {
             <div className="tour-ask-backdrop">
               <div className="tour-ask-card">
                 <div className="tour-ask-icon">
-                  <HelpCircle className="h-6 w-6" />
+                  <Sparkles className="h-6 w-6" />
                 </div>
                 <h3 className="tour-ask-title">Dashboard Onboarding</h3>
                 <p className="tour-ask-desc">
@@ -1735,7 +1826,7 @@ export default function TenantDashboard() {
 
                 {/* Floating hand/pointer direction arrows */}
                 <div className={`tour-pointer-arrow tour-pointer-${TOUR_STEPS[tourStep].placement}`}>
-                  <Check className="h-3 w-3 text-white" />
+                  <Sparkles className="h-3 w-3 text-white" />
                 </div>
 
                 <div className="tour-tooltip-actions">
