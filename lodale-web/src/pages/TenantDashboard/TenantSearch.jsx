@@ -7,271 +7,9 @@ import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import "./TenantSearch.css";
 
-// Rich Mock Dataset for search and recommendation swipers
-const SEARCH_LISTINGS = [
-  {
-    id: "skyline-block4",
-    title: "Skyline Apartments, Block 4",
-    location: "Victoria Island, Lagos",
-    price: 375000,
-    beds: 3,
-    baths: 3,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Ada K.", score: 4.8, reviews: 12 },
-    recommendationCategory: "Popular properties"
-  },
-  {
-    id: "oakwood-unit12b",
-    title: "Oakwood Residency, Unit 12B",
-    location: "Yaba, Lagos",
-    price: 150000,
-    beds: 2,
-    baths: 2,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Chidi O.", score: 4.5, reviews: 8 },
-    recommendationCategory: "Last visited"
-  },
-  {
-    id: "lekki-gardens-14",
-    title: "Lekki Gardens, Plot 14",
-    location: "Lekki Phase 1, Lagos",
-    price: 200000,
-    beds: 2,
-    baths: 2,
-    type: "selfcontained",
-    image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Funke A.", score: 4.9, reviews: 21 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "maryland-duplex",
-    title: "Maryland Heights Duplex",
-    location: "Maryland, Lagos",
-    price: 450000,
-    beds: 4,
-    baths: 4,
-    type: "duplex",
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Emeka Obi", score: 4.7, reviews: 10 },
-    recommendationCategory: "Popular properties"
-  },
-  {
-    id: "ikeja-selfcontained",
-    title: "Ikeja GRA Studio Self-Contained",
-    location: "Ikeja, Lagos",
-    price: 80000,
-    beds: 1,
-    baths: 1,
-    type: "selfcontained",
-    image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Maren Maureen", score: 4.6, reviews: 5 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "surulere-apartment",
-    title: "Adeniran Ogunsanya Flat",
-    location: "Surulere, Lagos",
-    price: 250000,
-    beds: 3,
-    baths: 2,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Ryan Herwinds", score: 4.8, reviews: 18 },
-    recommendationCategory: "Last visited"
-  },
-  {
-    id: "ikoyi-penthouse",
-    title: "Grand Orchard Penthouse",
-    location: "Ikoyi, Lagos",
-    price: 600000,
-    beds: 4,
-    baths: 4,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1567496898669-ee935f5f647a?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Ada K.", score: 4.8, reviews: 12 },
-    recommendationCategory: "Popular properties"
-  },
-  {
-    id: "sunset-haven",
-    title: "Sunset Haven Duplex",
-    location: "Lekki Phase 2, Lagos",
-    price: 350000,
-    beds: 3,
-    baths: 3,
-    type: "duplex",
-    image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Funke A.", score: 4.9, reviews: 21 },
-    recommendationCategory: "Last visited"
-  },
-  {
-    id: "yaba-studio",
-    title: "Standard Studio Yaba",
-    location: "Alagomeji, Yaba, Lagos",
-    price: 95000,
-    beds: 1,
-    baths: 1,
-    type: "selfcontained",
-    image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Chidi O.", score: 4.5, reviews: 8 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "maryland-flat",
-    title: "Maryland Executive Flat",
-    location: "Maryland, Lagos",
-    price: 300000,
-    beds: 3,
-    baths: 3,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1502672090437-048b7a216e54?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Emeka Obi", score: 4.7, reviews: 10 },
-    recommendationCategory: "Popular properties"
-  },
-  {
-    id: "gra-mansion",
-    title: "GRA Luxury Mansion",
-    location: "Ikeja GRA, Lagos",
-    price: 800000,
-    beds: 5,
-    baths: 6,
-    type: "duplex",
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Maren Maureen", score: 4.6, reviews: 5 },
-    recommendationCategory: "Popular properties"
-  },
-  {
-    id: "surulere-studio",
-    title: "Surulere Cozy Studio",
-    location: "Surulere, Lagos",
-    price: 110000,
-    beds: 1,
-    baths: 1,
-    type: "selfcontained",
-    image: "https://images.unsplash.com/photo-1536376072261-38c75010e6c9?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Ryan Herwinds", score: 4.8, reviews: 18 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "abuja-maitama-royal",
-    title: "Maitama Royal Residency",
-    location: "FCT - Abuja (Maitama)",
-    price: 550000,
-    beds: 3,
-    baths: 3,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Fatima B.", score: 4.9, reviews: 14 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "ph-gra-suite",
-    title: "GRA Phase 2 Executive Suite",
-    location: "Rivers - Port Harcourt",
-    price: 320000,
-    beds: 2,
-    baths: 2,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Tari E.", score: 4.7, reviews: 9 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "ibadan-bodija-flat",
-    title: "Bodija Garden Estate Flat",
-    location: "Oyo - Ibadan",
-    price: 180000,
-    beds: 3,
-    baths: 2,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Akanbi O.", score: 4.6, reviews: 11 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "enugu-independence-layout",
-    title: "Independence Layout Suite",
-    location: "Enugu - Enugu",
-    price: 160000,
-    beds: 2,
-    baths: 2,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=400&h=250&q=80",
-    landlord: { name: "Nnamdi K.", score: 4.8, reviews: 7 },
-    recommendationCategory: "properties close to you"
-  }
-];
-
-// Rich Mock Dataset for landlords
-const LANDLORDS = [
-  {
-    id: "landlord-ada",
-    name: "Ada K.",
-    score: 4.8,
-    reviews: 12,
-    avatar: "",
-    location: "Victoria Island, Lagos",
-    properties: ["Skyline Apartments, Block 4", "Grand Orchard Penthouse"],
-    category: "Top Rated Landlords",
-    joinedStatus: "old"
-  },
-  {
-    id: "landlord-chidi",
-    name: "Chidi O.",
-    score: 4.5,
-    reviews: 8,
-    avatar: "",
-    location: "Yaba, Lagos",
-    properties: ["Oakwood Residency, Unit 12B", "Standard Studio Yaba"],
-    category: "Landlords near you",
-    joinedStatus: "old"
-  },
-  {
-    id: "landlord-funke",
-    name: "Funke A.",
-    score: 4.9,
-    reviews: 21,
-    avatar: "",
-    location: "Lekki Phase 1, Lagos",
-    properties: ["Lekki Gardens, Plot 14", "Sunset Haven Duplex"],
-    category: "Top Rated Landlords",
-    joinedStatus: "old"
-  },
-  {
-    id: "landlord-emeka",
-    name: "Emeka Obi",
-    score: 4.7,
-    reviews: 10,
-    avatar: "",
-    location: "Maryland, Lagos",
-    properties: ["Maryland Heights Duplex", "Maryland Executive Flat"],
-    category: "Top Rated Landlords",
-    joinedStatus: "new"
-  },
-  {
-    id: "landlord-maren",
-    name: "Maren Maureen",
-    score: 4.6,
-    reviews: 5,
-    avatar: "",
-    location: "Ikeja, Lagos",
-    properties: ["Ikeja GRA Studio Self-Contained", "GRA Luxury Mansion"],
-    category: "Landlords near you",
-    joinedStatus: "new"
-  },
-  {
-    id: "landlord-ryan",
-    name: "Ryan Herwinds",
-    score: 4.8,
-    reviews: 18,
-    avatar: "",
-    location: "Surulere, Lagos",
-    properties: ["Adeniran Ogunsanya Flat", "Surulere Cozy Studio"],
-    category: "Top Rated Landlords",
-    joinedStatus: "old"
-  }
-];
+// Dynamic data collections
+const SEARCH_LISTINGS = [];
+const LANDLORDS = [];
 
 // formatCurrency imported from formatters.js
 
@@ -378,9 +116,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
   const searchContainerRef = useRef(null);
 
   // Dynamic approved listings loaded from backend API & localStorage
-  const [allListings, setAllListings] = useState(() => {
-    return SEARCH_LISTINGS;
-  });
+  const [allListings, setAllListings] = useState([]);
 
   useEffect(() => {
     async function loadTenantProperties() {
@@ -395,17 +131,16 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
           }
         } catch (e) { }
 
-        const mergedMap = new Map();
-        [...SEARCH_LISTINGS, ...apiProps].forEach((item) => {
-          if (!item) return;
+        const formatted = apiProps.map((item) => {
+          if (!item) return null;
           const key = String(item.id || item.title);
-          const formatted = {
+          return {
             id: item.id || key,
             title: item.title || item.address_line1 || "Property",
             location: item.location || item.city || "Lagos, Nigeria",
-            price: typeof item.price === "number" ? item.price : Number(String(item.price || item.rent_amount || "350000").replace(/[^0-9]/g, "")) || 350000,
-            beds: item.beds || item.bedrooms || 2,
-            baths: item.baths || item.bathrooms || 2,
+            price: typeof item.price === "number" ? item.price : Number(String(item.price || item.rent_amount || "0").replace(/[^0-9]/g, "")) || 0,
+            beds: item.beds || item.bedrooms || 1,
+            baths: item.baths || item.bathrooms || 1,
             type: item.type || item.property_type || "apartment",
             image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
             amenities: item.amenities || [],
@@ -414,13 +149,10 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
             isPending: item.isPending,
             recommendationCategory: item.recommendationCategory || "Popular properties"
           };
-          mergedMap.set(key, formatted);
-        });
-
-        const combined = Array.from(mergedMap.values());
+        }).filter(Boolean);
 
         // STRICT FILTER: Only approved/live properties go to tenant search
-        const approvedOnly = combined.filter((p) => {
+        const approvedOnly = formatted.filter((p) => {
           if (!p) return false;
           const status = (p.status || "").toLowerCase();
           if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
@@ -429,7 +161,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
           return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
         });
 
-        setAllListings(approvedOnly.length > 0 ? approvedOnly : SEARCH_LISTINGS);
+        setAllListings(approvedOnly);
       } catch (err) {
         console.warn("Failed to load tenant search listings:", err);
       }

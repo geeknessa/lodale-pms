@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Star, Heart, MessageCircle, BedDouble, Bath } from "lucide-react";
 import NavBar from "../components/NavBar";
 import Button from "../components/Button";
-import { LISTINGS } from "../data/listings";
 import { propertyService } from "../services/propertyService";
 
 export default function ListingDetail() {
@@ -11,6 +10,7 @@ export default function ListingDetail() {
   const navigate = useNavigate();
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [listing, setListing] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const isAuth = localStorage.getItem("isAuthenticated") === "true" || sessionStorage.getItem("isAuthenticated") === "true";
@@ -21,11 +21,14 @@ export default function ListingDetail() {
 
   useEffect(() => {
     async function fetchListing() {
+      setIsLoading(true);
       try {
         const item = await propertyService.getPropertyById(id);
-        setListing(item || LISTINGS[0]);
+        setListing(item || null);
       } catch (err) {
-        setListing(LISTINGS[0]);
+        setListing(null);
+      } finally {
+        setIsLoading(false);
       }
     }
     fetchListing();
@@ -39,6 +42,7 @@ export default function ListingDetail() {
   // Apply implies the guest is a tenant — skip the role picker and the
   // generic Welcome screen, land straight on the application after verifying.
   function handleApply() {
+    if (!listing) return;
     navigate("/signup", {
       state: {
         presetRole: "tenant",
@@ -49,12 +53,27 @@ export default function ListingDetail() {
     });
   }
 
-  if (!listing) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <NavBar />
         <div className="flex-1 flex justify-center items-center text-ink-500">
           Loading listing...
+        </div>
+      </div>
+    );
+  }
+
+  if (!listing) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <NavBar />
+        <div className="flex-1 flex flex-col justify-center items-center text-center p-6">
+          <h2 className="text-xl font-bold text-ink-900 mb-2">Listing Not Found</h2>
+          <p className="text-ink-500 text-sm mb-6">This property does not exist or may have been removed.</p>
+          <Button variant="primary" onClick={() => navigate(-1)}>
+            Go Back
+          </Button>
         </div>
       </div>
     );
