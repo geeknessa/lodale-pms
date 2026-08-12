@@ -15,8 +15,32 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgres://postgres:lodale@localhost:5432/lodale_db',
 });
 
+async function ensureDatabaseExists() {
+  const dbUrl = process.env.DATABASE_URL || 'postgres://postgres:lodale@localhost:5432/lodale_db';
+  try {
+    const parsed = new URL(dbUrl);
+    const dbName = parsed.pathname.substring(1);
+    if (!dbName) return;
+
+    const systemUrl = `${parsed.protocol}//${parsed.username}${parsed.password ? ':' + parsed.password : ''}@${parsed.hostname}${parsed.port ? ':' + parsed.port : ''}/postgres`;
+    const systemClient = new pg.Client({ connectionString: systemUrl });
+    await systemClient.connect();
+    const checkRes = await systemClient.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
+    if (checkRes.rowCount === 0) {
+      console.log(`[PostgreSQL] Database "${dbName}" does not exist. Creating...`);
+      const safeDbName = dbName.replace(/"/g, '""');
+      await systemClient.query(`CREATE DATABASE "${safeDbName}"`);
+      console.log(`[PostgreSQL] Database "${dbName}" created successfully.`);
+    }
+    await systemClient.end();
+  } catch (err) {
+    console.warn('[PostgreSQL] Database auto-creation check warning:', err.message);
+  }
+}
+
 // Initialize database pool and seed data if empty
 export async function initDb() {
+  await ensureDatabaseExists();
   try {
     const client = await pool.connect();
     console.log('[PostgreSQL] Connected to local PostgreSQL database: lodale_db');
