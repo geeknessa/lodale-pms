@@ -1,8 +1,7 @@
 import { apiClient } from '../lib/apiClient';
-import { LISTINGS as mockListings } from '../data/listings';
 
 /**
- * Property Service for local Express REST API with graceful mock fallback
+ * Property Service for local Express REST API
  */
 export const propertyService = {
   /**
@@ -18,12 +17,8 @@ export const propertyService = {
       const queryString = params.toString() ? `?${params.toString()}` : '';
       return await apiClient(`/properties${queryString}`);
     } catch (error) {
-      console.warn('[PropertyService] Express server unreachable. Using local mock listings fallback:', error.message);
-      let filtered = [...mockListings];
-      if (filters.city) {
-        filtered = filtered.filter(p => p.location?.toLowerCase().includes(filters.city.toLowerCase()));
-      }
-      return filtered;
+      console.warn('[PropertyService] Failed to fetch properties:', error.message);
+      return [];
     }
   },
 
@@ -47,7 +42,7 @@ export const propertyService = {
     try {
       return await apiClient(`/properties/${id}`);
     } catch {
-      return mockListings.find(p => String(p.id) === String(id)) || null;
+      return null;
     }
   },
 

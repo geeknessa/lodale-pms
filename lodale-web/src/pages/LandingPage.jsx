@@ -12,7 +12,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import heroBg from "../assets/lodale_hero.png";
 import { useTheme } from "../context/ThemeContext";
 import ListingCard from "../components/ListingCard";
-import { LISTINGS } from "../data/listings";
 import { propertyService } from "../services/propertyService";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -629,9 +628,7 @@ export default function LandingPage() {
     return () => link.remove();
   }, []);
 
-  const [allListings, setAllListings] = useState(() => {
-    return LISTINGS;
-  });
+  const [allListings, setAllListings] = useState([]);
 
   useEffect(() => {
     async function fetchPublicListings() {
@@ -646,17 +643,7 @@ export default function LandingPage() {
           }
         } catch (e) {}
 
-        const mergedMap = new Map();
-        [...LISTINGS, ...apiProps].forEach((item) => {
-          if (item && (item.id || item.title)) {
-            const key = String(item.id || item.title);
-            mergedMap.set(key, item);
-          }
-        });
-
-        const combined = Array.from(mergedMap.values());
-
-        const approvedOnly = combined.filter((p) => {
+        const approvedOnly = apiProps.filter((p) => {
           if (!p) return false;
           const status = (p.status || "").toLowerCase();
           if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
@@ -665,7 +652,7 @@ export default function LandingPage() {
           return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
         });
 
-        setAllListings(approvedOnly.length > 0 ? approvedOnly : LISTINGS);
+        setAllListings(approvedOnly);
       } catch (err) {
         console.warn("Failed to load public listings:", err);
       }

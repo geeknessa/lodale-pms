@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2 } from "lucide-react";
-import { LISTINGS } from "../../data/listings";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
