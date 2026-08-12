@@ -419,6 +419,32 @@ export default function Settings() {
       return;
     }
 
+    const docId = "doc-" + Date.now();
+    const refCode = "DOC-" + new Date().getFullYear() + "-LOD-" + Math.floor(10000 + Math.random() * 90000);
+    const dateSentStr = formatDate(new Date(), { day: "numeric", month: "short", year: "numeric" });
+
+    const newDoc = {
+      id: docId,
+      refCode: refCode,
+      title: `Tenancy Lease Agreement (${leaseDuration})`,
+      type: "Lease Agreement",
+      propertyName: selectedProperty.title || "Modern Residential Unit",
+      propertyLocation: selectedProperty.location || "",
+      landlordName: fullName || "Landlord / Property Manager",
+      tenantName: tenantName,
+      rentAmount: rentAmount,
+      leaseDuration: leaseDuration,
+      leaseStart: leaseStart,
+      dateSent: dateSentStr,
+      status: "pending",
+      content: `RESIDENTIAL TENANCY LEASE AGREEMENT\n\n1. PARTIES & DEMISED PREMISES:\nThis Tenancy Lease Agreement is entered into between Landlord: ${fullName} and Tenant: ${tenantName} for the demised property: ${selectedProperty.title || "Apartment Unit"}, situated at ${selectedProperty.location || "Nigeria"}.\n\n2. DURATION & COMMENCEMENT:\nThe lease term shall be for a duration of ${leaseDuration}, commencing on ${formatDate(leaseStart, { day: "numeric", month: "long", year: "numeric" })}.\n\n3. RENT & PAYMENT TERMS:\nThe agreed rent is ${rentAmount || "₦0"} per month, payable in advance on or before the agreed cycle.\n\n4. COVENANTS AND POLICIES:\n- Pets: ${includePets ? "Permitted" : "No unauthorized pets allowed"}\n- Smoking: ${includeSmoking ? "Permitted in designated outdoor areas only" : "Strictly prohibited indoors"}\n- Late Penalty: ${includeLateFee ? "10% charge if rent is unpaid after 5 days" : "Standard billing policies apply"}\n${customClause ? `\n- Additional Clauses:\n${customClause}\n` : ""}\n5. ACKNOWLEDGEMENT & EXECUTION:\nBoth parties acknowledge the validity of this contract upon digital execution.`
+    };
+
+    const savedTenantDocs = localStorage.getItem("tenantLegalDocuments");
+    const tenantDocsList = savedTenantDocs ? JSON.parse(savedTenantDocs) : [];
+    tenantDocsList.unshift(newDoc);
+    localStorage.setItem("tenantLegalDocuments", JSON.stringify(tenantDocsList));
+
     const savedNotifs = localStorage.getItem("landlordNotifications");
     const notifsList = savedNotifs ? JSON.parse(savedNotifs) : [];
 
