@@ -1,34 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Sparkles, Loader2, Camera, ImagePlus, Upload, Check, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle2, Loader2, Camera, ImagePlus, Upload, Check, Clock, AlertCircle } from "lucide-react";
 import gsap from "gsap";
 import { Logo } from "../components/Logo";
 import Input from "../components/Input";
 import Button from "../components/Button";
-import { LISTINGS } from "../data/listings";
-import { propertyService } from "../services/propertyService";
-
-const PRESET_PHOTOS = [
-  { label: "Modern Villa", url: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80" },
-  { label: "Luxury Apartment", url: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80" },
-  { label: "Gated Residency", url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80" },
-  { label: "Cozy Studio", url: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80" },
-];
-
-const COMMON_AMENITIES = [
-  "Prepaid Meter",
-  "24/7 Security",
-  "24/7 Power / Generator",
-  "Clean Water / Borehole",
-  "Air Conditioning",
-  "Parking Space",
-  "Fitted Kitchen",
-  "POP Ceiling",
-  "Swimming Pool",
-  "Gym / Fitness Facility",
-  "Balcony",
-  "CCTV Surveillance",
-];
+import { formatCurrency } from "../utils/formatters";
+import { handlePropertySubmit, PRESET_PHOTOS, COMMON_AMENITIES } from "../utils/propertyUtils";
 
 export default function AddProperty() {
   const navigate = useNavigate();
@@ -37,6 +15,8 @@ export default function AddProperty() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formError, setFormError] = useState("");
 
+  const [displayName, setDisplayName] = useState("");
+  
   // Dynamic Property Specifications State
   const [selectedAmenities, setSelectedAmenities] = useState(["Prepaid Meter", "24/7 Security"]);
   const [customAmenityInput, setCustomAmenityInput] = useState("");
@@ -63,9 +43,12 @@ export default function AddProperty() {
   };
   
   // Property picture prompt state
-  const [propertyPhoto, setPropertyPhoto] = useState(PRESET_PHOTOS[0].url);
-  const [photoPreview, setPhotoPreview] = useState(PRESET_PHOTOS[0].url);
+  const [propertyPhotos, setPropertyPhotos] = useState([PRESET_PHOTOS[0].url]);
+  const [coverPhotoIndex, setCoverPhotoIndex] = useState(0);
   const [photoError, setPhotoError] = useState("");
+  
+  // Property Rules
+  const [rules, setRules] = useState("");
 
   // Proof of ownership legal papers state
   const [docType, setDocType] = useState("Deed of Assignment");
@@ -80,26 +63,45 @@ export default function AddProperty() {
   const textContainerRef = useRef(null);
 
   function handleFileUpload(e) {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const remainingSlots = 5 - propertyPhotos.length;
+    if (remainingSlots <= 0) {
+      setPhotoError("You can only upload up to 5 photos.");
+      return;
+    }
+
+    const filesToAdd = files.slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      setPhotoError(`Only the first ${remainingSlots} photo(s) were added. Maximum is 5.`);
+    } else {
+      setPhotoError("");
+    }
+
+    filesToAdd.forEach((file) => {
       if (!file.type.startsWith("image/")) {
-        setPhotoError("Please select a valid image file (PNG, JPG, WEBP).");
+        setPhotoError("Please select valid image files (PNG, JPG, WEBP).");
         return;
       }
-      setPhotoError("");
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const result = evt.target.result;
-        setPropertyPhoto(result);
-        setPhotoPreview(result);
+        setPropertyPhotos((prev) => [...prev, evt.target.result]);
       };
       reader.readAsDataURL(file);
-    }
+    });
   }
 
   function handleDocUpload(e) {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setFormError("Proof of Ownership document exceeds 2MB limit.");
+        setDocName("");
+        setDocUploaded(false);
+        setDocDataUrl("");
+        return;
+      }
       setDocName(file.name);
       setDocUploaded(true);
       setFormError("");
@@ -112,115 +114,25 @@ export default function AddProperty() {
   }
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setFormError("");
-
-    const target = e.target;
-    const address = target.elements.address?.value?.trim() || "";
-    const type = target.elements.type?.value?.trim() || "";
-    const rent = target.elements.rent?.value?.trim() || "";
-    const bedrooms = target.elements.bedrooms?.value?.trim() || "";
-    const bathsVal = target.elements.bathrooms?.value?.trim() || bathrooms || "1";
-    const cityVal = target.elements.city?.value?.trim() || cityName || "Lagos";
-    const stateVal = target.elements.state?.value?.trim() || stateName || "Lagos";
-    const descVal = target.elements.description?.value?.trim() || description.trim() || "";
-
-    const numericRent = Number(rent.replace(/[^0-9]/g, ""));
-    const numericBedrooms = Number(bedrooms);
-    const numericBathrooms = Number(bathsVal);
-
-    if (!address) {
-      setFormError("Property Address / Title is required.");
-      return;
-    }
-    if (!type) {
-      setFormError("Property Type is required.");
-      return;
-    }
-    if (!rent || isNaN(numericRent) || numericRent <= 0) {
-      setFormError("A valid Rent Amount is required.");
-      return;
-    }
-    if (!bedrooms || isNaN(numericBedrooms) || numericBedrooms <= 0) {
-      setFormError("Number of Bedrooms is required.");
-      return;
-    }
-    if (!bathsVal || isNaN(numericBathrooms) || numericBathrooms <= 0) {
-      setFormError("Number of Bathrooms is required.");
-      return;
-    }
-    if (!docName || !docName.trim()) {
-      setFormError("Please upload your proof of ownership legal document (PDF / Image) before submitting.");
-      return;
-    }
-    if (!propertyPhoto) {
-      setFormError("Please attach a property photo before submitting.");
-      return;
-    }
-
-    const ownershipDocString = `${docType} (${docName})`;
-    const dbUserId = localStorage.getItem("db_user_id");
-
-    const amenitiesList = selectedAmenities.length > 0 ? selectedAmenities : ["Basic Amenities"];
-    const finalDescription = descVal || `${numericBedrooms} Bedroom, ${numericBathrooms} Bathroom ${type} located at ${address}, ${cityVal}.`;
-
-    const propertyPayload = {
-      title: address,
-      description: finalDescription,
-      address_line1: address,
-      city: cityVal,
-      state: stateVal,
-      rent_amount: numericRent,
-      bedrooms: numericBedrooms,
-      bathrooms: numericBathrooms,
-      property_type: type.toLowerCase().replace(/\s+/g, '_'),
-      amenities: amenitiesList,
-      ownership_doc: ownershipDocString,
-      ownership_doc_url: docDataUrl,
-      cover_image: propertyPhoto || PRESET_PHOTOS[0].url,
-      ...(dbUserId ? { landlord_id: dbUserId } : {}),
-    };
-
-    try {
-      await propertyService.createProperty(propertyPayload);
-    } catch (err) {
-      console.warn("Backend API error, storing locally fallback:", err);
-    }
-
-    const formattedRent = rent.startsWith("₦") ? rent : "₦" + numericRent.toLocaleString();
-
-    // Create a new listing object
-    const newListing = {
-      id: address.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now(),
-      title: address,
-      description: finalDescription,
-      location: `${cityVal}, ${stateVal}`,
-      price: formattedRent + (rentCycle === "annual" ? "/yr" : "/mo"),
-      image: propertyPhoto || PRESET_PHOTOS[0].url,
-      beds: numericBedrooms,
-      baths: numericBathrooms,
-      status: "pending_review",
-      ownership_doc: ownershipDocString,
-      ownership_doc_url: docDataUrl,
-      docType: docType,
-      docName: docName,
-      docDataUrl: docDataUrl,
-      amenities: amenitiesList,
-      landlord: {
-        name: localStorage.getItem("username") || "Ada K.",
-        score: 5.0,
-        reviews: 1,
-      },
-    };
-
-    // Load existing list, append and save back to localStorage
-    const saved = localStorage.getItem("properties");
-    const currentListings = saved ? JSON.parse(saved) : [];
-    const updatedListings = [newListing, ...currentListings];
-    localStorage.setItem("properties", JSON.stringify(updatedListings));
-
-    setIsSubmitted(true);
-  }
+    await handlePropertySubmit({
+      e,
+      displayName,
+      stateName,
+      cityName,
+      bathrooms,
+      description,
+      selectedAmenities,
+      docType,
+      docName,
+      docDataUrl,
+      propertyPhotos,
+      coverPhoto: propertyPhotos[coverPhotoIndex],
+      rules,
+      rentCycle,
+      setFormError,
+      setIsSubmitted
+    });
+  };
 
   useEffect(() => {
     if (isSubmitted && successOverlayRef.current) {
@@ -275,22 +187,18 @@ export default function AddProperty() {
     return (
       <div
         ref={successOverlayRef}
-        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#0B1512] text-white font-sans px-6"
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#263b33] text-white font-sans px-6"
       >
         {/* Background glow animations */}
         <div className="absolute top-1/4 left-1/4 h-80 w-80 rounded-full bg-moss-600/10 blur-[100px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 h-80 w-80 rounded-full bg-cream-50/5 blur-[100px] pointer-events-none" />
 
         <div className="flex flex-col items-center max-w-sm text-center relative z-10">
-          {/* Animated Outer Ring */}
           <div
             ref={checkIconRef}
             className="flex h-24 w-24 items-center justify-center rounded-full bg-moss-800 border-2 border-moss-500/30 mb-8 relative shadow-[0_0_50px_rgba(58,90,64,0.25)]"
           >
             <CheckCircle2 className="h-12 w-12 text-[#E5C583]" />
-            <div className="absolute -top-1 -right-1">
-              <Sparkles className="h-6 w-6 text-amber-300 animate-pulse" />
-            </div>
           </div>
 
           <div ref={textContainerRef} className="space-y-3">
@@ -343,9 +251,19 @@ export default function AddProperty() {
 
           <div className="mt-6 space-y-5">
             <Input
+              id="displayName"
+              label="Property Display Name *"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="e.g. Luxury 3-Bed Lekki Phase 1"
+              maxLength={255}
+              required
+            />
+            <Input
               id="address"
               label="Full Address / Street Location *"
               placeholder="e.g. Admiralty Way, Lekki Phase 1"
+              maxLength={255}
               required
             />
 
@@ -356,6 +274,7 @@ export default function AddProperty() {
                 value={cityName}
                 onChange={(e) => setCityName(e.target.value)}
                 placeholder="e.g. Lekki, Victoria Island, Yaba, Ikeja"
+                maxLength={100}
                 required
               />
               <Input
@@ -364,6 +283,7 @@ export default function AddProperty() {
                 value={stateName}
                 onChange={(e) => setStateName(e.target.value)}
                 placeholder="e.g. Lagos, Abuja, Rivers"
+                maxLength={50}
                 required
               />
             </div>
@@ -373,6 +293,7 @@ export default function AddProperty() {
                 id="type"
                 label="Property Type *"
                 placeholder="Apartment, duplex, villa, studio"
+                maxLength={50}
                 required
               />
 
@@ -409,10 +330,12 @@ export default function AddProperty() {
                 </div>
                 <Input
                   id="rent"
+                  type="number"
+                  min="0"
                   placeholder={
                     rentCycle === "annual"
-                      ? "₦2,500,000 / year"
-                      : "₦200,000 / month"
+                      ? "2500000"
+                      : "200000"
                   }
                   required
                 />
@@ -424,6 +347,7 @@ export default function AddProperty() {
                 id="bedrooms"
                 label="Bedrooms *"
                 type="number"
+                min="0"
                 placeholder="e.g. 2"
                 required
               />
@@ -431,6 +355,7 @@ export default function AddProperty() {
                 id="bathrooms"
                 label="Bathrooms *"
                 type="number"
+                min="0"
                 value={bathrooms}
                 onChange={(e) => setBathrooms(e.target.value)}
                 placeholder="e.g. 2"
@@ -446,6 +371,7 @@ export default function AddProperty() {
               <textarea
                 id="description"
                 rows={3}
+                maxLength={1000}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe your property layout, unique features, or rental guidelines..."
@@ -456,7 +382,7 @@ export default function AddProperty() {
             {/* PROPERTY AMENITIES SELECTION SECTION */}
             <div className="rounded-xl border border-moss-700/20 bg-moss-700/[0.03] p-5">
               <label className="block text-[13px] font-bold text-ink-900 mb-2 flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4 text-moss-700" />
+                <CheckCircle2 className="h-4 w-4 text-moss-700" />
                 <span>Property Amenities & Features *</span>
               </label>
               <p className="text-[12px] text-ink-700 mb-3 leading-relaxed">
@@ -486,6 +412,7 @@ export default function AddProperty() {
               <div className="flex items-center gap-2">
                 <input
                   type="text"
+                  maxLength={100}
                   value={customAmenityInput}
                   onChange={(e) => setCustomAmenityInput(e.target.value)}
                   placeholder="Add custom amenity (e.g. Jacuzzi, Smart Lock)"
@@ -505,6 +432,19 @@ export default function AddProperty() {
                   Add
                 </button>
               </div>
+            </div>
+
+            {/* Property Rules */}
+            <div className="mb-6">
+              <label className="block text-[13px] font-bold text-ink-900 mb-2">
+                Property Rules (Optional)
+              </label>
+              <textarea
+                className="w-full rounded-xl border border-ink-200 bg-white px-4 py-3 text-[13px] text-ink-900 placeholder-ink-400 focus:border-moss-600 focus:outline-none focus:ring-1 focus:ring-moss-600 min-h-[100px] resize-y"
+                placeholder="e.g., No smoking, No pets, Max 4 occupants, Quiet hours after 10 PM"
+                value={rules}
+                onChange={(e) => setRules(e.target.value)}
+              />
             </div>
 
             {/* PROOF OF OWNERSHIP LEGAL PAPERS SECTION */}
@@ -579,21 +519,46 @@ export default function AddProperty() {
                 </span>
               </div>
               <p className="text-[12px] text-ink-700 mb-4 leading-relaxed">
-                Add a high-quality picture of your rental unit so prospective tenants can inspect layout details.
+                Add up to 5 high-quality pictures of your rental unit (rooms, compound, bathroom, etc.). You can select which one will be the cover image.
               </p>
 
-              {/* Photo Preview */}
-              {photoPreview && (
-                <div className="relative mb-4 h-44 w-full overflow-hidden rounded-xl border border-ink-200 shadow-sm group">
-                  <img
-                    src={photoPreview}
-                    alt="Property Preview"
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  <span className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-md flex items-center gap-1">
-                    <Check className="h-3 w-3 text-emerald-400" /> Active Listing Photo
-                  </span>
+              {/* Photo Previews */}
+              {propertyPhotos.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                  {propertyPhotos.map((photoUrl, idx) => (
+                    <div key={idx} className={`relative h-28 w-full overflow-hidden rounded-xl border-2 transition-all ${idx === coverPhotoIndex ? 'border-emerald-500 shadow-md' : 'border-ink-200'}`}>
+                      <img
+                        src={photoUrl}
+                        alt={`Property Preview ${idx}`}
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                      
+                      <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
+                        <button
+                          type="button"
+                          onClick={() => setCoverPhotoIndex(idx)}
+                          className={`text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 transition-colors ${idx === coverPhotoIndex ? 'bg-emerald-500 text-white' : 'bg-black/50 text-white hover:bg-black/80'}`}
+                        >
+                          {idx === coverPhotoIndex ? (
+                            <><Check className="h-3 w-3" /> Cover</>
+                          ) : "Set Cover"}
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPropertyPhotos(prev => prev.filter((_, i) => i !== idx));
+                            if (coverPhotoIndex === idx) setCoverPhotoIndex(0);
+                            else if (coverPhotoIndex > idx) setCoverPhotoIndex(coverPhotoIndex - 1);
+                          }}
+                          className="bg-rose-500 hover:bg-rose-600 text-white rounded-full p-1 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 
@@ -602,46 +567,52 @@ export default function AddProperty() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleFileUpload}
                 className="hidden"
               />
 
-              <div className="flex flex-col sm:flex-row gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-moss-700 text-white font-bold text-[12.5px] hover:bg-moss-800 transition-all cursor-pointer shadow-xs active:scale-95"
-                >
-                  <Upload className="h-4 w-4" />
-                  Upload Photo from Device
-                </button>
-              </div>
+              {propertyPhotos.length < 5 && (
+                <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-moss-700 text-white font-bold text-[12.5px] hover:bg-moss-800 transition-all cursor-pointer shadow-xs active:scale-95"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload Photos from Device (Max 5)
+                  </button>
+                </div>
+              )}
 
               {/* Sample Photo Pickers */}
-              <div className="mt-3">
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-400 mb-2">
-                  Or pick a recommended sample photo:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {PRESET_PHOTOS.map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        setPropertyPhoto(preset.url);
-                        setPhotoPreview(preset.url);
-                      }}
-                      className={`text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                        photoPreview === preset.url
-                          ? "bg-moss-700 text-white border-moss-700 shadow-xs"
-                          : "bg-white text-ink-700 border-ink-200 hover:border-moss-500"
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+              {propertyPhotos.length < 5 && (
+                <div className="mt-3">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-400 mb-2">
+                    Or pick a recommended sample photo:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {PRESET_PHOTOS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          if (!propertyPhotos.includes(preset.url)) {
+                            setPropertyPhotos(prev => [...prev, preset.url]);
+                          }
+                        }}
+                        className={`text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                          propertyPhotos.includes(preset.url)
+                            ? "bg-moss-700 text-white border-moss-700 shadow-xs"
+                            : "bg-white text-ink-700 border-ink-200 hover:border-moss-500"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
               {photoError && (
                 <p className="mt-2 text-[12px] font-semibold text-rose-600">{photoError}</p>
               )}
@@ -693,12 +664,15 @@ export default function AddProperty() {
                 id="tenantName"
                 label="Tenant's name"
                 placeholder="Emeka O."
+                maxLength={50}
+                onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
                 required
               />
               <Input
                 id="tenantContact"
                 label="Tenant's phone or email"
                 placeholder="emeka@example.com"
+                maxLength={100}
                 required
               />
               <Input

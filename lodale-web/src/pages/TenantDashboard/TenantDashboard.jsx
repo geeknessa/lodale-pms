@@ -256,6 +256,15 @@ export default function TenantDashboard() {
   const [tooltipStyle, setTooltipStyle] = useState({});
   const [spotlightStyle, setSpotlightStyle] = useState({});
 
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [notifications, setNotifications] = useState(() => {
+    const saved = localStorage.getItem("tenantNotifications");
+    return saved ? JSON.parse(saved) : [
+      { id: 1, text: "Your rent payment was successful.", read: false },
+      { id: 2, text: "Maintenance request #42 updated.", read: false }
+    ];
+  });
+
   const [activeLease, setActiveLease] = useState(() => {
     const saved = localStorage.getItem("tenantLease");
     if (saved) {
@@ -609,8 +618,18 @@ export default function TenantDashboard() {
   };
 
   const handleSignOut = () => {
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("db_user_id");
+    sessionStorage.removeItem("currentUserProfile");
+    sessionStorage.removeItem("lodale_token");
+    sessionStorage.removeItem("lodale_user");
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("sessionExpiresAt");
+    localStorage.removeItem("username");
+    localStorage.removeItem("userRole");
     navigate("/login", { replace: true });
   };
 
@@ -734,6 +753,52 @@ export default function TenantDashboard() {
         </div>
       )}
 
+      {/* NOTIFICATIONS MODAL */}
+      {showNotificationsModal && (
+        <div className="tenant-modal-backdrop" onClick={() => setShowNotificationsModal(false)}>
+          <div className="bg-white dark:bg-[#13221C] border border-ink-100 dark:border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-ink-900 dark:text-white">Notifications</h3>
+              <button className="text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold" onClick={() => setShowNotificationsModal(false)}>&times;</button>
+            </div>
+            <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
+              {notifications.length > 0 ? notifications.map((n, i) => (
+                <div key={i} className={`p-3 rounded-xl border ${n.read ? 'bg-neutral-50 dark:bg-white/5 border-transparent' : 'bg-moss-50 dark:bg-[#E5C583]/10 border-moss-200 dark:border-[#E5C583]/20'}`}>
+                  <p className="text-[13px] text-ink-900 dark:text-white font-medium leading-relaxed">{n.message || n.text || "Notification"}</p>
+                </div>
+              )) : (
+                <p className="text-sm text-ink-400 dark:text-cream-100/50 py-4 text-center">No new notifications.</p>
+              )}
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              {notifications.length > 0 && (
+                <Button
+                  onClick={() => {
+                    setNotifications([]);
+                    localStorage.setItem("tenantNotifications", JSON.stringify([]));
+                  }}
+                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-[#1D2D26] dark:hover:bg-[#253930] text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl transition-colors"
+                >
+                  Clear All
+                </Button>
+              )}
+              <Button
+                onClick={() => {
+                  setShowNotificationsModal(false);
+                  const updated = notifications.map(n => ({ ...n, read: true }));
+                  setNotifications(updated);
+                  localStorage.setItem("tenantNotifications", JSON.stringify(updated));
+                }}
+                className={`${notifications.length > 0 ? 'flex-[2]' : 'w-full'} bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl`}
+              >
+                Close Notifications
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* RENT PAYMENT MODAL */}
       {showPayModal && (
         <div className="tenant-modal-backdrop">
@@ -824,14 +889,14 @@ export default function TenantDashboard() {
             <div className="flex flex-col gap-3 mt-2 border-t border-neutral-100 dark:border-neutral-800/60 pt-4">
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Email Address</span>
-                <span className="text-[13px] font-bold">{localStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
+                <span className="text-[13px] font-bold">{sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Phone Number</span>
                 <span className="text-[13px] font-bold">
                   {(() => {
                     try {
-                      const prof = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      const prof = JSON.parse(sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || "{}");
                       return prof.phone || "Not provided";
                     } catch (e) {
                       return "Not provided";
@@ -1317,14 +1382,14 @@ export default function TenantDashboard() {
                   <Search className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
                 </div>
 
+                <div className="db-icon-btn-wrapper" onClick={() => setShowNotificationsModal(true)} title="Notifications">
+                  <Bell className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
+                  {notifications.filter(n => !n.read).length > 0 && <span className="db-badge-dot" />}
+                </div>
+
                 <div className="db-icon-btn-wrapper" onClick={() => setActiveTab(2)} title="Messages">
                   <MessageSquare className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
                   <span className="db-badge-dot" />
-                </div>
-
-                <div className="db-icon-btn-wrapper" onClick={() => triggerToast("You have 2 new unread portal notifications.", "info", "Notifications")} title="Notifications">
-                  <Bell className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                  <span className="db-badge-dot pulse" />
                 </div>
 
                 <div className="db-profile-avatar-wrapper" onClick={() => setShowProfileModal(true)} title="Profile settings">

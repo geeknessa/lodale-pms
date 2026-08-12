@@ -1,17 +1,38 @@
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Star, Heart, MessageCircle, BedDouble, Bath } from "lucide-react";
 import NavBar from "../components/NavBar";
 import Button from "../components/Button";
-import { LISTINGS } from "../data/listings";
+import { propertyService } from "../services/propertyService";
 
 export default function ListingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const listing = (() => {
-    const saved = localStorage.getItem("properties");
-    const list = saved ? JSON.parse(saved) : LISTINGS;
-    return list.find((l) => l.id === id) ?? list[0];
-  })();
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [listing, setListing] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const isAuth = localStorage.getItem("isAuthenticated") === "true" || sessionStorage.getItem("isAuthenticated") === "true";
+    if (!isAuth) {
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    async function fetchListing() {
+      setIsLoading(true);
+      try {
+        const item = await propertyService.getPropertyById(id);
+        setListing(item || null);
+      } catch (err) {
+        setListing(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchListing();
+  }, [id]);
 
   // Save / Message both require an account — send guests to sign up.
   function requireSignup() {
@@ -21,6 +42,7 @@ export default function ListingDetail() {
   // Apply implies the guest is a tenant — skip the role picker and the
   // generic Welcome screen, land straight on the application after verifying.
   function handleApply() {
+    if (!listing) return;
     navigate("/signup", {
       state: {
         presetRole: "tenant",
@@ -31,13 +53,43 @@ export default function ListingDetail() {
     });
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <NavBar />
+        <div className="flex-1 flex justify-center items-center text-ink-500">
+          Loading listing...
+        </div>
+      </div>
+    );
+  }
+
+  if (!listing) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <NavBar />
+        <div className="flex-1 flex flex-col justify-center items-center text-center p-6">
+          <h2 className="text-xl font-bold text-ink-900 mb-2">Listing Not Found</h2>
+          <p className="text-ink-500 text-sm mb-6">This property does not exist or may have been removed.</p>
+          <Button variant="primary" onClick={() => navigate(-1)}>
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white">
       <NavBar />
 
       <div className="mx-auto max-w-5xl px-6 py-10">
-        <div className="flex h-72 items-center justify-center rounded-2xl bg-cream-100">
-          <span className="text-[13px] font-medium text-moss-700">Photo</span>
+        <div className="flex h-72 items-center justify-center rounded-2xl bg-cream-100 overflow-hidden relative">
+          {(listing.cover_image || listing.image) ? (
+            <img src={listing.cover_image || listing.image} alt={listing.title} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[13px] font-medium text-moss-700">Photo</span>
+          )}
         </div>
 
         <div className="mt-8 grid gap-10 md:grid-cols-[1fr_320px]">
@@ -45,19 +97,19 @@ export default function ListingDetail() {
             <h1 className="font-display text-2xl font-bold text-ink-900">
               {listing.title}
             </h1>
-            <p className="mt-1 text-[14px] text-ink-400">{listing.location}</p>
+            <p className="mt-1 text-[14px] text-ink-400">{listing.location || listing.address_line1 || ""}</p>
 
             <div className="mt-4 flex items-center gap-5 text-[13px] text-ink-700">
               <span className="flex items-center gap-1">
-                <BedDouble className="h-4 w-4" /> {listing.beds} Bed
+                <BedDouble className="h-4 w-4" /> {listing.beds || listing.bedrooms || 0} Bed
               </span>
               <span className="flex items-center gap-1">
-                <Bath className="h-4 w-4" /> {listing.baths} Bath
+                <Bath className="h-4 w-4" /> {listing.baths || listing.bathrooms || 0} Bath
               </span>
             </div>
 
             <div className="mt-6 flex flex-wrap gap-2">
-              {listing.amenities.map((a) => (
+              {(listing.amenities || []).map((a) => (
                 <span
                   key={a}
                   className="rounded-full bg-cream-50 px-3 py-1 text-[12px] font-medium text-ink-700"
@@ -94,16 +146,16 @@ export default function ListingDetail() {
               <div className="h-11 w-11 rounded-full bg-ink-200" />
               <div>
                 <div className="text-[14px] font-semibold text-ink-900">
-                  {listing.landlord.name}
+                  {listing.landlord?.name || "Verified Landlord"}
                 </div>
                 <div className="text-[12px] text-ink-400">
-                  {listing.landlord.reviews} reviews
+                  {listing.landlord?.reviews || 0} reviews
                 </div>
               </div>
             </div>
             <div className="mt-4 flex items-baseline gap-2">
               <span className="font-display text-3xl font-bold text-moss-600">
-                {listing.landlord.score}
+                {listing.landlord?.score || "4.8"}
               </span>
               <span className="flex text-moss-600">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -111,7 +163,7 @@ export default function ListingDetail() {
                     key={i}
                     className="h-4 w-4"
                     fill={
-                      i < Math.round(listing.landlord.score)
+                      i < Math.round(listing.landlord?.score || 4.8)
                         ? "currentColor"
                         : "none"
                     }
@@ -125,7 +177,7 @@ export default function ListingDetail() {
 
             <div className="mt-6 rounded-xl bg-moss-100 p-3">
               <p className="text-[12px] font-medium text-moss-700">
-                {listing.price} / year
+                {listing.price || (listing.rent_amount ? `₦${Number(listing.rent_amount).toLocaleString()}` : 'N/A')} / year
               </p>
             </div>
 

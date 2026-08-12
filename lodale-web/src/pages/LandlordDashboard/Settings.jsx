@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
-import { User, Lock, LogOut, Calendar, ChevronDown, CheckCircle2, Camera, Pencil, Sun, Moon, FileText, Send, Download } from "lucide-react";
+import { User, Lock, LogOut, Calendar, CheckCircle2, Pencil, Sun, Moon, FileText, Send, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import { triggerToast } from "../../context/ToastContext";
+import { formatDate } from "../../utils/formatters";
+import { propertyService } from "../../services/propertyService";
+import { userService } from "../../services/userService";
 import "./Settings.css";
 
 export default function Settings() {
@@ -14,57 +17,50 @@ export default function Settings() {
   const [gender, setGender] = useState("male"); // male | female
 
   // Landlord Name splitting with per-tab sessionStorage priority
-  const [userProfile, setUserProfile] = useState(() => {
-    const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
-    if (raw) {
-      try {
-        return JSON.parse(raw);
-      } catch (e) { }
-    }
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    const username = sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "";
-    const parts = username.split(" ");
-    return {
-      firstName: parts[0] || "",
-      lastName: parts.slice(1).join(" ") || "",
-      email: sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "",
-      phone: "",
-      address: "",
-      dob: "",
-      location: "",
-      postalCode: ""
-    };
+  const [userProfile, setUserProfile] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    dob: "",
+    location: "",
+    postalCode: "",
+    avatar: ""
   });
 
-  const [firstName, setFirstName] = useState(userProfile.firstName || "");
-  const [lastName, setLastName] = useState(userProfile.lastName || "");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   
   // Scoped helper to define landlord fullName cleanly
   const getFullName = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    return `${firstName} ${lastName}`.trim() || sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "Landlord User";
+    return `${firstName} ${lastName}`.trim() || localStorage.getItem("username") || "Landlord User";
   };
   const fullName = getFullName();
-  const [email] = useState(userProfile.email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "");
-  const [address, setAddress] = useState(userProfile.address || "");
-  const [phone, setPhone] = useState(userProfile.phone || "");
-  const [dob, setDob] = useState(userProfile.dob || "");
-  const [location, setLocation] = useState(userProfile.location || "");
-  const [postalCode, setPostalCode] = useState(userProfile.postalCode || "");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dob, setDob] = useState("");
+  const [location, setLocation] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
 
-  // Landlord profile avatar states (uses User icon by default until user uploads custom photo)
-  const [avatarUrl, setAvatarUrl] = useState(() => {
-    const emailKey = localStorage.getItem("lastLoggedInEmail");
-    if (emailKey) {
-      const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
-      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const profile = await userService.getProfile();
+        setUserProfile(profile);
+        setFirstName(profile.first_name || "");
+        setLastName(profile.last_name || "");
+        setEmail(profile.email || "");
+        setPhone(profile.phone_number || "");
+        setAvatarUrl(profile.avatar_url || "");
+      } catch (err) {
+        console.warn("Failed to fetch landlord profile", err);
+      }
     }
-    const globalSaved = localStorage.getItem("landlordAvatarUrl");
-    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
-    return userProfile.avatar && !userProfile.avatar.includes("unsplash.com") ? userProfile.avatar : "";
-  });
+    fetchProfile();
+  }, []);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -74,7 +70,6 @@ export default function Settings() {
       reader.onload = (evt) => {
         const base64Data = evt.target.result;
         setAvatarUrl(base64Data);
-        localStorage.setItem("landlordAvatarUrl", base64Data);
         if (email) {
           localStorage.setItem("landlordAvatar_" + email.toLowerCase(), base64Data);
         }
@@ -113,16 +108,27 @@ export default function Settings() {
 
   // Load properties and tenants
   useEffect(() => {
-    const savedProperties = localStorage.getItem("properties");
-    const propertyList = savedProperties ? JSON.parse(savedProperties) : [];
-    setProperties(propertyList);
+    async function fetchProperties() {
+      try {
+        const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+        const props = await propertyService.getLandlordProperties(currentUserId);
+        setProperties(props);
+        if (props.length > 0) {
+          setSelectedPropertyId(props[0].id);
+          setRentAmount(props[0].price || "250000");
+        }
+      } catch (e) {
+        console.warn("Error fetching properties", e);
+      }
+    }
+    fetchProperties();
 
     const savedTenants = localStorage.getItem("propertyTenants");
     let parsedTenants = {};
     if (savedTenants) {
       try {
         parsedTenants = JSON.parse(savedTenants);
-      } catch (e) {
+      } catch {
         parsedTenants = {};
       }
     }
@@ -139,10 +145,6 @@ export default function Settings() {
     if (allTenants.length > 0) {
       setTenantName(allTenants[0].name || allTenants[0].tenantName || "");
     }
-    if (propertyList.length > 0) {
-      setSelectedPropertyId(propertyList[0].id || "");
-      setRentAmount(propertyList[0].price || "");
-    }
   }, []);
 
   const handlePropertyChange = (propId) => {
@@ -155,74 +157,11 @@ export default function Settings() {
 
   const selectedProperty = properties.find(p => p.id === selectedPropertyId) || properties[0] || { title: "Specify Property", location: "Specify Location" };
 
-  const generateAgreementText = () => {
-    const today = new Date().toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    });
-    
-    const formattedStartDate = new Date(leaseStart).toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    });
 
-    const endDate = new Date(leaseStart);
-    if (leaseDuration === "6 Months") {
-      endDate.setMonth(endDate.getMonth() + 6);
-    } else if (leaseDuration === "1 Year") {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-    } else if (leaseDuration === "2 Years") {
-      endDate.setFullYear(endDate.getFullYear() + 2);
-    }
-    const formattedEndDate = endDate.toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    });
-
-    return `TENANCY AGREEMENT
-
-THIS AGREEMENT is made this ${today}, 
-
-BETWEEN:
-LANDLORD: ${fullName}
-AND
-TENANT: ${tenantName || "[Tenant Name]"}
-
-1. PROPERTY DESCRIPTION
-The Landlord agrees to lease to the Tenant, and the Tenant agrees to lease from the Landlord, the property located at:
-${selectedProperty.title || "[Property Title]"}, situated at ${selectedProperty.location || "[Property Location]"}.
-
-2. TERM OF LEASE
-The term of this lease shall be for a duration of ${leaseDuration}, commencing on ${formattedStartDate} and ending on ${formattedEndDate}.
-
-3. RENT PAYMENT
-The Tenant shall pay a rent of ${rentAmount || "[Rent Amount]"} per month, payable in advance on or before the 1st of every month.
-
-4. COVENANTS AND POLICIES
-${includePets ? "- PETS: The Landlord consents to the Tenant keeping domestic pets at the property.\n" : "- PETS: No pets shall be kept on the property without prior written consent from the Landlord.\n"}${includeSmoking ? "- SMOKING: Smoking is permitted in designated outdoor areas only.\n" : "- SMOKING: The Tenant shall maintain the property smoke-free. Indoor smoking is strictly prohibited.\n"}${includeLateFee ? "- LATE FEE: A late fee penalty of 10% of the rent shall be charged if rent is unpaid after 5 days from the due date.\n" : ""}${customClause ? `- ADDITIONAL TERMS: ${customClause}\n` : ""}
-IN WITNESS WHEREOF, the parties hereto have set their hands and seals on the day and year first above written.
-
-______________________
-${fullName} (Landlord)
-
-______________________
-${tenantName || "[Tenant Name]"} (Tenant)`;
-  };
 
   const handleDownloadDoc = () => {
-    const today = new Date().toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    });
-    const formattedStartDate = new Date(leaseStart).toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    });
+    const today = formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" });
+    const formattedStartDate = formatDate(leaseStart, { day: "numeric", month: "long", year: "numeric" });
 
     const endDate = new Date(leaseStart);
     if (leaseDuration === "6 Months") {
@@ -232,11 +171,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
     } else if (leaseDuration === "2 Years") {
       endDate.setFullYear(endDate.getFullYear() + 2);
     }
-    const formattedEndDate = endDate.toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    });
+    const formattedEndDate = formatDate(endDate, { day: "numeric", month: "long", year: "numeric" });
 
     const wordHtml = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -327,16 +262,8 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
   };
 
   const handlePrintPDF = () => {
-    const today = new Date().toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    });
-    const formattedStartDate = new Date(leaseStart).toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    });
+    const today = formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" });
+    const formattedStartDate = formatDate(leaseStart, { day: "numeric", month: "long", year: "numeric" });
 
     const endDate = new Date(leaseStart);
     if (leaseDuration === "6 Months") {
@@ -346,11 +273,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
     } else if (leaseDuration === "2 Years") {
       endDate.setFullYear(endDate.getFullYear() + 2);
     }
-    const formattedEndDate = endDate.toLocaleDateString("en-NG", {
-      day: "numeric",
-      month: "long",
-      year: "numeric"
-    });
+    const formattedEndDate = formatDate(endDate, { day: "numeric", month: "long", year: "numeric" });
 
     const printWindow = window.open("", "_blank", "width=850,height=900,left=50,top=50");
     printWindow.document.write(`
@@ -521,33 +444,30 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
     }, 4000);
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const updatedName = `${firstName} ${lastName}`.trim();
-    localStorage.setItem("username", updatedName);
-    localStorage.setItem("username_" + email.toLowerCase(), updatedName);
-
-    const updatedProfile = {
-      ...userProfile,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.trim(),
-      address: address.trim(),
-      phone: phone.trim(),
-      dob: dob.trim(),
-      location: location.trim(),
-      postalCode: postalCode.trim()
-    };
-    setUserProfile(updatedProfile);
-    localStorage.setItem("currentUserProfile", JSON.stringify(updatedProfile));
-    if (email) {
-      localStorage.setItem("userProfile_" + email.toLowerCase(), JSON.stringify(updatedProfile));
+    try {
+      const updatedProfile = await userService.updateProfile({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone_number: phone.trim(),
+        avatar_url: avatarUrl
+      });
+      
+      const updatedName = `${updatedProfile.first_name || ""} ${updatedProfile.last_name || ""}`.trim();
+      localStorage.setItem("username", updatedName);
+      
+      setSaveSuccess(true);
+      triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
+      
+      window.dispatchEvent(new Event("storage"));
+      
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
+    } catch (err) {
+      triggerToast("Failed to save profile.", "error", "Error");
     }
-
-    setSaveSuccess(true);
-    triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
-    window.dispatchEvent(new Event("storage"));
-    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
   const handleSavePassword = (e) => {
@@ -580,6 +500,11 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
       localStorage.removeItem("sessionExpiresAt");
       localStorage.removeItem("username");
       localStorage.removeItem("userRole");
+      sessionStorage.removeItem("isAuthenticated");
+      sessionStorage.removeItem("sessionExpiresAt");
+      sessionStorage.removeItem("username");
+      sessionStorage.removeItem("userRole");
+      window.dispatchEvent(new Event("storage"));
       navigate("/login", { replace: true });
     }
   };
@@ -703,7 +628,9 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
                   <label className="set-ref-lbl">First Name</label>
                   <input
                     type="text"
+                    maxLength={50}
                     value={firstName}
+                    onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
                     onChange={(e) => setFirstName(e.target.value)}
                     className="set-ref-input"
                     required
@@ -714,7 +641,9 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
                   <label className="set-ref-lbl">Last Name</label>
                   <input
                     type="text"
+                    maxLength={50}
                     value={lastName}
+                    onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
                     onChange={(e) => setLastName(e.target.value)}
                     className="set-ref-input"
                     required
@@ -726,6 +655,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
                   <div className="set-ref-input-wrapper">
                     <input
                       type="email"
+                      maxLength={100}
                       value={email}
                       disabled
                       className="set-ref-input email-disabled"
@@ -741,6 +671,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
                   <label className="set-ref-lbl">Address</label>
                   <input
                     type="text"
+                    maxLength={255}
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     className="set-ref-input"
@@ -750,8 +681,10 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
                 <div className="set-ref-input-group">
                   <label className="set-ref-lbl">Phone Number</label>
                   <input
-                    type="text"
+                    type="tel"
+                    maxLength={15}
                     value={phone}
+                    onInput={(e) => e.target.value = e.target.value.replace(/[^0-9+]/g, '')}
                     onChange={(e) => setPhone(e.target.value)}
                     className="set-ref-input"
                   />
@@ -840,6 +773,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
                   <label className="set-ref-lbl">Current Password</label>
                   <input
                     type="password"
+                    maxLength={128}
                     placeholder="Enter current account password"
                     value={currPassword}
                     onChange={(e) => setCurrPassword(e.target.value)}
@@ -852,6 +786,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
                   <label className="set-ref-lbl">New Password</label>
                   <input
                     type="password"
+                    maxLength={128}
                     placeholder="Enter secure new password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -864,6 +799,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
                   <label className="set-ref-lbl">Confirm New Password</label>
                   <input
                     type="password"
+                    maxLength={128}
                     placeholder="Confirm secure new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -1050,7 +986,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
 
                     {/* Document body text */}
                     <div className="space-y-4 text-xs font-serif text-ink-800 dark:text-cream-100/90 leading-relaxed">
-                      <p><strong>THIS AGREEMENT</strong> is made this <strong>{new Date().toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}</strong>,</p>
+                      <p><strong>THIS AGREEMENT</strong> is made this <strong>{formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" })}</strong>,</p>
                       
                       <p className="font-bold border-b pb-1 border-ink-100 dark:border-white/5 text-[11px] text-[#2C4633] dark:text-[#E5C583] uppercase tracking-wider">The Parties</p>
                       <div className="grid grid-cols-2 gap-4 bg-ink-50/50 dark:bg-white/2 p-3 rounded-xl">
@@ -1073,7 +1009,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
 
                       <p className="font-bold border-b pb-1 border-ink-100 dark:border-white/5 text-[11px] text-[#2C4633] dark:text-[#E5C583] uppercase tracking-wider">2. Term of Lease</p>
                       <p>
-                        The term of this lease shall be for a duration of <strong>{leaseDuration}</strong>, commencing on <strong>{new Date(leaseStart).toLocaleDateString("en-NG", { day: "numeric", month: "long", year: "numeric" })}</strong>.
+                        The term of this lease shall be for a duration of <strong>{leaseDuration}</strong>, commencing on <strong>{formatDate(leaseStart, { day: "numeric", month: "long", year: "numeric" })}</strong>.
                       </p>
 
                       <p className="font-bold border-b pb-1 border-ink-100 dark:border-white/5 text-[11px] text-[#2C4633] dark:text-[#E5C583] uppercase tracking-wider">3. Rent Payment</p>
@@ -1151,7 +1087,7 @@ ${tenantName || "[Tenant Name]"} (Tenant)`;
                 <button
                   type="button"
                   onClick={handleSendToTenant}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] hover:opacity-90 text-xs font-bold transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#263b33] hover:opacity-90 text-xs font-bold transition-all cursor-pointer"
                 >
                   <Send className="h-4 w-4" /> Send to Tenant
                 </button>

@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { Logo } from "../../components/Logo";
 import Button from "../../components/Button";
-import { LISTINGS } from "../../data/listings";
 import { propertyService } from "../../services/propertyService";
 import LandlordProperties from "./LandlordProperties";
 import UserInfo from "./components/UserInfo";
@@ -257,15 +256,15 @@ export default function LandlordDashboard() {
 
   // Landlord profile avatar state (persisted across uploads)
   const [landlordAvatar, setLandlordAvatar] = useState(() => {
-    const emailKey = localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
     }
-    const globalSaved = localStorage.getItem("landlordAvatarUrl");
+    const globalSaved = sessionStorage.getItem("landlordAvatarUrl") || localStorage.getItem("landlordAvatarUrl");
     if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
     try {
-      const raw = localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
@@ -334,9 +333,9 @@ export default function LandlordDashboard() {
   // Sync username, applications & notifications if changed in storage
   useEffect(() => {
     const handleStorageChange = () => {
-      const emailKey = localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
       const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-      setUsername(storedName || localStorage.getItem("username") || "Landlord User");
+      setUsername(sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "Landlord User");
       const savedApps = localStorage.getItem("propertyApplications");
       if (savedApps) {
         try {
@@ -694,6 +693,14 @@ export default function LandlordDashboard() {
   };
 
   function handleSignOut() {
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("db_user_id");
+    sessionStorage.removeItem("currentUserProfile");
+    sessionStorage.removeItem("lodale_token");
+    sessionStorage.removeItem("lodale_user");
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("sessionExpiresAt");
     localStorage.removeItem("username");
@@ -716,17 +723,9 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     async function loadProperties() {
-      const apiProps = await propertyService.getLandlordProperties("11111111-1111-1111-1111-111111111111");
-      const saved = localStorage.getItem("properties");
-      const localList = saved ? JSON.parse(saved) : [];
-
-      const apiIds = new Set(apiProps.map(p => p.id));
-      const combined = [
-        ...apiProps,
-        ...localList.filter(l => !apiIds.has(l.id))
-      ];
-
-      setDisplayProperties(combined);
+      const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const apiProps = await propertyService.getLandlordProperties(currentUserId);
+      setDisplayProperties(apiProps);
     }
     loadProperties();
   }, [username]);
@@ -1860,9 +1859,7 @@ export default function LandlordDashboard() {
                 <span className="text-ink-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      const saved = localStorage.getItem("properties");
-                      const allList = saved ? JSON.parse(saved) : [];
-                      const count = allList.length;
+                      const count = displayProperties.length;
                       return `${count} ${count === 1 ? "Unit" : "Units"}`;
                     } catch (e) {
                       return "0 Units";

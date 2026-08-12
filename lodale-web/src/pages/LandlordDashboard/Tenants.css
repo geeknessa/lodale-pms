@@ -80,7 +80,7 @@ body.dark .tenants-tab-btn:hover {
 }
 
 body.dark .tenants-tab-btn.active {
-  color: #0B1512;
+  color: #263b33;
 }
 
 /* Search Bar */
@@ -132,7 +132,7 @@ body.dark .tenants-tab-btn.active {
 }
 
 body.dark .invite-tenant-btn {
-  color: #0B1512;
+  color: #263b33;
 }
 
 .invite-tenant-btn:hover {
@@ -360,7 +360,7 @@ body.dark .tenant-action-btn.chat-btn {
 }
 
 body.dark .tenant-action-btn.chat-btn:hover {
-  color: #0B1512;
+  color: #263b33;
 }
 
 /* Empty State */
@@ -574,7 +574,7 @@ body.dark .tenant-cancel-btn:hover {
 }
 
 body.dark .tenant-submit-btn {
-  color: #0B1512;
+  color: #263b33;
 }
 
 .tenant-submit-btn:hover {

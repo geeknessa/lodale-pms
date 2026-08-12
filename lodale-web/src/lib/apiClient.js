@@ -4,10 +4,13 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
  * Custom REST API Client for communicating with the local Express Backend
  */
 export async function apiClient(endpoint, options = {}) {
-  const token = localStorage.getItem('lodale_token');
+  const token = sessionStorage.getItem('lodale_token') || localStorage.getItem('lodale_token');
+
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
   const headers = {
-    'Content-Type': 'application/json',
+    // Don't set Content-Type for FormData — the browser sets it with the correct boundary
+    ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...options.headers,
   };
@@ -17,7 +20,8 @@ export async function apiClient(endpoint, options = {}) {
     headers,
   };
 
-  if (options.body && typeof options.body === 'object') {
+  // Only JSON-stringify plain objects, not FormData
+  if (options.body && typeof options.body === 'object' && !isFormData) {
     config.body = JSON.stringify(options.body);
   }
 

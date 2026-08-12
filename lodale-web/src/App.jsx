@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ToastProvider } from "./context/ToastContext";
 import {
@@ -8,23 +8,23 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import GuestDashboard from "./pages/GuestDashboard";
-import ListingDetail from "./pages/ListingDetail";
-import HowItWorks from "./pages/HowItWorks";
-import About from "./pages/About";
-import Login from "./pages/Login";
-import SignUp from "./pages/SignUp";
-import Application from "./pages/Application";
-import AddProperty from "./pages/AddProperty";
-import AccessDenied from "./pages/AccessDenied";
-import DashboardAddProperty from "./pages/DashboardAddProperty";
-import React from "react";
-import DashboardPlaceholder from "./pages/DashboardPlaceholder";
-import AdminDashboard from "./pages/AdminDashboard";
+import PageLoader from "./components/PageLoader";
 import { LandlordAccessPrompt, TenantAccessPrompt } from "./components/RoleAccessPrompt";
-import LandlordDashboard from "./pages/LandlordDashboard/LandlordDashboard";
-import PropertyDetail from "./pages/PropertyDetail";
-import TenantDashboard from "./pages/TenantDashboard/TenantDashboard";
+
+const GuestDashboard = lazy(() => import("./pages/GuestDashboard"));
+const ListingDetail = lazy(() => import("./pages/ListingDetail"));
+const HowItWorks = lazy(() => import("./pages/HowItWorks"));
+const About = lazy(() => import("./pages/About"));
+const Login = lazy(() => import("./pages/Login"));
+const SignUp = lazy(() => import("./pages/SignUp"));
+const Application = lazy(() => import("./pages/Application"));
+const AddProperty = lazy(() => import("./pages/AddProperty"));
+const AccessDenied = lazy(() => import("./pages/AccessDenied"));
+const DashboardAddProperty = lazy(() => import("./pages/DashboardAddProperty"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const LandlordDashboard = lazy(() => import("./pages/LandlordDashboard/LandlordDashboard"));
+const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
+const TenantDashboard = lazy(() => import("./pages/TenantDashboard/TenantDashboard"));
 import { AlertTriangle } from "lucide-react";
 
 
@@ -45,7 +45,7 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0B1512] text-white flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="min-h-screen bg-[#263b33] text-white flex flex-col items-center justify-center p-6 text-center font-sans">
           <div className="max-w-md space-y-6">
             <div className="text-5xl text-amber-500 flex justify-center">
               <AlertTriangle className="h-16 w-16" />
@@ -57,13 +57,15 @@ class ErrorBoundary extends React.Component {
               We encountered an unexpected rendering error. This might be due to
               a temporary glitch or an updated file.
             </p>
-            <div className="bg-[#13221C] border border-[#23372B] p-4 rounded-xl text-left font-mono text-[11px] text-[#A3BCA7] overflow-auto max-h-40">
-              {this.state.error?.toString()}
-            </div>
+            {import.meta.env.DEV && (
+              <div className="bg-[#13221C] border border-[#23372B] p-4 rounded-xl text-left font-mono text-[11px] text-[#A3BCA7] overflow-auto max-h-40">
+                {this.state.error?.toString()}
+              </div>
+            )}
             <div className="flex gap-4 justify-center pt-2">
               <button
                 onClick={() => window.location.reload()}
-                className="bg-[#E5C583] hover:bg-[#D8B672] text-[#0B1512] font-bold px-6 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
+                className="bg-[#E5C583] hover:bg-[#D8B672] text-[#263b33] font-bold px-6 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
               >
                 Reload Page
               </button>
@@ -152,32 +154,26 @@ function ProtectedRoute({ children }) {
 }
 
 function AdminProtectedRoute({ children }) {
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-    const adminAuth = (sessionStorage.getItem("adminAuthenticated") || localStorage.getItem("adminAuthenticated")) === "true";
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+  const checkCurrentTabAuth = () => {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
+    const adminAuth = (sessionStorage.getItem("adminAuthenticated") || (!hasTabSession ? localStorage.getItem("adminAuthenticated") : "")) === "true";
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
 
     if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
       return false;
     }
     return true;
-  });
+  };
 
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(checkCurrentTabAuth);
   const location = useLocation();
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-      const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-      const adminAuth = (sessionStorage.getItem("adminAuthenticated") || localStorage.getItem("adminAuthenticated")) === "true";
-      const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
-
-      if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
-        setIsAdminAuthenticated(false);
-      } else {
-        setIsAdminAuthenticated(true);
-      }
+      setIsAdminAuthenticated(checkCurrentTabAuth());
     };
 
     checkAuth();
@@ -193,26 +189,24 @@ function AdminProtectedRoute({ children }) {
 }
 
 function LandlordProtectedRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
-    if (auth && expires && Date.now() > Number(expires)) {
+  const checkCurrentTabAuth = () => {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+    if (!auth || role !== "landlord" || (expires && Date.now() > Number(expires))) {
       return false;
     }
-    return auth;
-  });
+    return true;
+  };
 
+  const [isAuthenticated, setIsAuthenticated] = useState(checkCurrentTabAuth);
   const location = useLocation();
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-      const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
-      if (auth && expires && Date.now() > Number(expires)) {
-        setIsAuthenticated(false);
-      } else {
-        setIsAuthenticated(auth);
-      }
+      setIsAuthenticated(checkCurrentTabAuth());
     };
 
     checkAuth();
@@ -221,7 +215,14 @@ function LandlordProtectedRoute({ children }) {
   }, [location]);
 
   if (!isAuthenticated) {
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    if (auth) {
+      // Authenticated but wrong role
+      return <Navigate to="/access-denied" replace />;
+    }
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
     const wasSessionExpired = expires && Date.now() > Number(expires);
 
     return (
@@ -240,26 +241,24 @@ function LandlordProtectedRoute({ children }) {
 }
 
 function TenantProtectedRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
-    if (auth && expires && Date.now() > Number(expires)) {
+  const checkCurrentTabAuth = () => {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+    if (!auth || role !== "tenant" || (expires && Date.now() > Number(expires))) {
       return false;
     }
-    return auth;
-  });
+    return true;
+  };
 
+  const [isAuthenticated, setIsAuthenticated] = useState(checkCurrentTabAuth);
   const location = useLocation();
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-      const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
-      if (auth && expires && Date.now() > Number(expires)) {
-        setIsAuthenticated(false);
-      } else {
-        setIsAuthenticated(auth);
-      }
+      setIsAuthenticated(checkCurrentTabAuth());
     };
 
     checkAuth();
@@ -268,7 +267,14 @@ function TenantProtectedRoute({ children }) {
   }, [location]);
 
   if (!isAuthenticated) {
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    if (auth) {
+      // Authenticated but wrong role
+      return <Navigate to="/access-denied" replace />;
+    }
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
     const wasSessionExpired = expires && Date.now() > Number(expires);
 
     return (
@@ -318,92 +324,94 @@ export default function App() {
         <BrowserRouter>
           <ErrorBoundary>
             <ScrollToTop />
-            <Routes>
-              <Route path="/" element={<Navigate to="/explore" replace />} />
-              <Route path="/explore" element={<GuestDashboard />} />
-              <Route path="/listings/:id" element={<ListingDetail />} />
-              <Route path="/how-it-works" element={<HowItWorks />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<SignUp />} />
-              <Route path="/verify" element={<Navigate to="/signup" replace />} />
-              <Route path="/admin/login" element={<Login />} />
-              <Route path="/access-denied" element={<AccessDenied />} />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Navigate to="/explore" replace />} />
+                <Route path="/explore" element={<GuestDashboard />} />
+                <Route path="/listings/:id" element={<ListingDetail />} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/verify" element={<Navigate to="/signup" replace />} />
+                <Route path="/admin/login" element={<Login />} />
+                <Route path="/access-denied" element={<AccessDenied />} />
 
-              {/* Protected Routes */}
-              <Route
-                path="/admin"
-                element={
-                  <AdminProtectedRoute>
-                    <AdminDashboard />
-                  </AdminProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/dashboard"
-                element={
-                  <AdminProtectedRoute>
-                    <AdminDashboard />
-                  </AdminProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/admin"
-                element={
-                  <AdminProtectedRoute>
-                    <AdminDashboard />
-                  </AdminProtectedRoute>
-                }
-              />
-              <Route
-                path="/apply/:listingId"
-                element={
-                  <TenantProtectedRoute>
-                    <Application />
-                  </TenantProtectedRoute>
-                }
-              />
-              <Route
-                path="/add-property"
-                element={
-                  <LandlordProtectedRoute>
-                    <AddProperty />
-                  </LandlordProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/landlord"
-                element={
-                  <LandlordProtectedRoute>
-                    <LandlordDashboard />
-                  </LandlordProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/landlord/add-property"
-                element={
-                  <LandlordProtectedRoute>
-                    <DashboardAddProperty />
-                  </LandlordProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/landlord/properties/:id"
-                element={
-                  <LandlordProtectedRoute>
-                    <PropertyDetail />
-                  </LandlordProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard/tenant"
-                element={
-                  <TenantProtectedRoute>
-                    <TenantDashboard />
-                  </TenantProtectedRoute>
-                }
-              />
-            </Routes>
+                {/* Protected Routes */}
+                <Route
+                  path="/admin"
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminDashboard />
+                    </AdminProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminDashboard />
+                    </AdminProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/admin"
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminDashboard />
+                    </AdminProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/apply/:listingId"
+                  element={
+                    <TenantProtectedRoute>
+                      <Application />
+                    </TenantProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/add-property"
+                  element={
+                    <LandlordProtectedRoute>
+                      <AddProperty />
+                    </LandlordProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/landlord"
+                  element={
+                    <LandlordProtectedRoute>
+                      <LandlordDashboard />
+                    </LandlordProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/landlord/add-property"
+                  element={
+                    <LandlordProtectedRoute>
+                      <DashboardAddProperty />
+                    </LandlordProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/landlord/properties/:id"
+                  element={
+                    <LandlordProtectedRoute>
+                      <PropertyDetail />
+                    </LandlordProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/tenant"
+                  element={
+                    <TenantProtectedRoute>
+                      <TenantDashboard />
+                    </TenantProtectedRoute>
+                  }
+                />
+              </Routes>
+            </Suspense>
           </ErrorBoundary>
         </BrowserRouter>
       </ThemeProvider>

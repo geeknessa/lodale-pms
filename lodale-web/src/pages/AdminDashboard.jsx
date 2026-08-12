@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Logo } from "../components/Logo";
 import { useTheme } from "../context/ThemeContext";
 import { adminService } from "../services/adminService";
+import { formatCurrency, formatDate } from "../utils/formatters";
 import {
   LayoutDashboard,
   Users,
@@ -17,7 +18,6 @@ import {
   UserCheck,
   UserX,
   Trash2,
-  ShieldAlert,
   Clock,
   ChevronRight,
   X,
@@ -37,206 +37,17 @@ import {
   User,
   KeyRound,
   Upload,
-  Camera,
-  Laptop,
-  Smartphone,
-  Shield,
-  Menu,
+  Menu
 } from "lucide-react";
 
-// --- MOCK INITIAL DATA ---
-const INITIAL_USERS = [
-  {
-    id: "usr-101",
-    name: "Emeka Nwankwo",
-    email: "emeka.n@example.com",
-    phone: "+234 803 123 4567",
-    role: "Landlord",
-    status: "Active",
-    joinedDate: "2025-11-14",
-    listingsCount: 3,
-    verifications: ["ID Verified", "Phone Verified"],
-  },
-  {
-    id: "usr-102",
-    name: "Amina Bello",
-    email: "amina.bello@example.com",
-    phone: "+234 802 987 6543",
-    role: "Tenant",
-    status: "Active",
-    joinedDate: "2026-01-09",
-    listingsCount: 0,
-    verifications: ["Phone Verified"],
-  },
-  {
-    id: "usr-103",
-    name: "Victor Ogunleye",
-    email: "victor.og@example.com",
-    phone: "+234 814 555 0192",
-    role: "Landlord",
-    status: "Suspended",
-    joinedDate: "2025-08-22",
-    listingsCount: 1,
-    verifications: ["ID Pending"],
-    suspensionReason: "Multiple reports of non-responsive communication and incomplete listing information.",
-  },
-  {
-    id: "usr-104",
-    name: "Grace Kalu",
-    email: "gkalu@example.com",
-    phone: "+234 701 444 8811",
-    role: "Tenant",
-    status: "Active",
-    joinedDate: "2026-02-18",
-    listingsCount: 0,
-    verifications: ["ID Verified", "Email Verified"],
-  },
-  {
-    id: "usr-105",
-    name: "Tunde Bakare",
-    email: "tunde.b@lodale.com",
-    phone: "+234 809 333 2211",
-    role: "Admin",
-    status: "Active",
-    joinedDate: "2025-05-01",
-    listingsCount: 0,
-    verifications: ["Admin Verified"],
-  },
-  {
-    id: "usr-106",
-    name: "Chidinma Eze",
-    email: "ceze.properties@example.com",
-    phone: "+234 812 777 9900",
-    role: "Landlord",
-    status: "Active",
-    joinedDate: "2026-03-02",
-    listingsCount: 2,
-    verifications: ["ID Verified", "Phone Verified"],
-  },
-];
-
-const INITIAL_LISTINGS = [
-  {
-    id: "lst-201",
-    title: "Oakwood Heights, Luxury 2BR",
-    location: "Yaba, Lagos",
-    price: "₦2,200,000/yr",
-    type: "Apartment",
-    status: "Pending Approval",
-    submittedAt: "2026-07-22T14:30:00Z",
-    landlord: { id: "usr-106", name: "Chidinma Eze", score: 4.9 },
-    description:
-      "Fully serviced 2-bedroom apartment with prepaid meter, constant water supply, and top-tier security.",
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security", "Balcony"],
-    deedVerified: true,
-  },
-  {
-    id: "lst-202",
-    title: "Skyline Tower, Studio Flat 4B",
-    location: "Victoria Island, Lagos",
-    price: "₦3,800,000/yr",
-    type: "Studio",
-    status: "Pending Approval",
-    submittedAt: "2026-07-23T08:15:00Z",
-    landlord: { id: "usr-101", name: "Emeka Nwankwo", score: 4.7 },
-    description:
-      "Modern minimalist studio with panoramic ocean view. Includes backup generator and underground parking.",
-    amenities: ["Backup Generator", "Elevator", "Security", "Fiber Internet"],
-    deedVerified: true,
-  },
-  {
-    id: "lst-203",
-    title: "Lekki Phase 1 Prime Villa",
-    location: "Lekki Phase 1, Lagos",
-    price: "₦5,500,000/yr",
-    type: "Duplex",
-    status: "Live",
-    submittedAt: "2026-06-10T10:00:00Z",
-    landlord: { id: "usr-101", name: "Emeka Nwankwo", score: 4.8 },
-    description:
-      "Spacious 4-bedroom terrace duplex in a serene gated estate with swimming pool access.",
-    amenities: ["Swimming Pool", "Gated Security", "Parking", "Prepaid Meter"],
-    deedVerified: true,
-  },
-  {
-    id: "lst-204",
-    title: "Unverified Cheap Self-Contain",
-    location: "Ikeja, Lagos",
-    price: "₦350,000/yr",
-    type: "Self Contain",
-    status: "Pending Approval",
-    submittedAt: "2026-07-23T06:45:00Z",
-    landlord: { id: "usr-103", name: "Victor Ogunleye", score: 3.2 },
-    description:
-      "Very cheap self contain near transport hub. Immediate move-in available.",
-    amenities: ["Water"],
-    deedVerified: false,
-    fraudWarning: "Price is suspiciously lower than area average. Landlord account currently suspended.",
-  },
-  {
-    id: "lst-205",
-    title: "Greenwich Estate 3-Bed Flat",
-    location: "Surulere, Lagos",
-    price: "₦1,900,000/yr",
-    type: "Apartment",
-    status: "Live",
-    submittedAt: "2026-05-18T12:00:00Z",
-    landlord: { id: "usr-106", name: "Chidinma Eze", score: 4.9 },
-    description: "Quiet residential flat close to schools and shopping centers.",
-    amenities: ["Borehole", "Prepaid Meter"],
-    deedVerified: true,
-  },
-];
-
-const INITIAL_REVIEWS = [
-  {
-    id: "rev-301",
-    authorName: "Amina Bello",
-    authorId: "usr-102",
-    propertyTitle: "Lekki Phase 1 Prime Villa",
-    listingId: "lst-203",
-    rating: 1,
-    comment:
-      "This listing posted fake photos! Water was leaking everywhere and landlord demanded cash outside the platform.",
-    submittedAt: "2026-07-23T07:20:00Z",
-    flagged: true,
-    flaggedBy: "Emeka Nwankwo (Landlord)",
-    flagReason: "Landlord claims tenant left false retaliatory review after deposit dispute.",
-    status: "Flagged",
-  },
-  {
-    id: "rev-302",
-    authorName: "Grace Kalu",
-    authorId: "usr-104",
-    propertyTitle: "Greenwich Estate 3-Bed Flat",
-    listingId: "lst-205",
-    rating: 5,
-    comment:
-      "Wonderful stay! Landlord Chidinma was extremely helpful and the apartment matched all photos.",
-    submittedAt: "2026-07-21T18:00:00Z",
-    flagged: false,
-    status: "Approved",
-  },
-  {
-    id: "rev-303",
-    authorName: "Anonymous Spammer",
-    authorId: "usr-999",
-    propertyTitle: "Skyline Tower, Studio Flat 4B",
-    listingId: "lst-202",
-    rating: 1,
-    comment:
-      "DO NOT RENT! Call +23480000000 to get free loans and crypto deals today!",
-    submittedAt: "2026-07-22T21:10:00Z",
-    flagged: true,
-    flaggedBy: "System Auto-Mod",
-    flagReason: "Spam content and external phone number advertisement detected.",
-    status: "Flagged",
-  },
-];
+// --- INITIAL DATA ---
+const INITIAL_USERS = [];
+const INITIAL_LISTINGS = [];
+const INITIAL_REVIEWS = [];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { themePreference, setThemePreference, effectiveTheme, isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
 
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -275,7 +86,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function loadAdminData() {
-      // 1. Load Pending / Local Properties from API + LocalStorage scan
+      // 1. Load Pending Properties from API
       let apiPending = [];
       try {
         apiPending = await adminService.getPendingProperties();
@@ -283,53 +94,8 @@ export default function AdminDashboard() {
         console.warn("Backend API offline fallback:", err);
       }
 
-      let localProps = [];
-      try {
-        const saved = localStorage.getItem("properties");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) localProps.push(...parsed);
-        }
-      } catch (err) {}
-
-      // Scan localStorage for any extra property key
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key !== "properties" && (key.startsWith("properties_") || key.startsWith("landlordProperties_") || key.includes("property"))) {
-            if (key === "propertyTenants") continue;
-            const raw = localStorage.getItem(key);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (Array.isArray(parsed)) {
-                localProps.push(...parsed);
-              } else if (parsed && parsed.id && parsed.title) {
-                localProps.push(parsed);
-              }
-            }
-          }
-        }
-      } catch (err) {}
-
       setListings((prev) => {
         const existingMap = new Map(prev.map(l => [l.id, l]));
-
-        localProps.forEach((p) => {
-          if (!p || !p.id) return;
-          const formattedProp = {
-            ...p,
-            status: p.status === 'pending_review' ? 'Pending Approval' : (p.status || 'Pending Approval'),
-            ownershipDoc: p.ownership_doc || p.ownershipDoc || 'Deed of Assignment',
-            ownershipDocUrl: p.ownership_doc_url || p.ownershipDocUrl || p.docDataUrl,
-            docName: p.docName || p.ownership_doc || 'Legal_Document.pdf',
-            docDataUrl: p.docDataUrl || p.ownership_doc_url,
-            deedVerified: true,
-            type: p.property_type || p.type || 'Apartment',
-            rent: p.price || (p.rent_amount ? `₦${Number(p.rent_amount).toLocaleString()}/yr` : '₦2,500,000/yr'),
-            landlord: p.landlord || { name: 'Ada K.', score: 5.0, reviews: 1 }
-          };
-          existingMap.set(p.id, formattedProp);
-        });
 
         apiPending.forEach((p) => {
           if (!p || !p.id) return;
@@ -342,8 +108,8 @@ export default function AdminDashboard() {
             docDataUrl: p.docDataUrl || p.ownership_doc_url,
             deedVerified: true,
             type: p.property_type || 'Apartment',
-            rent: `₦${Number(p.rent_amount || 2500000).toLocaleString()}/yr`,
-            landlord: p.landlord || { name: 'Ada K.', score: 5.0, reviews: 1 }
+            rent: formatCurrency(p.rent_amount || 2500000, "/yr"),
+            landlord: p.landlord || { name: 'Verified Landlord', score: 5.0, reviews: 1 }
           };
           existingMap.set(p.id, formattedProp);
         });
@@ -367,7 +133,7 @@ export default function AdminDashboard() {
           const parsed = JSON.parse(savedUsers);
           if (Array.isArray(parsed)) localUsers.push(...parsed);
         }
-      } catch (e) {}
+      } catch (_e) {}
 
       // Scan localStorage for any registeredUser_, userProfile_, or username_ key
       try {
@@ -401,7 +167,7 @@ export default function AdminDashboard() {
             }
           }
         }
-      } catch (e) {}
+      } catch (_e) {}
 
       // Scan propertyTenants map for tenants registered by landlords
       try {
@@ -420,7 +186,7 @@ export default function AdminDashboard() {
             }
           });
         }
-      } catch (e) {}
+      } catch (_e) {}
 
       const activeUsername = localStorage.getItem("username");
       const activeEmail = localStorage.getItem("lastLoggedInEmail");
@@ -473,7 +239,7 @@ export default function AdminDashboard() {
           const formattedRole = (activeRole || "landlord").toLowerCase().includes("landlord") ? "Landlord" : "Tenant";
           existingMap.set(activeEmail.toLowerCase(), {
             id: "usr-" + Math.floor(Math.random() * 100000),
-            name: activeUsername || "Ada K.",
+            name: activeUsername || "Verified Landlord",
             email: activeEmail,
             phone: "",
             role: formattedRole,
@@ -485,6 +251,14 @@ export default function AdminDashboard() {
         }
 
         // Check landlord names in localProps
+        let localProps = [];
+        try {
+          const savedProps = localStorage.getItem("landlordProperties");
+          if (savedProps) {
+            localProps = JSON.parse(savedProps);
+          }
+        } catch (e) {}
+        
         localProps.forEach((p) => {
           const lName = p.landlord?.name || activeUsername || "Landlord User";
           const mockEmail = lName.toLowerCase().replace(/[^a-z0-9]+/g, ".") + "@lodale.com";
@@ -663,7 +437,7 @@ export default function AdminDashboard() {
         );
         localStorage.setItem("properties", JSON.stringify(updated));
       }
-    } catch (err) {}
+    } catch (_err) {}
 
     // Send notification to landlord
     try {
@@ -679,7 +453,7 @@ export default function AdminDashboard() {
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
       window.dispatchEvent(new Event("storage"));
-    } catch (err) {}
+    } catch (_err) {}
 
     showToast(`Listing "${propertyTitle}" approved and is now live!`);
     if (selectedListing?.id === listingId) {
@@ -714,7 +488,7 @@ export default function AdminDashboard() {
         );
         localStorage.setItem("properties", JSON.stringify(updated));
       }
-    } catch (err) {}
+    } catch (_err) {}
 
     // Send notification to landlord
     try {
@@ -730,7 +504,7 @@ export default function AdminDashboard() {
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
       window.dispatchEvent(new Event("storage"));
-    } catch (err) {}
+    } catch (_err) {}
 
     showToast(`Listing "${propertyTitle}" rejected.`);
     setIsRejectingModalOpen(false);
@@ -738,6 +512,59 @@ export default function AdminDashboard() {
     if (selectedListing?.id === listingId) {
       setSelectedListing((prev) =>
         prev ? { ...prev, status: "Rejected", rejectionReason: reason } : null
+      );
+    }
+  };
+
+  const handleRequestInfoListing = async (listingId) => {
+    try {
+      await adminService.reviewProperty(listingId, "request_info", "Additional proof of ownership required.");
+    } catch (e) {
+      console.warn("API request info warning:", e);
+    }
+    setListings((prev) =>
+      prev.map((l) => {
+        if (l.id === listingId) {
+          return { ...l, status: "Info Requested" };
+        }
+        return l;
+      })
+    );
+
+    const item = listings.find((l) => l.id === listingId);
+    const propertyTitle = item?.title || "Property";
+
+    try {
+      const saved = localStorage.getItem("properties");
+      if (saved) {
+        const localProps = JSON.parse(saved);
+        const updated = localProps.map((p) =>
+          p.id === listingId ? { ...p, status: "info_requested", admin_notes: "Additional proof of ownership required." } : p
+        );
+        localStorage.setItem("properties", JSON.stringify(updated));
+      }
+    } catch (_err) {}
+
+    // Send notification to landlord
+    try {
+      const savedNotifs = localStorage.getItem("landlordNotifications");
+      const currentNotifs = savedNotifs ? JSON.parse(savedNotifs) : [];
+      const newNotif = {
+        id: "notif-req-" + Date.now(),
+        title: "Proof of Ownership Update Required",
+        message: `Your property "${propertyTitle}" requires additional proof of ownership. Please upload a new document.`,
+        time: "Just now",
+        type: "warning",
+        read: false
+      };
+      localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
+      window.dispatchEvent(new Event("storage"));
+    } catch (_err) {}
+
+    showToast(`Requested more info for "${propertyTitle}".`);
+    if (selectedListing?.id === listingId) {
+      setSelectedListing((prev) =>
+        prev ? { ...prev, status: "Info Requested" } : null
       );
     }
   };
@@ -1439,7 +1266,7 @@ export default function AdminDashboard() {
                       key={tab}
                       onClick={() => setListingFilter(tab)}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${listingFilter === tab
-                        ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                        ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33]"
                         : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
                         }`}
                     >
@@ -1584,7 +1411,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setReviewFilter("All")}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "All"
-                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
+                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33]"
                       : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
                       }`}
                   >
@@ -1642,7 +1469,7 @@ export default function AdminDashboard() {
                         </p>
 
                         <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                          By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {new Date(rev.submittedAt).toLocaleDateString()}
+                          By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {formatDate(rev.submittedAt, { year: 'numeric', month: 'numeric', day: 'numeric' })}
                         </div>
 
                         {rev.flagged && (
@@ -1767,7 +1594,9 @@ export default function AdminDashboard() {
                       </label>
                       <input
                         type="text"
+                        maxLength={50}
                         value={profileForm.name}
+                        onInput={(e) => setProfileForm({ ...profileForm, name: e.target.value.replace(/[0-9]/g, '') })}
                         onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
                         required
                         className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
@@ -1780,6 +1609,7 @@ export default function AdminDashboard() {
                       </label>
                       <input
                         type="text"
+                        maxLength={50}
                         value={profileForm.username}
                         onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
                         required
@@ -1793,6 +1623,7 @@ export default function AdminDashboard() {
                       </label>
                       <input
                         type="email"
+                        maxLength={100}
                         value={profileForm.email}
                         onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
                         required
@@ -1805,8 +1636,10 @@ export default function AdminDashboard() {
                         Phone Number
                       </label>
                       <input
-                        type="text"
+                        type="tel"
+                        maxLength={15}
                         value={profileForm.phone}
+                        onInput={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/[^0-9+]/g, '') })}
                         onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
                         className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
                       />
@@ -2071,7 +1904,7 @@ export default function AdminDashboard() {
                         const docUrl = selectedListing.ownership_doc_url || selectedListing.ownershipDocUrl || selectedListing.docDataUrl;
                         if (!docUrl) {
                           e.preventDefault();
-                          const sampleContent = `LODALE PROPERTY MANAGEMENT SYSTEM\nLegal Ownership Verification Record\n\nProperty Title: ${selectedListing.title}\nProperty ID: ${selectedListing.id}\nLandlord: ${selectedListing.landlord?.name || 'Ada K.'}\nDocument Type: ${selectedListing.ownership_doc || 'Certificate of Ownership'}\nVerification Status: Verified & Stored on Lodale PMS Database.\nTimestamp: ${new Date().toISOString()}`;
+                          const sampleContent = `LODALE PROPERTY MANAGEMENT SYSTEM\nLegal Ownership Verification Record\n\nProperty Title: ${selectedListing.title}\nProperty ID: ${selectedListing.id}\nLandlord: ${selectedListing.landlord?.name || 'Verified Landlord'}\nDocument Type: ${selectedListing.ownership_doc || 'Certificate of Ownership'}\nVerification Status: Verified & Stored on Lodale PMS Database.\nTimestamp: ${new Date().toISOString()}`;
                           const blob = new Blob([sampleContent], { type: 'text/plain' });
                           const url = URL.createObjectURL(blob);
                           const a = document.createElement('a');
@@ -2104,6 +1937,12 @@ export default function AdminDashboard() {
                     className="px-4 py-2 text-xs font-bold rounded bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 hover:bg-rose-200 transition-colors"
                   >
                     Reject Submission
+                  </button>
+                  <button
+                    onClick={() => handleRequestInfoListing(selectedListing.id)}
+                    className="px-4 py-2 text-xs font-bold rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 hover:bg-amber-200 transition-colors"
+                  >
+                    Request More Proof
                   </button>
                 </>
               )}

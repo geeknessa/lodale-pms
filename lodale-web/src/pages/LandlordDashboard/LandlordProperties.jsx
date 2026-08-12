@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info, ChevronDown, User } from "lucide-react";
 import { propertyService } from "../../services/propertyService";
-import { LISTINGS } from "../../data/listings";
 import UserInfo from "./components/UserInfo";
 import "./LandlordProperties.css";
 
@@ -49,7 +48,7 @@ function CustomSelect({ value, onChange, options, placeholder }) {
                 }}
                 className={`w-full text-left px-4 py-2 text-[12.5px] cursor-pointer transition-colors duration-150 flex items-center justify-between select-none ${
                   isSelected
-                    ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] font-bold"
+                    ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#263b33] font-bold"
                     : "text-ink-700 dark:text-cream-100/80 hover:bg-ink-50 dark:hover:bg-white/5"
                 }`}
               >
@@ -98,11 +97,7 @@ export default function LandlordProperties() {
     return localStorage.getItem("username") || "Ada";
   });
 
-  const [tenantsMap, setTenantsMap] = useState({
-    "skyline-block4": [],
-    "oakwood-unit12b": [],
-    "lekki-gardens-14": []
-  });
+  const [tenantsMap, setTenantsMap] = useState({});
 
   useEffect(() => {
     const loadTenants = () => {
@@ -124,17 +119,9 @@ export default function LandlordProperties() {
 
   useEffect(() => {
     async function loadProperties() {
-      const apiProps = await propertyService.getLandlordProperties("11111111-1111-1111-1111-111111111111");
-      const saved = localStorage.getItem("properties");
-      const localProps = saved ? JSON.parse(saved) : [];
-
-      const apiIds = new Set(apiProps.map(p => p.id));
-      const combined = [
-        ...apiProps,
-        ...localProps.filter(l => !apiIds.has(l.id))
-      ];
-
-      setProperties(combined);
+      const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const apiProps = await propertyService.getLandlordProperties(currentUserId);
+      setProperties(apiProps);
     }
 
     loadProperties();
@@ -306,7 +293,7 @@ export default function LandlordProperties() {
 
                     <h3 className="ap-property-title text-base font-bold text-ink-900 dark:text-white truncate">{item.title}</h3>
                     <p className="ap-property-desc text-xs text-ink-600 dark:text-cream-100/70 mt-1">
-                      {item.beds || 1} Bedrooms • {item.baths || 1} Bathrooms • {Array.isArray(item.amenities) ? item.amenities.join(", ") : "Prepaid Meter, 24/7 Security"}
+                      {item.beds || 1} Bedrooms • {item.baths || 1} Bathrooms {Array.isArray(item.amenities) && item.amenities.length > 0 ? `• ${item.amenities.join(", ")}` : ""}
                     </p>
                     <div className="ap-card-footer-info flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 border-t border-ink-100 dark:border-white/10">
                       <span className="ap-price-badge font-bold text-moss-700 dark:text-[#E5C583] text-sm">{item.price}</span>

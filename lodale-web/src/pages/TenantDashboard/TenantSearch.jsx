@@ -4,300 +4,14 @@ import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2 } f
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { triggerToast } from "../../context/ToastContext";
+import { formatCurrency } from "../../utils/formatters";
 import "./TenantSearch.css";
 
-// Rich Mock Dataset for search and recommendation swipers
-const SEARCH_LISTINGS = [
-  {
-    id: "skyline-block4",
-    title: "Skyline Apartments, Block 4",
-    location: "Victoria Island, Lagos",
-    price: 375000,
-    beds: 3,
-    baths: 3,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security"],
-    landlord: { name: "Ada K.", score: 4.8, reviews: 12 },
-    recommendationCategory: "Popular properties"
-  },
-  {
-    id: "oakwood-unit12b",
-    title: "Oakwood Residency, Unit 12B",
-    location: "Yaba, Lagos",
-    price: 150000,
-    beds: 2,
-    baths: 2,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Gated Estate"],
-    landlord: { name: "Chidi O.", score: 4.5, reviews: 8 },
-    recommendationCategory: "Last visited"
-  },
-  {
-    id: "lekki-gardens-14",
-    title: "Lekki Gardens, Plot 14",
-    location: "Lekki Phase 1, Lagos",
-    price: 200000,
-    beds: 2,
-    baths: 2,
-    type: "selfcontained",
-    image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Borehole", "Generator", "24/7 Security"],
-    landlord: { name: "Funke A.", score: 4.9, reviews: 21 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "maryland-duplex",
-    title: "Maryland Heights Duplex",
-    location: "Maryland, Lagos",
-    price: 450000,
-    beds: 4,
-    baths: 4,
-    type: "duplex",
-    image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security", "Boys Quarters"],
-    landlord: { name: "Emeka Obi", score: 4.7, reviews: 10 },
-    recommendationCategory: "Popular properties"
-  },
-  {
-    id: "ikeja-selfcontained",
-    title: "Ikeja GRA Studio Self-Contained",
-    location: "Ikeja, Lagos",
-    price: 80000,
-    beds: 1,
-    baths: 1,
-    type: "selfcontained",
-    image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "24/7 Security"],
-    landlord: { name: "Maren Maureen", score: 4.6, reviews: 5 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "surulere-apartment",
-    title: "Adeniran Ogunsanya Flat",
-    location: "Surulere, Lagos",
-    price: 250000,
-    beds: 3,
-    baths: 2,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Water Treatment"],
-    landlord: { name: "Ryan Herwinds", score: 4.8, reviews: 18 },
-    recommendationCategory: "Last visited"
-  },
-  {
-    id: "ikoyi-penthouse",
-    title: "Grand Orchard Penthouse",
-    location: "Ikoyi, Lagos",
-    price: 600000,
-    beds: 4,
-    baths: 4,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1567496898669-ee935f5f647a?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Elevator", "24/7 Security", "Swimming Pool", "Prepaid Meter"],
-    landlord: { name: "Ada K.", score: 4.8, reviews: 12 },
-    recommendationCategory: "Popular properties"
-  },
-  {
-    id: "sunset-haven",
-    title: "Sunset Haven Duplex",
-    location: "Lekki Phase 2, Lagos",
-    price: 350000,
-    beds: 3,
-    baths: 3,
-    type: "duplex",
-    image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security", "Gated Estate"],
-    landlord: { name: "Funke A.", score: 4.9, reviews: 21 },
-    recommendationCategory: "Last visited"
-  },
-  {
-    id: "yaba-studio",
-    title: "Standard Studio Yaba",
-    location: "Alagomeji, Yaba, Lagos",
-    price: 95000,
-    beds: 1,
-    baths: 1,
-    type: "selfcontained",
-    image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Borehole"],
-    landlord: { name: "Chidi O.", score: 4.5, reviews: 8 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "maryland-flat",
-    title: "Maryland Executive Flat",
-    location: "Maryland, Lagos",
-    price: 300000,
-    beds: 3,
-    baths: 3,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1502672090437-048b7a216e54?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security", "Car Port"],
-    landlord: { name: "Emeka Obi", score: 4.7, reviews: 10 },
-    recommendationCategory: "Popular properties"
-  },
-  {
-    id: "gra-mansion",
-    title: "GRA Luxury Mansion",
-    location: "Ikeja GRA, Lagos",
-    price: 800000,
-    beds: 5,
-    baths: 6,
-    type: "duplex",
-    image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Swimming Pool", "24/7 Security", "Prepaid Meter", "Water Treatment"],
-    landlord: { name: "Maren Maureen", score: 4.6, reviews: 5 },
-    recommendationCategory: "Popular properties"
-  },
-  {
-    id: "surulere-studio",
-    title: "Surulere Cozy Studio",
-    location: "Surulere, Lagos",
-    price: 110000,
-    beds: 1,
-    baths: 1,
-    type: "selfcontained",
-    image: "https://images.unsplash.com/photo-1536376072261-38c75010e6c9?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Water Treatment", "24/7 Security"],
-    landlord: { name: "Ryan Herwinds", score: 4.8, reviews: 18 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "abuja-maitama-royal",
-    title: "Maitama Royal Residency",
-    location: "FCT - Abuja (Maitama)",
-    price: 550000,
-    beds: 3,
-    baths: 3,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["24/7 Power", "Prepaid Meter", "Security Detail"],
-    landlord: { name: "Fatima B.", score: 4.9, reviews: 14 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "ph-gra-suite",
-    title: "GRA Phase 2 Executive Suite",
-    location: "Rivers - Port Harcourt",
-    price: 320000,
-    beds: 2,
-    baths: 2,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Water Treatment", "24/7 Security"],
-    landlord: { name: "Tari E.", score: 4.7, reviews: 9 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "ibadan-bodija-flat",
-    title: "Bodija Garden Estate Flat",
-    location: "Oyo - Ibadan",
-    price: 180000,
-    beds: 3,
-    baths: 2,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Borehole", "Prepaid Meter", "Car Park"],
-    landlord: { name: "Akanbi O.", score: 4.6, reviews: 11 },
-    recommendationCategory: "properties close to you"
-  },
-  {
-    id: "enugu-independence-layout",
-    title: "Independence Layout Suite",
-    location: "Enugu - Enugu",
-    price: 160000,
-    beds: 2,
-    baths: 2,
-    type: "apartment",
-    image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Paved Road", "Prepaid Meter"],
-    landlord: { name: "Nnamdi K.", score: 4.8, reviews: 7 },
-    recommendationCategory: "properties close to you"
-  }
-];
+// Dynamic data collections
+const SEARCH_LISTINGS = [];
+const LANDLORDS = [];
 
-// Rich Mock Dataset for landlords
-const LANDLORDS = [
-  {
-    id: "landlord-ada",
-    name: "Ada K.",
-    score: 4.8,
-    reviews: 12,
-    avatar: "",
-    location: "Victoria Island, Lagos",
-    properties: ["Skyline Apartments, Block 4", "Grand Orchard Penthouse"],
-    category: "Top Rated Landlords",
-    joinedStatus: "old"
-  },
-  {
-    id: "landlord-chidi",
-    name: "Chidi O.",
-    score: 4.5,
-    reviews: 8,
-    avatar: "",
-    location: "Yaba, Lagos",
-    properties: ["Oakwood Residency, Unit 12B", "Standard Studio Yaba"],
-    category: "Landlords near you",
-    joinedStatus: "old"
-  },
-  {
-    id: "landlord-funke",
-    name: "Funke A.",
-    score: 4.9,
-    reviews: 21,
-    avatar: "",
-    location: "Lekki Phase 1, Lagos",
-    properties: ["Lekki Gardens, Plot 14", "Sunset Haven Duplex"],
-    category: "Top Rated Landlords",
-    joinedStatus: "old"
-  },
-  {
-    id: "landlord-emeka",
-    name: "Emeka Obi",
-    score: 4.7,
-    reviews: 10,
-    avatar: "",
-    location: "Maryland, Lagos",
-    properties: ["Maryland Heights Duplex", "Maryland Executive Flat"],
-    category: "Top Rated Landlords",
-    joinedStatus: "new"
-  },
-  {
-    id: "landlord-maren",
-    name: "Maren Maureen",
-    score: 4.6,
-    reviews: 5,
-    avatar: "",
-    location: "Ikeja, Lagos",
-    properties: ["Ikeja GRA Studio Self-Contained", "GRA Luxury Mansion"],
-    category: "Landlords near you",
-    joinedStatus: "new"
-  },
-  {
-    id: "landlord-ryan",
-    name: "Ryan Herwinds",
-    score: 4.8,
-    reviews: 18,
-    avatar: "",
-    location: "Surulere, Lagos",
-    properties: ["Adeniran Ogunsanya Flat", "Surulere Cozy Studio"],
-    category: "Top Rated Landlords",
-    joinedStatus: "old"
-  }
-];
-
-const formatPrice = (priceVal) => {
-  if (priceVal === null || priceVal === undefined) return "₦0/mo";
-  let str = String(priceVal).trim();
-  str = str.replace(/^[₦N\s]+/, "").replace(/\/mo.*$/i, "").trim();
-  const numeric = parseFloat(str.replace(/,/g, ""));
-  if (!isNaN(numeric)) {
-    return `₦${numeric.toLocaleString()}/mo`;
-  }
-  return `₦${str}/mo`;
-};
+// formatCurrency imported from formatters.js
 
 // Helper Property Card Component
 function PropertyCard({ property, onInspect }) {
@@ -306,7 +20,7 @@ function PropertyCard({ property, onInspect }) {
       <div className="property-card-image-wrapper">
         <img src={property.image} alt={property.title} className="property-card-image" />
         <span className="property-card-price-tag">
-          {formatPrice(property.price)}
+          {formatCurrency(property.price, "/mo")}
         </span>
       </div>
 
@@ -402,24 +116,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
   const searchContainerRef = useRef(null);
 
   // Dynamic approved listings loaded from backend API & localStorage
-  const [allListings, setAllListings] = useState(() => {
-    try {
-      const saved = localStorage.getItem("properties");
-      const localProps = saved ? JSON.parse(saved) : [];
-      const combined = [...SEARCH_LISTINGS, ...localProps];
-      const approvedOnly = combined.filter((p) => {
-        if (!p) return false;
-        const status = (p.status || "").toLowerCase();
-        if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected") {
-          return false;
-        }
-        return true;
-      });
-      return approvedOnly;
-    } catch (e) {
-      return SEARCH_LISTINGS;
-    }
-  });
+  const [allListings, setAllListings] = useState([]);
 
   useEffect(() => {
     async function loadTenantProperties() {
@@ -434,52 +131,43 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
           }
         } catch (e) { }
 
-        const saved = localStorage.getItem("properties");
-        const localProps = saved ? JSON.parse(saved) : [];
-
-        const mergedMap = new Map();
-        [...SEARCH_LISTINGS, ...localProps, ...apiProps].forEach((item) => {
-          if (!item) return;
+        const formatted = apiProps.map((item) => {
+          if (!item) return null;
           const key = String(item.id || item.title);
-          const formatted = {
+          return {
             id: item.id || key,
             title: item.title || item.address_line1 || "Property",
             location: item.location || item.city || "Lagos, Nigeria",
-            price: typeof item.price === "number" ? item.price : Number(String(item.price || item.rent_amount || "350000").replace(/[^0-9]/g, "")) || 350000,
-            beds: item.beds || item.bedrooms || 2,
-            baths: item.baths || item.bathrooms || 2,
+            price: typeof item.price === "number" ? item.price : Number(String(item.price || item.rent_amount || "0").replace(/[^0-9]/g, "")) || 0,
+            beds: item.beds || item.bedrooms || 1,
+            baths: item.baths || item.bathrooms || 1,
             type: item.type || item.property_type || "apartment",
             image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-            amenities: item.amenities || ["Prepaid Meter", "24/7 Security"],
-            landlord: typeof item.landlord === "object" ? item.landlord : { name: item.landlord || "Ada K.", score: 4.8, reviews: 12 },
+            amenities: item.amenities || [],
+            landlord: typeof item.landlord === "object" ? item.landlord : { name: item.landlord || "Verified Landlord", score: 5.0, reviews: 1 },
             status: item.status,
             isPending: item.isPending,
             recommendationCategory: item.recommendationCategory || "Popular properties"
           };
-          mergedMap.set(key, formatted);
-        });
-
-        const combined = Array.from(mergedMap.values());
+        }).filter(Boolean);
 
         // STRICT FILTER: Only approved/live properties go to tenant search
-        const approvedOnly = combined.filter((p) => {
+        const approvedOnly = formatted.filter((p) => {
           if (!p) return false;
           const status = (p.status || "").toLowerCase();
-          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected") {
+          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
             return false;
           }
           return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
         });
 
-        setAllListings(approvedOnly.length > 0 ? approvedOnly : SEARCH_LISTINGS);
+        setAllListings(approvedOnly);
       } catch (err) {
         console.warn("Failed to load tenant search listings:", err);
       }
     }
 
     loadTenantProperties();
-    window.addEventListener("storage", loadTenantProperties);
-    return () => window.removeEventListener("storage", loadTenantProperties);
   }, []);
 
   useEffect(() => {
@@ -618,12 +306,12 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
 
   const userLocationStr = (() => {
     try {
-      const raw = localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
       if (raw) {
         const prof = JSON.parse(raw);
         return prof.location || "";
       }
-    } catch (e) { }
+    } catch { }
     return "";
   })();
 
@@ -705,7 +393,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     const locLower = userLocationStr.toLowerCase().trim();
     if (locLower) {
       const allTokens = locLower
-        .split(/[\s,\-\(\)]+/)
+        .split(/[\s,\-()]+/)
         .filter(k => k.length > 2 && !["usa", "states", "united", "atlanta", "london", "york"].includes(k));
 
       // Prefer specific area tokens over generic "lagos", "fct", "state"
@@ -862,7 +550,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
             )}
             {filterPrice && (
               <div className="filter-chip">
-                <span>Max: ₦{parseFloat(filterPrice).toLocaleString()}</span>
+                <span>Max: {formatCurrency(parseFloat(filterPrice), "/mo")}</span>
                 <button className="chip-remove" onClick={() => setFilterPrice("")}>&times;</button>
               </div>
             )}
@@ -945,7 +633,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                       onClick={() => {
                         setViewAllListings(true);
                       }}
-                      className="bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] text-[12.5px] font-bold px-5 py-2.5 rounded-xl"
+                      className="bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12.5px] font-bold px-5 py-2.5 rounded-xl"
                     >
                       View Available Listings
                     </Button>
@@ -1181,7 +869,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               </Button>
               <Button
                 onClick={() => setShowFilterModal(false)}
-                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] font-bold py-3.5 text-[13px] rounded-xl"
+                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold py-3.5 text-[13px] rounded-xl"
               >
                 Apply Filters
               </Button>
@@ -1204,7 +892,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               <div className="property-banner-overlay" style={{ height: "180px", borderRadius: "18px", overflow: "hidden", position: "relative", marginBottom: "16px" }}>
                 <img src={selectedProperty.image} alt={selectedProperty.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 <span className="property-card-price-tag" style={{ position: "absolute", bottom: "12px", right: "12px" }}>
-                  {formatPrice(selectedProperty.price)}
+                  {formatCurrency(selectedProperty.price, "/mo")}
                 </span>
               </div>
 
@@ -1234,12 +922,16 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               <div className="invoice-summary mb-5" style={{ gap: "8px" }}>
                 <span className="summary-lbl">Included Amenities</span>
                 <div className="flex flex-wrap gap-1.5 mt-1">
-                  {selectedProperty.amenities.map((a, i) => (
-                    <span key={i} className="px-2.5 py-1 bg-neutral-50 dark:bg-[#0E1714] text-[11.5px] font-semibold rounded-md border border-neutral-100 dark:border-neutral-800/40 flex items-center gap-1">
-                      <Check className="h-3 w-3 text-moss-600 dark:text-[#E5C583]" />
-                      <span>{a}</span>
-                    </span>
-                  ))}
+                  {selectedProperty.amenities && selectedProperty.amenities.length > 0 ? (
+                    selectedProperty.amenities.map((a, i) => (
+                      <span key={i} className="px-2.5 py-1 bg-neutral-50 dark:bg-[#0E1714] text-[11.5px] font-semibold rounded-md border border-neutral-100 dark:border-neutral-800/40 flex items-center gap-1">
+                        <Check className="h-3 w-3 text-moss-600 dark:text-[#E5C583]" />
+                        <span>{a}</span>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[11.5px] text-[#6C6E73] italic">No specific amenities listed</span>
+                  )}
                 </div>
               </div>
 
@@ -1262,30 +954,41 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex flex-col gap-3 mt-6">
               <Button
                 onClick={() => {
-                  const landlordObj = LANDLORDS.find(l => l.name === selectedProperty.landlord.name);
-                  if (landlordObj) {
-                    setSelectedLandlord(landlordObj);
-                    setShowLandlordDetailsModal(true);
-                  }
-                  setShowPropertyDetailsModal(false);
+                  navigate(`/listings/${selectedProperty.id}`);
                 }}
-                variant="secondary"
-                className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3.5 text-[13px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white"
+                className="w-full bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
               >
-                Landlord Profile
+                View Full Listing & Photos
               </Button>
-              <Button
-                onClick={() => {
-                  triggerToast("Application submitted successfully! Your pre-verified NIN profile has been shared with the landlord.", "success", "Application Sent");
-                  setShowPropertyDetailsModal(false);
-                }}
-                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
-              >
-                Apply to Rent
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    const landlordObj = LANDLORDS.find(l => l.name === selectedProperty.landlord.name);
+                    if (landlordObj) {
+                      setSelectedLandlord(landlordObj);
+                      setShowLandlordDetailsModal(true);
+                    }
+                    setShowPropertyDetailsModal(false);
+                  }}
+                  variant="secondary"
+                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3 text-[12.5px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white"
+                >
+                  Landlord Profile
+                </Button>
+                <Button
+                  onClick={() => {
+                    triggerToast("Application submitted successfully! Your pre-verified NIN profile has been shared with the landlord.", "success", "Application Sent");
+                    setShowPropertyDetailsModal(false);
+                  }}
+                  variant="secondary"
+                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3 text-[12.5px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white border border-neutral-200 dark:border-neutral-700"
+                >
+                  Quick Apply
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1375,7 +1078,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                   setSearchQuery(selectedLandlord.name);
                   setShowLandlordDetailsModal(false);
                 }}
-                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
+                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
               >
                 View Properties
               </Button>

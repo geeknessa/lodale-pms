@@ -310,7 +310,7 @@ body.dark .search-filter-trigger-btn.active {
 
 body.dark .property-card-cta-btn:hover {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #263b33;
   border-color: #E5C583;
 }
 
@@ -424,7 +424,7 @@ body.dark .property-card-cta-btn:hover {
 
 body.dark .landlord-verification-tick {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #263b33;
 }
 
 .landlord-name-text {

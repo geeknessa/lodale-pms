@@ -110,7 +110,7 @@ body.dark .set-ref-avatar {
 }
 
 body.dark .set-ref-edit-badge {
-  color: #0B1512;
+  color: #263b33;
 }
 
 .set-ref-edit-badge:hover {
@@ -167,7 +167,7 @@ body.dark .set-ref-edit-badge {
 }
 
 body.dark .set-ref-menu-item.active {
-  color: #0B1512;
+  color: #263b33;
 }
 
 .set-ref-menu-item.logout {
@@ -309,7 +309,7 @@ body.dark .set-ref-input {
 }
 
 body.dark .set-ref-input:focus {
-  background-color: #0B1512;
+  background-color: #263b33;
 }
 
 .set-ref-input.email-disabled {
@@ -385,7 +385,7 @@ body.dark .set-ref-input:focus {
 }
 
 body.dark .set-ref-btn-filled {
-  color: #0B1512;
+  color: #263b33;
 }
 
 .set-ref-btn-filled:hover {
