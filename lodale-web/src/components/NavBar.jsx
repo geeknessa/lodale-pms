@@ -29,9 +29,10 @@ export default function NavBar({ transparentMode = false }) {
   useEffect(() => {
     const handleAuth = () => {
       const sessAuth = sessionStorage.getItem("isAuthenticated");
-      const auth = sessAuth !== null ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
-      const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-      const email = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "";
+      const hasTabSession = sessAuth !== null;
+      const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+      const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
+      const email = sessionStorage.getItem("lastLoggedInEmail") || (!hasTabSession ? localStorage.getItem("lastLoggedInEmail") : "") || "";
 
       setIsAuthenticated(auth);
       setUserRole(role);
@@ -143,29 +144,45 @@ export default function NavBar({ transparentMode = false }) {
       } ${isActive ? `after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full ${underlineColor}` : ""}`;
   };
 
+
+
   function handleSignOut() {
-    const isCurrentAdmin = isAdmin || localStorage.getItem("userRole") === "admin" || sessionStorage.getItem("userRole") === "admin";
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("userRole");
+    const isCurrentAdmin = sessionStorage.getItem("userRole") === "admin";
+    
+    if (isCurrentAdmin) {
+      sessionStorage.removeItem("isAuthenticated");
+      sessionStorage.removeItem("sessionExpiresAt");
+      sessionStorage.removeItem("userRole");
+      sessionStorage.removeItem("adminAuthenticated");
+      sessionStorage.removeItem("lastLoggedInEmail");
+      sessionStorage.removeItem("username");
+      sessionStorage.removeItem("db_user_id");
+      sessionStorage.removeItem("currentUserProfile");
+      sessionStorage.removeItem("lodale_token");
+      sessionStorage.removeItem("lodale_user");
+      setIsAuthenticated(false);
+      setIsOpen(false);
+      navigate("/admin/login", { replace: true });
+      return;
+    }
+
+    // Tenant/Landlord SignOut
     sessionStorage.removeItem("isAuthenticated");
     sessionStorage.removeItem("sessionExpiresAt");
     sessionStorage.removeItem("userRole");
-    if (localStorage.getItem("lastLoggedInEmail") === "admin@lodale.com") {
-      localStorage.removeItem("lastLoggedInEmail");
-    }
-    if (isCurrentAdmin) {
-      localStorage.setItem("explicitAdminSignOut", "true");
-    }
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("db_user_id");
+    sessionStorage.removeItem("currentUserProfile");
+    sessionStorage.removeItem("lodale_token");
+    sessionStorage.removeItem("lodale_user");
+
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("sessionExpiresAt");
+    localStorage.removeItem("userRole");
+    
     setIsAuthenticated(false);
     setIsOpen(false);
-    window.dispatchEvent(new Event("storage"));
-
-    if (isCurrentAdmin) {
-      navigate("/admin/login", { replace: true });
-    } else {
-      navigate("/explore", { replace: true });
-    }
+    navigate("/explore", { replace: true });
   }
 
   function handleDashboardNavigate() {

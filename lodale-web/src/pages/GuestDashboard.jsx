@@ -20,6 +20,7 @@ import ListingCard from "../components/ListingCard";
 import ListingCardSkeleton from "../components/ListingCardSkeleton";
 import Footer from "../components/Footer";
 import { LISTINGS } from "../data/listings";
+import { propertyService } from "../services/propertyService";
 import heroBgDark from "../assets/dark_modern_villa.png";
 import heroBgLight from "../assets/lodale_hero_light.png";
 import heroBg from "../assets/lodale_hero.png";
@@ -228,16 +229,6 @@ export default function GuestDashboard() {
   const listingsGridRef = useRef(null);
 
   const [allListings, setAllListings] = useState(() => {
-    try {
-      const saved = localStorage.getItem("properties");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const approvedOnly = parsed.filter(
-          (p) => p && (p.status === "active_vacant" || p.status === "Approved" || p.status === "Live" || p.status === "active" || (!p.status && !p.isPending))
-        );
-        if (approvedOnly.length > 0) return approvedOnly;
-      }
-    } catch (e) { }
     return LISTINGS;
   });
 
@@ -317,12 +308,9 @@ export default function GuestDashboard() {
           }
         } catch (e) { }
 
-        const saved = localStorage.getItem("properties");
-        const localProps = saved ? JSON.parse(saved) : [];
-
-        // Combine default listings, local storage properties, and API properties
+        // Combine default listings and API properties
         const mergedMap = new Map();
-        [...LISTINGS, ...localProps, ...apiProps].forEach((item) => {
+        [...LISTINGS, ...apiProps].forEach((item) => {
           if (item && (item.id || item.title)) {
             const key = String(item.id || item.title);
             mergedMap.set(key, item);
@@ -335,7 +323,7 @@ export default function GuestDashboard() {
         const approvedOnly = combined.filter((p) => {
           if (!p) return false;
           const status = (p.status || "").toLowerCase();
-          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected") {
+          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
             return false;
           }
           return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
@@ -350,8 +338,6 @@ export default function GuestDashboard() {
     }
 
     fetchPublicListings();
-    window.addEventListener("storage", fetchPublicListings);
-    return () => window.removeEventListener("storage", fetchPublicListings);
   }, []);
 
   const filteredListings = allListings.filter((listing) => {

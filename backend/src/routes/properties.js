@@ -10,5 +10,7 @@ router.get('/', propertyController.getProperties);
 router.get('/landlord/:landlordId', requireAuth, requireRole('landlord'), propertyController.getPropertiesByLandlord);
 router.get('/:id', propertyController.getPropertyById);
 router.post('/', requireAuth, requireRole('landlord'), validate(createPropertySchema), propertyController.createProperty);
+router.put('/:id', requireAuth, requireRole('landlord'), propertyController.updateProperty);
+router.delete('/:id', requireAuth, requireRole('landlord'), propertyController.deleteProperty);
 
 export default router;

@@ -119,7 +119,23 @@ export async function initDb() {
     await client.query(`
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS ownership_doc TEXT;
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS ownership_doc_url TEXT;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS rules TEXT;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS images TEXT;
       ALTER TABLE properties ALTER COLUMN property_type TYPE TEXT USING property_type::text;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+    `);
+
+    // Ensure listing_approval_queue table exists for admin workflow
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS listing_approval_queue (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+        submitted_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        queue_status VARCHAR(50) DEFAULT 'queued',
+        rejection_reason TEXT,
+        submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        reviewed_at TIMESTAMP WITH TIME ZONE
+      );
     `);
 
     client.release();

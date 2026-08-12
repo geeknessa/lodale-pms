@@ -6,7 +6,6 @@ export const LISTINGS = [
     price: "₦375,000/mo",
     beds: 3,
     baths: 3,
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security"],
     landlord: { name: "Ada K.", score: 4.8, reviews: 12 },
   },
   {
@@ -16,7 +15,6 @@ export const LISTINGS = [
     price: "₦150,000/mo",
     beds: 2,
     baths: 2,
-    amenities: ["Prepaid Meter", "Gated Estate"],
     landlord: { name: "Chidi O.", score: 4.5, reviews: 8 },
   },
   {
@@ -26,7 +24,6 @@ export const LISTINGS = [
     price: "₦200,000/mo",
     beds: 2,
     baths: 2,
-    amenities: ["Borehole", "Generator", "24/7 Security"],
     landlord: { name: "Funke A.", score: 4.9, reviews: 21 },
   },
 ];

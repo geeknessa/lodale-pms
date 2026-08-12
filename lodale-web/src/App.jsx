@@ -154,32 +154,26 @@ function ProtectedRoute({ children }) {
 }
 
 function AdminProtectedRoute({ children }) {
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
-    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-    const adminAuth = (sessionStorage.getItem("adminAuthenticated") || localStorage.getItem("adminAuthenticated")) === "true";
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+  const checkCurrentTabAuth = () => {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
+    const adminAuth = (sessionStorage.getItem("adminAuthenticated") || (!hasTabSession ? localStorage.getItem("adminAuthenticated") : "")) === "true";
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
 
     if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
       return false;
     }
     return true;
-  });
+  };
 
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(checkCurrentTabAuth);
   const location = useLocation();
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-      const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-      const adminAuth = (sessionStorage.getItem("adminAuthenticated") || localStorage.getItem("adminAuthenticated")) === "true";
-      const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
-
-      if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
-        setIsAdminAuthenticated(false);
-      } else {
-        setIsAdminAuthenticated(true);
-      }
+      setIsAdminAuthenticated(checkCurrentTabAuth());
     };
 
     checkAuth();
@@ -195,28 +189,24 @@ function AdminProtectedRoute({ children }) {
 }
 
 function LandlordProtectedRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+  const checkCurrentTabAuth = () => {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
     if (!auth || role !== "landlord" || (expires && Date.now() > Number(expires))) {
       return false;
     }
     return true;
-  });
+  };
 
+  const [isAuthenticated, setIsAuthenticated] = useState(checkCurrentTabAuth);
   const location = useLocation();
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-      const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-      const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
-      if (!auth || role !== "landlord" || (expires && Date.now() > Number(expires))) {
-        setIsAuthenticated(false);
-      } else {
-        setIsAuthenticated(true);
-      }
+      setIsAuthenticated(checkCurrentTabAuth());
     };
 
     checkAuth();
@@ -225,12 +215,14 @@ function LandlordProtectedRoute({ children }) {
   }, [location]);
 
   if (!isAuthenticated) {
-    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
     if (auth) {
       // Authenticated but wrong role
       return <Navigate to="/access-denied" replace />;
     }
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
     const wasSessionExpired = expires && Date.now() > Number(expires);
 
     return (
@@ -249,28 +241,24 @@ function LandlordProtectedRoute({ children }) {
 }
 
 function TenantProtectedRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+  const checkCurrentTabAuth = () => {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
     if (!auth || role !== "tenant" || (expires && Date.now() > Number(expires))) {
       return false;
     }
     return true;
-  });
+  };
 
+  const [isAuthenticated, setIsAuthenticated] = useState(checkCurrentTabAuth);
   const location = useLocation();
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
-      const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-      const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
-      if (!auth || role !== "tenant" || (expires && Date.now() > Number(expires))) {
-        setIsAuthenticated(false);
-      } else {
-        setIsAuthenticated(true);
-      }
+      setIsAuthenticated(checkCurrentTabAuth());
     };
 
     checkAuth();
@@ -279,12 +267,14 @@ function TenantProtectedRoute({ children }) {
   }, [location]);
 
   if (!isAuthenticated) {
-    const auth = (sessionStorage.getItem("isAuthenticated") || localStorage.getItem("isAuthenticated")) === "true";
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
     if (auth) {
       // Authenticated but wrong role
       return <Navigate to="/access-denied" replace />;
     }
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
     const wasSessionExpired = expires && Date.now() > Number(expires);
 
     return (

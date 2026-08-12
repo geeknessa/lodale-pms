@@ -630,16 +630,6 @@ export default function LandingPage() {
   }, []);
 
   const [allListings, setAllListings] = useState(() => {
-    try {
-      const saved = localStorage.getItem("properties");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const approvedOnly = parsed.filter(
-          (p) => p && (p.status === "active_vacant" || p.status === "Approved" || p.status === "Live" || p.status === "active" || (!p.status && !p.isPending))
-        );
-        if (approvedOnly.length > 0) return approvedOnly;
-      }
-    } catch (e) {}
     return LISTINGS;
   });
 
@@ -656,11 +646,8 @@ export default function LandingPage() {
           }
         } catch (e) {}
 
-        const saved = localStorage.getItem("properties");
-        const localProps = saved ? JSON.parse(saved) : [];
-
         const mergedMap = new Map();
-        [...LISTINGS, ...localProps, ...apiProps].forEach((item) => {
+        [...LISTINGS, ...apiProps].forEach((item) => {
           if (item && (item.id || item.title)) {
             const key = String(item.id || item.title);
             mergedMap.set(key, item);
@@ -672,7 +659,7 @@ export default function LandingPage() {
         const approvedOnly = combined.filter((p) => {
           if (!p) return false;
           const status = (p.status || "").toLowerCase();
-          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected") {
+          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
             return false;
           }
           return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);

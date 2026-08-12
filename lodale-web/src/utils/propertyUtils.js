@@ -33,7 +33,11 @@ export async function handlePropertySubmit({
   docType,
   docName,
   docDataUrl,
-  propertyPhoto,
+  propertyPhoto, // legacy fallback
+  displayName,
+  propertyPhotos = [],
+  coverPhoto = "",
+  rules = "",
   rentCycle,
   setFormError,
   setIsSubmitted
@@ -88,19 +92,19 @@ export async function handlePropertySubmit({
     setFormError("Please upload your proof of ownership legal document (PDF / Image) before submitting.");
     return false;
   }
-  if (!propertyPhoto) {
-    setFormError("Please attach a property photo before submitting.");
+  if (!propertyPhoto && (!propertyPhotos || propertyPhotos.length === 0)) {
+    setFormError("Please attach at least one property photo before submitting.");
     return false;
   }
 
   const ownershipDocString = `${docType} (${docName})`;
-  const dbUserId = localStorage.getItem("db_user_id");
+  const dbUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id");
 
-  const amenitiesList = selectedAmenities.length > 0 ? selectedAmenities : ["Basic Amenities"];
+  const amenitiesList = selectedAmenities.length > 0 ? selectedAmenities : [];
   const finalDescription = descVal || `${numericBedrooms} Bedroom, ${numericBathrooms} Bathroom ${type} located at ${address}, ${cityVal}.`;
 
   const propertyPayload = {
-    title: address,
+    title: displayName || address,
     description: finalDescription,
     address_line1: address,
     city: cityVal,
@@ -110,51 +114,23 @@ export async function handlePropertySubmit({
     bathrooms: numericBathrooms,
     property_type: type.toLowerCase().replace(/\s+/g, "_"),
     amenities: amenitiesList,
+    rules: rules,
     ownership_doc: ownershipDocString,
     ownership_doc_url: docDataUrl,
-    cover_image: propertyPhoto || PRESET_PHOTOS[0].url,
+    cover_image: coverPhoto || (propertyPhotos.length > 0 ? propertyPhotos[0] : propertyPhoto) || PRESET_PHOTOS[0].url,
+    images: propertyPhotos.length > 0 ? propertyPhotos : (propertyPhoto ? [propertyPhoto] : [PRESET_PHOTOS[0].url]),
     ...(dbUserId ? { landlord_id: dbUserId } : {}),
   };
 
+  let newListing = null;
   try {
-    await propertyService.createProperty(propertyPayload);
+    const response = await propertyService.createProperty(propertyPayload);
+    newListing = response;
   } catch (err) {
-    console.warn("Backend API error, storing locally fallback:", err);
+    console.error("Backend API error creating property:", err);
+    setFormError("Failed to submit property. Please try again.");
+    return false;
   }
-
-  const newListing = {
-    id: address.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + Date.now(),
-    title: address,
-    description: finalDescription,
-    location: `${cityVal}, ${stateVal}`,
-    price: formatCurrency(numericRent, rentCycle === "annual" ? "/yr" : "/mo"),
-    image: propertyPhoto || PRESET_PHOTOS[0].url,
-    beds: numericBedrooms,
-    baths: numericBathrooms,
-    status: "pending_review",
-    ownership_doc: ownershipDocString,
-    ownership_doc_url: docDataUrl,
-    docType: docType,
-    docName: docName,
-    docDataUrl: docDataUrl,
-    amenities: amenitiesList,
-    landlord: {
-      name: (() => {
-        const sessName = sessionStorage.getItem("username");
-        if (sessName) return sessName;
-        const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-        const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-        return storedName || localStorage.getItem("username") || "Verified Landlord";
-      })(),
-      score: 5.0,
-      reviews: 1,
-    },
-  };
-
-  const saved = localStorage.getItem("properties");
-  const currentListings = saved ? JSON.parse(saved) : [];
-  const updatedListings = [newListing, ...currentListings];
-  localStorage.setItem("properties", JSON.stringify(updatedListings));
 
   setIsSubmitted(true);
   return true;

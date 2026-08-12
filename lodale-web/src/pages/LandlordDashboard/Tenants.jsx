@@ -3,6 +3,7 @@ import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, Shi
 import { LISTINGS } from "../../data/listings";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
+import { propertyService } from "../../services/propertyService";
 import "./Tenants.css";
 
 export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
@@ -32,10 +33,15 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
   });
 
   // Load properties and tenants
-  const loadData = () => {
+  const loadData = async () => {
     // Load properties
-    const savedProperties = localStorage.getItem("properties");
-    const propertyList = savedProperties ? JSON.parse(savedProperties) : [];
+    let propertyList = [];
+    try {
+      const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      propertyList = await propertyService.getLandlordProperties(currentUserId);
+    } catch (e) {
+      console.warn("Could not load properties:", e);
+    }
     setProperties(propertyList);
 
     // Load tenants

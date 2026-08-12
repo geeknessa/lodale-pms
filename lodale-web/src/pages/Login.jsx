@@ -114,15 +114,6 @@ export default function Login() {
           sessionStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
           sessionStorage.setItem("db_user_id", res.user.id);
 
-          localStorage.removeItem("failedLoginAttempts");
-          localStorage.removeItem("loginLockoutUntil");
-          localStorage.removeItem("explicitAdminSignOut");
-          localStorage.setItem("isAuthenticated", "true");
-          localStorage.setItem("userRole", "admin");
-          localStorage.setItem("adminAuthenticated", "true");
-          localStorage.setItem("lastLoggedInEmail", cleanUsername);
-          localStorage.setItem("username", `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "Admin");
-          localStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
           navigate("/admin/dashboard");
           return;
         } else {
@@ -155,11 +146,8 @@ export default function Login() {
 
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userRole", userRole);
         localStorage.setItem("lastLoggedInEmail", cleanEmail);
-        localStorage.setItem("username", userFullName);
-        localStorage.setItem("db_user_id", res.user.id);
+        localStorage.setItem("username_" + cleanEmail, userFullName);
 
         const profileObj = {
           firstName: res.user.first_name || "",
@@ -174,8 +162,7 @@ export default function Login() {
         };
         sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
         sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
-        localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-        localStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
+        localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
 
         navigate(`/dashboard/${userRole}`);
         return;
@@ -307,7 +294,9 @@ export default function Login() {
                   )}
                   <input
                     id="email"
-                    type={isAdminMode ? "text" : "email"}
+                    name={isAdminMode ? "username" : "email"}
+                    autoComplete={isAdminMode ? "username" : "email"}
+                    type={isAdminMode || email.toLowerCase() === "admin" ? "text" : "email"}
                     maxLength={100}
                     placeholder={isAdminMode ? "admin" : "ada@example.com"}
                     value={email}
@@ -333,6 +322,8 @@ export default function Login() {
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 sm:h-5 sm:w-5 text-ink-400 dark:text-cream-100/40 pointer-events-none" />
                   <input
                     id="password"
+                    name="password"
+                    autoComplete="current-password"
                     ref={passwordRef}
                     type={showPassword ? "text" : "password"}
                     maxLength={128}

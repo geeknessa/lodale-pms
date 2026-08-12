@@ -7,6 +7,7 @@ import { initDb } from './config/db.js';
 import authRoutes from './routes/auth.js';
 import propertyRoutes from './routes/properties.js';
 import adminRoutes from './routes/admin.js';
+import userRoutes from './routes/users.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
@@ -28,7 +29,7 @@ app.use('/api/', apiLimiter);
 
 // Middlewares
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increased limit for base64 avatars
 
 // Initialize Database
 initDb();
@@ -37,6 +38,7 @@ initDb();
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

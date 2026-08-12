@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone_number VARCHAR(50),
     primary_role VARCHAR(20) NOT NULL DEFAULT 'tenant',
     id_verification_status VARCHAR(50) DEFAULT 'unverified',
+    avatar_url TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -33,6 +34,8 @@ CREATE TABLE IF NOT EXISTS properties (
     cover_image TEXT,
     ownership_doc TEXT,
     ownership_doc_url TEXT,
+    rules TEXT,
+    images TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -42,4 +45,15 @@ CREATE TABLE IF NOT EXISTS property_amenities (
     property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
     amenity VARCHAR(100) NOT NULL,
     PRIMARY KEY (property_id, amenity)
+);
+
+-- LISTING APPROVAL QUEUE TABLE
+CREATE TABLE IF NOT EXISTS listing_approval_queue (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    submitted_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    queue_status VARCHAR(50) DEFAULT 'queued',
+    rejection_reason TEXT,
+    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at TIMESTAMP WITH TIME ZONE
 );

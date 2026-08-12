@@ -213,10 +213,14 @@ export default function SignUp() {
         const cleanPassword = password.trim();
         const cleanName = `${firstName.trim()} ${lastName.trim()}`;
 
-        localStorage.setItem("isAuthenticated", "true");
+        sessionStorage.setItem("isAuthenticated", "true");
+        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
+        sessionStorage.setItem("username", cleanName);
+        sessionStorage.setItem("userRole", role);
+        sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
+
         localStorage.setItem("lastLoggedInEmail", cleanEmail);
-        localStorage.setItem("username", cleanName);
-        localStorage.setItem("userRole", role);
+        localStorage.setItem("username_" + cleanEmail, cleanName);
         localStorage.setItem("isNewSignUp", "true");
 
         const profileObj = {
@@ -231,8 +235,8 @@ export default function SignUp() {
           postalCode: "",
           nin: nin || ""
         };
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
         localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
-        localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
 
         // Persist user to PostgreSQL Database via authService
         try {
@@ -245,16 +249,11 @@ export default function SignUp() {
             phone: ""
           });
           if (res && res.user) {
-            localStorage.setItem("db_user_id", res.user.id);
+            sessionStorage.setItem("db_user_id", res.user.id);
           }
         } catch (dbErr) {
           console.warn("Database user persist warning:", dbErr);
         }
-
-        localStorage.setItem(
-          "sessionExpiresAt",
-          (Date.now() + 24 * 60 * 60 * 1000).toString(),
-        );
       },
     });
   }

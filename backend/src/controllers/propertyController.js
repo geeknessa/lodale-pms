@@ -73,7 +73,11 @@ export const propertyController = {
   }),
 
   createProperty: asyncHandler(async (req, res) => {
-    const { title, description, address_line1, city, state, rent_amount, bedrooms, bathrooms, property_type, amenities, landlord_id, ownership_doc, ownership_doc_url } = req.body;
+    const { 
+      title, description, address_line1, city, state, rent_amount, 
+      bedrooms, bathrooms, property_type, amenities, landlord_id, 
+      ownership_doc, ownership_doc_url, rules, images, cover_image 
+    } = req.body;
 
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
     const effectiveLandlordId = landlord_id || '11111111-1111-1111-1111-111111111111';
@@ -82,7 +86,7 @@ export const propertyController = {
     const property = await PropertyModel.createProperty({
       effectiveLandlordId, title, slug, description, sanitizedPropertyType, 
       address_line1, city, state, bedrooms, bathrooms, rent_amount, status: 'pending_review', 
-      ownership_doc, ownership_doc_url
+      ownership_doc, ownership_doc_url, rules, images, cover_image
     });
 
     if (Array.isArray(amenities) && amenities.length > 0) {
@@ -98,5 +102,27 @@ export const propertyController = {
       status: 'pending_review',
       message: 'Property submitted successfully! It is now pending admin review before going live.'
     });
+  }),
+
+  updateProperty: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const data = req.body;
+    
+    // Quick sanitization of price from rent string to number if needed
+    if (data.price) {
+      data.rent_amount = Number(String(data.price).replace(/[^0-9]/g, "")) || 0;
+    }
+
+    const updated = await PropertyModel.updateProperty(id, data);
+    if (!updated) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+    res.json(updated);
+  }),
+
+  deleteProperty: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await PropertyModel.deleteProperty(id);
+    res.json({ message: 'Property deleted successfully' });
   })
 };

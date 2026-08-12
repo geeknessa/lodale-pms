@@ -60,4 +60,23 @@ export const propertyService = {
       body: propertyData,
     });
   },
+
+  /**
+   * Update a property listing
+   */
+  async updateProperty(id, propertyData) {
+    return await apiClient(`/properties/${id}`, {
+      method: 'PUT',
+      body: propertyData,
+    });
+  },
+
+  /**
+   * Delete a property listing
+   */
+  async deleteProperty(id) {
+    return await apiClient(`/properties/${id}`, {
+      method: 'DELETE',
+    });
+  },
 };

@@ -7,12 +7,15 @@ import Input from "../components/Input";
 import Button from "../components/Button";
 import { formatCurrency } from "../utils/formatters";
 import { handlePropertySubmit, PRESET_PHOTOS, COMMON_AMENITIES } from "../utils/propertyUtils";
+import "./DashboardAddProperty.css";
 
 export default function DashboardAddProperty() {
   const navigate = useNavigate();
   const [occupied, setOccupied] = useState(null); // null | true | false
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [formError, setFormError] = useState("");
+
+  const [displayName, setDisplayName] = useState("");
 
   // Dynamic Property Specifications State
   const [selectedAmenities, setSelectedAmenities] = useState(["Prepaid Meter", "24/7 Security"]);
@@ -39,9 +42,12 @@ export default function DashboardAddProperty() {
   };
 
   // Property picture prompt state
-  const [propertyPhoto, setPropertyPhoto] = useState(PRESET_PHOTOS[0].url);
-  const [photoPreview, setPhotoPreview] = useState(PRESET_PHOTOS[0].url);
+  const [propertyPhotos, setPropertyPhotos] = useState([PRESET_PHOTOS[0].url]);
+  const [coverPhotoIndex, setCoverPhotoIndex] = useState(0);
   const [photoError, setPhotoError] = useState("");
+  
+  // Property Rules
+  const [rules, setRules] = useState("");
 
   // Rent cycle state
   const [rentCycle, setRentCycle] = useState("annual"); // "annual" | "monthly"
@@ -62,26 +68,45 @@ export default function DashboardAddProperty() {
   const textContainerRef = useRef(null);
 
   function handleFileUpload(e) {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const remainingSlots = 5 - propertyPhotos.length;
+    if (remainingSlots <= 0) {
+      setPhotoError("You can only upload up to 5 photos.");
+      return;
+    }
+
+    const filesToAdd = files.slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      setPhotoError(`Only the first ${remainingSlots} photo(s) were added. Maximum is 5.`);
+    } else {
+      setPhotoError("");
+    }
+
+    filesToAdd.forEach((file) => {
       if (!file.type.startsWith("image/")) {
-        setPhotoError("Please select a valid image file (PNG, JPG, WEBP).");
+        setPhotoError("Please select valid image files (PNG, JPG, WEBP).");
         return;
       }
-      setPhotoError("");
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const result = evt.target.result;
-        setPropertyPhoto(result);
-        setPhotoPreview(result);
+        setPropertyPhotos((prev) => [...prev, evt.target.result]);
       };
       reader.readAsDataURL(file);
-    }
+    });
   }
 
   function handleDocUpload(e) {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setFormError("Proof of Ownership document exceeds 2MB limit.");
+        setDocName("");
+        setDocUploaded(false);
+        setDocDataUrl("");
+        return;
+      }
       setDocName(file.name);
       setDocUploaded(true);
       setFormError("");
@@ -122,6 +147,7 @@ export default function DashboardAddProperty() {
   async function handleSubmit(e) {
     await handlePropertySubmit({
       e,
+      displayName,
       stateName,
       cityName: null,
       bathrooms,
@@ -130,7 +156,9 @@ export default function DashboardAddProperty() {
       docType,
       docName,
       docDataUrl,
-      propertyPhoto,
+      propertyPhotos,
+      coverPhoto: propertyPhotos[coverPhotoIndex],
+      rules,
       rentCycle,
       setFormError,
       setIsSubmitted
@@ -235,17 +263,34 @@ export default function DashboardAddProperty() {
               </div>
             )}
 
+            <div className="mt-8">
+              <h2 className="mb-4 text-lg font-bold text-ink-900 flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-moss-600" /> Basic Details
+              </h2>
+
+              <div className="space-y-4 rounded-xl border border-ink-200/50 bg-cream-50/50 p-6">
+                <Input
+                  id="displayName"
+                  label="Property Display Name *"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="e.g. Sunset Haven Duplex"
+                  maxLength={255}
+                  required
+                />
+                <Input
+                  id="address"
+                  label="Full Address / Street Location *"
+                  placeholder="e.g. Admiralty Way, Lekki Phase 1"
+                  maxLength={255}
+                  light={false}
+                  required
+                />
+              </div>
+            </div>
+
             {/* Core Fields */}
             <div className="dap-fields-group animate-form-field">
-              <Input
-                id="address"
-                label="Full Address / Street Location *"
-                placeholder="e.g. Admiralty Way, Lekki Phase 1"
-                maxLength={255}
-                light={false}
-                required
-              />
-
               <div className="dap-grid-2">
                 <Input
                   id="city"
@@ -383,29 +428,43 @@ export default function DashboardAddProperty() {
                   })}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    maxLength={100}
+                {/* Custom Amenity Adder */}
+                <div className="flex gap-2 mt-4 items-center">
+                  <Input
+                    id="customAmenity"
+                    placeholder="E.g., High-speed internet"
                     value={customAmenityInput}
                     onChange={(e) => setCustomAmenityInput(e.target.value)}
-                    placeholder="Add custom amenity (e.g. Jacuzzi, Smart Lock)"
-                    className="flex-1 px-3 py-2 text-xs rounded-lg bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 text-ink-900 dark:text-white outline-none"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
                         handleAddCustomAmenity(e);
                       }
                     }}
+                    className="flex-1 m-0 mb-0"
+                    light={false}
                   />
-                  <button
+                  <Button
                     type="button"
                     onClick={handleAddCustomAmenity}
-                    className="px-4 py-2 rounded-lg bg-[#3A5A40] text-white font-bold text-xs hover:bg-[#344E41] transition-all cursor-pointer"
+                    className="bg-moss-700 hover:bg-moss-800 text-white dark:bg-[#E5C583] dark:text-[#263b33] dark:hover:bg-[#d8b672] font-bold py-[11px] px-4 rounded-xl shrink-0"
                   >
                     Add
-                  </button>
+                  </Button>
+                </div>
               </div>
+
+              {/* Property Rules */}
+              <div className="animate-form-field">
+                <label className="block text-[13px] font-bold text-ink-900 dark:text-white mb-2">
+                  Property Rules (Optional)
+                </label>
+                <textarea
+                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#16241F] px-4 py-3 text-[13px] text-ink-900 dark:text-white placeholder-ink-400 focus:border-moss-600 focus:outline-none focus:ring-1 focus:ring-moss-600 dark:focus:border-[#E5C583] dark:focus:ring-[#E5C583] min-h-[100px] resize-y"
+                  placeholder="e.g., No smoking, No pets, Max 4 occupants, Quiet hours after 10 PM"
+                  value={rules}
+                  onChange={(e) => setRules(e.target.value)}
+                />
               </div>
 
               {/* PROOF OF OWNERSHIP LEGAL PAPERS SECTION */}
@@ -480,21 +539,46 @@ export default function DashboardAddProperty() {
                   </span>
                 </div>
                 <p className="text-[12px] text-ink-700 dark:text-cream-100/70 mb-4 leading-relaxed">
-                  Add a high-quality picture of your rental unit so prospective tenants can inspect layout details.
+                  Add up to 5 high-quality pictures of your rental unit (rooms, compound, bathroom, etc.). You can select which one will be the cover image.
                 </p>
 
-                {/* Photo Preview */}
-                {photoPreview && (
-                  <div className="relative mb-4 h-44 w-full overflow-hidden rounded-xl border border-ink-200 dark:border-white/15 shadow-sm group">
-                    <img
-                      src={photoPreview}
-                      alt="Property Preview"
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                    <span className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold px-2.5 py-1 rounded-md flex items-center gap-1">
-                      <Check className="h-3 w-3 text-emerald-400" /> Active Listing Photo
-                    </span>
+                {/* Photo Previews */}
+                {propertyPhotos.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                    {propertyPhotos.map((photoUrl, idx) => (
+                      <div key={idx} className={`relative h-28 w-full overflow-hidden rounded-xl border-2 transition-all ${idx === coverPhotoIndex ? 'border-emerald-500 shadow-md' : 'border-ink-200 dark:border-white/15'}`}>
+                        <img
+                          src={photoUrl}
+                          alt={`Property Preview ${idx}`}
+                          className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                        
+                        <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
+                          <button
+                            type="button"
+                            onClick={() => setCoverPhotoIndex(idx)}
+                            className={`text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 transition-colors ${idx === coverPhotoIndex ? 'bg-emerald-500 text-white' : 'bg-black/50 text-white hover:bg-black/80'}`}
+                          >
+                            {idx === coverPhotoIndex ? (
+                              <><Check className="h-3 w-3" /> Cover</>
+                            ) : "Set Cover"}
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPropertyPhotos(prev => prev.filter((_, i) => i !== idx));
+                              if (coverPhotoIndex === idx) setCoverPhotoIndex(0);
+                              else if (coverPhotoIndex > idx) setCoverPhotoIndex(coverPhotoIndex - 1);
+                            }}
+                            className="bg-rose-500 hover:bg-rose-600 text-white rounded-full p-1 transition-colors"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -503,45 +587,51 @@ export default function DashboardAddProperty() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleFileUpload}
                   className="hidden"
                 />
 
-                <div className="flex flex-col sm:flex-row gap-2 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-[12.5px] hover:bg-[#1E382A] dark:hover:bg-[#d8b672] transition-all cursor-pointer shadow-xs active:scale-95 border-none outline-none"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Upload Photo from Device
-                  </button>
-                </div>
+                {propertyPhotos.length < 5 && (
+                  <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-[12.5px] hover:bg-[#1E382A] dark:hover:bg-[#d8b672] transition-all cursor-pointer shadow-xs active:scale-95 border-none outline-none"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Upload Photos from Device (Max 5)
+                    </button>
+                  </div>
+                )}
 
                 {/* Sample Photo Pickers */}
-                <div className="mt-3">
-                  <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-400 dark:text-cream-100/50 mb-2">
-                    Or pick a recommended sample photo:
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {PRESET_PHOTOS.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => {
-                          setPropertyPhoto(preset.url);
-                          setPhotoPreview(preset.url);
-                        }}
-                        className={`text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer outline-none ${photoPreview === preset.url
-                          ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent shadow-xs"
-                          : "bg-white dark:bg-[#182C24] text-ink-700 dark:text-cream-100/80 border-ink-200 dark:border-white/10 hover:border-moss-500"
-                          }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
+                {propertyPhotos.length < 5 && (
+                  <div className="mt-3">
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-400 dark:text-cream-100/50 mb-2">
+                      Or pick a recommended sample photo:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {PRESET_PHOTOS.map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            if (!propertyPhotos.includes(preset.url)) {
+                              setPropertyPhotos(prev => [...prev, preset.url]);
+                            }
+                          }}
+                          className={`text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer outline-none ${propertyPhotos.includes(preset.url)
+                            ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent shadow-xs"
+                            : "bg-white dark:bg-[#182C24] text-ink-700 dark:text-cream-100/80 border-ink-200 dark:border-white/10 hover:border-moss-500"
+                            }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
                 {photoError && (
                   <p className="mt-2 text-[12px] font-semibold text-rose-600 dark:text-rose-400">{photoError}</p>
                 )}

@@ -18,7 +18,6 @@ const SEARCH_LISTINGS = [
     baths: 3,
     type: "apartment",
     image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security"],
     landlord: { name: "Ada K.", score: 4.8, reviews: 12 },
     recommendationCategory: "Popular properties"
   },
@@ -31,7 +30,6 @@ const SEARCH_LISTINGS = [
     baths: 2,
     type: "apartment",
     image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Gated Estate"],
     landlord: { name: "Chidi O.", score: 4.5, reviews: 8 },
     recommendationCategory: "Last visited"
   },
@@ -44,7 +42,6 @@ const SEARCH_LISTINGS = [
     baths: 2,
     type: "selfcontained",
     image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Borehole", "Generator", "24/7 Security"],
     landlord: { name: "Funke A.", score: 4.9, reviews: 21 },
     recommendationCategory: "properties close to you"
   },
@@ -57,7 +54,6 @@ const SEARCH_LISTINGS = [
     baths: 4,
     type: "duplex",
     image: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security", "Boys Quarters"],
     landlord: { name: "Emeka Obi", score: 4.7, reviews: 10 },
     recommendationCategory: "Popular properties"
   },
@@ -70,7 +66,6 @@ const SEARCH_LISTINGS = [
     baths: 1,
     type: "selfcontained",
     image: "https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "24/7 Security"],
     landlord: { name: "Maren Maureen", score: 4.6, reviews: 5 },
     recommendationCategory: "properties close to you"
   },
@@ -83,7 +78,6 @@ const SEARCH_LISTINGS = [
     baths: 2,
     type: "apartment",
     image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Water Treatment"],
     landlord: { name: "Ryan Herwinds", score: 4.8, reviews: 18 },
     recommendationCategory: "Last visited"
   },
@@ -96,7 +90,6 @@ const SEARCH_LISTINGS = [
     baths: 4,
     type: "apartment",
     image: "https://images.unsplash.com/photo-1567496898669-ee935f5f647a?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Elevator", "24/7 Security", "Swimming Pool", "Prepaid Meter"],
     landlord: { name: "Ada K.", score: 4.8, reviews: 12 },
     recommendationCategory: "Popular properties"
   },
@@ -109,7 +102,6 @@ const SEARCH_LISTINGS = [
     baths: 3,
     type: "duplex",
     image: "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security", "Gated Estate"],
     landlord: { name: "Funke A.", score: 4.9, reviews: 21 },
     recommendationCategory: "Last visited"
   },
@@ -122,7 +114,6 @@ const SEARCH_LISTINGS = [
     baths: 1,
     type: "selfcontained",
     image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Borehole"],
     landlord: { name: "Chidi O.", score: 4.5, reviews: 8 },
     recommendationCategory: "properties close to you"
   },
@@ -135,7 +126,6 @@ const SEARCH_LISTINGS = [
     baths: 3,
     type: "apartment",
     image: "https://images.unsplash.com/photo-1502672090437-048b7a216e54?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security", "Car Port"],
     landlord: { name: "Emeka Obi", score: 4.7, reviews: 10 },
     recommendationCategory: "Popular properties"
   },
@@ -148,7 +138,6 @@ const SEARCH_LISTINGS = [
     baths: 6,
     type: "duplex",
     image: "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Swimming Pool", "24/7 Security", "Prepaid Meter", "Water Treatment"],
     landlord: { name: "Maren Maureen", score: 4.6, reviews: 5 },
     recommendationCategory: "Popular properties"
   },
@@ -161,7 +150,6 @@ const SEARCH_LISTINGS = [
     baths: 1,
     type: "selfcontained",
     image: "https://images.unsplash.com/photo-1536376072261-38c75010e6c9?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Prepaid Meter", "Water Treatment", "24/7 Security"],
     landlord: { name: "Ryan Herwinds", score: 4.8, reviews: 18 },
     recommendationCategory: "properties close to you"
   },
@@ -174,7 +162,6 @@ const SEARCH_LISTINGS = [
     baths: 3,
     type: "apartment",
     image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["24/7 Power", "Prepaid Meter", "Security Detail"],
     landlord: { name: "Fatima B.", score: 4.9, reviews: 14 },
     recommendationCategory: "properties close to you"
   },
@@ -187,7 +174,6 @@ const SEARCH_LISTINGS = [
     baths: 2,
     type: "apartment",
     image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Water Treatment", "24/7 Security"],
     landlord: { name: "Tari E.", score: 4.7, reviews: 9 },
     recommendationCategory: "properties close to you"
   },
@@ -200,7 +186,6 @@ const SEARCH_LISTINGS = [
     baths: 2,
     type: "apartment",
     image: "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Borehole", "Prepaid Meter", "Car Park"],
     landlord: { name: "Akanbi O.", score: 4.6, reviews: 11 },
     recommendationCategory: "properties close to you"
   },
@@ -213,7 +198,6 @@ const SEARCH_LISTINGS = [
     baths: 2,
     type: "apartment",
     image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=400&h=250&q=80",
-    amenities: ["Paved Road", "Prepaid Meter"],
     landlord: { name: "Nnamdi K.", score: 4.8, reviews: 7 },
     recommendationCategory: "properties close to you"
   }
@@ -395,22 +379,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
 
   // Dynamic approved listings loaded from backend API & localStorage
   const [allListings, setAllListings] = useState(() => {
-    try {
-      const saved = localStorage.getItem("properties");
-      const localProps = saved ? JSON.parse(saved) : [];
-      const combined = [...SEARCH_LISTINGS, ...localProps];
-      const approvedOnly = combined.filter((p) => {
-        if (!p) return false;
-        const status = (p.status || "").toLowerCase();
-        if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected") {
-          return false;
-        }
-        return true;
-      });
-      return approvedOnly;
-    } catch (e) {
-      return SEARCH_LISTINGS;
-    }
+    return SEARCH_LISTINGS;
   });
 
   useEffect(() => {
@@ -426,11 +395,8 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
           }
         } catch (e) { }
 
-        const saved = localStorage.getItem("properties");
-        const localProps = saved ? JSON.parse(saved) : [];
-
         const mergedMap = new Map();
-        [...SEARCH_LISTINGS, ...localProps, ...apiProps].forEach((item) => {
+        [...SEARCH_LISTINGS, ...apiProps].forEach((item) => {
           if (!item) return;
           const key = String(item.id || item.title);
           const formatted = {
@@ -442,7 +408,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
             baths: item.baths || item.bathrooms || 2,
             type: item.type || item.property_type || "apartment",
             image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-            amenities: item.amenities || ["Prepaid Meter", "24/7 Security"],
+            amenities: item.amenities || [],
             landlord: typeof item.landlord === "object" ? item.landlord : { name: item.landlord || "Verified Landlord", score: 5.0, reviews: 1 },
             status: item.status,
             isPending: item.isPending,
@@ -457,7 +423,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
         const approvedOnly = combined.filter((p) => {
           if (!p) return false;
           const status = (p.status || "").toLowerCase();
-          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected") {
+          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
             return false;
           }
           return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
@@ -470,8 +436,6 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     }
 
     loadTenantProperties();
-    window.addEventListener("storage", loadTenantProperties);
-    return () => window.removeEventListener("storage", loadTenantProperties);
   }, []);
 
   useEffect(() => {
@@ -610,7 +574,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
 
   const userLocationStr = (() => {
     try {
-      const raw = localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
       if (raw) {
         const prof = JSON.parse(raw);
         return prof.location || "";
@@ -1226,12 +1190,16 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               <div className="invoice-summary mb-5" style={{ gap: "8px" }}>
                 <span className="summary-lbl">Included Amenities</span>
                 <div className="flex flex-wrap gap-1.5 mt-1">
-                  {selectedProperty.amenities.map((a, i) => (
-                    <span key={i} className="px-2.5 py-1 bg-neutral-50 dark:bg-[#0E1714] text-[11.5px] font-semibold rounded-md border border-neutral-100 dark:border-neutral-800/40 flex items-center gap-1">
-                      <Check className="h-3 w-3 text-moss-600 dark:text-[#E5C583]" />
-                      <span>{a}</span>
-                    </span>
-                  ))}
+                  {selectedProperty.amenities && selectedProperty.amenities.length > 0 ? (
+                    selectedProperty.amenities.map((a, i) => (
+                      <span key={i} className="px-2.5 py-1 bg-neutral-50 dark:bg-[#0E1714] text-[11.5px] font-semibold rounded-md border border-neutral-100 dark:border-neutral-800/40 flex items-center gap-1">
+                        <Check className="h-3 w-3 text-moss-600 dark:text-[#E5C583]" />
+                        <span>{a}</span>
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[11.5px] text-[#6C6E73] italic">No specific amenities listed</span>
+                  )}
                 </div>
               </div>
 
@@ -1254,30 +1222,41 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex flex-col gap-3 mt-6">
               <Button
                 onClick={() => {
-                  const landlordObj = LANDLORDS.find(l => l.name === selectedProperty.landlord.name);
-                  if (landlordObj) {
-                    setSelectedLandlord(landlordObj);
-                    setShowLandlordDetailsModal(true);
-                  }
-                  setShowPropertyDetailsModal(false);
+                  navigate(`/listings/${selectedProperty.id}`);
                 }}
-                variant="secondary"
-                className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3.5 text-[13px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white"
+                className="w-full bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
               >
-                Landlord Profile
+                View Full Listing & Photos
               </Button>
-              <Button
-                onClick={() => {
-                  triggerToast("Application submitted successfully! Your pre-verified NIN profile has been shared with the landlord.", "success", "Application Sent");
-                  setShowPropertyDetailsModal(false);
-                }}
-                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
-              >
-                Apply to Rent
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    const landlordObj = LANDLORDS.find(l => l.name === selectedProperty.landlord.name);
+                    if (landlordObj) {
+                      setSelectedLandlord(landlordObj);
+                      setShowLandlordDetailsModal(true);
+                    }
+                    setShowPropertyDetailsModal(false);
+                  }}
+                  variant="secondary"
+                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3 text-[12.5px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white"
+                >
+                  Landlord Profile
+                </Button>
+                <Button
+                  onClick={() => {
+                    triggerToast("Application submitted successfully! Your pre-verified NIN profile has been shared with the landlord.", "success", "Application Sent");
+                    setShowPropertyDetailsModal(false);
+                  }}
+                  variant="secondary"
+                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3 text-[12.5px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white border border-neutral-200 dark:border-neutral-700"
+                >
+                  Quick Apply
+                </Button>
+              </div>
             </div>
           </div>
         </div>

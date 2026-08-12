@@ -618,8 +618,18 @@ export default function TenantDashboard() {
   };
 
   const handleSignOut = () => {
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("db_user_id");
+    sessionStorage.removeItem("currentUserProfile");
+    sessionStorage.removeItem("lodale_token");
+    sessionStorage.removeItem("lodale_user");
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("sessionExpiresAt");
+    localStorage.removeItem("username");
+    localStorage.removeItem("userRole");
     navigate("/login", { replace: true });
   };
 
@@ -879,14 +889,14 @@ export default function TenantDashboard() {
             <div className="flex flex-col gap-3 mt-2 border-t border-neutral-100 dark:border-neutral-800/60 pt-4">
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Email Address</span>
-                <span className="text-[13px] font-bold">{localStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
+                <span className="text-[13px] font-bold">{sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Phone Number</span>
                 <span className="text-[13px] font-bold">
                   {(() => {
                     try {
-                      const prof = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      const prof = JSON.parse(sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || "{}");
                       return prof.phone || "Not provided";
                     } catch (e) {
                       return "Not provided";

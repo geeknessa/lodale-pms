@@ -124,17 +124,9 @@ export default function LandlordProperties() {
 
   useEffect(() => {
     async function loadProperties() {
-      const apiProps = await propertyService.getLandlordProperties("11111111-1111-1111-1111-111111111111");
-      const saved = localStorage.getItem("properties");
-      const localProps = saved ? JSON.parse(saved) : [];
-
-      const apiIds = new Set(apiProps.map(p => p.id));
-      const combined = [
-        ...apiProps,
-        ...localProps.filter(l => !apiIds.has(l.id))
-      ];
-
-      setProperties(combined);
+      const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const apiProps = await propertyService.getLandlordProperties(currentUserId);
+      setProperties(apiProps);
     }
 
     loadProperties();
@@ -306,7 +298,7 @@ export default function LandlordProperties() {
 
                     <h3 className="ap-property-title text-base font-bold text-ink-900 dark:text-white truncate">{item.title}</h3>
                     <p className="ap-property-desc text-xs text-ink-600 dark:text-cream-100/70 mt-1">
-                      {item.beds || 1} Bedrooms • {item.baths || 1} Bathrooms • {Array.isArray(item.amenities) ? item.amenities.join(", ") : "Prepaid Meter, 24/7 Security"}
+                      {item.beds || 1} Bedrooms • {item.baths || 1} Bathrooms {Array.isArray(item.amenities) && item.amenities.length > 0 ? `• ${item.amenities.join(", ")}` : ""}
                     </p>
                     <div className="ap-card-footer-info flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 border-t border-ink-100 dark:border-white/10">
                       <span className="ap-price-badge font-bold text-moss-700 dark:text-[#E5C583] text-sm">{item.price}</span>

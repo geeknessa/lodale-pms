@@ -1,62 +1,61 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { User, Lock, LogOut, Pencil, Calendar, ChevronDown, CheckCircle2 } from "lucide-react";
 import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import { triggerToast } from "../../context/ToastContext";
+import { userService } from "../../services/userService";
 import "./TenantSettings.css";
 
 export default function TenantSettings({ onSignOut }) {
   const [activeTab, setActiveTab] = useState("personal"); // "personal" | "security"
 
-  // Load initial settings with per-tab sessionStorage priority
-  const [userProfile, setUserProfile] = useState(() => {
-    const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
-    if (raw) {
-      try {
-        return JSON.parse(raw);
-      } catch (e) { }
-    }
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    const username = sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "";
-    const parts = username.split(" ");
-    return {
-      firstName: parts[0] || "",
-      lastName: parts.slice(1).join(" ") || "",
-      email: sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "",
-      phone: "",
-      address: "",
-      dob: "",
-      location: "",
-      postalCode: ""
-    };
+  // Load initial settings
+  const [userProfile, setUserProfile] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    dob: "",
+    location: "",
+    postalCode: "",
+    avatar: ""
   });
 
   const [gender, setGender] = useState("Male");
-  const [firstName, setFirstName] = useState(userProfile.firstName || "");
-  const [lastName, setLastName] = useState(userProfile.lastName || "");
-  const [email, setEmail] = useState(userProfile.email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "");
-  const [address, setAddress] = useState(userProfile.address || "");
-  const [phone, setPhone] = useState(userProfile.phone || "");
-  const [dob, setDob] = useState(userProfile.dob || "");
-  const [location, setLocation] = useState(userProfile.location || "");
-  const [postalCode, setPostalCode] = useState(userProfile.postalCode || "");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dob, setDob] = useState("");
+  const [location, setLocation] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
 
-  // Profile avatar states (uses User vector icon until user uploads their custom photo)
-  const [avatarUrl, setAvatarUrl] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
-    if (emailKey) {
-      const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
-      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
-    }
-    return userProfile.avatar && !userProfile.avatar.includes("unsplash.com") ? userProfile.avatar : "";
-  });
   const fileInputRef = useRef(null);
 
   // Security form states
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const profile = await userService.getProfile();
+        setUserProfile(profile);
+        setFirstName(profile.first_name || "");
+        setLastName(profile.last_name || "");
+        setEmail(profile.email || "");
+        setPhone(profile.phone_number || "");
+        setAvatarUrl(profile.avatar_url || "");
+      } catch (err) {
+        console.warn("Failed to fetch profile", err);
+      }
+    }
+    loadProfile();
+  }, []);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -69,14 +68,17 @@ export default function TenantSettings({ onSignOut }) {
       reader.onload = (evt) => {
         const base64Data = evt.target.result;
         setAvatarUrl(base64Data);
-        const emailKey = email || localStorage.getItem("lastLoggedInEmail");
+        const emailKey = email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
         if (emailKey) {
           localStorage.setItem("tenantAvatar_" + emailKey.toLowerCase(), base64Data);
         }
 
         const updatedProf = { ...userProfile, avatar: base64Data };
         setUserProfile(updatedProf);
-        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        if (emailKey) {
+          localStorage.setItem("userProfile_" + emailKey.toLowerCase(), JSON.stringify(updatedProf));
+        }
 
         window.dispatchEvent(new Event("storage"));
       };
@@ -84,38 +86,29 @@ export default function TenantSettings({ onSignOut }) {
     }
   };
 
-  const handleSaveChanges = (e) => {
+  const handleSaveChanges = async (e) => {
     e.preventDefault();
     if (activeTab === "personal") {
-      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      localStorage.setItem("username", fullName);
-      localStorage.setItem("username_" + email.trim().toLowerCase(), fullName);
-      localStorage.setItem("lastLoggedInEmail", email.trim());
-      if (email) {
-        localStorage.setItem("tenantAvatar_" + email.trim().toLowerCase(), avatarUrl);
-      }
+      try {
+        const updatedProfile = await userService.updateProfile({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone_number: phone.trim(),
+          avatar_url: avatarUrl
+        });
 
-      const updatedProfile = {
-        ...userProfile,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email.trim(),
-        address: address.trim(),
-        phone: phone.trim(),
-        dob: dob.trim(),
-        location: location.trim(),
-        postalCode: postalCode.trim(),
-        avatar: avatarUrl
-      };
-      setUserProfile(updatedProfile);
-      localStorage.setItem("currentUserProfile", JSON.stringify(updatedProfile));
-      if (email) {
-        localStorage.setItem("userProfile_" + email.toLowerCase(), JSON.stringify(updatedProfile));
-      }
+        const newFullName = `${updatedProfile.first_name || ""} ${updatedProfile.last_name || ""}`.trim();
+        sessionStorage.setItem("username", newFullName);
+        const curEmail = sessionStorage.getItem("lastLoggedInEmail") || email;
+        if (curEmail) {
+          localStorage.setItem("username_" + curEmail.toLowerCase(), newFullName);
+        }
+        window.dispatchEvent(new Event("storage"));
 
-      // Dispatch storage event so layout header/sidebar updates
-      window.dispatchEvent(new Event("storage"));
-      triggerToast("Personal profile information updated successfully!", "success", "Profile Saved");
+        triggerToast("Personal profile information updated successfully!", "success", "Profile Saved");
+      } catch (err) {
+        triggerToast("Failed to update profile", "error", "Error");
+      }
     } else {
       if (!currentPassword) {
         triggerToast("Please enter your current password.", "warning", "Security");
@@ -138,7 +131,7 @@ export default function TenantSettings({ onSignOut }) {
 
   const handleDiscardChanges = () => {
     if (activeTab === "personal") {
-      const name = localStorage.getItem("username");
+      const name = sessionStorage.getItem("username") || localStorage.getItem("username");
       if (name) {
         const parts = name.split(" ");
         setFirstName(parts[0]);
@@ -147,7 +140,7 @@ export default function TenantSettings({ onSignOut }) {
         setFirstName("Roland");
         setLastName("Donald");
       }
-      setEmail(localStorage.getItem("lastLoggedInEmail") || "rolandDonald@mail.com");
+      setEmail(sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "rolandDonald@mail.com");
       setGender("Male");
       setAddress("3605 Parker Rd.");
       setPhone("(405) 555-0128");

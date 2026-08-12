@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import { triggerToast } from "../../context/ToastContext";
 import { formatDate } from "../../utils/formatters";
+import { propertyService } from "../../services/propertyService";
+import { userService } from "../../services/userService";
 import "./Settings.css";
 
 export default function Settings() {
@@ -15,55 +17,50 @@ export default function Settings() {
   const [gender, setGender] = useState("male"); // male | female
 
   // Landlord Name splitting with per-tab sessionStorage priority
-  const [userProfile, setUserProfile] = useState(() => {
-    const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
-    if (raw) {
-      try {
-        return JSON.parse(raw);
-      } catch { }
-    }
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    const username = sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "";
-    const parts = username.split(" ");
-    return {
-      firstName: parts[0] || "",
-      lastName: parts.slice(1).join(" ") || "",
-      email: sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "",
-      phone: "",
-      address: "",
-      dob: "",
-      location: "",
-      postalCode: ""
-    };
+  const [userProfile, setUserProfile] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    dob: "",
+    location: "",
+    postalCode: "",
+    avatar: ""
   });
 
-  const [firstName, setFirstName] = useState(userProfile.firstName || "");
-  const [lastName, setLastName] = useState(userProfile.lastName || "");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   
   // Scoped helper to define landlord fullName cleanly
   const getFullName = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    return `${firstName} ${lastName}`.trim() || sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "Landlord User";
+    return `${firstName} ${lastName}`.trim() || localStorage.getItem("username") || "Landlord User";
   };
   const fullName = getFullName();
-  const [email] = useState(userProfile.email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "");
-  const [address, setAddress] = useState(userProfile.address || "");
-  const [phone, setPhone] = useState(userProfile.phone || "");
-  const [dob, setDob] = useState(userProfile.dob || "");
-  const [location, setLocation] = useState(userProfile.location || "");
-  const [postalCode, setPostalCode] = useState(userProfile.postalCode || "");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dob, setDob] = useState("");
+  const [location, setLocation] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
 
-  // Landlord profile avatar states (uses User icon by default until user uploads custom photo)
-  const [avatarUrl, setAvatarUrl] = useState(() => {
-    const emailKey = localStorage.getItem("lastLoggedInEmail");
-    if (emailKey) {
-      const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
-      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
+  useEffect(() => {
+    async function fetchProfile() {
+      try {
+        const profile = await userService.getProfile();
+        setUserProfile(profile);
+        setFirstName(profile.first_name || "");
+        setLastName(profile.last_name || "");
+        setEmail(profile.email || "");
+        setPhone(profile.phone_number || "");
+        setAvatarUrl(profile.avatar_url || "");
+      } catch (err) {
+        console.warn("Failed to fetch landlord profile", err);
+      }
     }
-    return userProfile.avatar && !userProfile.avatar.includes("unsplash.com") ? userProfile.avatar : "";
-  });
+    fetchProfile();
+  }, []);
   const fileInputRef = useRef(null);
 
   const handleFileChange = (e) => {
@@ -111,9 +108,20 @@ export default function Settings() {
 
   // Load properties and tenants
   useEffect(() => {
-    const savedProperties = localStorage.getItem("properties");
-    const propertyList = savedProperties ? JSON.parse(savedProperties) : [];
-    setProperties(propertyList);
+    async function fetchProperties() {
+      try {
+        const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+        const props = await propertyService.getLandlordProperties(currentUserId);
+        setProperties(props);
+        if (props.length > 0) {
+          setSelectedPropertyId(props[0].id);
+          setRentAmount(props[0].price || "250000");
+        }
+      } catch (e) {
+        console.warn("Error fetching properties", e);
+      }
+    }
+    fetchProperties();
 
     const savedTenants = localStorage.getItem("propertyTenants");
     let parsedTenants = {};
@@ -136,10 +144,6 @@ export default function Settings() {
 
     if (allTenants.length > 0) {
       setTenantName(allTenants[0].name || allTenants[0].tenantName || "");
-    }
-    if (propertyList.length > 0) {
-      setSelectedPropertyId(propertyList[0].id || "");
-      setRentAmount(propertyList[0].price || "");
     }
   }, []);
 
@@ -440,33 +444,30 @@ export default function Settings() {
     }, 4000);
   };
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    const updatedName = `${firstName} ${lastName}`.trim();
-    localStorage.setItem("username", updatedName);
-    localStorage.setItem("username_" + email.toLowerCase(), updatedName);
-
-    const updatedProfile = {
-      ...userProfile,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.trim(),
-      address: address.trim(),
-      phone: phone.trim(),
-      dob: dob.trim(),
-      location: location.trim(),
-      postalCode: postalCode.trim()
-    };
-    setUserProfile(updatedProfile);
-    localStorage.setItem("currentUserProfile", JSON.stringify(updatedProfile));
-    if (email) {
-      localStorage.setItem("userProfile_" + email.toLowerCase(), JSON.stringify(updatedProfile));
+    try {
+      const updatedProfile = await userService.updateProfile({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        phone_number: phone.trim(),
+        avatar_url: avatarUrl
+      });
+      
+      const updatedName = `${updatedProfile.first_name || ""} ${updatedProfile.last_name || ""}`.trim();
+      localStorage.setItem("username", updatedName);
+      
+      setSaveSuccess(true);
+      triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
+      
+      window.dispatchEvent(new Event("storage"));
+      
+      setTimeout(() => {
+        setSaveSuccess(false);
+      }, 3000);
+    } catch (err) {
+      triggerToast("Failed to save profile.", "error", "Error");
     }
-
-    setSaveSuccess(true);
-    triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
-    window.dispatchEvent(new Event("storage"));
-    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
   const handleSavePassword = (e) => {

@@ -123,7 +123,6 @@ const INITIAL_LISTINGS = [
     landlord: { id: "usr-106", name: "Chidinma Eze", score: 4.9 },
     description:
       "Fully serviced 2-bedroom apartment with prepaid meter, constant water supply, and top-tier security.",
-    amenities: ["Prepaid Meter", "Borehole", "24/7 Security", "Balcony"],
     deedVerified: true,
   },
   {
@@ -137,7 +136,6 @@ const INITIAL_LISTINGS = [
     landlord: { id: "usr-101", name: "Emeka Nwankwo", score: 4.7 },
     description:
       "Modern minimalist studio with panoramic ocean view. Includes backup generator and underground parking.",
-    amenities: ["Backup Generator", "Elevator", "Security", "Fiber Internet"],
     deedVerified: true,
   },
   {
@@ -151,7 +149,6 @@ const INITIAL_LISTINGS = [
     landlord: { id: "usr-101", name: "Emeka Nwankwo", score: 4.8 },
     description:
       "Spacious 4-bedroom terrace duplex in a serene gated estate with swimming pool access.",
-    amenities: ["Swimming Pool", "Gated Security", "Parking", "Prepaid Meter"],
     deedVerified: true,
   },
   {
@@ -165,7 +162,6 @@ const INITIAL_LISTINGS = [
     landlord: { id: "usr-103", name: "Victor Ogunleye", score: 3.2 },
     description:
       "Very cheap self contain near transport hub. Immediate move-in available.",
-    amenities: ["Water"],
     deedVerified: false,
     fraudWarning: "Price is suspiciously lower than area average. Landlord account currently suspended.",
   },
@@ -179,7 +175,6 @@ const INITIAL_LISTINGS = [
     submittedAt: "2026-05-18T12:00:00Z",
     landlord: { id: "usr-106", name: "Chidinma Eze", score: 4.9 },
     description: "Quiet residential flat close to schools and shopping centers.",
-    amenities: ["Borehole", "Prepaid Meter"],
     deedVerified: true,
   },
 ];
@@ -271,7 +266,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function loadAdminData() {
-      // 1. Load Pending / Local Properties from API + LocalStorage scan
+      // 1. Load Pending Properties from API
       let apiPending = [];
       try {
         apiPending = await adminService.getPendingProperties();
@@ -279,53 +274,8 @@ export default function AdminDashboard() {
         console.warn("Backend API offline fallback:", err);
       }
 
-      let localProps = [];
-      try {
-        const saved = localStorage.getItem("properties");
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) localProps.push(...parsed);
-        }
-      } catch (_err) {}
-
-      // Scan localStorage for any extra property key
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key !== "properties" && (key.startsWith("properties_") || key.startsWith("landlordProperties_") || key.includes("property"))) {
-            if (key === "propertyTenants") continue;
-            const raw = localStorage.getItem(key);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (Array.isArray(parsed)) {
-                localProps.push(...parsed);
-              } else if (parsed && parsed.id && parsed.title) {
-                localProps.push(parsed);
-              }
-            }
-          }
-        }
-      } catch (_err) {}
-
       setListings((prev) => {
         const existingMap = new Map(prev.map(l => [l.id, l]));
-
-        localProps.forEach((p) => {
-          if (!p || !p.id) return;
-          const formattedProp = {
-            ...p,
-            status: p.status === 'pending_review' ? 'Pending Approval' : (p.status || 'Pending Approval'),
-            ownershipDoc: p.ownership_doc || p.ownershipDoc || 'Deed of Assignment',
-            ownershipDocUrl: p.ownership_doc_url || p.ownershipDocUrl || p.docDataUrl,
-            docName: p.docName || p.ownership_doc || 'Legal_Document.pdf',
-            docDataUrl: p.docDataUrl || p.ownership_doc_url,
-            deedVerified: true,
-            type: p.property_type || p.type || 'Apartment',
-            rent: p.price || (p.rent_amount ? formatCurrency(p.rent_amount, "/yr") : '₦2,500,000/yr'),
-            landlord: p.landlord || { name: 'Verified Landlord', score: 5.0, reviews: 1 }
-          };
-          existingMap.set(p.id, formattedProp);
-        });
 
         apiPending.forEach((p) => {
           if (!p || !p.id) return;
@@ -481,6 +431,14 @@ export default function AdminDashboard() {
         }
 
         // Check landlord names in localProps
+        let localProps = [];
+        try {
+          const savedProps = localStorage.getItem("landlordProperties");
+          if (savedProps) {
+            localProps = JSON.parse(savedProps);
+          }
+        } catch (e) {}
+        
         localProps.forEach((p) => {
           const lName = p.landlord?.name || activeUsername || "Landlord User";
           const mockEmail = lName.toLowerCase().replace(/[^a-z0-9]+/g, ".") + "@lodale.com";
@@ -734,6 +692,59 @@ export default function AdminDashboard() {
     if (selectedListing?.id === listingId) {
       setSelectedListing((prev) =>
         prev ? { ...prev, status: "Rejected", rejectionReason: reason } : null
+      );
+    }
+  };
+
+  const handleRequestInfoListing = async (listingId) => {
+    try {
+      await adminService.reviewProperty(listingId, "request_info", "Additional proof of ownership required.");
+    } catch (e) {
+      console.warn("API request info warning:", e);
+    }
+    setListings((prev) =>
+      prev.map((l) => {
+        if (l.id === listingId) {
+          return { ...l, status: "Info Requested" };
+        }
+        return l;
+      })
+    );
+
+    const item = listings.find((l) => l.id === listingId);
+    const propertyTitle = item?.title || "Property";
+
+    try {
+      const saved = localStorage.getItem("properties");
+      if (saved) {
+        const localProps = JSON.parse(saved);
+        const updated = localProps.map((p) =>
+          p.id === listingId ? { ...p, status: "info_requested", admin_notes: "Additional proof of ownership required." } : p
+        );
+        localStorage.setItem("properties", JSON.stringify(updated));
+      }
+    } catch (_err) {}
+
+    // Send notification to landlord
+    try {
+      const savedNotifs = localStorage.getItem("landlordNotifications");
+      const currentNotifs = savedNotifs ? JSON.parse(savedNotifs) : [];
+      const newNotif = {
+        id: "notif-req-" + Date.now(),
+        title: "Proof of Ownership Update Required",
+        message: `Your property "${propertyTitle}" requires additional proof of ownership. Please upload a new document.`,
+        time: "Just now",
+        type: "warning",
+        read: false
+      };
+      localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
+      window.dispatchEvent(new Event("storage"));
+    } catch (_err) {}
+
+    showToast(`Requested more info for "${propertyTitle}".`);
+    if (selectedListing?.id === listingId) {
+      setSelectedListing((prev) =>
+        prev ? { ...prev, status: "Info Requested" } : null
       );
     }
   };
@@ -2106,6 +2117,12 @@ export default function AdminDashboard() {
                     className="px-4 py-2 text-xs font-bold rounded bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 hover:bg-rose-200 transition-colors"
                   >
                     Reject Submission
+                  </button>
+                  <button
+                    onClick={() => handleRequestInfoListing(selectedListing.id)}
+                    className="px-4 py-2 text-xs font-bold rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 hover:bg-amber-200 transition-colors"
+                  >
+                    Request More Proof
                   </button>
                 </>
               )}
