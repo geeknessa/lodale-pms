@@ -15,34 +15,44 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgres://postgres:lodale@localhost:5432/lodale_db',
 });
 
+// Helper to ensure target database exists before connecting
 async function ensureDatabaseExists() {
-  const dbUrl = process.env.DATABASE_URL || 'postgres://postgres:lodale@localhost:5432/lodale_db';
+  const dbUrlStr = process.env.DATABASE_URL || 'postgres://postgres:lodale@localhost:5432/lodale_db';
   try {
-    const parsed = new URL(dbUrl);
-    const dbName = parsed.pathname.substring(1);
-    if (!dbName) return;
+    const url = new URL(dbUrlStr);
+    const dbName = url.pathname.replace(/^\//, '') || 'lodale_db';
+    if (!dbName || dbName === 'postgres') return;
 
-    const systemUrl = `${parsed.protocol}//${parsed.username}${parsed.password ? ':' + parsed.password : ''}@${parsed.hostname}${parsed.port ? ':' + parsed.port : ''}/postgres`;
-    const systemClient = new pg.Client({ connectionString: systemUrl });
-    await systemClient.connect();
-    const checkRes = await systemClient.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
-    if (checkRes.rowCount === 0) {
-      console.log(`[PostgreSQL] Database "${dbName}" does not exist. Creating...`);
-      const safeDbName = dbName.replace(/"/g, '""');
-      await systemClient.query(`CREATE DATABASE "${safeDbName}"`);
-      console.log(`[PostgreSQL] Database "${dbName}" created successfully.`);
+    url.pathname = '/postgres';
+    const tempClient = new pg.Client({ connectionString: url.toString() });
+    await tempClient.connect();
+    
+    const res = await tempClient.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
+    if (res.rowCount === 0) {
+      console.log(`[PostgreSQL] Database "${dbName}" does not exist. Creating database automatically...`);
+      await tempClient.query(`CREATE DATABASE "${dbName}"`);
+      console.log(`[PostgreSQL] Database "${dbName}" created successfully!`);
     }
-    await systemClient.end();
+    await tempClient.end();
   } catch (err) {
-    console.warn('[PostgreSQL] Database auto-creation check warning:', err.message);
+    console.error('[PostgreSQL Auto-Create Warning]:', err.message);
   }
 }
 
 // Initialize database pool and seed data if empty
 export async function initDb() {
-  await ensureDatabaseExists();
+  let client;
   try {
-    const client = await pool.connect();
+    try {
+      client = await pool.connect();
+    } catch (err) {
+      if (err.code === '3D000' || err.message.includes('does not exist')) {
+        await ensureDatabaseExists();
+        client = await pool.connect();
+      } else {
+        throw err;
+      }
+    }
     console.log('[PostgreSQL] Connected to local PostgreSQL database: lodale_db');
 
     // Initialize Schema
