@@ -4,7 +4,6 @@ import { triggerToast } from "../context/ToastContext";
 import { ArrowLeft, Building2, BedDouble, Bath, Wrench, User, Wallet, Calendar, Sliders, PenSquare, FileText, Download, Upload, X, Plus } from "lucide-react";
 import NavBar from "../components/NavBar";
 import Button from "../components/Button";
-import { LISTINGS } from "../data/listings";
 import { propertyService } from "../services/propertyService";
 
 function formatDistanceToNow(date) {

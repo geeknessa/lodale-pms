@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info, ChevronDown, User } from "lucide-react";
 import { propertyService } from "../../services/propertyService";
-import { LISTINGS } from "../../data/listings";
 import UserInfo from "./components/UserInfo";
 import "./LandlordProperties.css";
 
@@ -98,11 +97,7 @@ export default function LandlordProperties() {
     return localStorage.getItem("username") || "Ada";
   });
 
-  const [tenantsMap, setTenantsMap] = useState({
-    "skyline-block4": [],
-    "oakwood-unit12b": [],
-    "lekki-gardens-14": []
-  });
+  const [tenantsMap, setTenantsMap] = useState({});
 
   useEffect(() => {
     const loadTenants = () => {

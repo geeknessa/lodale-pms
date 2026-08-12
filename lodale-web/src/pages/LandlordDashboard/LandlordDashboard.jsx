@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { Logo } from "../../components/Logo";
 import Button from "../../components/Button";
-import { LISTINGS } from "../../data/listings";
 import { propertyService } from "../../services/propertyService";
 import LandlordProperties from "./LandlordProperties";
 import UserInfo from "./components/UserInfo";
