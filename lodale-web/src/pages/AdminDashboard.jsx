@@ -1824,14 +1824,57 @@ export default function AdminDashboard() {
                   <div className="text-lg font-bold text-[#344E41] dark:text-[#E5C583]">{selectedListing.price}</div>
                 </div>
                 <div>
+                  <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Property Type</div>
+                  <div className="font-bold text-[#262626] dark:text-[#F0F5F2] uppercase text-xs">
+                    {(selectedListing.type || selectedListing.property_type || "Single House").replace(/_/g, " ")}
+                  </div>
+                </div>
+                <div>
                   <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Location</div>
                   <div className="font-medium text-[#262626] dark:text-[#F0F5F2]">{selectedListing.location}</div>
+                  {selectedListing.latitude && selectedListing.longitude && (
+                    <a
+                      href={`https://maps.google.com/?q=${selectedListing.latitude},${selectedListing.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-moss-700 dark:text-[#E5C583] hover:underline flex items-center gap-1 mt-0.5 justify-center sm:justify-start"
+                    >
+                      <MapPin className="h-3 w-3" /> GPS: {selectedListing.latitude}, {selectedListing.longitude}
+                    </a>
+                  )}
                 </div>
                 <div>
                   <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">Status</div>
                   <div className="font-bold text-amber-800 dark:text-amber-300">{selectedListing.status}</div>
                 </div>
               </div>
+
+              {/* Units & Blocks Summary */}
+              {Array.isArray(selectedListing.units) && selectedListing.units.length > 0 && (
+                <div className="bg-[#DAD7CD]/20 dark:bg-[#12221C] p-3.5 rounded-xl border border-[#3A5A40]/20 dark:border-[#2C4638]">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-bold uppercase text-[#262626] dark:text-[#E5C583] flex items-center gap-1.5">
+                      <Building2 className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
+                      <span>Units & Building Structure ({selectedListing.units.length} Unit{selectedListing.units.length !== 1 ? 's' : ''})</span>
+                    </h4>
+                    {Array.isArray(selectedListing.blocks) && selectedListing.blocks.length > 0 && (
+                      <span className="text-[11px] font-semibold text-[#262626]/70 dark:text-[#A3BCA7]">
+                        Blocks: {selectedListing.blocks.map(b => b.name).join(', ')}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="max-h-36 overflow-y-auto space-y-1">
+                    {selectedListing.units.map((u, uIdx) => (
+                      <div key={uIdx} className="flex items-center justify-between text-xs py-1 px-2 bg-white/60 dark:bg-white/5 rounded border border-black/5 dark:border-white/5">
+                        <span className="font-bold text-[#262626] dark:text-[#F0F5F2]">{u.unit_name} {u.block_name ? `(${u.block_name})` : ''}</span>
+                        <span className="text-[11px] text-[#262626]/70 dark:text-[#A3BCA7]">{u.bedrooms} Bed / {u.bathrooms} Bath</span>
+                        <span className="font-semibold text-emerald-700 dark:text-emerald-400">₦{Number(u.rent_amount || 0).toLocaleString()}/yr</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Description</h4>

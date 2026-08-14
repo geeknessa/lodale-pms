@@ -29,8 +29,8 @@ export async function handlePropertySubmit({
   cityName,
   bathrooms,
   description,
-  selectedAmenities,
-  docType,
+  selectedAmenities = [],
+  docType = "Deed of Assignment",
   docName,
   docDataUrl,
   propertyPhoto, // legacy fallback
@@ -39,6 +39,12 @@ export async function handlePropertySubmit({
   coverPhoto = "",
   rules = "",
   rentCycle,
+  propertyTypeVal,
+  latitudeVal,
+  longitudeVal,
+  blocksList = [],
+  unitsList = [],
+  isMultiUnit = false,
   setFormError,
   setIsSubmitted
 }) {
@@ -47,9 +53,9 @@ export async function handlePropertySubmit({
 
   const target = e.target;
   const address = target.elements.address?.value?.trim() || "";
-  const type = target.elements.type?.value?.trim() || "";
-  const rent = target.elements.rent?.value?.trim() || "";
-  const bedrooms = target.elements.bedrooms?.value?.trim() || "";
+  const rawType = propertyTypeVal || target.elements.type?.value?.trim() || "single_house";
+  const rent = target.elements.rent?.value?.trim() || "0";
+  const bedrooms = target.elements.bedrooms?.value?.trim() || "1";
   const bathsVal = target.elements.bathrooms?.value?.trim() || bathrooms || "1";
   
   const cityInput = target.elements.city?.value?.trim();
@@ -58,12 +64,16 @@ export async function handlePropertySubmit({
   const stateInput = target.elements.state?.value?.trim();
   const stateVal = stateInput || stateName || "Lagos";
   
-  const descVal = target.elements.description?.value?.trim() || description.trim() || "";
+  const descVal = target.elements.description?.value?.trim() || (description || "").trim();
 
-  const numericRent = Number(rent.replace(/[^0-9]/g, ""));
-  const numericBedrooms = Number(bedrooms);
-  const numericBathrooms = Number(bathsVal);
+  const numericRent = Number(rent.replace(/[^0-9]/g, "")) || 0;
+  const numericBedrooms = Number(bedrooms) || 1;
+  const numericBathrooms = Number(bathsVal) || 1;
 
+  if (!displayName && !address) {
+    setFormError("Property Name / Title and Address are required.");
+    return false;
+  }
   if (!address) {
     setFormError("Property Address / Street Location is required.");
     return false;
@@ -72,24 +82,26 @@ export async function handlePropertySubmit({
     setFormError("City / Area is required.");
     return false;
   }
-  if (!type) {
+  if (!rawType) {
     setFormError("Property Type is required.");
     return false;
   }
-  if (!rent || isNaN(numericRent) || numericRent <= 0) {
-    setFormError("A valid Rent Amount is required.");
+
+  // If single unit property, check rent/bedrooms/bathrooms
+  if (!isMultiUnit && (!unitsList || unitsList.length === 0)) {
+    if (!rent || isNaN(numericRent) || numericRent <= 0) {
+      setFormError("A valid Rent Amount is required.");
+      return false;
+    }
+  }
+
+  if (isMultiUnit && (!unitsList || unitsList.length === 0)) {
+    setFormError("Please add at least one unit to your multi-unit property.");
     return false;
   }
-  if (!bedrooms || isNaN(numericBedrooms) || numericBedrooms <= 0) {
-    setFormError("Number of Bedrooms is required.");
-    return false;
-  }
-  if (!bathsVal || isNaN(numericBathrooms) || numericBathrooms <= 0) {
-    setFormError("Number of Bathrooms is required.");
-    return false;
-  }
+
   if (!docName || !docName.trim()) {
-    setFormError("Please upload your proof of ownership legal document (PDF / Image) before submitting.");
+    setFormError("Please upload your proof of ownership or management legal document (PDF / Image) before submitting.");
     return false;
   }
   if (!propertyPhoto && (!propertyPhotos || propertyPhotos.length === 0)) {
@@ -101,7 +113,19 @@ export async function handlePropertySubmit({
   const dbUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id");
 
   const amenitiesList = selectedAmenities.length > 0 ? selectedAmenities : [];
-  const finalDescription = descVal || `${numericBedrooms} Bedroom, ${numericBathrooms} Bathroom ${type} located at ${address}, ${cityVal}.`;
+  const sanitizedType = rawType.toLowerCase().replace(/\s+/g, "_");
+
+  // Calculate starting rent & max bedrooms for multi-unit summaries
+  let minRent = numericRent;
+  let summaryBeds = numericBedrooms;
+  if (unitsList.length > 0) {
+    const rents = unitsList.map(u => Number(u.rent_amount) || 0).filter(r => r > 0);
+    if (rents.length > 0) minRent = Math.min(...rents);
+    const beds = unitsList.map(u => Number(u.bedrooms) || 0);
+    if (beds.length > 0) summaryBeds = Math.max(...beds);
+  }
+
+  const finalDescription = descVal || `${sanitizedType.replace(/_/g, ' ')} located at ${address}, ${cityVal}. Total units: ${unitsList.length || 1}.`;
 
   const propertyPayload = {
     title: displayName || address,
@@ -109,26 +133,38 @@ export async function handlePropertySubmit({
     address_line1: address,
     city: cityVal,
     state: stateVal,
-    rent_amount: numericRent,
-    bedrooms: numericBedrooms,
+    rent_amount: minRent,
+    bedrooms: summaryBeds,
     bathrooms: numericBathrooms,
-    property_type: type.toLowerCase().replace(/\s+/g, "_"),
+    property_type: sanitizedType,
+    latitude: latitudeVal ? Number(latitudeVal) : null,
+    longitude: longitudeVal ? Number(longitudeVal) : null,
     amenities: amenitiesList,
     rules: rules,
     ownership_doc: ownershipDocString,
     ownership_doc_url: docDataUrl,
+    ownership_doc_type: docType,
     cover_image: coverPhoto || (propertyPhotos.length > 0 ? propertyPhotos[0] : propertyPhoto) || PRESET_PHOTOS[0].url,
     images: propertyPhotos.length > 0 ? propertyPhotos : (propertyPhoto ? [propertyPhoto] : [PRESET_PHOTOS[0].url]),
-    ...(dbUserId ? { landlord_id: dbUserId } : {}),
+    blocks: blocksList,
+    units: unitsList.length > 0 ? unitsList : [
+      {
+        unit_name: "Main Unit",
+        bedrooms: numericBedrooms,
+        bathrooms: numericBathrooms,
+        rent_amount: numericRent,
+        rent_period: "annually",
+        status: "vacant"
+      }
+    ],
+    ...(dbUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dbUserId) ? { landlord_id: dbUserId } : {}),
   };
 
-  let newListing = null;
   try {
-    const response = await propertyService.createProperty(propertyPayload);
-    newListing = response;
+    await propertyService.createProperty(propertyPayload);
   } catch (err) {
     console.error("Backend API error creating property:", err);
-    setFormError("Failed to submit property. Please try again.");
+    setFormError(err?.message || "Failed to submit property. Please try again.");
     return false;
   }
 
