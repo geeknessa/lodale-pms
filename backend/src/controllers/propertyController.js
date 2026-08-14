@@ -29,10 +29,14 @@ export const propertyController = {
     const formatted = await Promise.all(properties.map(async p => {
       const amenities = await PropertyModel.getAmenities(p.id);
       const adminNotes = await PropertyModel.getRejectionReason(p.id);
+      const blocks = await PropertyModel.getBlocks(p.id);
+      const units = await PropertyModel.getUnits(p.id);
 
       return {
         ...p,
         amenities,
+        blocks,
+        units,
         admin_notes: adminNotes,
         price: `₦${Number(p.rent_amount).toLocaleString()}/yr`,
         location: `${p.address_line1}, ${p.city}`,
@@ -51,6 +55,8 @@ export const propertyController = {
     }
 
     const amenities = await PropertyModel.getAmenities(property.id);
+    const blocks = await PropertyModel.getBlocks(property.id);
+    const units = await PropertyModel.getUnits(property.id);
     const landlord = await UserModel.findById(property.landlord_id);
     
     let landlordResponse = null;
@@ -66,6 +72,8 @@ export const propertyController = {
     res.json({
       ...property,
       amenities,
+      blocks,
+      units,
       landlord: landlordResponse,
       price: `₦${Number(property.rent_amount).toLocaleString()}/yr`,
       location: `${property.address_line1}, ${property.city}`,
@@ -76,17 +84,19 @@ export const propertyController = {
     const { 
       title, description, address_line1, city, state, rent_amount, 
       bedrooms, bathrooms, property_type, amenities, landlord_id, 
-      ownership_doc, ownership_doc_url, rules, images, cover_image 
+      ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
+      rules, images, cover_image, blocks, units 
     } = req.body;
 
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
     const effectiveLandlordId = landlord_id || '11111111-1111-1111-1111-111111111111';
-    const sanitizedPropertyType = (property_type || 'apartment').toString().trim().toLowerCase().replace(/\s+/g, '_');
+    const sanitizedPropertyType = (property_type || 'single_house').toString().trim().toLowerCase().replace(/\s+/g, '_');
 
     const property = await PropertyModel.createProperty({
       effectiveLandlordId, title, slug, description, sanitizedPropertyType, 
       address_line1, city, state, bedrooms, bathrooms, rent_amount, status: 'pending_review', 
-      ownership_doc, ownership_doc_url, rules, images, cover_image
+      ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
+      rules, images, cover_image, blocks, units
     });
 
     if (Array.isArray(amenities) && amenities.length > 0) {
@@ -97,8 +107,13 @@ export const propertyController = {
 
     await PropertyModel.queueForApproval(property.id, effectiveLandlordId);
 
+    const createdBlocks = await PropertyModel.getBlocks(property.id);
+    const createdUnits = await PropertyModel.getUnits(property.id);
+
     res.status(201).json({
       ...property,
+      blocks: createdBlocks,
+      units: createdUnits,
       status: 'pending_review',
       message: 'Property submitted successfully! It is now pending admin review before going live.'
     });
