@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense, lazy } from "react";
 import { ThemeProvider } from "./context/ThemeContext";
+import { ToastProvider } from "./context/ToastContext";
 import {
   BrowserRouter,
   Routes,
@@ -20,7 +21,6 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AccessDenied from "./pages/AccessDenied";
 import React from "react";
 import DashboardPlaceholder from "./pages/DashboardPlaceholder";
-import AdminDashboard from "./pages/AdminDashboard";
 import { AlertTriangle } from "lucide-react";
 
 
@@ -41,7 +41,7 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-[#0B1512] text-white flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="min-h-screen bg-[#263b33] text-white flex flex-col items-center justify-center p-6 text-center font-sans">
           <div className="max-w-md space-y-6">
             <div className="text-5xl text-amber-500 flex justify-center">
               <AlertTriangle className="h-16 w-16" />
@@ -53,13 +53,15 @@ class ErrorBoundary extends React.Component {
               We encountered an unexpected rendering error. This might be due to
               a temporary glitch or an updated file.
             </p>
-            <div className="bg-[#13221C] border border-[#23372B] p-4 rounded-xl text-left font-mono text-[11px] text-[#A3BCA7] overflow-auto max-h-40">
-              {this.state.error?.toString()}
-            </div>
+            {import.meta.env.DEV && (
+              <div className="bg-[#13221C] border border-[#23372B] p-4 rounded-xl text-left font-mono text-[11px] text-[#A3BCA7] overflow-auto max-h-40">
+                {this.state.error?.toString()}
+              </div>
+            )}
             <div className="flex gap-4 justify-center pt-2">
               <button
                 onClick={() => window.location.reload()}
-                className="bg-[#E5C583] hover:bg-[#D8B672] text-[#0B1512] font-bold px-6 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
+                className="bg-[#E5C583] hover:bg-[#D8B672] text-[#263b33] font-bold px-6 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
               >
                 Reload Page
               </button>
@@ -148,57 +150,80 @@ function ProtectedRoute({ children }) {
 }
 
 function AdminProtectedRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const auth = localStorage.getItem("isAuthenticated") === "true";
-    const expires = localStorage.getItem("sessionExpiresAt");
-    if (auth && expires && Date.now() > Number(expires)) {
-      localStorage.removeItem("isAuthenticated");
-      localStorage.removeItem("sessionExpiresAt");
-      localStorage.removeItem("userRole");
+  const checkCurrentTabAuth = () => {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
+    const adminAuth = (sessionStorage.getItem("adminAuthenticated") || (!hasTabSession ? localStorage.getItem("adminAuthenticated") : "")) === "true";
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+
+    if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
       return false;
     }
-    return auth;
-  });
+    return true;
+  };
 
-  const [userRole, setUserRole] = useState(() => {
-    return localStorage.getItem("userRole");
-  });
-
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(checkCurrentTabAuth);
   const location = useLocation();
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = localStorage.getItem("isAuthenticated") === "true";
-      const expires = localStorage.getItem("sessionExpiresAt");
-      if (auth && expires && Date.now() > Number(expires)) {
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("sessionExpiresAt");
-        localStorage.removeItem("userRole");
-        setIsAuthenticated(false);
-        setUserRole(null);
-      } else {
-        setIsAuthenticated(auth);
-        setUserRole(localStorage.getItem("userRole"));
-      }
+      setIsAdminAuthenticated(checkCurrentTabAuth());
     };
 
     checkAuth();
+    window.addEventListener("storage", checkAuth);
+    return () => window.removeEventListener("storage", checkAuth);
+  }, [location]);
 
+  if (!isAdminAuthenticated) {
+    return <Navigate to="/admin/login" replace state={{ fromProtected: true }} />;
+  }
+
+  return children;
+}
+
+function LandlordProtectedRoute({ children }) {
+  const checkCurrentTabAuth = () => {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+    if (!auth || role !== "landlord" || (expires && Date.now() > Number(expires))) {
+      return false;
+    }
+    return true;
+  };
+
+  const [isAuthenticated, setIsAuthenticated] = useState(checkCurrentTabAuth);
+  const location = useLocation();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      setIsAuthenticated(checkCurrentTabAuth());
+    };
+
+    checkAuth();
     window.addEventListener("storage", checkAuth);
     return () => window.removeEventListener("storage", checkAuth);
   }, [location]);
 
   if (!isAuthenticated) {
-    const expires = localStorage.getItem("sessionExpiresAt");
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    if (auth) {
+      // Authenticated but wrong role
+      return <Navigate to="/access-denied" replace />;
+    }
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
     const wasSessionExpired = expires && Date.now() > Number(expires);
-
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("userRole");
 
     return (
       <Navigate
-        to="/admin/login"
+        to="/login"
         replace
         state={{
           fromProtected: true,
@@ -208,99 +233,166 @@ function AdminProtectedRoute({ children }) {
     );
   }
 
-  if (userRole !== "admin") {
-    return <Navigate to="/access-denied" replace />;
+  return children;
+}
+
+function TenantProtectedRoute({ children }) {
+  const checkCurrentTabAuth = () => {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+    if (!auth || role !== "tenant" || (expires && Date.now() > Number(expires))) {
+      return false;
+    }
+    return true;
+  };
+
+  const [isAuthenticated, setIsAuthenticated] = useState(checkCurrentTabAuth);
+  const location = useLocation();
+
+  useEffect(() => {
+    const checkAuth = () => {
+      setIsAuthenticated(checkCurrentTabAuth());
+    };
+
+    checkAuth();
+    window.addEventListener("storage", checkAuth);
+    return () => window.removeEventListener("storage", checkAuth);
+  }, [location]);
+
+  if (!isAuthenticated) {
+    const sessAuth = sessionStorage.getItem("isAuthenticated");
+    const hasTabSession = sessAuth !== null;
+    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    if (auth) {
+      // Authenticated but wrong role
+      return <Navigate to="/access-denied" replace />;
+    }
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+    const wasSessionExpired = expires && Date.now() > Number(expires);
+
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          fromProtected: true,
+          sessionExpired: wasSessionExpired,
+        }}
+      />
+    );
   }
 
   return children;
 }
 
 export default function App() {
-  return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <ErrorBoundary>
-          <ScrollToTop />
-          <Routes>
-            <Route path="/" element={<Navigate to="/explore" replace />} />
-            <Route path="/explore" element={<GuestDashboard />} />
-            <Route path="/listings/:id" element={<ListingDetail />} />
-            <Route path="/how-it-works" element={<HowItWorks />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/verify" element={<Navigate to="/signup" replace />} />
-            <Route path="/admin/login" element={<Login />} />
-            <Route path="/access-denied" element={<AccessDenied />} />
+  useEffect(() => {
+    const saved = localStorage.getItem("properties");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        let changed = false;
+        const updated = parsed.map((item) => {
+          if (item.price && item.price.endsWith("/yr")) {
+            changed = true;
+            return {
+              ...item,
+              price: item.price.replace("/yr", "/mo"),
+            };
+          }
+          return item;
+        });
+        if (changed) {
+          localStorage.setItem("properties", JSON.stringify(updated));
+        }
+      } catch (err) {
+        console.error("Failed to migrate properties storage:", err);
+      }
+    }
+  }, []);
 
-            {/* Protected Routes */}
-            <Route
-              path="/admin"
-              element={
-                <AdminProtectedRoute>
-                  <AdminDashboard />
-                </AdminProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/dashboard"
-              element={
-                <AdminProtectedRoute>
-                  <AdminDashboard />
-                </AdminProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/admin"
-              element={
-                <AdminProtectedRoute>
-                  <AdminDashboard />
-                </AdminProtectedRoute>
-              }
-            />
-            <Route
-              path="/welcome/:role"
-              element={
-                <ProtectedRoute>
-                  <Welcome />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/apply/:listingId"
-              element={
-                <ProtectedRoute>
-                  <Application />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/add-property"
-              element={
-                <ProtectedRoute>
-                  <AddProperty />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/:role"
-              element={
-                <ProtectedRoute>
-                  <DashboardPlaceholder />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <AdminRoute>
-                  <AdminDashboard />
-                </AdminRoute>
-              }
-            />
-          </Routes>
-        </ErrorBoundary>
-      </BrowserRouter>
-    </ThemeProvider>
-  );
+  return (
+    <ToastProvider>
+      <ThemeProvider>
+        <BrowserRouter>
+          <ErrorBoundary>
+            <ScrollToTop />
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Navigate to="/explore" replace />} />
+                <Route path="/explore" element={<GuestDashboard />} />
+                <Route path="/listings/:id" element={<ListingDetail />} />
+                <Route path="/how-it-works" element={<HowItWorks />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<SignUp />} />
+                <Route path="/verify" element={<Navigate to="/signup" replace />} />
+                <Route path="/admin/login" element={<Login />} />
+                <Route path="/access-denied" element={<AccessDenied />} />
+
+                {/* Protected Routes */}
+                <Route
+                  path="/admin"
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminDashboard />
+                    </AdminProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminDashboard />
+                    </AdminProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/admin"
+                  element={
+                    <AdminProtectedRoute>
+                      <AdminDashboard />
+                    </AdminProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/welcome/:role"
+                  element={
+                    <ProtectedRoute>
+                      <Welcome />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/apply/:listingId"
+                  element={
+                    <ProtectedRoute>
+                      <Application />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/add-property"
+                  element={
+                    <ProtectedRoute>
+                      <AddProperty />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/:role"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardPlaceholder />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+          </ErrorBoundary>
+        </BrowserRouter>
+      </ThemeProvider>
+      );
 }

@@ -11,9 +11,12 @@ import {
   Check,
 } from "lucide-react";
 import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import NavBar from "../components/NavBar";
 import Button from "../components/Button";
 import Footer from "../components/Footer";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const TENANT_STEPS = [
   {
@@ -107,10 +110,35 @@ export default function HowItWorks() {
   }, []);
 
   const steps = role === "tenant" ? TENANT_STEPS : LANDLORD_STEPS;
-
-  // Safeguard step boundary in case of switching roles with different steps lengths
   const activeStepClamped = activeStep >= steps.length ? 0 : activeStep;
   const activeMockType = steps[activeStepClamped]?.mockType || "profile";
+
+  const stepsContainerRef = useRef(null);
+
+  // ScrollTrigger animation for numbered process steps
+  useEffect(() => {
+    if (stepsContainerRef.current) {
+      const cards = stepsContainerRef.current.children;
+      if (cards.length > 0) {
+        gsap.fromTo(
+          cards,
+          { opacity: 0, y: 30 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.65,
+            stagger: 0.12,
+            ease: "power2.out",
+            scrollTrigger: {
+              trigger: stepsContainerRef.current,
+              start: "top 80%",
+              toggleActions: "play none none none",
+            },
+          }
+        );
+      }
+    }
+  }, [role]);
 
   // GSAP animation for active mock card change
   useEffect(() => {
@@ -443,7 +471,7 @@ export default function HowItWorks() {
               Your Rental Lifecycle on Lodale
             </h2>
 
-            <div className="space-y-4">
+            <div ref={stepsContainerRef} className="space-y-4">
               {steps.map(({ icon: Icon, title, desc }, index) => {
                 const isActive = index === activeStepClamped;
                 return (

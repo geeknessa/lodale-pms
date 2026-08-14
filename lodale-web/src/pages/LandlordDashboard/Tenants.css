@@ -1,0 +1,726 @@
+/* Tenants.css - Styles for the Tenants component of the Lodale Landlord Dashboard */
+
+.tenants-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 8px 0 32px 0;
+  animation: fadeInTenants 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInTenants {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header & Control Bar */
+.tenants-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  background-color: var(--card-bg);
+  padding: 16px 24px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border-light);
+}
+
+.tenants-left-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Filter Tabs */
+.tenants-tabs {
+  display: flex;
+  gap: 4px;
+  background-color: rgba(38, 38, 38, 0.04);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border-light);
+}
+
+body.dark .tenants-tabs {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.tenants-tab-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tenants-tab-btn:hover {
+  color: var(--text-primary);
+  background-color: rgba(38, 38, 38, 0.03);
+}
+
+body.dark .tenants-tab-btn:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tenants-tab-btn.active {
+  background-color: var(--active-pill-bg);
+  color: var(--card-bg);
+}
+
+body.dark .tenants-tab-btn.active {
+  color: #263b33;
+}
+
+/* Search Bar */
+.tenants-search-box {
+  position: relative;
+  min-width: 260px;
+}
+
+.tenants-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.tenants-search-input {
+  width: 100%;
+  padding: 10px 38px 10px 42px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1.5px solid var(--border-light);
+  background-color: transparent;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.tenants-search-input:focus {
+  border-color: var(--active-pill-bg);
+}
+
+/* Action Button */
+.invite-tenant-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--active-pill-bg);
+  color: var(--card-bg);
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+body.dark .invite-tenant-btn {
+  color: #263b33;
+}
+
+.invite-tenant-btn:hover {
+  transform: scale(1.02);
+  opacity: 0.95;
+}
+
+.invite-tenant-btn:active {
+  transform: scale(0.98);
+}
+
+/* Tenants Cards Grid */
+.tenants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+/* Tenant Card */
+.tenant-card {
+  background-color: var(--card-bg);
+  border: 1.5px solid var(--border-light);
+  border-radius: 24px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tenant-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--active-pill-bg);
+}
+
+/* Tenant Card Header */
+.tenant-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tenant-card-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tenant-card-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--border-light);
+}
+
+.tenant-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tenant-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tenant-card-lease-status {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.tenant-card-score {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: rgba(38, 38, 38, 0.04);
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+body.dark .tenant-card-score {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Tenant Card Body */
+.tenant-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1.5px dashed var(--border-light);
+}
+
+.tenant-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.tenant-detail-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.tenant-detail-value {
+  color: var(--text-secondary);
+  font-weight: 600;
+  max-width: 180px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.tenant-detail-value.property-link {
+  color: var(--active-pill-bg);
+  cursor: pointer;
+}
+
+.tenant-detail-value.property-link:hover {
+  text-decoration: underline;
+}
+
+body.dark .tenant-detail-value.property-link {
+  color: var(--active-pill-bg);
+}
+
+/* Payment Badges */
+.payment-badge {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.payment-badge.paid {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+body.dark .payment-badge.paid {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.payment-badge.overdue {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+body.dark .payment-badge.overdue {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.payment-badge.grace-period {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+body.dark .payment-badge.grace-period {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+/* Card Actions */
+.tenant-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tenant-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1.5px solid var(--border-light);
+  background-color: transparent;
+  color: var(--text-secondary);
+}
+
+.tenant-action-btn:hover {
+  background-color: rgba(38, 38, 38, 0.03);
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+}
+
+body.dark .tenant-action-btn:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+  border-color: var(--active-pill-bg);
+  color: var(--text-primary);
+}
+
+.tenant-action-btn.chat-btn {
+  background-color: rgba(44, 70, 51, 0.05);
+  color: var(--active-pill-bg);
+  border-color: transparent;
+}
+
+body.dark .tenant-action-btn.chat-btn {
+  background-color: rgba(229, 197, 131, 0.1);
+  color: var(--active-pill-bg);
+}
+
+.tenant-action-btn.chat-btn:hover {
+  background-color: var(--active-pill-bg);
+  color: var(--card-bg);
+}
+
+body.dark .tenant-action-btn.chat-btn:hover {
+  color: #263b33;
+}
+
+/* Empty State */
+.tenants-empty-state {
+  background-color: var(--card-bg);
+  border: 1.5px solid var(--border-light);
+  border-radius: 24px;
+  padding: 60px 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  max-width: 480px;
+  margin: 40px auto;
+}
+
+.tenants-empty-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background-color: var(--accent-green-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--active-pill-bg);
+  margin-bottom: 8px;
+}
+
+.tenants-empty-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.tenants-empty-desc {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Custom Add Tenant Modal overlay & form */
+.tenant-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.tenant-modal-card {
+  background-color: var(--card-bg);
+  border: 1.5px solid var(--border-light);
+  border-radius: 28px;
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalSlideUp {
+  from { transform: translateY(24px) scale(0.97); }
+  to { transform: translateY(0) scale(1); }
+}
+
+.tenant-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px 16px 32px;
+  border-bottom: 1.5px solid var(--border-light);
+}
+
+.tenant-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.tenant-modal-close {
+  background-color: rgba(38, 38, 38, 0.04);
+  color: var(--text-secondary);
+  border: none;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+body.dark .tenant-modal-close {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.tenant-modal-close:hover {
+  background-color: rgba(38, 38, 38, 0.08);
+  color: var(--text-primary);
+}
+
+body.dark .tenant-modal-close:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.tenant-modal-body {
+  padding: 24px 32px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.tenant-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.tenant-form-full {
+  grid-column: span 2;
+}
+
+.tenant-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tenant-form-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tenant-form-input, .tenant-form-select, .tenant-form-textarea {
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  border: 1.5px solid var(--border-light);
+  background-color: transparent;
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.tenant-form-input:focus, .tenant-form-select:focus, .tenant-form-textarea:focus {
+  border-color: var(--active-pill-bg);
+}
+
+.tenant-form-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.tenant-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 32px 24px 32px;
+  border-top: 1.5px solid var(--border-light);
+}
+
+.tenant-cancel-btn {
+  padding: 11px 20px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  background-color: transparent;
+  border: 1.5px solid var(--border-light);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tenant-cancel-btn:hover {
+  background-color: rgba(38, 38, 38, 0.03);
+  color: var(--text-primary);
+}
+
+body.dark .tenant-cancel-btn:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.tenant-submit-btn {
+  padding: 11px 24px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  background-color: var(--active-pill-bg);
+  color: var(--card-bg);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+body.dark .tenant-submit-btn {
+  color: #263b33;
+}
+
+.tenant-submit-btn:hover {
+  transform: scale(1.02);
+}
+
+.tenant-submit-btn:active {
+  transform: scale(0.98);
+}
+
+/* Responsiveness overrides */
+@media (max-width: 640px) {
+  .tenant-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .tenant-form-full {
+    grid-column: span 1;
+  }
+  .tenants-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tenants-left-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tenants-search-box {
+    min-width: unset;
+    width: 100%;
+  }
+}
+
+/* Star rating selector styling */
+.star-rating-container {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 0 20px 0;
+}
+
+.star-rating-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  transition: transform 0.15s ease, color 0.15s ease;
+  color: #dad7cd; /* default unselected cream-100 color */
+  outline: none;
+}
+
+.star-rating-btn:hover {
+  transform: scale(1.2);
+}
+
+.star-rating-btn.selected {
+  color: #D69E2E; /* filled star color */
+}
+
+/* Would rent again styling */
+.rent-again-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.rent-again-options {
+  display: flex;
+  gap: 12px;
+}
+
+.rent-again-option-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  background-color: transparent;
+  border: 1.5px solid var(--border-light);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.rent-again-option-btn:hover {
+  background-color: rgba(38, 38, 38, 0.03);
+  color: var(--text-primary);
+}
+
+body.dark .rent-again-option-btn:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.rent-again-option-btn.selected.yes {
+  background-color: rgba(34, 197, 94, 0.1);
+  border-color: #22c55e;
+  color: #16a34a;
+}
+
+body.dark .rent-again-option-btn.selected.yes {
+  background-color: rgba(34, 197, 94, 0.15);
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+.rent-again-option-btn.selected.no {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+body.dark .rent-again-option-btn.selected.no {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: #f87171;
+  color: #f87171;
+}
+
+.end-lease-warning-box {
+  background-color: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+body.dark .end-lease-warning-box {
+  background-color: rgba(239, 68, 68, 0.08);
+}
+
+.end-lease-warning-box p {
+  font-size: 12.5px;
+  color: #dc2626;
+  margin: 0;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+body.dark .end-lease-warning-box p {
+  color: #f87171;
+}
+

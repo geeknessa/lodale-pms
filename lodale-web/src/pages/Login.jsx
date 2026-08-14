@@ -1,46 +1,31 @@
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle, Zap } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle, Zap, User } from "lucide-react";
 import { Logo } from "../components/Logo";
 import Button from "../components/Button";
 import heroBg from "../assets/modern_villa.png";
 import { useTheme } from "../context/ThemeContext";
+import { authService } from "../services/authService";
 
 export default function Login() {
   useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Simulated known credentials
-  const KNOWN_USER = {
-    email: "user@example.com",
-    password: "Password123!",
-  };
-
-  const KNOWN_ADMIN = {
-    email: "admin@lodale.com",
-    password: "AdminPassword123!",
-  };
-
   // State to toggle between User and Admin login modes
   const [isAdminMode] = useState(() => {
     return location.pathname === "/admin/login" || location.search.includes("role=admin");
   });
 
-  // Pre-fill email from previous session
+  // Pre-fill email only (never passwords) from previous session
   const [email, setEmail] = useState(() => {
     if (location.pathname === "/admin/login" || location.search.includes("role=admin")) {
-      return "admin@lodale.com";
+      return "";
     }
     return localStorage.getItem("lastLoggedInEmail") || "";
   });
-  const [password, setPassword] = useState(() => {
-    if (location.pathname === "/admin/login" || location.search.includes("role=admin")) {
-      return "AdminPassword123!";
-    }
-    return "";
-  });
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   // Error and Notification states
@@ -98,17 +83,7 @@ export default function Login() {
     }
   }, [navigate, location.pathname, location.search]);
 
-  function handleQuickAdminLogin() {
-    localStorage.removeItem("failedLoginAttempts");
-    localStorage.removeItem("loginLockoutUntil");
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userRole", "admin");
-    localStorage.setItem("lastLoggedInEmail", KNOWN_ADMIN.email);
-    localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
-    navigate("/admin/dashboard");
-  }
-
-  function handleLoginSubmit(e) {
+  async function handleLoginSubmit(e) {
     e.preventDefault();
     setInlineError("");
     setResetMessage("");
@@ -123,25 +98,76 @@ export default function Login() {
       return;
     }
 
-    // Check if logging in as Admin
-    if (email.toLowerCase() === KNOWN_ADMIN.email || isAdminMode) {
-      if (
-        (email.toLowerCase() === KNOWN_ADMIN.email && password === KNOWN_ADMIN.password) ||
-        isAdminMode
-      ) {
-        localStorage.removeItem("failedLoginAttempts");
-        localStorage.removeItem("loginLockoutUntil");
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userRole", "admin");
-        localStorage.setItem("lastLoggedInEmail", email || KNOWN_ADMIN.email);
-        localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
-        navigate("/admin/dashboard");
+    // Admin login — authenticate via API
+    if (isAdminMode) {
+      const cleanUsername = email.trim().toLowerCase();
+      const cleanPassword = password.trim();
+
+      try {
+        const res = await authService.signIn({ email: cleanUsername, password: cleanPassword });
+        if (res && res.user && res.user.primary_role === "admin") {
+          sessionStorage.setItem("isAuthenticated", "true");
+          sessionStorage.setItem("userRole", "admin");
+          sessionStorage.setItem("adminAuthenticated", "true");
+          sessionStorage.setItem("lastLoggedInEmail", cleanUsername);
+          sessionStorage.setItem("username", `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "Admin");
+          sessionStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
+          sessionStorage.setItem("db_user_id", res.user.id);
+
+          navigate("/admin/dashboard");
+          return;
+        } else {
+          setInlineError("This account does not have admin privileges.");
+          return;
+        }
+      } catch (apiErr) {
+        setInlineError("Invalid admin credentials. Please check your username and password.");
         return;
       }
     }
 
-    if (email !== KNOWN_USER.email && email.toLowerCase() !== KNOWN_ADMIN.email) {
-      // Email not found
+    // Non-admin user login handling
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    // Authenticate via Express Backend API
+    try {
+      const res = await authService.signIn({ email: cleanEmail, password: cleanPassword });
+      if (res && res.user) {
+        const userRole = res.user.primary_role || "tenant";
+        const userFullName = `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "User";
+
+        sessionStorage.setItem("isAuthenticated", "true");
+        sessionStorage.setItem("userRole", userRole);
+        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
+        sessionStorage.setItem("username", userFullName);
+        sessionStorage.setItem("db_user_id", res.user.id);
+
+        localStorage.removeItem("failedLoginAttempts");
+        localStorage.removeItem("loginLockoutUntil");
+        localStorage.setItem("lastLoggedInEmail", cleanEmail);
+        localStorage.setItem("username_" + cleanEmail, userFullName);
+
+        const profileObj = {
+          firstName: res.user.first_name || "",
+          lastName: res.user.last_name || "",
+          email: cleanEmail,
+          phone: res.user.phone_number || "",
+          role: userRole,
+          address: "",
+          dob: "",
+          location: "",
+          postalCode: "",
+        };
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
+        sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
+        localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
+
+        navigate(`/dashboard/${userRole}`);
+        return;
+      }
+    } catch (apiErr) {
       const newAttempts = failedAttempts + 1;
       setFailedAttempts(newAttempts);
       localStorage.setItem("failedLoginAttempts", newAttempts.toString());
@@ -154,42 +180,11 @@ export default function Login() {
           "Too many failed login attempts. Please try again in 15 minutes or reset your password."
         );
       } else {
-        setInlineError("We couldn’t find an account with that email address.");
+        setInlineError("Invalid email or password. Please try again.");
       }
       return;
     }
 
-    if (email === KNOWN_USER.email && password !== KNOWN_USER.password) {
-      // Password incorrect
-      const newAttempts = failedAttempts + 1;
-      setFailedAttempts(newAttempts);
-      localStorage.setItem("failedLoginAttempts", newAttempts.toString());
-
-      if (newAttempts >= 10) {
-        const lockDuration = Date.now() + 15 * 60 * 1000;
-        setLockoutTime(lockDuration);
-        localStorage.setItem("loginLockoutUntil", lockDuration.toString());
-        setInlineError(
-          "Too many failed login attempts. Please try again in 15 minutes or reset your password."
-        );
-      } else {
-        setInlineError(
-          "The password you entered is incorrect. Please try again or reset your password."
-        );
-      }
-      return;
-    }
-
-    // Success User Login! Clear attempt tracking
-    localStorage.removeItem("failedLoginAttempts");
-    localStorage.removeItem("loginLockoutUntil");
-    localStorage.setItem("isAuthenticated", "true");
-    localStorage.setItem("userRole", "user");
-    localStorage.setItem("lastLoggedInEmail", email);
-    localStorage.setItem("sessionExpiresAt", (Date.now() + 60 * 60 * 1000).toString());
-
-    // Redirect to explore/dashboard
-    navigate("/explore");
   }
 
   function handleForgotPassword() {
@@ -212,7 +207,7 @@ export default function Login() {
 
   return (
     <div
-      className="min-h-screen w-full text-ink-900 dark:text-white flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-12 relative overflow-hidden font-sans select-none text-left transition-colors duration-200"
+      className="min-h-screen w-full text-ink-900 dark:text-white flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-12 relative font-sans select-none text-left transition-colors duration-200"
       style={{
         backgroundImage: `url(${heroBg})`,
         backgroundSize: "cover",
@@ -221,7 +216,7 @@ export default function Login() {
       }}
     >
       {/* Background Overlay */}
-      <div className="absolute inset-0 bg-[#FAF8F6]/55 dark:bg-[#0B1512]/90 transition-colors duration-200" />
+      <div className="absolute inset-0 bg-[#FAF8F6]/55 dark:bg-[#263b33]/90 transition-colors duration-200" />
 
       {/* Floating Back Button */}
       <button
@@ -254,6 +249,8 @@ export default function Login() {
             </p>
           </div>
 
+
+
           {/* Security / Session warnings */}
           {sessionWarning && (
             <div className="p-2.5 sm:p-3.5 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-300 rounded-xl text-[12px] sm:text-[13px] leading-relaxed flex items-start gap-2 sm:gap-2.5 animate-fade-in">
@@ -281,20 +278,27 @@ export default function Login() {
           {/* Credentials Form */}
           <form onSubmit={handleLoginSubmit} className="space-y-4 sm:space-y-5">
             <div className="space-y-3.5 sm:space-y-4">
-              {/* Email Address */}
+              {/* Email / Username Field */}
               <div>
                 <label
                   htmlFor="email"
                   className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-ink-700 dark:text-[#A3BCA7] uppercase mb-1 sm:mb-1.5"
                 >
-                  Email Address
+                  {isAdminMode ? "Username" : "Email Address"}
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 sm:h-5 sm:w-5 text-ink-400 dark:text-cream-100/40 pointer-events-none" />
+                  {isAdminMode ? (
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 sm:h-5 sm:w-5 text-ink-400 dark:text-cream-100/40 pointer-events-none" />
+                  ) : (
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 sm:h-5 sm:w-5 text-ink-400 dark:text-cream-100/40 pointer-events-none" />
+                  )}
                   <input
                     id="email"
-                    type="email"
-                    placeholder="ada@example.com"
+                    name={isAdminMode ? "username" : "email"}
+                    autoComplete={isAdminMode ? "username" : "email"}
+                    type={isAdminMode || email.toLowerCase() === "admin" ? "text" : "email"}
+                    maxLength={100}
+                    placeholder={isAdminMode ? "admin" : "ada@example.com"}
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
@@ -318,8 +322,11 @@ export default function Login() {
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 sm:h-5 sm:w-5 text-ink-400 dark:text-cream-100/40 pointer-events-none" />
                   <input
                     id="password"
+                    name="password"
+                    autoComplete="current-password"
                     ref={passwordRef}
                     type={showPassword ? "text" : "password"}
+                    maxLength={128}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => {
@@ -360,7 +367,7 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#0B1512] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 hover:scale-[1.015] active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer"
+              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 hover:scale-[1.015] active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer"
             >
               {isAdminMode ? "Log In as Admin" : "Log In"}
             </Button>

@@ -1,6 +1,8 @@
 @import url("https://fonts.googleapis.com/css2?family=Inria+Serif:wght@400;700&family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
+@view-transition { navigation: auto; }
+
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -25,15 +27,21 @@
 
 html,
 body {
-  overscroll-behavior: none;
-  overscroll-behavior-y: none;
   font-family: var(--font-sans);
   background: var(--color-white);
   color: var(--color-ink-900);
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overscroll-behavior-y: none;
   transition:
     background-color 0.25s ease,
     color 0.25s ease,
     border-color 0.25s ease;
+}
+
+#root {
+  width: 100%;
 }
 
 /* Global shadow removal as requested */
@@ -44,7 +52,7 @@ body {
 
 /* Global Dark Mode overrides */
 body.dark {
-  background: var(--color-forest-700);
+  background: #07130d;
   color: var(--color-white);
 }
 
@@ -79,7 +87,7 @@ body.dark section.bg-cream-50\/50 {
 }
 
 body.dark section {
-  background: var(--color-forest-700);
+  background: #07130d;
   border-color: var(--color-moss-600);
 }
 
@@ -116,7 +124,7 @@ body.dark .bg-moss-100 {
 }
 
 body.dark .bg-cream-50 {
-  background-color: var(--color-forest-700) !important;
+  background-color: #07130d !important;
 }
 
 body.dark .logo-mark-svg .logo-bg {
@@ -141,25 +149,50 @@ body.dark .border-ink-200 {
   border-color: var(--color-moss-600) !important;
 }
 
-body.dark input {
+body.dark input,
+body.dark textarea,
+body.dark select {
   background: var(--color-moss-700) !important;
   color: var(--color-white) !important;
   border-color: var(--color-moss-600) !important;
 }
 
-body.dark input::placeholder {
+/* Global placeholder styling: faint by default, disappears on focus & typing */
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  opacity: 0.45 !important;
+  transition: opacity 0.2s ease-in-out !important;
+}
+
+input:focus::placeholder,
+textarea:focus::placeholder,
+select:focus::placeholder {
+  opacity: 0 !important;
+}
+
+body.dark input::placeholder,
+body.dark textarea::placeholder,
+body.dark select::placeholder {
   color: var(--color-cream-100) !important;
+  opacity: 0.35 !important;
+}
+
+body.dark input:focus::placeholder,
+body.dark textarea:focus::placeholder,
+body.dark select:focus::placeholder {
+  opacity: 0 !important;
 }
 
 body.dark footer {
-  background: var(--color-forest-700) !important;
+  background: #07130d !important;
   border-color: var(--color-moss-600) !important;
   color: var(--color-cream-100) !important;
 }
 
 /* Onboarding-specific themes */
 body.dark .onboarding-bg {
-  background: var(--color-forest-700) !important;
+  background: #07130d !important;
 }
 
 body.dark .onboarding-card {
@@ -174,7 +207,7 @@ html {
 }
 
 body.dark {
-  scrollbar-color: #E5C583 #0B1512;
+  scrollbar-color: #E5C583 #07130d;
 }
 
 ::-webkit-scrollbar {
@@ -187,7 +220,7 @@ body.dark {
 }
 
 body.dark ::-webkit-scrollbar-track {
-  background: #0B1512;
+  background: #07130d;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -203,9 +236,16 @@ body.dark ::-webkit-scrollbar-track {
 body.dark ::-webkit-scrollbar-thumb {
   background: #E5C583;
   border-radius: 9999px;
-  border: 2px solid #0B1512;
+  border: 2px solid #07130d;
 }
 
 body.dark ::-webkit-scrollbar-thumb:hover {
   background: #D8B672;
+}
+@keyframes scrollDown {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+.animate-scroll-down {
+  animation: scrollDown 2s infinite linear;
 }

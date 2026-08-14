@@ -18,7 +18,7 @@ export default function AccessDenied() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F6] dark:bg-[#0B1512] text-ink-900 dark:text-white flex flex-col items-center justify-center p-6 text-center font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-[#FAF8F6] dark:bg-[#263b33] text-ink-900 dark:text-white flex flex-col items-center justify-center p-6 text-center font-sans transition-colors duration-200">
       <div className="w-full max-w-md space-y-6 relative z-10 animate-fade-in">
         {/* Top Logo Branding */}
         <div className="flex justify-center">
@@ -43,7 +43,7 @@ export default function AccessDenied() {
           <div className="pt-2">
             <Button
               onClick={handleGoBack}
-              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#0B1512] border-0 font-bold py-2.5 rounded-xl text-[13px] cursor-pointer hover:scale-[1.015] active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none"
+              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2.5 rounded-xl text-[13px] cursor-pointer hover:scale-[1.015] active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none"
             >
               Go to Dashboard
             </Button>
