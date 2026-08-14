@@ -475,23 +475,36 @@ export default function GuestDashboard() {
             ))}
           </div>
         ) : (
-          <div className="mt-12 text-center p-10 border border-dashed border-theme-border rounded-2xl bg-theme-bg-offset/40 flex flex-col items-center max-w-md mx-auto">
-            <div className="h-14 w-14 rounded-full bg-cream-100 dark:bg-moss-700 text-moss-700 dark:text-moss-100 flex items-center justify-center mb-4">
-              <Search className="h-6 w-6" />
+          <div className="mt-12 text-center p-12 rounded-2xl bg-[#0D1F17]/30 dark:bg-white/5 border border-ink-200/50 dark:border-white/10 flex flex-col items-center justify-center max-w-sm mx-auto">
+            <div className="h-16 w-16 rounded-2xl bg-neutral-100 dark:bg-white/10 flex items-center justify-center mb-4 text-neutral-400 dark:text-cream-100/40">
+              <Search className="h-7 w-7" />
             </div>
-            <h3 className="text-md font-bold text-theme-text">
-              No listings found
-            </h3>
-            <p className="text-[13px] text-theme-text-offset mt-1">
-              We couldn't find any properties matching "{searchQuery}". Try
-              adjusting your keywords or clearing the search.
-            </p>
-            <button
-              onClick={() => setSearchQuery("")}
-              className="mt-4 px-4 py-2 bg-moss-700 hover:bg-forest-600 text-white rounded-lg text-[13px] font-semibold transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-moss-600 focus-visible:ring-offset-2"
-            >
-              Reset Search
-            </button>
+            {searchQuery.trim() !== "" ? (
+              <>
+                <h3 className="font-bold text-lg text-ink-900 dark:text-white mb-1">
+                  No matching listings found
+                </h3>
+                <p className="text-xs text-ink-500 dark:text-cream-100/60 max-w-xs leading-relaxed mb-4">
+                  We couldn't find any properties matching "{searchQuery}". Try adjusting your keywords.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="px-4 py-2 rounded-xl bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none outline-none"
+                >
+                  Clear Search
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className="font-bold text-lg text-ink-900 dark:text-white mb-1">
+                  No listings yet
+                </h3>
+                <p className="text-xs text-ink-500 dark:text-cream-100/60 max-w-xs leading-relaxed">
+                  Be the first to list a property on Lodale!
+                </p>
+              </>
+            )}
           </div>
         )}
       </section>
