@@ -291,21 +291,48 @@ export default function LandlordProperties() {
                       </div>
                     </div>
 
-                    <h3 className="ap-property-title text-base font-bold text-ink-900 dark:text-white truncate">{item.title}</h3>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="ap-property-title text-base font-bold text-ink-900 dark:text-white truncate">{item.title}</h3>
+                      {item.property_type && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-moss-100 dark:bg-white/10 text-moss-800 dark:text-[#E5C583] uppercase tracking-wider">
+                          {item.property_type.replace(/_/g, ' ')}
+                        </span>
+                      )}
+                    </div>
+
                     <p className="ap-property-desc text-xs text-ink-600 dark:text-cream-100/70 mt-1">
-                      {item.beds || 1} Bedrooms • {item.baths || 1} Bathrooms {Array.isArray(item.amenities) && item.amenities.length > 0 ? `• ${item.amenities.join(", ")}` : ""}
+                      {Array.isArray(item.units) && item.units.length > 0 ? (
+                        <span className="font-semibold text-moss-700 dark:text-[#E5C583]">
+                          {item.units.length} Unit{item.units.length !== 1 ? 's' : ''} total ({item.units.filter(u => u.status === 'vacant').length} Vacant) • {item.bedrooms || 1} Bed / {item.bathrooms || 1} Bath
+                        </span>
+                      ) : (
+                        <span>{item.bedrooms || 1} Bedrooms • {item.bathrooms || 1} Bathrooms</span>
+                      )}
+                      {Array.isArray(item.blocks) && item.blocks.length > 0 ? ` • Blocks: ${item.blocks.map(b => b.name).join(', ')}` : ""}
+                      {Array.isArray(item.amenities) && item.amenities.length > 0 ? ` • ${item.amenities.join(", ")}` : ""}
                     </p>
+
                     <div className="ap-card-footer-info flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 border-t border-ink-100 dark:border-white/10">
-                      <span className="ap-price-badge font-bold text-moss-700 dark:text-[#E5C583] text-sm">{item.price}</span>
+                      <span className="ap-price-badge font-bold text-moss-700 dark:text-[#E5C583] text-sm">
+                        {Array.isArray(item.units) && item.units.length > 1 ? `From ${item.price}` : item.price}
+                      </span>
                       
                       {/* Property Review Status Tag */}
                       {(() => {
+                        const status = (item.status || "").toLowerCase();
+                        const isInfoReq = status === 'info_requested' || status === 'info requested' || status === 'needs_proof' || status === 'more_proof_requested';
                         const hasTenants = getTenantsForProperty(item.id).length > 0 || status === 'occupied' || status === 'active_occupied';
-                        const isLive = status === 'active_vacant' || status === 'Live' || status === 'approved' || status === 'active';
-                        const isPending = status === 'pending_review' || status === 'Pending Approval' || !item.status;
-                        const isRejected = status === 'rejected' || status === 'inactive' || status === 'Rejected';
-                        const isInfoReq = status === 'info_requested' || status === 'Info Requested';
+                        const isLive = status === 'active_vacant' || status === 'live' || status === 'approved' || status === 'active';
+                        const isRejected = status === 'rejected' || status === 'inactive';
+                        const isPending = status === 'pending_review' || status === 'pending approval' || status === 'pending' || !item.status;
 
+                        if (isInfoReq) {
+                          return (
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-amber-500 text-white px-2.5 py-0.5 rounded-full border border-amber-600 shadow-xs animate-pulse">
+                              <AlertTriangle className="h-3 w-3" /> Needs More Proof
+                            </span>
+                          );
+                        }
                         if (hasTenants) {
                           return (
                             <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-300">
@@ -320,13 +347,6 @@ export default function LandlordProperties() {
                             </span>
                           );
                         }
-                        if (isPending) {
-                          return (
-                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-300">
-                              <Clock className="h-3 w-3" /> Pending Review
-                            </span>
-                          );
-                        }
                         if (isRejected) {
                           return (
                             <button
@@ -337,14 +357,11 @@ export default function LandlordProperties() {
                             </button>
                           );
                         }
-                        if (isInfoReq) {
+                        if (isPending) {
                           return (
-                            <button
-                              onClick={() => setSelectedFeedbackProperty(item)}
-                              className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-blue-100 hover:bg-blue-200 text-blue-900 dark:text-blue-300 px-2.5 py-0.5 rounded-full border border-blue-300 cursor-pointer"
-                            >
-                              <Info className="h-3 w-3" /> Info Needed
-                            </button>
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-300">
+                              <Clock className="h-3 w-3" /> Pending Review
+                            </span>
                           );
                         }
                         return null;
