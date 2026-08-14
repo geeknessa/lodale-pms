@@ -265,14 +265,18 @@ body.dark .dap-subform-title {
 /* Submit button */
 .dap-submit-btn {
   width: 100%;
-  padding: 14px 0;
-  font-size: 14px;
+  padding: 12px 16px;
+  font-size: 12px;
   font-weight: 700;
   border-radius: 14px;
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
   outline: none;
+  text-align: center;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .dap-submit-btn.active {

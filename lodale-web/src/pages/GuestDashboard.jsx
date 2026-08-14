@@ -475,8 +475,8 @@ export default function GuestDashboard() {
             ))}
           </div>
         ) : (
-          <div className="mt-12 text-center p-12 rounded-2xl bg-[#0D1F17]/30 dark:bg-white/5 border border-ink-200/50 dark:border-white/10 flex flex-col items-center justify-center max-w-sm mx-auto">
-            <div className="h-16 w-16 rounded-2xl bg-neutral-100 dark:bg-white/10 flex items-center justify-center mb-4 text-neutral-400 dark:text-cream-100/40">
+          <div className="mt-12 text-center p-8 bg-transparent border-0 flex flex-col items-center justify-center max-w-sm mx-auto">
+            <div className="h-16 w-16 rounded-2xl bg-transparent border border-ink-200/40 dark:border-white/10 flex items-center justify-center mb-4 text-ink-400 dark:text-cream-100/40">
               <Search className="h-7 w-7" />
             </div>
             {searchQuery.trim() !== "" ? (
