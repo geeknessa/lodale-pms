@@ -132,8 +132,14 @@ COMMENT ON COLUMN users.primary_role            IS 'A user who added a property 
 
 DROP TYPE IF EXISTS property_type CASCADE;
 CREATE TYPE property_type AS ENUM (
-    'apartment',
+    'single_house',
     'duplex',
+    'apartment_building',
+    'estate',
+    'hostel',
+    'commercial_building',
+    'boys_quarters',
+    'apartment',
     'bungalow',
     'semi_detached',
     'detached',
@@ -266,6 +272,41 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_property_images_cover
     ON property_images (property_id)
     WHERE is_cover = TRUE;
 
+-- ─── Table: property_blocks ──────────────────────────────────────────────────
+-- Optional blocks / buildings / floors within a property (e.g. Block A, Floor 1)
+
+CREATE TABLE IF NOT EXISTS property_blocks (
+    id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id     UUID        NOT NULL REFERENCES properties (id) ON DELETE CASCADE,
+    name            VARCHAR(100) NOT NULL,
+    description     TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_property_blocks_property ON property_blocks (property_id);
+
+-- ─── Table: property_units ───────────────────────────────────────────────────
+-- Individual rental units/houses/flats associated with a property
+
+CREATE TABLE IF NOT EXISTS property_units (
+    id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+    property_id         UUID            NOT NULL REFERENCES properties (id) ON DELETE CASCADE,
+    block_id            UUID            REFERENCES property_blocks (id) ON DELETE SET NULL,
+    unit_name           VARCHAR(100)    NOT NULL,
+    bedrooms            SMALLINT        NOT NULL DEFAULT 1 CHECK (bedrooms >= 0),
+    bathrooms           SMALLINT        NOT NULL DEFAULT 1 CHECK (bathrooms >= 0),
+    rent_amount         NUMERIC(14, 2)  NOT NULL DEFAULT 0.00,
+    rent_period         rent_period     NOT NULL DEFAULT 'annually',
+    status              VARCHAR(30)     NOT NULL DEFAULT 'vacant',
+    current_tenant_id   UUID            REFERENCES users (id) ON DELETE SET NULL,
+    created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_property_units_property ON property_units (property_id);
+CREATE INDEX IF NOT EXISTS idx_property_units_block    ON property_units (block_id);
+CREATE INDEX IF NOT EXISTS idx_property_units_status   ON property_units (status);
+
 -- ─── Comments ────────────────────────────────────────────────────────────────
 
 COMMENT ON TABLE  properties                    IS 'Rental property listings managed by landlords.';
@@ -274,6 +315,8 @@ COMMENT ON COLUMN properties.rent_amount        IS 'Rent amount in Nigerian Nair
 COMMENT ON COLUMN properties.current_tenant_id  IS 'Denormalised FK to the current active tenant. Derived from active lease.';
 COMMENT ON TABLE  property_amenities            IS 'Variable-length list of amenity tags attached to a property.';
 COMMENT ON TABLE  property_images               IS 'Media assets (photos) associated with a property listing.';
+COMMENT ON TABLE  property_blocks               IS 'Optional building block / floor grouping within a multi-unit property.';
+COMMENT ON TABLE  property_units                IS 'Individual rental units or flats inside a property.';
 
 
 -- =============================================================================

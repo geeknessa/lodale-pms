@@ -20,6 +20,20 @@ export const requireAuth = (req, res, next) => {
   }
 };
 
+export const optionalAuth = (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1];
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+    }
+  } catch (error) {
+    // Proceed silently if token is missing or invalid in optional mode
+  }
+  next();
+};
+
 export const requireRole = (requiredRole) => {
   return (req, res, next) => {
     if (!req.user || req.user.role !== requiredRole) {

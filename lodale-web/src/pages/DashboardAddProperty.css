@@ -459,3 +459,121 @@ body.dark .dap-subform input:focus {
 body.dark .dap-page label span {
   color: var(--text-secondary, #A3BCA7) !important;
 }
+
+/* ─── Multi-step Wizard Stepper Bar ─── */
+.dap-stepper-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  position: relative;
+  gap: 8px;
+}
+
+.dap-stepper-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  outline: none;
+}
+
+.dap-stepper-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--bg-cream, #EAE5DD);
+  color: var(--text-secondary, #4A4A46);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 2;
+  border: 2px solid transparent;
+}
+
+.dap-stepper-step.active .dap-stepper-badge {
+  background: #2C4633;
+  color: #ffffff;
+  border-color: #2C4633;
+  box-shadow: 0 4px 12px rgba(44, 70, 51, 0.2);
+}
+
+body.dark .dap-stepper-step.active .dap-stepper-badge {
+  background: #E5C583;
+  color: #12221C;
+  border-color: #E5C583;
+}
+
+.dap-stepper-step.completed .dap-stepper-badge {
+  background: #3A5A40;
+  color: #ffffff;
+}
+
+body.dark .dap-stepper-step.completed .dap-stepper-badge {
+  background: #2C4633;
+  color: #E5C583;
+}
+
+.dap-stepper-label {
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 6px;
+  color: var(--text-muted, #8C8C86);
+  text-align: center;
+  transition: color 0.2s ease;
+}
+
+.dap-stepper-step.active .dap-stepper-label {
+  color: var(--active-pill-bg, #2C4633);
+  font-weight: 700;
+}
+
+body.dark .dap-stepper-step.active .dap-stepper-label {
+  color: #E5C583;
+}
+
+.dap-stepper-progress-track {
+  height: 4px;
+  width: 100%;
+  background: #EAE5DD;
+  border-radius: 4px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+body.dark .dap-stepper-progress-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dap-stepper-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3A5A40 0%, #2C4633 100%);
+  transition: width 0.4s ease;
+  border-radius: 4px;
+}
+
+body.dark .dap-stepper-progress-fill {
+  background: linear-gradient(90deg, #E5C583 0%, #c4a25e 100%);
+}
+
+.dap-wizard-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1.5px solid var(--border-light, rgba(228, 234, 225, 1));
+}
+
+body.dark .dap-wizard-nav {
+  border-top-color: rgba(255, 255, 255, 0.1);
+}

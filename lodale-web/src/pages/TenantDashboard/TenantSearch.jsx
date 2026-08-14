@@ -715,12 +715,42 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               )}
             </div>
             {((searchType === "property" ? filteredListings.length : filteredLandlords.length) === 0) ? (
-              <div className="search-empty-state py-12 text-center">
-                <div className="mb-3 flex justify-center"><SearchIcon className="h-8 w-8 text-neutral-400" /></div>
-                <h4 className="font-bold text-[16px]">No Match Matched Your Criteria</h4>
-                <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7] mt-1 max-w-sm mx-auto">
-                  Try clearing some active filters or modifying your query keywords.
-                </p>
+              <div className="search-empty-state py-16 text-center flex flex-col items-center justify-center max-w-sm mx-auto">
+                <div className="h-16 w-16 rounded-2xl bg-neutral-100 dark:bg-white/10 flex items-center justify-center mb-4 text-neutral-400 dark:text-cream-100/40">
+                  <SearchIcon className="h-7 w-7" />
+                </div>
+                {hasActiveFilters ? (
+                  <>
+                    <h3 className="font-bold text-lg text-ink-900 dark:text-white mb-1">
+                      No matching listings found
+                    </h3>
+                    <p className="text-xs text-ink-500 dark:text-cream-100/60 max-w-xs leading-relaxed mb-4">
+                      No properties match your active search criteria. Try modifying your filters or query keywords.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setFilterPrice("");
+                        setFilterBeds("");
+                        setFilterType("");
+                        setFilterLandlordTenure("");
+                      }}
+                      className="px-4 py-2 rounded-xl bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none outline-none"
+                    >
+                      Clear Search & Filters
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="font-bold text-lg text-ink-900 dark:text-white mb-1">
+                      No listings yet
+                    </h3>
+                    <p className="text-xs text-ink-500 dark:text-cream-100/60 max-w-xs leading-relaxed">
+                      Be the first to list a property on Lodale!
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="search-results-grid">

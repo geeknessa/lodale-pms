@@ -8,6 +8,8 @@ export const adminController = {
 
     const formatted = await Promise.all(properties.map(async p => {
       const amenities = await PropertyModel.getAmenities(p.id);
+      const blocks = await PropertyModel.getBlocks(p.id);
+      const units = await PropertyModel.getUnits(p.id);
 
       return {
         id: p.id,
@@ -26,9 +28,14 @@ export const adminController = {
         },
         description: p.description,
         amenities,
+        blocks,
+        units,
         adminNotes: p.admin_notes,
         ownershipDoc: p.ownership_doc,
         ownershipDocUrl: p.ownership_doc_url,
+        ownershipDocType: p.ownership_doc_type,
+        latitude: p.latitude,
+        longitude: p.longitude,
       };
     }));
 

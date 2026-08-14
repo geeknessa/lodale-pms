@@ -554,7 +554,7 @@ export default function TenantSettings({ onSignOut }) {
   // Download PDF Handler
   const handleDownloadPDF = (doc) => {
     const htmlContent = generateDocumentHTML(doc);
-    
+
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
     iframe.style.right = '0';
@@ -575,7 +575,7 @@ export default function TenantSettings({ onSignOut }) {
       setTimeout(() => {
         try {
           document.body.removeChild(iframe);
-        } catch (e) {}
+        } catch (e) { }
       }, 1000);
     }, 300);
 
@@ -893,11 +893,10 @@ export default function TenantSettings({ onSignOut }) {
               <button
                 type="button"
                 onClick={() => setDocSubTab("pending")}
-                className={`px-4 py-2 rounded-xl text-[13px] font-extrabold transition-all cursor-pointer flex items-center gap-2 ${
-                  docSubTab === "pending"
+                className={`px-4 py-2 rounded-xl text-[13px] font-extrabold transition-all cursor-pointer flex items-center gap-2 ${docSubTab === "pending"
                     ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
                     : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
-                }`}
+                  }`}
               >
                 <PenTool className="h-4 w-4" />
                 <span>Pending Signature</span>
@@ -911,11 +910,10 @@ export default function TenantSettings({ onSignOut }) {
               <button
                 type="button"
                 onClick={() => setDocSubTab("signed")}
-                className={`px-4 py-2 rounded-xl text-[13px] font-extrabold transition-all cursor-pointer flex items-center gap-2 ${
-                  docSubTab === "signed"
+                className={`px-4 py-2 rounded-xl text-[13px] font-extrabold transition-all cursor-pointer flex items-center gap-2 ${docSubTab === "signed"
                     ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
                     : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
-                }`}
+                  }`}
               >
                 <CheckCircle2 className="h-4 w-4" />
                 <span>Signed Documents</span>

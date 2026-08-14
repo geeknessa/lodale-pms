@@ -63,24 +63,104 @@ export const PropertyModel = {
     const { 
       effectiveLandlordId, title, slug, description, sanitizedPropertyType, 
       address_line1, city, state, bedrooms, bathrooms, rent_amount, status, 
-      ownership_doc, ownership_doc_url, rules, images, cover_image
+      ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
+      rules, images, cover_image, blocks = [], units = []
     } = data;
 
-    // We removed ::property_status cast to prevent errors if the enum isn't fully defined yet in schema,
-    // or we can cast it if the enum exists. Since it's a varchar in our schema, we just insert it.
     const insertRes = await pool.query(`
-      INSERT INTO properties (landlord_id, title, slug, description, property_type, address_line1, city, state, bedrooms, bathrooms, rent_amount, status, ownership_doc, ownership_doc_url, rules, images, cover_image)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      INSERT INTO properties (
+        landlord_id, title, slug, description, property_type, address_line1, city, state, 
+        bedrooms, bathrooms, rent_amount, status, ownership_doc, ownership_doc_url, 
+        ownership_doc_type, latitude, longitude, rules, images, cover_image
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
       RETURNING *
     `, [
       effectiveLandlordId, title, slug, description || '',
       sanitizedPropertyType, address_line1, city || 'Lagos', state || 'Lagos',
-      Number(bedrooms) || 1, Number(bathrooms) || 1, Number(rent_amount), status || 'pending_review',
-      ownership_doc || null, ownership_doc_url || null, rules || null,
+      Number(bedrooms) || 1, Number(bathrooms) || 1, Number(rent_amount) || 0, status || 'pending_review',
+      ownership_doc || null, ownership_doc_url || null, ownership_doc_type || null,
+      latitude ? Number(latitude) : null, longitude ? Number(longitude) : null,
+      rules || null,
       images ? JSON.stringify(images) : '[]', cover_image || null
     ]);
 
-    return insertRes.rows[0];
+    const property = insertRes.rows[0];
+
+    // Map of block name -> block UUID
+    const blockIdMap = {};
+
+    if (Array.isArray(blocks) && blocks.length > 0) {
+      for (const b of blocks) {
+        if (!b.name || !b.name.trim()) continue;
+        const bRes = await pool.query(`
+          INSERT INTO property_blocks (property_id, name, description)
+          VALUES ($1, $2, $3)
+          RETURNING *
+        `, [property.id, b.name.trim(), b.description || '']);
+        blockIdMap[b.name.trim()] = bRes.rows[0].id;
+      }
+    }
+
+    if (Array.isArray(units) && units.length > 0) {
+      for (const u of units) {
+        if (!u.unit_name || !u.unit_name.trim()) continue;
+        const bId = u.block_name && blockIdMap[u.block_name.trim()] ? blockIdMap[u.block_name.trim()] : null;
+        await pool.query(`
+          INSERT INTO property_units (property_id, block_id, unit_name, bedrooms, bathrooms, rent_amount, rent_period, status)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `, [
+          property.id,
+          bId,
+          u.unit_name.trim(),
+          Number(u.bedrooms) || Number(bedrooms) || 1,
+          Number(u.bathrooms) || Number(bathrooms) || 1,
+          Number(u.rent_amount) || Number(rent_amount) || 0,
+          u.rent_period || 'annually',
+          u.status || 'vacant'
+        ]);
+      }
+    } else {
+      // If single unit property without explicit units array, create default 1 unit
+      await pool.query(`
+        INSERT INTO property_units (property_id, unit_name, bedrooms, bathrooms, rent_amount, rent_period, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [
+        property.id,
+        'Main Unit',
+        Number(bedrooms) || 1,
+        Number(bathrooms) || 1,
+        Number(rent_amount) || 0,
+        'annually',
+        'vacant'
+      ]);
+    }
+
+    return property;
+  },
+
+  async getBlocks(propertyId) {
+    try {
+      const res = await pool.query('SELECT * FROM property_blocks WHERE property_id = $1 ORDER BY created_at ASC', [propertyId]);
+      return res.rows;
+    } catch (e) {
+      return [];
+    }
+  },
+
+  async getUnits(propertyId) {
+    try {
+      const res = await pool.query(`
+        SELECT u.*, b.name as block_name 
+        FROM property_units u 
+        LEFT JOIN property_blocks b ON u.block_id = b.id 
+        WHERE u.property_id = $1 
+        ORDER BY u.created_at ASC
+      `, [propertyId]);
+      return res.rows;
+    } catch (e) {
+      return [];
+    }
   },
 
   async addAmenity(propertyId, amenity) {
