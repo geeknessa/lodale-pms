@@ -135,16 +135,22 @@ export default function TenantSettings({ onSignOut }) {
         setAvatarUrl(base64Data);
         const emailKey = email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
         if (emailKey) {
+          // Tenant-scoped avatar key — does not overwrite landlord avatar
           localStorage.setItem("tenantAvatar_" + emailKey.toLowerCase(), base64Data);
         }
+        // Session-level quick sync key for same-session cross-component use
+        sessionStorage.setItem("tenantAvatarUrl", base64Data);
 
         const updatedProf = { ...userProfile, avatar: base64Data };
         setUserProfile(updatedProf);
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        // Tenant-scoped profile session key
+        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(updatedProf));
         if (emailKey) {
-          localStorage.setItem("userProfile_" + emailKey.toLowerCase(), JSON.stringify(updatedProf));
+          localStorage.setItem("tenantProfile_" + emailKey.toLowerCase(), JSON.stringify(updatedProf));
         }
 
+        // Dispatch named event so TenantDashboard updates avatar in real-time
+        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { avatar: base64Data } }));
         window.dispatchEvent(new Event("storage"));
       };
       reader.readAsDataURL(file);
@@ -163,11 +169,22 @@ export default function TenantSettings({ onSignOut }) {
         });
 
         const newFullName = `${updatedProfile.first_name || ""} ${updatedProfile.last_name || ""}`.trim();
-        sessionStorage.setItem("username", newFullName);
+        // Use tenant-scoped session keys so landlord's session remains unaffected
+        sessionStorage.setItem("tenantUsername", newFullName);
         const curEmail = sessionStorage.getItem("lastLoggedInEmail") || email;
         if (curEmail) {
-          localStorage.setItem("username_" + curEmail.toLowerCase(), newFullName);
+          localStorage.setItem("tenantUsername_" + curEmail.toLowerCase(), newFullName);
         }
+
+        // Also persist tenant profile object under tenant-scoped key
+        const profToSave = { ...userProfile, first_name: updatedProfile.first_name, last_name: updatedProfile.last_name, phone_number: updatedProfile.phone_number, avatar_url: updatedProfile.avatar_url };
+        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(profToSave));
+        if (curEmail) {
+          localStorage.setItem("tenantProfile_" + curEmail.toLowerCase(), JSON.stringify(profToSave));
+        }
+
+        // Notify all tenant components about the profile change
+        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: newFullName, avatar: avatarUrl } }));
         window.dispatchEvent(new Event("storage"));
 
         triggerToast("Personal profile information updated successfully!", "success", "Profile Saved");
