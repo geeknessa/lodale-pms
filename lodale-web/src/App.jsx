@@ -8,19 +8,23 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import GuestDashboard from "./pages/GuestDashboard";
-import ListingDetail from "./pages/ListingDetail";
-import HowItWorks from "./pages/HowItWorks";
-import About from "./pages/About";
-import Login from "./pages/Login";
-import SignUp from "./pages/SignUp";
-import Welcome from "./pages/Welcome";
-import Application from "./pages/Application";
-import AddProperty from "./pages/AddProperty";
-import AdminDashboard from "./pages/AdminDashboard";
-import AccessDenied from "./pages/AccessDenied";
-import React from "react";
-import DashboardPlaceholder from "./pages/DashboardPlaceholder";
+import PageLoader from "./components/PageLoader";
+import { LandlordAccessPrompt, TenantAccessPrompt } from "./components/RoleAccessPrompt";
+
+const GuestDashboard = lazy(() => import("./pages/GuestDashboard"));
+const ListingDetail = lazy(() => import("./pages/ListingDetail"));
+const HowItWorks = lazy(() => import("./pages/HowItWorks"));
+const About = lazy(() => import("./pages/About"));
+const Login = lazy(() => import("./pages/Login"));
+const SignUp = lazy(() => import("./pages/SignUp"));
+const Application = lazy(() => import("./pages/Application"));
+const AddProperty = lazy(() => import("./pages/AddProperty"));
+const AccessDenied = lazy(() => import("./pages/AccessDenied"));
+const DashboardAddProperty = lazy(() => import("./pages/DashboardAddProperty"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const LandlordDashboard = lazy(() => import("./pages/LandlordDashboard/LandlordDashboard"));
+const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
+const TenantDashboard = lazy(() => import("./pages/TenantDashboard/TenantDashboard"));
 import { AlertTriangle } from "lucide-react";
 
 
@@ -359,40 +363,58 @@ export default function App() {
                   }
                 />
                 <Route
-                  path="/welcome/:role"
-                  element={
-                    <ProtectedRoute>
-                      <Welcome />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
                   path="/apply/:listingId"
                   element={
-                    <ProtectedRoute>
+                    <TenantProtectedRoute>
                       <Application />
-                    </ProtectedRoute>
+                    </TenantProtectedRoute>
                   }
                 />
                 <Route
                   path="/add-property"
                   element={
-                    <ProtectedRoute>
+                    <LandlordProtectedRoute>
                       <AddProperty />
-                    </ProtectedRoute>
+                    </LandlordProtectedRoute>
                   }
                 />
                 <Route
-                  path="/dashboard/:role"
+                  path="/dashboard/landlord"
                   element={
-                    <ProtectedRoute>
-                      <DashboardPlaceholder />
-                    </ProtectedRoute>
+                    <LandlordProtectedRoute>
+                      <LandlordDashboard />
+                    </LandlordProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/landlord/add-property"
+                  element={
+                    <LandlordProtectedRoute>
+                      <DashboardAddProperty />
+                    </LandlordProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/landlord/properties/:id"
+                  element={
+                    <LandlordProtectedRoute>
+                      <PropertyDetail />
+                    </LandlordProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/tenant"
+                  element={
+                    <TenantProtectedRoute>
+                      <TenantDashboard />
+                    </TenantProtectedRoute>
                   }
                 />
               </Routes>
+            </Suspense>
           </ErrorBoundary>
         </BrowserRouter>
       </ThemeProvider>
-      );
+    </ToastProvider>
+  );
 }
