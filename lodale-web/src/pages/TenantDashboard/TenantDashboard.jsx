@@ -918,8 +918,15 @@ export default function TenantDashboard() {
                 <span className="text-[13px] font-bold">
                   {(() => {
                     try {
-                      const prof = JSON.parse(sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || "{}");
-                      return prof.phone || "Not provided";
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                      const raw =
+                        sessionStorage.getItem("tenantCurrentProfile") ||
+                        (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) ||
+                        sessionStorage.getItem("currentUserProfile") ||
+                        localStorage.getItem("currentUserProfile") ||
+                        "{}";
+                      const prof = JSON.parse(raw);
+                      return prof.phone || prof.phone_number || "Not provided";
                     } catch (e) {
                       return "Not provided";
                     }
@@ -1779,7 +1786,15 @@ export default function TenantDashboard() {
           </main>
         ) : activeTab === 3 ? (
           <main className="db-main-content">
-            <TenantSettings onSignOut={handleSignOut} />
+            <TenantSettings
+              onSignOut={handleSignOut}
+              currentAvatar={tenantAvatar}
+              onAvatarChange={setTenantAvatar}
+              onProfileUpdate={(name, avatar) => {
+                if (name) setUsername(name);
+                if (avatar) setTenantAvatar(avatar);
+              }}
+            />
           </main>
         ) : (
           /* TAB 4+: UNDER DEVELOPMENT VIEWS */
