@@ -37,13 +37,31 @@ import {
   User,
   KeyRound,
   Upload,
-  Menu
+  Menu,
+  Settings,
+  Shield,
+  Laptop,
+  Smartphone,
+  Palette,
+  Monitor,
+  Bell,
+  Sliders,
+  Info
 } from "lucide-react";
 
 // --- INITIAL DATA ---
 const INITIAL_USERS = [];
 const INITIAL_LISTINGS = [];
 const INITIAL_REVIEWS = [];
+
+const SETTINGS_PAGES = [
+  { id: "profile", label: "Profile", icon: User },
+  { id: "account", label: "Account & Security", icon: KeyRound },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "preferences", label: "Preferences", icon: Sliders },
+  { id: "about", label: "About", icon: Info },
+];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -54,6 +72,7 @@ export default function AdminDashboard() {
 
   // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings'
   const [activeTab, setActiveTab] = useState("overview");
+  const [settingsSubTab, setSettingsSubTab] = useState("profile");
 
   // Handle Escape key to close mobile sidebar drawer
   useEffect(() => {
