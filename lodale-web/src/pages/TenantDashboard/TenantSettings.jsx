@@ -754,9 +754,9 @@ export default function TenantSettings({ onSignOut }) {
                   maxLength={15}
                   value={phone}
                   onInput={(e) => e.target.value = e.target.value.replace(/[^0-9+]/g, '')}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^0-9+]/g, ''))}
                   className="settings-form-input"
-                  placeholder="Phone Number"
+                  placeholder="e.g. +2348012345678"
                 />
               </div>
 
@@ -787,9 +787,11 @@ export default function TenantSettings({ onSignOut }) {
                 <label className="settings-input-label">Postal Code</label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   maxLength={20}
                   value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
+                  onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
+                  onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9]/g, ''))}
                   className="settings-form-input"
                   placeholder="Postal Code"
                 />

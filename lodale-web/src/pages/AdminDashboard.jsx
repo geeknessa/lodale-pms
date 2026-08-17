@@ -37,13 +37,27 @@ import {
   User,
   KeyRound,
   Upload,
-  Menu
+  Menu,
+  Settings,
+  Palette,
+  Bell,
+  Sliders,
+  Info
 } from "lucide-react";
 
 // --- INITIAL DATA ---
 const INITIAL_USERS = [];
 const INITIAL_LISTINGS = [];
 const INITIAL_REVIEWS = [];
+
+const SETTINGS_PAGES = [
+  { id: "profile", label: "My Profile", icon: User },
+  { id: "account", label: "Account & Security", icon: KeyRound },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "preferences", label: "Preferences", icon: Sliders },
+  { id: "about", label: "System Info", icon: Info }
+];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -54,6 +68,7 @@ export default function AdminDashboard() {
 
   // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings'
   const [activeTab, setActiveTab] = useState("overview");
+  const [settingsSubTab, setSettingsSubTab] = useState("profile");
 
   // Handle Escape key to close mobile sidebar drawer
   useEffect(() => {
@@ -113,6 +128,50 @@ export default function AdminDashboard() {
           };
           existingMap.set(p.id, formattedProp);
         });
+
+        // Scan localStorage for pending properties submitted locally
+        try {
+          const savedProps = localStorage.getItem("properties");
+          const savedLProps = localStorage.getItem("landlordProperties");
+          const localListings = [];
+          if (savedProps) {
+            const parsed = JSON.parse(savedProps);
+            if (Array.isArray(parsed)) localListings.push(...parsed);
+          }
+          if (savedLProps) {
+            const parsedL = JSON.parse(savedLProps);
+            if (Array.isArray(parsedL)) localListings.push(...parsedL);
+          }
+
+          localListings.forEach((p) => {
+            if (!p || !p.id) return;
+            const isApprovedProp = p.status === 'active_vacant' || p.status === 'approved' || p.status === 'live' || p.status === 'Live' || p.status === 'active';
+            
+            let adminStatus = 'Pending Approval';
+            if (isApprovedProp) adminStatus = 'Live';
+            else if (p.status === 'rejected') adminStatus = 'Rejected';
+            else if (p.status === 'info_requested' || p.status === 'needs_proof') adminStatus = 'Info Requested';
+
+            const formattedProp = {
+              ...p,
+              status: adminStatus,
+              title: p.title || 'Property',
+              location: p.location || `${p.city || 'Abuja'}, ${p.state || 'FCT'}`,
+              rent: p.price || p.rent || formatCurrency(p.rent_amount || 2500000, "/yr"),
+              ownershipDoc: p.ownershipDoc || p.ownership_doc || 'Deed of Assignment',
+              ownershipDocUrl: p.ownershipDocUrl || p.ownership_doc_url,
+              docName: p.docName || p.ownership_doc || 'Legal_Document.pdf',
+              docDataUrl: p.docDataUrl || p.ownership_doc_url,
+              deedVerified: true,
+              type: p.property_type || p.type || 'Apartment',
+              landlord: p.landlord || { name: 'Verified Landlord', score: 5.0, reviews: 1 }
+            };
+
+            if (!existingMap.has(p.id) || p.isPending || p.status === 'pending_review') {
+              existingMap.set(p.id, formattedProp);
+            }
+          });
+        } catch (_err) {}
 
         return Array.from(existingMap.values());
       });
@@ -333,7 +392,19 @@ export default function AdminDashboard() {
     confirmPassword: "",
   });
 
+  const [notificationSettings, setNotificationSettings] = useState({
+    emailAlerts: true,
+    smsAlerts: false,
+    reviewAlerts: true,
+    listingAlerts: true,
+  });
 
+  const [preferenceSettings, setPreferenceSettings] = useState({
+    language: "English (UK)",
+    timeZone: "West Africa Time (WAT) GMT+1",
+    dateFormat: "DD/MM/YYYY",
+    timeFormat: "24-hour",
+  });
 
   // Handlers for Settings
   const handleSaveProfile = (e) => {
@@ -362,6 +433,16 @@ export default function AdminDashboard() {
       setProfileForm((prev) => ({ ...prev, avatarPreview: url }));
       showToast("Profile photo updated!");
     }
+  };
+
+  const handleSaveNotifications = (e) => {
+    e.preventDefault();
+    showToast("Notification preferences saved successfully!");
+  };
+
+  const handleSavePreferences = (e) => {
+    e.preventDefault();
+    showToast("Regional & localization preferences saved successfully!");
   };
 
 
@@ -433,9 +514,20 @@ export default function AdminDashboard() {
       if (saved) {
         const localProps = JSON.parse(saved);
         const updated = localProps.map((p) =>
-          p.id === listingId ? { ...p, status: "active_vacant" } : p
+          p.id === listingId ? { ...p, status: "active_vacant", isPending: false } : p
         );
         localStorage.setItem("properties", JSON.stringify(updated));
+      }
+    } catch (_err) { }
+
+    try {
+      const savedLandlord = localStorage.getItem("landlordProperties");
+      if (savedLandlord) {
+        const localLProps = JSON.parse(savedLandlord);
+        const updatedL = localLProps.map((p) =>
+          p.id === listingId ? { ...p, status: "active_vacant", isPending: false } : p
+        );
+        localStorage.setItem("landlordProperties", JSON.stringify(updatedL));
       }
     } catch (_err) { }
 
@@ -452,8 +544,9 @@ export default function AdminDashboard() {
         read: false
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
-      window.dispatchEvent(new Event("storage"));
     } catch (_err) { }
+
+    window.dispatchEvent(new Event("storage"));
 
     showToast(`Listing "${propertyTitle}" approved and is now live!`);
     if (selectedListing?.id === listingId) {
@@ -484,9 +577,20 @@ export default function AdminDashboard() {
       if (saved) {
         const localProps = JSON.parse(saved);
         const updated = localProps.map((p) =>
-          p.id === listingId ? { ...p, status: "rejected", admin_notes: reason } : p
+          p.id === listingId ? { ...p, status: "rejected", admin_notes: reason, isPending: false } : p
         );
         localStorage.setItem("properties", JSON.stringify(updated));
+      }
+    } catch (_err) { }
+
+    try {
+      const savedLandlord = localStorage.getItem("landlordProperties");
+      if (savedLandlord) {
+        const localLProps = JSON.parse(savedLandlord);
+        const updatedL = localLProps.map((p) =>
+          p.id === listingId ? { ...p, status: "rejected", admin_notes: reason, isPending: false } : p
+        );
+        localStorage.setItem("landlordProperties", JSON.stringify(updatedL));
       }
     } catch (_err) { }
 
@@ -503,8 +607,9 @@ export default function AdminDashboard() {
         read: false
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
-      window.dispatchEvent(new Event("storage"));
     } catch (_err) { }
+
+    window.dispatchEvent(new Event("storage"));
 
     showToast(`Listing "${propertyTitle}" rejected.`);
     setIsRejectingModalOpen(false);
@@ -545,6 +650,17 @@ export default function AdminDashboard() {
       }
     } catch (_err) { }
 
+    try {
+      const savedLandlord = localStorage.getItem("landlordProperties");
+      if (savedLandlord) {
+        const localLProps = JSON.parse(savedLandlord);
+        const updatedL = localLProps.map((p) =>
+          p.id === listingId ? { ...p, status: "info_requested", admin_notes: "Additional proof of ownership required." } : p
+        );
+        localStorage.setItem("landlordProperties", JSON.stringify(updatedL));
+      }
+    } catch (_err) { }
+
     // Send notification to landlord
     try {
       const savedNotifs = localStorage.getItem("landlordNotifications");
@@ -558,8 +674,9 @@ export default function AdminDashboard() {
         read: false
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
-      window.dispatchEvent(new Event("storage"));
     } catch (_err) { }
+
+    window.dispatchEvent(new Event("storage"));
 
     showToast(`Requested more info for "${propertyTitle}".`);
     if (selectedListing?.id === listingId) {
