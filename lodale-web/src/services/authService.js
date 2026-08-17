@@ -16,6 +16,8 @@ export const authService = {
     if (data.token) {
       sessionStorage.setItem('lodale_token', data.token);
       sessionStorage.setItem('lodale_user', JSON.stringify(data.user));
+      localStorage.setItem('lodale_token', data.token);
+      localStorage.setItem('lodale_user', JSON.stringify(data.user));
     }
     return data;
   },
@@ -32,6 +34,8 @@ export const authService = {
     if (data.token) {
       sessionStorage.setItem('lodale_token', data.token);
       sessionStorage.setItem('lodale_user', JSON.stringify(data.user));
+      localStorage.setItem('lodale_token', data.token);
+      localStorage.setItem('lodale_user', JSON.stringify(data.user));
     }
     return data;
   },

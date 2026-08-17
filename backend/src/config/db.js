@@ -109,10 +109,14 @@ export async function initDb() {
         rent_amount NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
         rent_period VARCHAR(20) NOT NULL DEFAULT 'annually',
         status VARCHAR(30) NOT NULL DEFAULT 'vacant',
-        current_tenant_id UUID REFERENCES users(id) ON DELETE SET NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      -- Ensure core System Admin account exists in database
+      INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number)
+      VALUES 
+        ('System', 'Admin', 'admin@lodale.com', '$2a$10$oGLTVt6pnp30pVGSiVmAmu8FgTjGo/2IYOD/gZhzhaaY/obTdBdlK', 'admin', 'verified', '+234 801 000 0000')
+      ON CONFLICT (email) DO NOTHING;
     `);
 
     client.release();
@@ -120,3 +124,26 @@ export async function initDb() {
     console.error('[PostgreSQL Connection Error]:', error.message);
   }
 }
+
+/**
+ * Clears all user accounts (except system admin), property listings, units, and approval queues
+ * so users can freely register fresh accounts.
+ */
+export async function clearDatabase() {
+  const client = await pool.connect();
+  try {
+    console.log('[PostgreSQL] Clearing user accounts and property listings...');
+    await client.query(`
+      TRUNCATE listing_approval_queue, property_amenities, property_units, property_blocks, properties CASCADE;
+      DELETE FROM users WHERE email != 'admin@lodale.com';
+    `);
+    console.log('[PostgreSQL] Database successfully cleared! Users can now register fresh accounts.');
+    return { success: true, message: 'Database cleared successfully. System admin preserved.' };
+  } catch (error) {
+    console.error('[PostgreSQL Clear DB Error]:', error.message);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
