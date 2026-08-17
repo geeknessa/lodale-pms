@@ -1,15 +1,26 @@
 import { AdminModel } from '../models/adminModel.js';
 import { PropertyModel } from '../models/propertyModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { clearDatabase } from '../config/db.js';
 
 export const adminController = {
   getPendingProperties: asyncHandler(async (req, res) => {
-    const properties = await AdminModel.getPendingProperties();
+    const properties = await AdminModel.getAllProperties();
 
     const formatted = await Promise.all(properties.map(async p => {
       const amenities = await PropertyModel.getAmenities(p.id);
       const blocks = await PropertyModel.getBlocks(p.id);
       const units = await PropertyModel.getUnits(p.id);
+
+      let statusLabel = 'Pending Approval';
+      const s = (p.status || '').toString().toLowerCase();
+      if (s === 'active_vacant' || s === 'approved' || s === 'live' || s === 'active' || s === 'occupied' || s === 'active_occupied') {
+        statusLabel = 'Live';
+      } else if (s === 'inactive' || s === 'rejected') {
+        statusLabel = 'Rejected';
+      } else if (s === 'pending_review' || s === 'pending' || s === 'draft' || !p.status) {
+        statusLabel = p.queue_status === 'under_review' ? 'Info Requested' : 'Pending Approval';
+      }
 
       return {
         id: p.id,
@@ -17,7 +28,7 @@ export const adminController = {
         location: `${p.address_line1}, ${p.city}`,
         price: `₦${Number(p.rent_amount).toLocaleString()}/yr`,
         type: p.property_type,
-        status: p.status === 'pending_review' ? (p.queue_status === 'under_review' ? 'Info Requested' : 'Pending Approval') : 'Draft',
+        status: statusLabel,
         rawStatus: p.status,
         submittedAt: p.created_at,
         landlord: {
@@ -34,6 +45,8 @@ export const adminController = {
         ownershipDoc: p.ownership_doc,
         ownershipDocUrl: p.ownership_doc_url,
         ownershipDocType: p.ownership_doc_type,
+        coverImage: p.cover_image,
+        images: p.images,
         latitude: p.latitude,
         longitude: p.longitude,
       };
@@ -84,21 +97,45 @@ export const adminController = {
   getUsers: asyncHandler(async (req, res) => {
     const users = await AdminModel.getAllUsers();
 
-    const formatted = users.map(u => ({
-      id: u.id,
-      name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
-      email: u.email,
-      phone: u.phone_number || '',
-      role: (u.primary_role || 'Tenant').toLowerCase().includes('landlord') ? 'Landlord' : ((u.primary_role || '').toLowerCase().includes('admin') ? 'Admin' : 'Tenant'),
-      status: 'Active',
-      joinedDate: u.created_at ? new Date(u.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      listingsCount: (u.primary_role || '').toLowerCase().includes('landlord') ? 1 : 0,
-      verifications: [
-        u.id_verification_status === 'verified' ? 'ID Verified' : 'ID Pending',
-        'Email Verified'
-      ]
-    }));
+    const formatted = users.map(u => {
+      const rawRole = (u.primary_role || 'tenant').toString().toLowerCase();
+      const role = rawRole.includes('admin') ? 'Admin' : (rawRole.includes('landlord') ? 'Landlord' : 'Tenant');
+      return {
+        id: u.id,
+        name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
+        email: u.email,
+        phone: u.phone_number || '',
+        role,
+        status: 'Active',
+        joinedDate: u.created_at ? new Date(u.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        listingsCount: u.listings_count ?? (role === 'Landlord' ? 1 : 0),
+        verifications: [
+          u.id_verification_status === 'verified' ? 'ID Verified' : 'ID Pending',
+          'Email Verified'
+        ]
+      };
+    });
 
     res.json(formatted);
+  }),
+
+  deleteUser: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    const deletedUser = await AdminModel.deleteUser(id);
+    if (!deletedUser) {
+      return res.status(404).json({ error: 'User not found or already deleted.' });
+    }
+
+    res.json({
+      message: `User ${deletedUser.first_name || deletedUser.email} deleted successfully from database.`,
+      user: deletedUser
+    });
+  }),
+
+  resetDatabase: asyncHandler(async (req, res) => {
+    const result = await clearDatabase();
+    res.json(result);
   })
 };
+
