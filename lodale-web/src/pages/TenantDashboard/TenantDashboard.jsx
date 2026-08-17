@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { triggerToast } from "../../context/ToastContext";
 import {
   LayoutDashboard,
@@ -162,12 +162,16 @@ const TOUR_STEPS = [
 
 export default function TenantDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
 
-  // Active navigation tab (persisted on page reload)
+  // Active navigation tab (persisted on page reload, or from navigation state)
   // 0: Dashboard, 1: Search, 2: Chat, 3: Settings
   const [activeTab, setActiveTabState] = useState(() => {
     try {
+      // If navigated from ListingDetail with a specific tab request, honour it
+      const navInitialTab = location?.state?.initialTab;
+      if (typeof navInitialTab === "number") return navInitialTab;
       const saved = localStorage.getItem("tenantActiveTab");
       return saved !== null ? Number(saved) : 0;
     } catch (e) {
@@ -182,13 +186,13 @@ export default function TenantDashboard() {
     } catch (e) { }
   };
 
-  // Retrieve username with fallback
+  // Retrieve username with fallback — reads tenant-scoped keys first
   const [username, setUsername] = useState(() => {
-    const sessName = sessionStorage.getItem("username");
+    const sessName = sessionStorage.getItem("tenantUsername") || sessionStorage.getItem("username");
     if (sessName) return sessName;
     const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    return storedName || localStorage.getItem("username") || "Tunde";
+    const storedName = emailKey ? (localStorage.getItem("tenantUsername_" + emailKey) || localStorage.getItem("username_" + emailKey)) : null;
+    return storedName || localStorage.getItem("tenantUsername") || localStorage.getItem("username") || "Tunde";
   });
   const firstName = username.split(" ")[0];
 
@@ -203,15 +207,16 @@ export default function TenantDashboard() {
     year: "numeric",
   });
 
-  // Tenant avatar state (uses User icon by default until user uploads custom photo)
+  // Tenant avatar state — reads tenant-scoped keys so it never picks up a landlord avatar
   const [tenantAvatar, setTenantAvatar] = useState(() => {
     const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
     }
-    const globalSaved = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
-    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
+    // Fallback: session-level quick sync key set by TenantSettings on upload
+    const sessionAvatar = sessionStorage.getItem("tenantAvatarUrl");
+    if (sessionAvatar && !sessionAvatar.includes("unsplash.com")) return sessionAvatar;
     return "";
   });
 
@@ -223,17 +228,23 @@ export default function TenantDashboard() {
         return;
       }
       const emailKey = sessEmail || localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
-      const storedName = sessionStorage.getItem("username") || (emailKey ? localStorage.getItem("username_" + emailKey) : null);
+      // Read tenant-scoped username first to prevent landlord name overwriting tenant display
+      const storedName =
+        sessionStorage.getItem("tenantUsername") ||
+        (emailKey ? localStorage.getItem("tenantUsername_" + emailKey) : null) ||
+        sessionStorage.getItem("username") ||
+        (emailKey ? localStorage.getItem("username_" + emailKey) : null);
       if (storedName) {
         setUsername(storedName);
       }
 
+      // Read tenant-scoped avatar only
       let updated = null;
       if (emailKey) {
         updated = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       }
       if (!updated) {
-        updated = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
+        updated = sessionStorage.getItem("tenantAvatarUrl");
       }
       if (updated) {
         setTenantAvatar(updated);
@@ -241,6 +252,17 @@ export default function TenantDashboard() {
     };
     window.addEventListener("storage", handleStorageUpdate);
     return () => window.removeEventListener("storage", handleStorageUpdate);
+  }, []);
+
+  // Listen to tenantProfileUpdated custom event (fired by TenantSettings)
+  useEffect(() => {
+    const handleTenantProfileUpdated = (e) => {
+      const { name, avatar } = e.detail || {};
+      if (name) setUsername(name);
+      if (avatar) setTenantAvatar(avatar);
+    };
+    window.addEventListener("tenantProfileUpdated", handleTenantProfileUpdated);
+    return () => window.removeEventListener("tenantProfileUpdated", handleTenantProfileUpdated);
   }, []);
 
   // Welcome Overlay states for new signup animation
@@ -896,8 +918,15 @@ export default function TenantDashboard() {
                 <span className="text-[13px] font-bold">
                   {(() => {
                     try {
-                      const prof = JSON.parse(sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || "{}");
-                      return prof.phone || "Not provided";
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                      const raw =
+                        sessionStorage.getItem("tenantCurrentProfile") ||
+                        (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) ||
+                        sessionStorage.getItem("currentUserProfile") ||
+                        localStorage.getItem("currentUserProfile") ||
+                        "{}";
+                      const prof = JSON.parse(raw);
+                      return prof.phone || prof.phone_number || "Not provided";
                     } catch (e) {
                       return "Not provided";
                     }
@@ -1745,6 +1774,7 @@ export default function TenantDashboard() {
         ) : activeTab === 1 ? (
           <TenantSearch
             setShowProfileModal={setShowProfileModal}
+            tenantAvatar={tenantAvatar}
             onStartChat={(landlordName) => {
               localStorage.setItem("activeChatLandlordName", landlordName);
               setActiveTab(2);
@@ -1756,7 +1786,15 @@ export default function TenantDashboard() {
           </main>
         ) : activeTab === 3 ? (
           <main className="db-main-content">
-            <TenantSettings onSignOut={handleSignOut} />
+            <TenantSettings
+              onSignOut={handleSignOut}
+              currentAvatar={tenantAvatar}
+              onAvatarChange={setTenantAvatar}
+              onProfileUpdate={(name, avatar) => {
+                if (name) setUsername(name);
+                if (avatar) setTenantAvatar(avatar);
+              }}
+            />
           </main>
         ) : (
           /* TAB 4+: UNDER DEVELOPMENT VIEWS */

@@ -13,13 +13,104 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  LayoutDashboard,
+  Search,
+  MessageSquare,
+  Settings,
+  LogOut,
+  Sun,
+  Moon,
+  User
 } from "lucide-react";
 import NavBar from "../components/NavBar";
 import Button from "../components/Button";
 import { propertyService } from "../services/propertyService";
 import { triggerToast } from "../context/ToastContext";
 import { formatDistanceToNow } from "../utils/formatters";
+import { useTheme } from "../context/ThemeContext";
+import "./TenantDashboard/TenantDashboard.css";
+
+// Tenant sidebar strip — shown inside ListingDetail when the viewer is a logged-in tenant.
+// Mirrors the icon set of TenantDashboard. Each icon navigates back to the correct dashboard tab.
+function TenantSidebarStrip() {
+  const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+
+  const handleSignOut = () => {
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("tenantUsername");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("db_user_id");
+    sessionStorage.removeItem("tenantCurrentProfile");
+    sessionStorage.removeItem("lodale_token");
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("sessionExpiresAt");
+    localStorage.removeItem("username");
+    localStorage.removeItem("userRole");
+    navigate("/login", { replace: true });
+  };
+
+  const navItems = [
+    { icon: LayoutDashboard, label: "Dashboard", tab: 0 },
+    { icon: Search, label: "Search", tab: 1 },
+    { icon: MessageSquare, label: "Chat", tab: 2 },
+    { icon: Settings, label: "Settings", tab: 3 },
+  ];
+
+  return (
+    <aside
+      className="tenant-sidebar hidden md:flex"
+      style={{ position: "sticky", top: 0, height: "100vh", flexShrink: 0 }}
+    >
+      <div className="sidebar-top-group">
+        {/* Logo back to home */}
+        <div
+          className="sidebar-logo-mark mb-6 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => navigate("/explore")}
+          title="Go to Home Page"
+        >
+          <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: "20px", color: "#2C4633", letterSpacing: "-0.5px" }}>L</span>
+        </div>
+
+        <div className="tenant-sidebar-nav">
+          {navItems.map(({ icon: Icon, label, tab }) => (
+            <button
+              key={tab}
+              title={label}
+              onClick={() => navigate("/dashboard/tenant", { state: { initialTab: tab } })}
+              className="tenant-sidebar-btn"
+            >
+              <Icon className="h-5 w-5" />
+              <span className="tenant-sidebar-tooltip">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="tenant-sidebar-bottom">
+        <button
+          className="tenant-sidebar-btn theme-toggle-btn mb-3"
+          onClick={toggleTheme}
+          title="Toggle Theme"
+        >
+          {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          <span className="tenant-sidebar-tooltip">Toggle Theme</span>
+        </button>
+        <button
+          className="tenant-sidebar-btn logout-btn"
+          onClick={handleSignOut}
+          title="Log Out"
+        >
+          <LogOut className="h-5 w-5" />
+          <span className="tenant-sidebar-tooltip">Log Out</span>
+        </button>
+      </div>
+    </aside>
+  );
+}
 
 export default function ListingDetail() {
   const { id } = useParams();
@@ -29,6 +120,9 @@ export default function ListingDetail() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+
+  // Detect if the current viewer is an authenticated tenant
+  const isTenant = sessionStorage.getItem("userRole") === "tenant";
 
   // In-App Direct Chat Drawer State
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -51,7 +145,14 @@ export default function ListingDetail() {
   }, [id]);
 
   if (isLoading) {
-    return (
+    return isTenant ? (
+      <div className="tenant-wrapper" style={{ display: "flex" }}>
+        <TenantSidebarStrip />
+        <div className="flex-1 flex justify-center items-center text-ink-500 dark:text-cream-100/70 text-xs font-semibold min-h-screen bg-[#FDFBF7] dark:bg-[#12221C]">
+          Loading listing details...
+        </div>
+      </div>
+    ) : (
       <div className="min-h-screen bg-cream-50 dark:bg-[#12221C] flex flex-col">
         <NavBar />
         <div className="flex-1 flex justify-center items-center text-ink-500 dark:text-cream-100/70 text-xs font-semibold">
@@ -62,7 +163,20 @@ export default function ListingDetail() {
   }
 
   if (!listing) {
-    return (
+    return isTenant ? (
+      <div className="tenant-wrapper" style={{ display: "flex" }}>
+        <TenantSidebarStrip />
+        <div className="flex-1 flex flex-col justify-center items-center text-center p-6 min-h-screen bg-[#FDFBF7] dark:bg-[#12221C]">
+          <h2 className="text-xl font-bold text-ink-900 dark:text-white mb-2">Listing Not Found</h2>
+          <p className="text-ink-500 dark:text-cream-100/70 text-sm mb-6">
+            This property does not exist or may have been removed.
+          </p>
+          <Button variant="primary" onClick={() => navigate(-1)}>
+            Go Back
+          </Button>
+        </div>
+      </div>
+    ) : (
       <div className="min-h-screen bg-cream-50 dark:bg-[#12221C] flex flex-col">
         <NavBar />
         <div className="flex-1 flex flex-col justify-center items-center text-center p-6">
@@ -172,10 +286,12 @@ export default function ListingDetail() {
   const landlordName = listing.landlord?.name || listing.landlord_name || "Skyline Properties Ltd";
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] dark:bg-[#12221C] text-ink-900 dark:text-cream-100 transition-colors">
-      <NavBar />
+    <div className={isTenant ? "tenant-wrapper" : "min-h-screen bg-[#FDFBF7] dark:bg-[#12221C] text-ink-900 dark:text-cream-100 transition-colors"}
+      style={isTenant ? { display: "flex" } : undefined}
+    >
+      {isTenant ? <TenantSidebarStrip /> : <NavBar />}
 
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8">
+      <div className={isTenant ? "db-main-content flex-1 overflow-y-auto" : "mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8"}>
         
         {/* TOP BAR: Back Link & Quick Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-ink-200/50 dark:border-white/10">
