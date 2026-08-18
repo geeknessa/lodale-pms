@@ -995,7 +995,8 @@ export default function AdminDashboard() {
               {/* My Profile */}
               <button
                 onClick={() => {
-                  setActiveTab("profile");
+                  setActiveTab("settings");
+                  setSettingsSubTab("profile");
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "settings"
@@ -1006,31 +1007,6 @@ export default function AdminDashboard() {
                 <User className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
                 <span>My Profile</span>
               </button>
-
-              {/* Sub-item links for quick access */}
-              <div className="pl-5 space-y-0.5 pt-0.5">
-                {SETTINGS_PAGES.map((sp) => {
-                  const IconComp = sp.icon;
-                  const isSubActive = activeTab === "settings" && settingsSubTab === sp.id;
-                  return (
-                    <button
-                      key={sp.id}
-                      onClick={() => {
-                        setActiveTab("settings");
-                        setSettingsSubTab(sp.id);
-                        setIsSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11.5px] font-medium transition-colors whitespace-nowrap ${isSubActive
-                        ? "bg-[#3A5A40]/80 dark:bg-[#1C332A] text-white font-semibold"
-                        : "text-[#DAD7CD]/80 dark:text-[#A3BCA7]/80 hover:text-white hover:bg-[#3A5A40]/30"
-                        }`}
-                    >
-                      <IconComp className="h-3.5 w-3.5 shrink-0" />
-                      <span>{sp.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
             </nav>
           </div>
 
