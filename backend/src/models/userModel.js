@@ -37,5 +37,10 @@ export const UserModel = {
     `, [first_name, last_name, phone_number, avatar_url, id]);
     
     return res.rows[0] || null;
+  },
+
+  async deleteUser(id) {
+    const res = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id, first_name, last_name, email, primary_role', [id]);
+    return res.rows[0] || null;
   }
 };

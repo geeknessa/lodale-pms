@@ -156,11 +156,12 @@ function ProtectedRoute({ children }) {
 function AdminProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
     const sessAuth = sessionStorage.getItem("isAuthenticated");
-    const hasTabSession = sessAuth !== null;
-    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
-    const adminAuth = (sessionStorage.getItem("adminAuthenticated") || (!hasTabSession ? localStorage.getItem("adminAuthenticated") : "")) === "true";
-    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+    const localAuth = localStorage.getItem("isAuthenticated");
+    const auth = sessAuth === "true" || localAuth === "true";
+
+    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true" || localStorage.getItem("adminAuthenticated") === "true";
+    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
 
     if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
       return false;

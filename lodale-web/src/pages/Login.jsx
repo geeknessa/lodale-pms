@@ -106,13 +106,24 @@ export default function Login() {
       try {
         const res = await authService.signIn({ email: cleanUsername, password: cleanPassword });
         if (res && res.user && res.user.primary_role === "admin") {
+          const expiresAt = (Date.now() + 24 * 60 * 60 * 1000).toString();
+
           sessionStorage.setItem("isAuthenticated", "true");
           sessionStorage.setItem("userRole", "admin");
           sessionStorage.setItem("adminAuthenticated", "true");
           sessionStorage.setItem("lastLoggedInEmail", cleanUsername);
           sessionStorage.setItem("username", `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "Admin");
-          sessionStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
+          sessionStorage.setItem("sessionExpiresAt", expiresAt);
           sessionStorage.setItem("db_user_id", res.user.id);
+          if (res.token) sessionStorage.setItem("lodale_token", res.token);
+
+          localStorage.setItem("isAuthenticated", "true");
+          localStorage.setItem("userRole", "admin");
+          localStorage.setItem("adminAuthenticated", "true");
+          localStorage.setItem("lastLoggedInEmail", cleanUsername);
+          localStorage.setItem("sessionExpiresAt", expiresAt);
+          if (res.token) localStorage.setItem("lodale_token", res.token);
+          localStorage.removeItem("explicitAdminSignOut");
 
           navigate("/admin/dashboard");
           return;
@@ -137,17 +148,28 @@ export default function Login() {
       if (res && res.user) {
         const userRole = res.user.primary_role || "tenant";
         const userFullName = `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "User";
+        const expiresAt = (Date.now() + 24 * 60 * 60 * 1000).toString();
 
         sessionStorage.setItem("isAuthenticated", "true");
         sessionStorage.setItem("userRole", userRole);
         sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
         sessionStorage.setItem("username", userFullName);
         sessionStorage.setItem("db_user_id", res.user.id);
+        sessionStorage.setItem("sessionExpiresAt", expiresAt);
 
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userRole", userRole);
         localStorage.setItem("lastLoggedInEmail", cleanEmail);
+        localStorage.setItem("sessionExpiresAt", expiresAt);
         localStorage.setItem("username_" + cleanEmail, userFullName);
+
+        if (userRole === "admin") {
+          sessionStorage.setItem("adminAuthenticated", "true");
+          localStorage.setItem("adminAuthenticated", "true");
+          localStorage.removeItem("explicitAdminSignOut");
+        }
 
         let savedProfile = {};
         try {
@@ -178,7 +200,7 @@ export default function Login() {
         sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
         localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
 
-        navigate(`/dashboard/${userRole}`);
+        navigate(userRole === "admin" ? "/admin/dashboard" : `/dashboard/${userRole}`);
         return;
       }
     } catch (apiErr) {
