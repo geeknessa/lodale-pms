@@ -605,7 +605,10 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                       maxLength={15}
                       value={formData.phone}
                       onInput={(e) => e.target.value = e.target.value.replace(/[^0-9+]/g, '')}
-                      onChange={handleInputChange}
+                      onChange={(e) => {
+                        e.target.value = e.target.value.replace(/[^0-9+]/g, '');
+                        handleInputChange(e);
+                      }}
                       placeholder="e.g. +234 803 123 4567"
                       className="tenant-form-input"
                     />
@@ -643,11 +646,15 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                   <div className="tenant-form-group">
                     <label className="tenant-form-label">Monthly Income (₦)</label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       name="income"
-                      min="0"
                       value={formData.income}
-                      onChange={handleInputChange}
+                      onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
+                      onChange={(e) => {
+                        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                        handleInputChange(e);
+                      }}
                       placeholder="e.g. 500000"
                       className="tenant-form-input"
                     />

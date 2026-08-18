@@ -45,16 +45,64 @@ export default function Settings() {
   const [postalCode, setPostalCode] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
+  const loadStoredProfile = () => {
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
+    let localProf = null;
+    try {
+      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || (emailKey ? localStorage.getItem("userProfile_" + emailKey) : null);
+      if (raw) localProf = JSON.parse(raw);
+    } catch (e) { }
+
+    const storedUsername = sessionStorage.getItem("username") || (emailKey ? localStorage.getItem("username_" + emailKey) : null) || localStorage.getItem("username") || "";
+    
+    let fname = localProf?.firstName || localProf?.first_name || "";
+    let lname = localProf?.lastName || localProf?.last_name || "";
+    if (!fname && storedUsername) {
+      const parts = storedUsername.trim().split(" ");
+      fname = parts[0] || "";
+      lname = parts.slice(1).join(" ") || "";
+    }
+
+    setFirstName(fname);
+    setLastName(lname);
+    setEmail(localProf?.email || emailKey || "");
+    setPhone(localProf?.phone || localProf?.phone_number || "");
+    setAddress(localProf?.address || "");
+    setDob(localProf?.dob || "");
+    setLocation(localProf?.location || "");
+    setPostalCode(localProf?.postalCode || localProf?.postal_code || "");
+    if (localProf?.gender) setGender(localProf.gender);
+
+    let savedAvatar = "";
+    if (emailKey) {
+      savedAvatar = localStorage.getItem("landlordAvatar_" + emailKey);
+    }
+    if (!savedAvatar) {
+      savedAvatar = sessionStorage.getItem("landlordAvatarUrl") || localStorage.getItem("landlordAvatarUrl") || localProf?.avatar || "";
+    }
+    setAvatarUrl(savedAvatar || "");
+    if (localProf) setUserProfile(localProf);
+  };
+
   useEffect(() => {
+    loadStoredProfile();
+
     async function fetchProfile() {
       try {
         const profile = await userService.getProfile();
-        setUserProfile(profile);
-        setFirstName(profile.first_name || "");
-        setLastName(profile.last_name || "");
-        setEmail(profile.email || "");
-        setPhone(profile.phone_number || "");
-        setAvatarUrl(profile.avatar_url || "");
+        if (profile) {
+          setUserProfile(profile);
+          if (profile.first_name) setFirstName(profile.first_name);
+          if (profile.last_name) setLastName(profile.last_name);
+          if (profile.email) setEmail(profile.email);
+          if (profile.phone_number || profile.phone) setPhone(profile.phone_number || profile.phone);
+          if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
+          if (profile.address) setAddress(profile.address);
+          if (profile.dob) setDob(profile.dob);
+          if (profile.location) setLocation(profile.location);
+          if (profile.postal_code || profile.postalCode) setPostalCode(profile.postal_code || profile.postalCode);
+          if (profile.gender) setGender(profile.gender);
+        }
       } catch (err) {
         console.warn("Failed to fetch landlord profile", err);
       }
@@ -100,7 +148,21 @@ export default function Settings() {
     const today = new Date();
     return today.toISOString().split("T")[0];
   });
-  const [leaseDuration, setLeaseDuration] = useState("1 Year");
+  const [leaseTermNumber, setLeaseTermNumber] = useState("1");
+  const [leaseTermUnit, setLeaseTermUnit] = useState("Year"); // "Month" | "Year"
+
+  const termNum = Math.max(1, parseInt(leaseTermNumber, 10) || 1);
+  const leaseDuration = `${termNum} ${leaseTermUnit}${termNum > 1 ? "s" : ""}`;
+
+  const getCalculatedEndDate = (startDateStr) => {
+    const endDate = new Date(startDateStr);
+    if (leaseTermUnit === "Month") {
+      endDate.setMonth(endDate.getMonth() + termNum);
+    } else {
+      endDate.setFullYear(endDate.getFullYear() + termNum);
+    }
+    return endDate;
+  };
   const [includePets, setIncludePets] = useState(false);
   const [includeSmoking, setIncludeSmoking] = useState(false);
   const [includeLateFee, setIncludeLateFee] = useState(true);
@@ -163,14 +225,7 @@ export default function Settings() {
     const today = formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" });
     const formattedStartDate = formatDate(leaseStart, { day: "numeric", month: "long", year: "numeric" });
 
-    const endDate = new Date(leaseStart);
-    if (leaseDuration === "6 Months") {
-      endDate.setMonth(endDate.getMonth() + 6);
-    } else if (leaseDuration === "1 Year") {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-    } else if (leaseDuration === "2 Years") {
-      endDate.setFullYear(endDate.getFullYear() + 2);
-    }
+    const endDate = getCalculatedEndDate(leaseStart);
     const formattedEndDate = formatDate(endDate, { day: "numeric", month: "long", year: "numeric" });
 
     const wordHtml = `
@@ -265,14 +320,7 @@ export default function Settings() {
     const today = formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" });
     const formattedStartDate = formatDate(leaseStart, { day: "numeric", month: "long", year: "numeric" });
 
-    const endDate = new Date(leaseStart);
-    if (leaseDuration === "6 Months") {
-      endDate.setMonth(endDate.getMonth() + 6);
-    } else if (leaseDuration === "1 Year") {
-      endDate.setFullYear(endDate.getFullYear() + 1);
-    } else if (leaseDuration === "2 Years") {
-      endDate.setFullYear(endDate.getFullYear() + 2);
-    }
+    const endDate = getCalculatedEndDate(leaseStart);
     const formattedEndDate = formatDate(endDate, { day: "numeric", month: "long", year: "numeric" });
 
     const printWindow = window.open("", "_blank", "width=850,height=900,left=50,top=50");
@@ -473,23 +521,58 @@ export default function Settings() {
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     try {
-      const updatedProfile = await userService.updateProfile({
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        phone_number: phone.trim(),
-        avatar_url: avatarUrl
-      });
-      
-      const updatedName = `${updatedProfile.first_name || ""} ${updatedProfile.last_name || ""}`.trim();
-      localStorage.setItem("username", updatedName);
-      
+      const updatedName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+
+      try {
+        await userService.updateProfile({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          phone_number: phone.trim(),
+          avatar_url: avatarUrl
+        });
+      } catch (apiErr) {
+        console.warn("Backend updateProfile warning:", apiErr);
+      }
+
+      const updatedProf = {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: cleanEmail,
+        phone: phone.trim(),
+        address: address.trim(),
+        dob: dob.trim(),
+        location: location,
+        postalCode: postalCode.trim(),
+        gender: gender,
+        avatar: avatarUrl,
+        role: "landlord"
+      };
+
+      setUserProfile(updatedProf);
+      sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+      localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+      if (cleanEmail) {
+        localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
+        localStorage.setItem("username_" + cleanEmail, updatedName);
+      }
+      if (updatedName) {
+        sessionStorage.setItem("username", updatedName);
+        localStorage.setItem("username", updatedName);
+      }
+      if (avatarUrl && cleanEmail) {
+        localStorage.setItem("landlordAvatar_" + cleanEmail, avatarUrl);
+      }
+
       setSaveSuccess(true);
+      setToastMessage("Landlord profile saved successfully!");
       triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
-      
+
       window.dispatchEvent(new Event("storage"));
-      
+
       setTimeout(() => {
         setSaveSuccess(false);
+        setToastMessage("");
       }, 3000);
     } catch (err) {
       triggerToast("Failed to save profile.", "error", "Error");
@@ -509,15 +592,8 @@ export default function Settings() {
   };
 
   const handleDiscardProfile = () => {
-    const origName = localStorage.getItem("username") || fullName;
-    const origNames = origName.split(" ");
-    setFirstName(origNames[0] || "");
-    setLastName(origNames.slice(1).join(" ") || "");
-    setAddress("3605 Parker Rd.");
-    setPhone("(405) 555-0128");
-    setDob("1 Feb, 1995");
-    setLocation("Atlanta, USA");
-    setPostalCode("30301");
+    loadStoredProfile();
+    triggerToast("Unsaved profile changes discarded.", "info", "Form Reset");
   };
 
   const handleSignOut = () => {
@@ -711,8 +787,9 @@ export default function Settings() {
                     maxLength={15}
                     value={phone}
                     onInput={(e) => e.target.value = e.target.value.replace(/[^0-9+]/g, '')}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/[^0-9+]/g, ''))}
                     className="set-ref-input"
+                    placeholder="e.g. +2348012345678"
                   />
                 </div>
 
@@ -724,6 +801,7 @@ export default function Settings() {
                       value={dob}
                       onChange={(e) => setDob(e.target.value)}
                       className="set-ref-input"
+                      placeholder="e.g. 15 Jan 1990"
                     />
                     <Calendar className="set-ref-input-icon right" />
                   </div>
@@ -742,9 +820,12 @@ export default function Settings() {
                   <label className="set-ref-lbl">Postal Code</label>
                   <input
                     type="text"
+                    maxLength={20}
                     value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
+                    onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
+                    onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9]/g, ''))}
                     className="set-ref-input"
+                    placeholder="e.g. 100001"
                   />
                 </div>
 
@@ -908,30 +989,44 @@ export default function Settings() {
                     </select>
                   </div>
 
-                  <div className="set-ref-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div className="set-ref-grid">
                     <div className="set-ref-input-group">
-                      <label className="set-ref-lbl">Rent Amount</label>
+                      <label className="set-ref-lbl">Rent Amount (₦)</label>
                       <input
                         type="text"
+                        inputMode="numeric"
                         value={rentAmount}
-                        onChange={(e) => setRentAmount(e.target.value)}
+                        onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
+                        onChange={(e) => setRentAmount(e.target.value.replace(/[^0-9]/g, ''))}
                         className="set-ref-input"
-                        placeholder="₦350,000"
+                        placeholder="e.g. 350000"
                         required
                       />
                     </div>
 
                     <div className="set-ref-input-group">
-                      <label className="set-ref-lbl">Lease Term</label>
-                      <select
-                        value={leaseDuration}
-                        onChange={(e) => setLeaseDuration(e.target.value)}
-                        className="set-ref-input cursor-pointer"
-                      >
-                        <option value="6 Months">6 Months</option>
-                        <option value="1 Year">1 Year</option>
-                        <option value="2 Years">2 Years</option>
-                      </select>
+                      <label className="set-ref-lbl">Lease Duration</label>
+                      <div className="flex gap-2.5">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={3}
+                          value={leaseTermNumber}
+                          onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
+                          onChange={(e) => setLeaseTermNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                          className="set-ref-input flex-1 min-w-[70px]"
+                          placeholder="e.g. 1"
+                          required
+                        />
+                        <select
+                          value={leaseTermUnit}
+                          onChange={(e) => setLeaseTermUnit(e.target.value)}
+                          className="set-ref-input cursor-pointer flex-1 min-w-[105px]"
+                        >
+                          <option value="Month">Month(s)</option>
+                          <option value="Year">Year(s)</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 

@@ -1,6 +1,37 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Loader2, User, Key, Building2, Camera, Upload, Check, Clock, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Loader2,
+  User,
+  Key,
+  Building2,
+  Camera,
+  Upload,
+  Check,
+  Clock,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  Layers,
+  Sparkles,
+  ShieldCheck,
+  MapPin,
+  Bell,
+  BellOff,
+  HelpCircle,
+  Zap,
+  Shield,
+  Coffee,
+  FileText,
+  Plus,
+  Trash2,
+  Star,
+  Compass,
+  X
+} from "lucide-react";
 import gsap from "gsap";
 import { Logo } from "../components/Logo";
 import Input from "../components/Input";
@@ -19,6 +50,263 @@ export default function DashboardAddProperty() {
   const [formError, setFormError] = useState("");
 
   const [displayName, setDisplayName] = useState("");
+
+  // Toast Notification State
+  const [toast, setToast] = useState(null); // null | { message: string, type: "warning" | "error" | "info" }
+
+  const showToast = (message, type = "warning") => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 3500);
+  };
+
+  // Interactive Tour Guide Moving Spotlight State
+  const [runTour, setRunTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+  const [spotlightStyle, setSpotlightStyle] = useState({});
+  const [tooltipStyle, setTooltipStyle] = useState({});
+  const [recalcTrigger, setRecalcTrigger] = useState(0);
+
+  // 5 Tour Steps strictly tracking the left navigation bar channels
+  const ADD_PROPERTY_TOUR_STEPS = [
+    {
+      stepNum: 1,
+      target: ".tour-step-nav-1",
+      title: "1. Type & Location",
+      content: "Establish building identity, specify category (Single House, Apartment, Estate, Hostel, BQ, Commercial), street address, state, city, and GPS coordinates.",
+      placement: "right",
+      formStep: 1
+    },
+    {
+      stepNum: 2,
+      target: ".tour-step-nav-2",
+      title: "2. Units & Specifications",
+      content: "Setup unit layout & rental pricing. Add individual flats manually, use the ⚡ Bulk Generator for multi-unit buildings, or import unit spreadsheets via CSV.",
+      placement: "right",
+      formStep: 2
+    },
+    {
+      stepNum: 3,
+      target: ".tour-step-nav-3",
+      title: "3. Amenities & Guidelines",
+      content: "Select utilities (24/7 Security, Prepaid Meter), type custom amenities, and outline property rules and overview notes.",
+      placement: "right",
+      formStep: 3
+    },
+    {
+      stepNum: 4,
+      target: ".tour-step-nav-4",
+      title: "4. Legal Proof & Photos",
+      content: "Attach title proof documents (Certificate of Occupancy, Deed of Assignment) and upload high-resolution property gallery photos.",
+      placement: "right",
+      formStep: 4
+    },
+    {
+      stepNum: 5,
+      target: ".tour-step-nav-5",
+      title: "5. Occupancy & Submit",
+      content: "Configure active tenant invitation credentials or vacant public listing availability, then click Submit Listing to finish!",
+      placement: "right",
+      formStep: 5
+    }
+  ];
+
+  // Auto switch step form when tour step changes
+  useEffect(() => {
+    if (runTour) {
+      const stepData = ADD_PROPERTY_TOUR_STEPS[tourStep];
+      if (stepData && typeof stepData.formStep === "number" && currentStep !== stepData.formStep) {
+        setCurrentStep(stepData.formStep);
+        setRecalcTrigger((prev) => prev + 1);
+      }
+    }
+  }, [runTour, tourStep, currentStep]);
+
+  // Tour positioning calculation function targeting navigation channel elements
+  const updateTourPosition = () => {
+    if (!runTour) return;
+    const stepData = ADD_PROPERTY_TOUR_STEPS[tourStep];
+    if (!stepData) return;
+
+    const targetEl = document.querySelector(stepData.target);
+    if (!targetEl) return;
+
+    const rect = targetEl.getBoundingClientRect();
+
+    setSpotlightStyle({
+      top: `${rect.top}px`,
+      left: `${rect.left}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+      borderRadius: getComputedStyle(targetEl).borderRadius || "12px"
+    });
+
+    let tTop = 0;
+    let tLeft = 0;
+    const gap = 16;
+    const tooltipWidth = 340;
+    const tooltipHeight = 230;
+
+    let placement = stepData.placement;
+    if (placement === "right" && rect.right + tooltipWidth + gap > window.innerWidth) {
+      placement = "bottom";
+    }
+
+    if (placement === "right") {
+      tTop = rect.top + rect.height / 2 - tooltipHeight / 2;
+      tLeft = rect.left + rect.width + gap;
+    } else if (placement === "left") {
+      tTop = rect.top + rect.height / 2 - tooltipHeight / 2;
+      tLeft = rect.left - tooltipWidth - gap;
+    } else if (placement === "bottom") {
+      tTop = rect.top + rect.height + gap;
+      tLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+    } else {
+      tTop = rect.top - tooltipHeight - gap;
+      tLeft = rect.left + rect.width / 2 - tooltipWidth / 2;
+    }
+
+    if (tLeft < 16) tLeft = 16;
+    if (tLeft + tooltipWidth > window.innerWidth - 16) {
+      tLeft = window.innerWidth - tooltipWidth - 16;
+    }
+    if (tTop < 16) tTop = 16;
+    if (tTop + tooltipHeight > window.innerHeight - 16) {
+      tTop = window.innerHeight - tooltipHeight - 16;
+    }
+
+    setTooltipStyle({
+      top: `${tTop}px`,
+      left: `${tLeft}px`
+    });
+  };
+
+  useEffect(() => {
+    if (runTour) {
+      const stepData = ADD_PROPERTY_TOUR_STEPS[tourStep];
+      const targetEl = document.querySelector(stepData?.target);
+
+      if (!targetEl) {
+        const retryTimer = setTimeout(() => {
+          setRecalcTrigger((prev) => prev + 1);
+        }, 100);
+        return () => clearTimeout(retryTimer);
+      }
+
+      updateTourPosition();
+
+      let animId;
+      let startTime = performance.now();
+      const tick = (now) => {
+        updateTourPosition();
+        if (now - startTime < 350) {
+          animId = requestAnimationFrame(tick);
+        }
+      };
+      animId = requestAnimationFrame(tick);
+
+      return () => {
+        cancelAnimationFrame(animId);
+      };
+    }
+  }, [runTour, tourStep, recalcTrigger, currentStep]);
+
+  // Notifications State & Dropdown
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [notifications, setNotifications] = useState(() => {
+    const saved = localStorage.getItem("landlordNotifications");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) { }
+    }
+    return [
+      {
+        id: "n-init-1",
+        title: "Welcome to Portfolio Wizard",
+        message: "Establish property identity, set up units, attach legal proof, and invite tenants.",
+        type: "info",
+        time: "Just now",
+        read: false
+      }
+    ];
+  });
+
+  const unreadNotifCount = notifications.filter((n) => !n.read).length;
+
+  const markAllNotifsRead = () => {
+    setNotifications((prev) => {
+      const updated = prev.map((n) => ({ ...n, read: true }));
+      localStorage.setItem("landlordNotifications", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Landlord Profile & Avatar Modal State
+  const [showLandlordProfileModal, setShowLandlordProfileModal] = useState(false);
+  const [username] = useState(() => {
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+    if (emailKey) {
+      const savedName = localStorage.getItem("landlordName_" + emailKey.toLowerCase());
+      if (savedName) return savedName;
+    }
+    try {
+      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.name || parsed.displayName) return parsed.name || parsed.displayName;
+      }
+    } catch (e) { }
+    return "Landlord Account";
+  });
+
+  const [landlordAvatar, setLandlordAvatar] = useState(() => {
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+    if (emailKey) {
+      const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
+      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
+    }
+    const globalSaved = sessionStorage.getItem("landlordAvatarUrl") || localStorage.getItem("landlordAvatarUrl");
+    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
+    try {
+      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
+      }
+    } catch (e) { }
+    return "";
+  });
+
+  useEffect(() => {
+    const handleAvatarUpdate = () => {
+      const emailKey = localStorage.getItem("lastLoggedInEmail");
+      let updated = null;
+      if (emailKey) {
+        updated = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
+      }
+      if (!updated) {
+        updated = localStorage.getItem("landlordAvatarUrl");
+      }
+      if (!updated) {
+        try {
+          const raw = localStorage.getItem("currentUserProfile");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.avatar) updated = parsed.avatar;
+          }
+        } catch (e) { }
+      }
+      if (updated && !updated.includes("unsplash.com")) {
+        setLandlordAvatar(updated);
+      }
+    };
+    handleAvatarUpdate();
+    window.addEventListener("storage", handleAvatarUpdate);
+    return () => window.removeEventListener("storage", handleAvatarUpdate);
+  }, []);
 
   // Property Type Selection State
   const [propertyType, setPropertyType] = useState("single_house"); // single_house, apartment_building, estate, hostel, commercial_building, boys_quarters
@@ -50,10 +338,10 @@ export default function DashboardAddProperty() {
   const [isDetectingGps, setIsDetectingGps] = useState(false);
 
   // Dynamic Property Specifications State
-  const [selectedAmenities, setSelectedAmenities] = useState([]);
+  const [selectedAmenities, setSelectedAmenities] = useState(["Prepaid Meter", "24/7 Security"]);
   const [customAmenityInput, setCustomAmenityInput] = useState("");
-  const [bathrooms, setBathrooms] = useState("");
-  const [bedrooms, setBedrooms] = useState("");
+  const [bathrooms, setBathrooms] = useState("2");
+  const [bedrooms, setBedrooms] = useState("3");
   const [rent, setRent] = useState("");
   const [description, setDescription] = useState("");
   const [stateName, setStateName] = useState("Lagos");
@@ -126,18 +414,33 @@ export default function DashboardAddProperty() {
   };
 
   const handleAddCustomAmenity = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     const trimmed = customAmenityInput.trim();
     if (trimmed && !selectedAmenities.includes(trimmed)) {
-      setSelectedAmenities((prev) => [...prev, trimmed]);
+      setSelectedAmenities((prev) => [...prev, trimmed.slice(0, 500)]);
       setCustomAmenityInput("");
     }
   };
 
-  // Property picture prompt state
-  const [propertyPhotos, setPropertyPhotos] = useState([]);
+  // Property picture prompt state storing photo url and filename
+  const [propertyPhotos, setPropertyPhotos] = useState([
+    { url: PRESET_PHOTOS[0].url, name: "modern_villa_facade.jpg" }
+  ]);
   const [coverPhotoIndex, setCoverPhotoIndex] = useState(0);
-  const [photoError, setPhotoError] = useState("");
+
+  const handleDeletePhoto = (indexToDelete, e) => {
+    if (e) e.stopPropagation();
+    if (propertyPhotos.length <= 1) {
+      showToast("Cannot delete photo. Your property portfolio requires at least 1 photo attachment.", "warning");
+      return;
+    }
+    setPropertyPhotos((prev) => prev.filter((_, idx) => idx !== indexToDelete));
+    if (coverPhotoIndex === indexToDelete) {
+      setCoverPhotoIndex(0);
+    } else if (coverPhotoIndex > indexToDelete) {
+      setCoverPhotoIndex((prev) => prev - 1);
+    }
+  };
 
   // Property Rules
   const [rules, setRules] = useState("");
@@ -160,8 +463,6 @@ export default function DashboardAddProperty() {
   const fileInputRef = useRef(null);
   const docInputRef = useRef(null);
   const cardRef = useRef(null);
-  const titleRef = useRef(null);
-  const descRef = useRef(null);
   const successOverlayRef = useRef(null);
   const checkIconRef = useRef(null);
   const textContainerRef = useRef(null);
@@ -177,15 +478,17 @@ export default function DashboardAddProperty() {
 
   const handleAddBlock = () => {
     const trimmed = newBlockName.trim();
-    if (trimmed && !blocksList.some(b => b.name.toLowerCase() === trimmed.toLowerCase())) {
-      setBlocksList(prev => [...prev, { name: trimmed, description: "" }]);
+    if (trimmed && !blocksList.some((b) => b.name.toLowerCase() === trimmed.toLowerCase())) {
+      setBlocksList((prev) => [...prev, { name: trimmed.slice(0, 500), description: "" }]);
       setNewBlockName("");
     }
   };
 
   const handleRemoveBlock = (blockNameToRemove) => {
-    setBlocksList(prev => prev.filter(b => b.name !== blockNameToRemove));
-    setUnitsList(prev => prev.map(u => u.block_name === blockNameToRemove ? { ...u, block_name: "" } : u));
+    setBlocksList((prev) => prev.filter((b) => b.name !== blockNameToRemove));
+    setUnitsList((prev) =>
+      prev.map((u) => (u.block_name === blockNameToRemove ? { ...u, block_name: "" } : u))
+    );
   };
 
   const handleAddSingleUnit = () => {
@@ -194,7 +497,7 @@ export default function DashboardAddProperty() {
       return;
     }
     const newUnit = {
-      unit_name: manualUnitName.trim(),
+      unit_name: manualUnitName.trim().slice(0, 500),
       block_name: manualBlockName,
       bedrooms: Number(manualBeds) || 1,
       bathrooms: Number(manualBaths) || 1,
@@ -202,7 +505,7 @@ export default function DashboardAddProperty() {
       rent_period: rentCycle === "annual" ? "annually" : "monthly",
       status: "vacant"
     };
-    setUnitsList(prev => [...prev, newUnit]);
+    setUnitsList((prev) => [...prev, newUnit]);
     setManualUnitName("");
     setManualRent("");
     setFormError("");
@@ -222,7 +525,7 @@ export default function DashboardAddProperty() {
     const generated = [];
     for (let i = 0; i < count; i++) {
       generated.push({
-        unit_name: `${prefix}${start + i}`,
+        unit_name: `${prefix}${start + i}`.slice(0, 500),
         block_name: bulkBlockName,
         bedrooms: Number(bulkBeds) || 1,
         bathrooms: Number(bulkBaths) || 1,
@@ -232,27 +535,26 @@ export default function DashboardAddProperty() {
       });
     }
 
-    setUnitsList(prev => [...prev, ...generated]);
+    setUnitsList((prev) => [...prev, ...generated]);
     setFormError("");
   };
 
   const handleRemoveUnit = (indexToRemove) => {
-    setUnitsList(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    setUnitsList((prev) => prev.filter((_, idx) => idx !== indexToRemove));
     setSelectedUnitIndices((prev) =>
       prev.filter((i) => i !== indexToRemove).map((i) => (i > indexToRemove ? i - 1 : i))
     );
   };
 
   const handleDownloadCsvTemplate = () => {
-    const csvHeader = "unit_name,block_name,bedrooms,bathrooms,rent_amount\nFlat 101,Block A,2,2,2500000\nFlat 102,Block A,2,2,2500000\nFlat 201,Block B,3,3,3200000\n";
+    const csvHeader =
+      "unit_name,block_name,bedrooms,bathrooms,rent_amount\nFlat 101,Block A,2,2,2500000\nFlat 102,Block A,2,2,2500000\nFlat 201,Block B,3,3,3200000\n";
     const blob = new Blob([csvHeader], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "Lodale_Units_Upload_Template.csv";
-    document.body.appendChild(a);
+    a.download = "lodale_units_template.csv";
     a.click();
-    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -267,24 +569,22 @@ export default function DashboardAddProperty() {
     reader.onload = (evt) => {
       try {
         const text = evt.target.result;
-        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        const lines = text.split(/\r\n|\n/).filter((l) => l.trim() !== "");
         if (lines.length <= 1) {
           setCsvError("CSV file appears to be empty or missing data rows.");
           return;
         }
 
         const parsedUnits = [];
-        const startIdx = lines[0].toLowerCase().includes("unit_name") ? 1 : 0;
-
-        for (let i = startIdx; i < lines.length; i++) {
-          const parts = lines[i].split(",").map(p => p.trim().replace(/^["']|["']$/g, ''));
-          if (parts.length >= 1 && parts[0]) {
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(",").map((c) => c.trim());
+          if (cols[0]) {
             parsedUnits.push({
-              unit_name: parts[0],
-              block_name: parts[1] || "",
-              bedrooms: Number(parts[2]) || 1,
-              bathrooms: Number(parts[3]) || 1,
-              rent_amount: Number(parts[4]) || 0,
+              unit_name: cols[0].slice(0, 500),
+              block_name: (cols[1] || "").slice(0, 500),
+              bedrooms: Number(cols[2]) || 1,
+              bathrooms: Number(cols[3]) || 1,
+              rent_amount: Number(cols[4]?.replace(/[^0-9]/g, "")) || 0,
               rent_period: rentCycle === "annual" ? "annually" : "monthly",
               status: "vacant"
             });
@@ -292,16 +592,77 @@ export default function DashboardAddProperty() {
         }
 
         if (parsedUnits.length > 0) {
-          setUnitsList(prev => [...prev, ...parsedUnits]);
-          setCsvError("");
+          setUnitsList((prev) => [...prev, ...parsedUnits]);
+          setFormError("");
         } else {
-          setCsvError("Could not parse any valid units from CSV.");
+          setCsvError("No valid unit records found in CSV file.");
         }
       } catch (err) {
-        setCsvError("Failed to parse CSV file format.");
+        setCsvError("Failed to parse CSV file. Please check file formatting.");
       }
     };
     reader.readAsText(file);
+  };
+
+  function handleFileUpload(e) {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const remainingSlots = 5 - propertyPhotos.length;
+    if (remainingSlots <= 0) {
+      showToast("You can only upload up to 5 photos.", "warning");
+      return;
+    }
+
+    const filesToAdd = files.slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      showToast(`Only the first ${remainingSlots} photo(s) were added. Maximum is 5.`, "warning");
+    }
+
+    filesToAdd.forEach((file) => {
+      if (!file.type.startsWith("image/")) {
+        showToast("Please select valid image files (PNG, JPG, WEBP).", "warning");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        setPropertyPhotos((prev) => [
+          ...prev,
+          { url: evt.target.result, name: file.name.slice(0, 500) }
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function handleDocUpload(e) {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setFormError("Proof of Ownership document exceeds 5MB limit.");
+        setDocName("");
+        setDocDataUrl("");
+        setDocUploaded(false);
+        return;
+      }
+
+      setDocName(file.name.slice(0, 500));
+      setDocUploaded(true);
+      setFormError("");
+
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        setDocDataUrl(evt.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  const handleOpenDocPicker = () => {
+    if (currentStep !== 4) setCurrentStep(4);
+    setTimeout(() => {
+      docInputRef.current?.click();
+    }, 100);
   };
 
   const handleDetectGps = () => {
@@ -317,188 +678,63 @@ export default function DashboardAddProperty() {
         setIsDetectingGps(false);
         setFormError("");
       },
-      (error) => {
+      () => {
+        setFormError("Unable to retrieve your location. Please check location permissions.");
         setIsDetectingGps(false);
-        setFormError("Could not fetch GPS coordinates. Please type them manually.");
       }
     );
-  };
-
-  function handleFileUpload(e) {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-
-    const remainingSlots = 5 - propertyPhotos.length;
-    if (remainingSlots <= 0) {
-      setPhotoError("You can only upload up to 5 photos.");
-      return;
-    }
-
-    const filesToAdd = files.slice(0, remainingSlots);
-    if (files.length > remainingSlots) {
-      setPhotoError(`Only the first ${remainingSlots} photo(s) were added. Maximum is 5.`);
-    } else {
-      setPhotoError("");
-    }
-
-    filesToAdd.forEach((file) => {
-      if (!file.type.startsWith("image/")) {
-        setPhotoError("Please select valid image files (PNG, JPG, WEBP).");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        setPropertyPhotos((prev) => [...prev, evt.target.result]);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function handleDocUpload(e) {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setFormError("Proof of Ownership document exceeds 5MB limit.");
-        setDocName("");
-        setDocUploaded(false);
-        setDocDataUrl("");
-        return;
-      }
-      setDocName(file.name);
-      setDocUploaded(true);
-      setFormError("");
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        setDocDataUrl(evt.target.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  }
-
-  // Step Validation logic before navigating forward
-  const validateStep = (stepNumber) => {
-    setFormError("");
-    if (stepNumber === 1) {
-      if (!displayName.trim()) {
-        setFormError("Property / Estate Name is required.");
-        return false;
-      }
-      if (!address.trim()) {
-        setFormError("Property Address / Street Location is required.");
-        return false;
-      }
-      if (!cityName.trim()) {
-        setFormError("City / Area is required.");
-        return false;
-      }
-      return true;
-    }
-
-    if (stepNumber === 2) {
-      if (isMultiUnit && unitsList.length === 0) {
-        setFormError("Please add at least one unit to your multi-unit property (via Single Unit entry, Generator, or CSV Upload).");
-        return false;
-      }
-      if (!isMultiUnit) {
-        const numericRent = Number(rent.replace(/[^0-9]/g, ""));
-        if (!rent || isNaN(numericRent) || numericRent <= 0) {
-          setFormError("A valid Asking Rent amount is required for single unit property.");
-          return false;
-        }
-      }
-      return true;
-    }
-
-    if (stepNumber === 3) {
-      // Step 3 (Amenities & Rules) is optional!
-      return true;
-    }
-
-    if (stepNumber === 4) {
-      if (!docName || !docName.trim()) {
-        setFormError("Please upload your proof of ownership or management legal document (PDF / Image) before proceeding.");
-        return false;
-      }
-      if (!propertyPhotos || propertyPhotos.length === 0) {
-        setFormError("Please attach at least one property photo before proceeding.");
-        return false;
-      }
-      return true;
-    }
-
-    return true;
-  };
-
-  const getIncompleteSteps = () => {
-    const incomplete = [];
-    if (!displayName?.trim() || !address?.trim() || !stateName?.trim() || !cityName?.trim()) {
-      incomplete.push(1);
-    }
-    if (isMultiUnit) {
-      if (!unitsList || unitsList.length === 0) incomplete.push(2);
-    } else {
-      const numericRent = Number(rent?.replace(/[^0-9]/g, ""));
-      if (!rent || isNaN(numericRent) || numericRent <= 0) incomplete.push(2);
-    }
-    if (!docName?.trim() || !propertyPhotos || propertyPhotos.length === 0) {
-      incomplete.push(4);
-    }
-    if (occupied === null) {
-      incomplete.push(5);
-    } else if (occupied === true) {
-      if (!tenantName?.trim() || !tenantContact?.trim() || !leaseStartDate?.trim()) incomplete.push(5);
-    } else if (occupied === false) {
-      if (!availableFrom?.trim()) incomplete.push(5);
-    }
-    return incomplete;
   };
 
   const handleNextStep = () => {
     setFormError("");
-    setCurrentStep(prev => Math.min(prev + 1, 5));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (currentStep === 1) {
+      if (!displayName?.trim() || !address?.trim() || !stateName || !cityName) {
+        setFormError("Please complete all required fields (Display Name, Street Address, State, City) before continuing.");
+        return;
+      }
+    } else if (currentStep === 2) {
+      if (isMultiUnit) {
+        if (!unitsList || unitsList.length === 0) {
+          setFormError("Please add at least 1 unit to your portfolio or generate units to proceed.");
+          return;
+        }
+      } else {
+        const numericRent = Number(rent?.replace(/[^0-9]/g, ""));
+        if (!rent || isNaN(numericRent) || numericRent <= 0) {
+          setFormError("Please enter a valid Asking Rent amount.");
+          return;
+        }
+      }
+    } else if (currentStep === 4) {
+      if (!docName?.trim()) {
+        setFormError("Please attach proof of ownership or legal document before proceeding.");
+        return;
+      }
+      if (!propertyPhotos || propertyPhotos.length === 0) {
+        setFormError("Please upload or pick at least one property photo.");
+        return;
+      }
+    }
+
+    if (currentStep < 5) {
+      setCurrentStep((prev) => prev + 1);
+    }
   };
 
   const handlePrevStep = () => {
     setFormError("");
-    setCurrentStep(prev => Math.max(prev - 1, 1));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const handleSkipStep = () => {
-    setFormError("");
-    setCurrentStep(prev => Math.min(prev + 1, 5));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Mount animation sequence
-  useEffect(() => {
-    if (!isSubmitted) {
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.fromTo(cardRef.current,
-        { y: 40, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8 }
-      );
+    if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1);
     }
-  }, [isSubmitted]);
+  };
 
-  // Animate step content on currentStep change
-  useEffect(() => {
-    gsap.fromTo(".dap-step-content",
-      { y: 15, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.4, ease: "power2.out" }
-    );
-  }, [currentStep]);
-
-  async function handleSubmit(e) {
-    if (e && e.preventDefault) e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setFormError("");
 
-    // 1. Cross-Step Required Validation
-    if (!displayName?.trim() || !address?.trim() || !stateName?.trim() || !cityName?.trim()) {
+    if (!displayName?.trim() || !address?.trim() || !stateName || !cityName) {
       setCurrentStep(1);
       setFormError("Step 1: Please fill all required fields (Display Name, Address, State, and City) before submitting.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -506,7 +742,6 @@ export default function DashboardAddProperty() {
       if (!unitsList || unitsList.length === 0) {
         setCurrentStep(2);
         setFormError("Step 2: Please add at least one unit to your multi-unit property before submitting.");
-        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
     } else {
@@ -514,7 +749,6 @@ export default function DashboardAddProperty() {
       if (!rent || isNaN(numericRent) || numericRent <= 0) {
         setCurrentStep(2);
         setFormError("Step 2: A valid Asking Rent amount is required for single unit property.");
-        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
     }
@@ -522,20 +756,17 @@ export default function DashboardAddProperty() {
     if (!docName?.trim()) {
       setCurrentStep(4);
       setFormError("Step 4: Please upload your proof of ownership or legal management document before submitting.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     if (!propertyPhotos || propertyPhotos.length === 0) {
       setCurrentStep(4);
       setFormError("Step 4: Please attach at least one property photo before submitting.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
     if (occupied === null) {
       setCurrentStep(5);
       setFormError("Step 5: Please select whether the property currently has active tenants or is vacant.");
-      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -543,7 +774,6 @@ export default function DashboardAddProperty() {
       if (!tenantName?.trim() || !tenantContact?.trim() || !leaseStartDate?.trim()) {
         setCurrentStep(5);
         setFormError("Step 5: Please fill in all tenant invitation fields (Tenant Name, Email/Phone, and Lease Start Date).");
-        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
     }
@@ -552,12 +782,10 @@ export default function DashboardAddProperty() {
       if (!availableFrom?.trim()) {
         setCurrentStep(5);
         setFormError("Step 5: Please specify the Available From date.");
-        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
     }
 
-    // Build synthetic target elements for handlePropertySubmit compatibility
     const syntheticForm = {
       target: {
         elements: {
@@ -573,8 +801,13 @@ export default function DashboardAddProperty() {
       }
     };
 
+    const photoUrls = propertyPhotos.map((p) => (typeof p === "object" ? p.url : p));
+    const selectedCoverUrl = typeof propertyPhotos[coverPhotoIndex] === "object"
+      ? propertyPhotos[coverPhotoIndex].url
+      : propertyPhotos[coverPhotoIndex];
+
     await handlePropertySubmit({
-      e: { preventDefault: () => { }, target: syntheticForm.target },
+      e: { preventDefault: () => {}, target: syntheticForm.target },
       displayName,
       stateName,
       cityName,
@@ -584,8 +817,8 @@ export default function DashboardAddProperty() {
       docType,
       docName,
       docDataUrl,
-      propertyPhotos,
-      coverPhoto: propertyPhotos[coverPhotoIndex],
+      propertyPhotos: photoUrls,
+      coverPhoto: selectedCoverUrl,
       rules,
       rentCycle,
       propertyTypeVal: propertyType,
@@ -597,25 +830,23 @@ export default function DashboardAddProperty() {
       setFormError,
       setIsSubmitted
     });
-  }
+  };
 
-  // Success overlay GSAP animation triggers
   useEffect(() => {
     if (isSubmitted && successOverlayRef.current) {
-      gsap.fromTo(successOverlayRef.current,
-        { opacity: 0 },
-        { opacity: 1, duration: 0.5, ease: "power2.out" }
-      );
+      gsap.fromTo(successOverlayRef.current, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" });
 
       if (checkIconRef.current) {
-        gsap.fromTo(checkIconRef.current,
+        gsap.fromTo(
+          checkIconRef.current,
           { scale: 0, rotation: -45, opacity: 0 },
           { scale: 1, rotation: 0, opacity: 1, duration: 0.7, ease: "back.out(1.7)", delay: 0.3 }
         );
       }
 
       if (textContainerRef.current) {
-        gsap.fromTo(textContainerRef.current,
+        gsap.fromTo(
+          textContainerRef.current,
           { y: 20, opacity: 0 },
           { y: 0, opacity: 1, duration: 0.5, delay: 0.5 }
         );
@@ -625,32 +856,34 @@ export default function DashboardAddProperty() {
 
   if (isSubmitted) {
     return (
-      <div ref={successOverlayRef} className="dap-success-overlay">
-        <div className="dap-success-card">
-          <div ref={checkIconRef} className="dap-success-icon-wrap">
-            <CheckCircle2 style={{ height: 48, width: 48 }} />
+      <div ref={successOverlayRef} className="dap-success-screen">
+        <div className="dap-success-glow-1" />
+        <div className="dap-success-inner">
+          <div className="dap-success-icon-ring">
+            <CheckCircle2 className="check" ref={checkIconRef} />
+            <div className="dap-success-sparkle">
+              <Sparkles />
+            </div>
           </div>
 
-          <div ref={textContainerRef}>
-            <div className="dap-sparkle-tag">
-              <Clock style={{ height: 14, width: 14 }} />
-              Pending Admin Review & Verification
-            </div>
-
-            <h2 className="dap-success-title">Property Submitted for Review!</h2>
-            <p className="dap-success-desc">
-              Your property registration and proof of ownership legal documents have been queued for administrative review. Before your listing is published, an administrator will verify your submitted documents.
+          <div ref={textContainerRef} className="dap-success-texts">
+            <h2 className="dap-success-heading">Property Portfolio Registered!</h2>
+            <p className="dap-success-body">
+              Your property listing and proof of ownership legal documents have been queued for administrative review. An administrator will verify your submitted documents shortly.
             </p>
 
-            <div className="dap-success-actions">
-              <Button
-                variant="primary"
-                onClick={() => navigate("/dashboard/landlord")}
-                className="w-full flex items-center justify-center gap-2 py-3 cursor-pointer"
-              >
-                Return to Landlord Dashboard
-              </Button>
+            <div className="dap-success-loader-row">
+              <Clock className="animate-spin" />
+              <span className="dap-success-loader-lbl">Pending Admin Verification</span>
             </div>
+
+            <Button
+              variant="primary"
+              onClick={() => navigate("/dashboard/landlord")}
+              className="mt-6 w-full py-3 text-xs font-bold rounded-xl cursor-pointer"
+            >
+              Return to Landlord Dashboard
+            </Button>
           </div>
         </div>
       </div>
@@ -658,56 +891,203 @@ export default function DashboardAddProperty() {
   }
 
   const stepsInfo = [
-    { step: 1, label: "Basic Info & GPS" },
-    { step: 2, label: "Unit Setup" },
-    { step: 3, label: "Amenities & Rules" },
-    { step: 4, label: "Legal Proof & Media" },
-    { step: 5, label: "Occupancy & Submit" }
+    { step: 1, label: "Type & Location", icon: Building2, desc: "Establish building identity & street address" },
+    { step: 2, label: "Units & Specifications", icon: Layers, desc: "Setup unit layout & rental pricing" },
+    { step: 3, label: "Amenities & Guidelines", icon: Sparkles, desc: "Select utilities & property rules" },
+    { step: 4, label: "Legal Proof & Photos", icon: ShieldCheck, desc: "Attach legal document & picture gallery" },
+    { step: 5, label: "Occupancy & Submit", icon: CheckCircle2, desc: "Configure current occupancy status" }
   ];
 
-  return (
-    <div className="dap-page">
-      <div className="dap-glow-1" />
-      <div className="dap-glow-2" />
+  const AMENITY_CATEGORIES = [
+    {
+      title: "Power & Utilities",
+      icon: Zap,
+      items: ["Prepaid Meter", "24/7 Power Supply", "Solar Inverter", "Water Treatment", "Borehole Water"]
+    },
+    {
+      title: "Security & Access",
+      icon: Shield,
+      items: ["24/7 Security Guards", "Gated Estate", "CCTV Surveillance", "Access Control Gate", "Fenced Compound"]
+    },
+    {
+      title: "Comfort & Amenities",
+      icon: Coffee,
+      items: ["POP Ceiling", "Air Conditioning", "Balcony", "Fully Furnished", "Swimming Pool", "Fitness Gym", "Elevator"]
+    }
+  ];
 
-      <div className="dap-inner">
-        {/* Back Link and Logo */}
-        <div className="dap-topbar">
+  const ALL_DEFAULT_AMENITIES = AMENITY_CATEGORIES.flatMap((c) => c.items);
+  const customAddedAmenities = selectedAmenities.filter(
+    (a) => !ALL_DEFAULT_AMENITIES.includes(a)
+  );
+
+  return (
+    <div className="dap-saas-page relative">
+      {/* FLOATING TOAST NOTIFICATION MESSAGE */}
+      {toast && (
+        <div className="fixed top-20 right-6 z-[300] flex items-center gap-3 px-4 py-3 rounded-2xl bg-amber-900/90 text-amber-100 border border-amber-500/40 shadow-2xl backdrop-blur-md animate-in slide-in-from-top-4 duration-200 max-w-sm">
+          <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
+          <span className="text-xs font-bold flex-1">{toast.message}</span>
           <button
-            onClick={() => navigate("/dashboard/landlord")}
-            className="dap-back-btn"
+            type="button"
+            onClick={() => setToast(null)}
+            className="text-amber-400 hover:text-white font-bold border-none bg-transparent cursor-pointer ml-1"
           >
-            <ArrowLeft style={{ height: 16, width: 16 }} />
-            Back to Dashboard
+            &times;
           </button>
-          <Logo variant="moss" />
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          1. TOPBAR NAV HEADER WITH BRIGHT WHITE LODALE LOGO
+         ───────────────────────────────────────────────────────────── */}
+      <header className="dap-top-nav">
+        <div className="dap-nav-brand">
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard/landlord")}
+            className="dap-nav-logo-btn"
+          >
+            <Logo variant="white" />
+          </button>
         </div>
 
-        {/* Form Container */}
-        <div ref={cardRef} className="dap-card">
-          <div className="dap-building-badge">
-            <Building2 />
+        <div className="dap-nav-actions relative">
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard/landlord")}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-all border-none cursor-pointer"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
+          </button>
+
+          {/* NOTIFICATIONS BUTTON WITH BADGE & DROPDOWN */}
+          <div className="relative">
+            <button
+              type="button"
+              className="dap-nav-icon-btn"
+              onClick={() => {
+                setShowNotifDropdown(!showNotifDropdown);
+                if (!showNotifDropdown && unreadNotifCount > 0) {
+                  markAllNotifsRead();
+                }
+              }}
+              title="Notifications"
+            >
+              <Bell className="h-4 w-4" />
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-500 text-white text-[9.5px] font-bold flex items-center justify-center animate-pulse">
+                  {unreadNotifCount}
+                </span>
+              )}
+            </button>
+
+            {/* NOTIFICATIONS DROPDOWN */}
+            {showNotifDropdown && (
+              <div className="absolute right-0 top-12 z-[100] w-80 sm:w-[360px] rounded-3xl bg-white dark:bg-[#12221C] border border-slate-200 dark:border-white/10 shadow-2xl p-5 space-y-4 text-left animate-in fade-in slide-in-from-top-3 duration-200">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
+                  <h3 className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-[#2C4633] dark:text-[#E5C583]" />
+                    <span>Notifications</span>
+                    {notifications.length > 0 && (
+                      <span className="px-2 py-0.5 text-[10px] font-extrabold bg-[#2C4633] text-[#E5C583] dark:bg-[#E5C583] dark:text-[#0B1512] rounded-full">
+                        {notifications.length}
+                      </span>
+                    )}
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setNotifications([]);
+                          localStorage.setItem("landlordNotifications", JSON.stringify([]));
+                        }}
+                        className="text-[11px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 cursor-pointer border-none bg-transparent"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowNotifDropdown(false)}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-900 dark:hover:text-white cursor-pointer border-none bg-transparent"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto space-y-2.5 pr-1">
+                  {notifications.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center space-y-2">
+                      <BellOff className="h-6 w-6 text-slate-300 dark:text-slate-600" />
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-white">All caught up!</h4>
+                      <p className="text-[11px] text-slate-400">You have no new notifications.</p>
+                    </div>
+                  ) : (
+                    notifications.map((notif) => (
+                      <div
+                        key={notif.id}
+                        className="p-3 rounded-xl border border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/5 relative group"
+                      >
+                        <div className="font-bold text-xs text-slate-900 dark:text-white">{notif.title}</div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">{notif.message}</div>
+                        <div className="text-[9.5px] text-slate-400 mt-1">{notif.time || "Just now"}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
-          <h1 ref={titleRef} className="dap-card-title">
-            Register Property Portfolio
-          </h1>
-          <p ref={descRef} className="dap-card-desc">
-            Step {currentStep} of 5 — {stepsInfo[currentStep - 1].label}
-          </p>
+          {/* INTERACTIVE PAGE TOUR GUIDE BUTTON */}
+          <button
+            type="button"
+            onClick={() => {
+              setTourStep(0);
+              setCurrentStep(1);
+              setRunTour(true);
+            }}
+            className="dap-nav-icon-btn"
+            title="Start Interactive Channel Tour"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
 
-          {/* STEPPER PROGRESS BAR & BADGES */}
-          <div className="mt-6 mb-2">
-            <div className="dap-stepper-progress-track">
-              <div
-                className="dap-stepper-progress-fill"
-                style={{ width: `${(currentStep / 5) * 100}%` }}
-              />
+          {/* DASHBOARD USER PROFILE AVATAR CIRCLE */}
+          <div
+            className="flex items-center gap-2.5 cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => setShowLandlordProfileModal(true)}
+            title="View landlord profile details"
+          >
+            <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center bg-[#2C4633] dark:bg-[#1E382A] text-[#E5C583] font-extrabold text-sm border-2 border-emerald-400/40 shadow-xs shrink-0">
+              {landlordAvatar ? (
+                <img src={landlordAvatar} alt="Landlord profile" className="h-full w-full object-cover" />
+              ) : (
+                <span>{username ? username.charAt(0).toUpperCase() : "L"}</span>
+              )}
             </div>
-            <div className="dap-stepper-container">
+            <div className="hidden md:block text-left leading-tight">
+              <div className="text-xs font-bold text-white truncate max-w-[120px]">{username}</div>
+              <div className="text-[10px] text-emerald-400 font-semibold">Verified Landlord</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ─────────────────────────────────────────────────────────────
+          2. MAIN WORKSPACE LAYOUT (STICKY SIDEBARS + INDEPENDENT CENTER SCROLL)
+         ───────────────────────────────────────────────────────────── */}
+      <div className="dap-workspace-layout">
+        {/* STICKY LEFT SIDEBAR NAVIGATION PANEL */}
+        <aside className="dap-left-panel">
+          <div>
+            <div className="mb-6">
+              <div className="dap-panel-section-title">PORTFOLIO ONBOARDING</div>
               {stepsInfo.map((sObj) => {
                 const isActive = currentStep === sObj.step;
                 const isCompleted = currentStep > sObj.step;
+                const StepIcon = sObj.icon;
                 return (
                   <button
                     key={sObj.step}
@@ -716,120 +1096,111 @@ export default function DashboardAddProperty() {
                       setFormError("");
                       setCurrentStep(sObj.step);
                     }}
-                    className={`dap-stepper-step ${isActive ? "active" : ""} ${isCompleted ? "completed" : ""}`}
+                    className={`dap-step-nav-btn tour-step-nav-${sObj.step} ${isActive ? "active" : ""} ${isCompleted ? "completed" : ""}`}
                   >
-                    <div className="dap-stepper-badge">
-                      {isCompleted ? <Check className="h-4 w-4" /> : sObj.step}
-                    </div>
-                    <span className="dap-stepper-label hidden sm:block">{sObj.label}</span>
+                    <StepIcon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{sObj.label}</span>
+                    <span className="dap-step-nav-badge">
+                      {isCompleted ? "✓" : sObj.step}
+                    </span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="dap-form mt-6">
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard/landlord")}
+            className="dap-sidebar-exit-btn"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Exit Wizard</span>
+          </button>
+        </aside>
 
-            {formError && (
-              <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 text-rose-900 dark:text-rose-200 text-xs font-bold flex items-start gap-2.5 mb-6 animate-in fade-in">
-                <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-                <span>{formError}</span>
+        {/* INDEPENDENTLY SCROLLABLE CENTER WORKSPACE CONTAINER */}
+        <main className="dap-center-content">
+          <div ref={cardRef} className="dap-main-card">
+            {/* CARD HEADER */}
+            <div className="dap-card-header">
+              <div className="dap-card-header-left">
+                <div className="dap-card-icon-box">
+                  {currentStep === 1 && <Building2 className="h-6 w-6" />}
+                  {currentStep === 2 && <Layers className="h-6 w-6" />}
+                  {currentStep === 3 && <Sparkles className="h-6 w-6" />}
+                  {currentStep === 4 && <ShieldCheck className="h-6 w-6" />}
+                  {currentStep === 5 && <CheckCircle2 className="h-6 w-6" />}
+                </div>
+                <div>
+                  <h1 className="dap-card-heading">
+                    {stepsInfo[currentStep - 1].label}
+                  </h1>
+                  <p className="dap-card-subheading">
+                    {stepsInfo[currentStep - 1].desc}
+                  </p>
+                </div>
               </div>
-            )}
+            </div>
 
-            <div className="dap-step-content">
+            {/* STEP PROGRESS BAR */}
+            <div className="dap-card-progress-bar">
+              <div
+                className="dap-card-progress-fill"
+                style={{ width: `${(currentStep / 5) * 100}%` }}
+              />
+            </div>
 
-              {/* ────────────────────────────────────────────────────────────────
-                  STEP 1: PROPERTY TYPE & BASIC INFO & GPS LOCATION
-                 ──────────────────────────────────────────────────────────────── */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {formError && (
+                <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800/80 text-rose-900 dark:text-rose-200 text-xs font-bold flex items-start gap-2.5 animate-in fade-in">
+                  <AlertCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                  <span>{formError}</span>
+                </div>
+              )}
+
+              {/* STEP 1: PROPERTY TYPE & LOCATION */}
               {currentStep === 1 && (
-                <div className="space-y-6">
+                <div className="space-y-6 animate-in fade-in">
                   <div>
-                    <h2 className="mb-1 text-base font-bold text-ink-900 dark:text-white flex items-center gap-2">
-                      <Building2 className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" /> Select Property Type *
-                    </h2>
-                    <p className="text-xs text-ink-600 dark:text-cream-100/70 mb-4">
-                      Choose the building category that best describes your property structure.
-                    </p>
-
-                    {/* RESIDENTIAL CATEGORY */}
-                    <div className="mb-4">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-moss-800 dark:text-[#E5C583] mb-2">
-                        Residential Properties
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {[
-                          { id: "single_house", label: "House", desc: "Single house, bungalow, duplex, terrace, or detached house" },
-                          { id: "apartment_building", label: "Apartment Building", desc: "Block of flats or multi-family building" },
-                          { id: "estate", label: "Gated Estate", desc: "Housing estate with multiple blocks/houses" },
-                          { id: "hostel", label: "Student Hostel", desc: "Student accommodation with rooms/wings" },
-                          { id: "boys_quarters", label: "Boys Quarters (BQ)", desc: "Outbuilding / Self-contained BQ unit" }
-                        ].map((typeObj) => {
-                          const isSelected = propertyType === typeObj.id;
-                          return (
-                            <button
-                              key={typeObj.id}
-                              type="button"
-                              onClick={() => setPropertyType(typeObj.id)}
-                              className={`text-left p-3.5 rounded-xl border-2 transition-all cursor-pointer outline-none flex flex-col justify-between select-none ${isSelected
-                                ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-[#2C4633] dark:border-[#E5C583] shadow-md scale-[1.02]"
-                                : "bg-white dark:bg-[#16241F] text-ink-800 dark:text-cream-100/90 border-ink-200 dark:border-white/10 hover:border-moss-500"
-                                }`}
-                            >
-                              <div>
-                                <div className="font-bold text-xs mb-1 flex items-center justify-between">
-                                  <span>{typeObj.label}</span>
-                                  {isSelected && <Check className="h-3.5 w-3.5" />}
-                                </div>
-                                <div className={`text-[10.5px] leading-tight ${isSelected ? "text-cream-100/90 dark:text-[#1a2d26]" : "text-ink-500 dark:text-cream-100/60"}`}>
-                                  {typeObj.desc}
-                                </div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white mb-2">
+                      Select Building Category *
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                      {[
+                        { id: "single_house", label: "Single House", desc: "Bungalow, duplex, terrace, or detached home" },
+                        { id: "apartment_building", label: "Apartment Building", desc: "Block of flats or multi-family building" },
+                        { id: "estate", label: "Gated Estate", desc: "Housing estate with multiple blocks/houses" },
+                        { id: "hostel", label: "Student Hostel", desc: "Student accommodation with rooms/wings" },
+                        { id: "boys_quarters", label: "Boys Quarters (BQ)", desc: "Outbuilding / Self-contained BQ unit" },
+                        { id: "commercial_building", label: "Commercial Building", desc: "Offices, shops, plazas, or commercial units" }
+                      ].map((typeObj) => {
+                        const isSelected = propertyType === typeObj.id;
+                        return (
+                          <button
+                            key={typeObj.id}
+                            type="button"
+                            onClick={() => setPropertyType(typeObj.id)}
+                            className={`dap-option-card ${isSelected ? "selected" : ""}`}
+                          >
+                            <div className="dap-option-icon">
+                              <Building2 className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="dap-option-title flex items-center justify-between">
+                                <span>{typeObj.label}</span>
+                                {isSelected && <Check className="h-4 w-4 text-[#2C4633] dark:text-[#E5C583]" />}
                               </div>
-                            </button>
-                          );
-                        })}
-                      </div>
+                              <div className="dap-option-desc">{typeObj.desc}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
 
-                    {/* COMMERCIAL CATEGORY */}
-                    <div className="mb-4">
-                      <div className="text-[11px] font-bold uppercase tracking-wider text-moss-800 dark:text-[#E5C583] mb-2">
-                        Commercial Properties
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {[
-                          { id: "commercial_building", label: "Commercial Building", desc: "Offices, shops, plazas, or commercial spaces" }
-                        ].map((typeObj) => {
-                          const isSelected = propertyType === typeObj.id;
-                          return (
-                            <button
-                              key={typeObj.id}
-                              type="button"
-                              onClick={() => setPropertyType(typeObj.id)}
-                              className={`text-left p-3.5 rounded-xl border-2 transition-all cursor-pointer outline-none flex flex-col justify-between select-none ${isSelected
-                                ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-[#2C4633] dark:border-[#E5C583] shadow-md scale-[1.02]"
-                                : "bg-white dark:bg-[#16241F] text-ink-800 dark:text-cream-100/90 border-ink-200 dark:border-white/10 hover:border-moss-500"
-                                }`}
-                            >
-                              <div>
-                                <div className="font-bold text-xs mb-1 flex items-center justify-between">
-                                  <span>{typeObj.label}</span>
-                                  {isSelected && <Check className="h-3.5 w-3.5" />}
-                                </div>
-                                <div className={`text-[10.5px] leading-tight ${isSelected ? "text-cream-100/90 dark:text-[#1a2d26]" : "text-ink-500 dark:text-cream-100/60"}`}>
-                                  {typeObj.desc}
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* HOUSE SUBTYPE SELECTOR (WHEN HOUSE IS SELECTED) */}
                     {propertyType === "single_house" && (
-                      <div className="p-4 rounded-xl border border-moss-200 dark:border-white/10 bg-moss-50/50 dark:bg-white/5 animate-in fade-in">
-                        <label className="block text-[12px] font-bold text-ink-900 dark:text-white mb-1.5">
+                      <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 animate-in fade-in mb-4">
+                        <label className="block text-xs font-bold text-slate-900 dark:text-white mb-2">
                           Specify House Type (Optional)
                         </label>
                         <div className="flex flex-wrap gap-2">
@@ -844,47 +1215,55 @@ export default function DashboardAddProperty() {
                               key={sub.id}
                               type="button"
                               onClick={() => setHouseSubtype(sub.id)}
-                              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer outline-none ${houseSubtype === sub.id
-                                ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-[#2C4633] dark:border-[#E5C583] font-bold shadow-xs"
-                                : "bg-white dark:bg-[#16241F] text-ink-700 dark:text-cream-100/80 border-ink-200 dark:border-white/15 hover:border-moss-500"
-                                }`}
+                              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer outline-none ${
+                                houseSubtype === sub.id
+                                  ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
+                                  : "bg-white dark:bg-[#16241F] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                              }`}
                             >
                               {sub.label}
                             </button>
                           ))}
                         </div>
-                        <p className="text-[11px] text-ink-500 dark:text-cream-100/60 mt-2">
-                          Note: You can manage your house as 1 single home or divide it into multiple units in the next step.
-                        </p>
                       </div>
                     )}
                   </div>
 
-                  <div className="space-y-4 rounded-xl border border-ink-200/60 dark:border-white/10 bg-cream-50/50 dark:bg-white/5 p-5">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-moss-800 dark:text-[#E5C583]">
-                      Location & Address Details
+                  <div className="space-y-4 p-5 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/60 dark:bg-white/5">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-[#E5C583] flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4" /> Location & Address Details
                     </h3>
 
-                    <Input
-                      id="displayName"
-                      label="Property / Estate Display Name *"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="e.g. Green Valley Estate or Sunshine Apartments"
-                      maxLength={255}
-                      required
-                    />
+                    <div>
+                      <Input
+                        id="displayName"
+                        label="Property / Estate Display Name *"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="e.g. Green Valley Estate or Sunshine Apartments"
+                        maxLength={500}
+                        required
+                      />
+                      <div className="text-[10px] text-right font-medium text-slate-400 dark:text-slate-500 mt-1">
+                        {displayName.length}/500
+                      </div>
+                    </div>
 
-                    <Input
-                      id="address"
-                      label="Full Street Address *"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="e.g. Plot 14, Admiralty Way, Lekki Phase 1"
-                      maxLength={255}
-                      light={false}
-                      required
-                    />
+                    <div>
+                      <Input
+                        id="address"
+                        label="Full Street Address *"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder="e.g. Plot 14, Admiralty Way, Lekki Phase 1"
+                        maxLength={500}
+                        light={false}
+                        required
+                      />
+                      <div className="text-[10px] text-right font-medium text-slate-400 dark:text-slate-500 mt-1">
+                        {address.length}/500
+                      </div>
+                    </div>
 
                     <div className="dap-grid-2 z-20">
                       <SearchableDropdown
@@ -893,7 +1272,6 @@ export default function DashboardAddProperty() {
                         value={stateName}
                         onChange={(selectedState) => {
                           setStateName(selectedState);
-                          // Reset city if state changes and current city is not in new state
                           const newCities = NIGERIAN_STATES_CITIES[selectedState] || [];
                           if (!newCities.includes(cityName)) {
                             setCityName("");
@@ -915,19 +1293,18 @@ export default function DashboardAddProperty() {
                       />
                     </div>
 
-                    {/* GPS Coordinates Section */}
-                    <div className="pt-2 border-t border-ink-200/50 dark:border-white/10">
+                    <div className="pt-3 border-t border-slate-200 dark:border-white/10">
                       <div className="flex items-center justify-between mb-2">
-                        <label className="block text-[12px] font-bold text-ink-900 dark:text-white">
-                          GPS / Map Coordinates (Optional)
+                        <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                          GPS Coordinates (Optional)
                         </label>
                         <button
                           type="button"
                           onClick={handleDetectGps}
                           disabled={isDetectingGps}
-                          className="text-[11px] font-bold text-moss-700 dark:text-[#E5C583] hover:underline cursor-pointer flex items-center gap-1 bg-transparent border-none outline-none"
+                          className="text-[11px] font-bold text-[#2C4633] dark:text-[#E5C583] hover:underline cursor-pointer flex items-center gap-1 bg-transparent border-none outline-none"
                         >
-                          {isDetectingGps ? <Loader2 className="h-3 w-3 animate-spin" /> : "Auto-detect Current GPS"}
+                          {isDetectingGps ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Auto-detect Current GPS"}
                         </button>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -937,6 +1314,7 @@ export default function DashboardAddProperty() {
                           value={latitude}
                           onChange={(e) => setLatitude(e.target.value)}
                           placeholder="e.g. 6.454066"
+                          maxLength={500}
                           light={false}
                         />
                         <Input
@@ -945,6 +1323,7 @@ export default function DashboardAddProperty() {
                           value={longitude}
                           onChange={(e) => setLongitude(e.target.value)}
                           placeholder="e.g. 3.424583"
+                          maxLength={500}
                           light={false}
                         />
                       </div>
@@ -953,75 +1332,58 @@ export default function DashboardAddProperty() {
                 </div>
               )}
 
-              {/* ────────────────────────────────────────────────────────────────
-                  STEP 2: UNIT SETUP & PORTFOLIO STRUCTURE (PROPERTY-TYPE ADAPTIVE)
-                 ──────────────────────────────────────────────────────────────── */}
+              {/* STEP 2: UNIT SETUP & SPECIFICATIONS */}
               {currentStep === 2 && (
-                <div className="space-y-6">
-                  <div className="rounded-xl border border-[#3A5A40]/30 dark:border-white/10 bg-[#3A5A40]/5 dark:bg-white/5 p-5">
-
-                    {/* CASE 1: DUPLEX (Ask clarifying question if 1 home or 2 flats) */}
+                <div className="space-y-6 animate-in fade-in">
+                  <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 p-5">
                     {propertyType === "single_house" && houseSubtype === "duplex" && (
-                      <div className="mb-6 pb-4 border-b border-[#3A5A40]/20 dark:border-white/10">
-                        <h3 className="text-sm font-bold text-ink-900 dark:text-white flex items-center gap-2 mb-1">
-                          <Building2 className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
+                      <div className="mb-6 pb-4 border-b border-slate-200 dark:border-white/10">
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-1">
+                          <Building2 className="h-4 w-4 text-[#2C4633] dark:text-[#E5C583]" />
                           <span>How is this Duplex managed? *</span>
                         </h3>
-                        <p className="text-[12px] text-ink-600 dark:text-cream-100/70 mb-3">
-                          Select whether this duplex is rented as one single home or divided into separate flats.
-                        </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                           <button
                             type="button"
                             onClick={() => setIsMultiUnit(false)}
-                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none select-none ${!isMultiUnit
-                              ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-[#2C4633] dark:border-[#E5C583] shadow-md"
-                              : "bg-white dark:bg-[#16241F] text-ink-800 dark:text-cream-100/90 border-ink-200 dark:border-white/10 hover:border-moss-500"
-                              }`}
+                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${
+                              !isMultiUnit
+                                ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
+                                : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
+                            }`}
                           >
-                            <div className="mt-0.5 font-bold text-sm">1</div>
+                            <div className="font-bold text-sm">1</div>
                             <div>
-                              <div className="font-bold text-xs mb-0.5">Single Family Duplex</div>
-                              <div className={`text-[11px] leading-tight ${!isMultiUnit ? "text-cream-100/90 dark:text-[#1a2d26]" : "text-ink-500 dark:text-cream-100/60"}`}>
-                                Entire duplex rented to 1 tenant / family
-                              </div>
+                              <div className="font-bold text-xs">Single Family Duplex</div>
+                              <div className="text-[11px] opacity-80">Entire duplex rented to 1 tenant</div>
                             </div>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => setIsMultiUnit(true)}
-                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none select-none ${isMultiUnit
-                              ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-[#2C4633] dark:border-[#E5C583] shadow-md"
-                              : "bg-white dark:bg-[#16241F] text-ink-800 dark:text-cream-100/90 border-ink-200 dark:border-white/10 hover:border-moss-500"
-                              }`}
+                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${
+                              isMultiUnit
+                                ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
+                                : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
+                            }`}
                           >
-                            <div className="mt-0.5 font-bold text-sm">2+</div>
+                            <div className="font-bold text-sm">2+</div>
                             <div>
-                              <div className="font-bold text-xs mb-0.5">Divided Duplex Flats</div>
-                              <div className={`text-[11px] leading-tight ${isMultiUnit ? "text-cream-100/90 dark:text-[#1a2d26]" : "text-ink-500 dark:text-cream-100/60"}`}>
-                                Duplex split into 2 or more separate units/flats
-                              </div>
+                              <div className="font-bold text-xs">Divided Duplex Flats</div>
+                              <div className="text-[11px] opacity-80">Split into 2 or more units</div>
                             </div>
                           </button>
                         </div>
                       </div>
                     )}
 
-                    {/* CASE 2: MULTI-UNIT BUILDINGS (Apartment, Estate, Hostel, Commercial, or Divided Duplex) */}
                     {isMultiUnit ? (
                       <div className="space-y-6">
-
-                        {/* Optional Blocks Section */}
-                        <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-ink-200 dark:border-white/10">
-                          <label className="block text-[12px] font-bold text-ink-900 dark:text-white mb-1">
+                        <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-slate-200 dark:border-white/10">
+                          <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
                             Building Blocks / Floors (Optional)
                           </label>
-                          <p className="text-[11px] text-ink-500 dark:text-cream-100/60 mb-3">
-                            If your property has separate buildings, blocks, or floors (e.g. Block A, Block B, Floor 1), create them here.
-                          </p>
-
                           <div className="flex gap-2 items-start mb-3">
                             <div className="flex-1">
                               <DropdownWithOther
@@ -1029,16 +1391,15 @@ export default function DashboardAddProperty() {
                                 onChange={(val) => setNewBlockName(val)}
                                 options={[
                                   "Block A", "Block B", "Block C", "Block D",
-                                  "Floor 1", "Floor 2", "Floor 3", "Ground Floor",
-                                  "Wing A", "Wing B", "East Wing", "West Wing"
+                                  "Floor 1", "Floor 2", "Floor 3", "Ground Floor"
                                 ]}
-                                placeholder="Select or type block/floor name..."
+                                placeholder="Select or type block name..."
                               />
                             </div>
                             <button
                               type="button"
                               onClick={handleAddBlock}
-                              className="px-4 py-2.5 h-[42px] text-xs font-bold rounded-xl bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33] cursor-pointer border-none outline-none shrink-0"
+                              className="px-4 py-2.5 h-[42px] text-xs font-bold rounded-xl bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] cursor-pointer border-none outline-none shrink-0"
                             >
                               + Add Block
                             </button>
@@ -1049,13 +1410,13 @@ export default function DashboardAddProperty() {
                               {blocksList.map((block, bIdx) => (
                                 <span
                                   key={bIdx}
-                                  className="px-3 py-1 bg-moss-50 dark:bg-white/10 text-moss-800 dark:text-[#E5C583] border border-moss-200 dark:border-white/15 rounded-lg text-xs font-semibold flex items-center gap-2"
+                                  className="px-3 py-1 bg-slate-100 dark:bg-white/10 text-slate-800 dark:text-[#E5C583] border border-slate-200 dark:border-white/15 rounded-lg text-xs font-semibold flex items-center gap-2"
                                 >
                                   {block.name}
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveBlock(block.name)}
-                                    className="text-rose-600 dark:text-rose-400 hover:text-rose-800 cursor-pointer font-bold ml-1"
+                                    className="text-rose-600 dark:text-rose-400 font-bold ml-1 cursor-pointer border-none bg-transparent"
                                   >
                                     ×
                                   </button>
@@ -1065,462 +1426,187 @@ export default function DashboardAddProperty() {
                           )}
                         </div>
 
-                        {/* Units Entry Tools */}
                         <div>
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                            <div>
-                              <span className="text-xs font-bold text-ink-900 dark:text-white">
-                                How would you like to add your units? *
-                              </span>
-                              <p className="text-[11px] text-ink-500 dark:text-cream-100/60">
-                                {unitsList.length} unit{unitsList.length !== 1 ? "s" : ""} currently added to portfolio
-                              </p>
-                            </div>
-
-                            {/* Unit Entry Method Tabs */}
-                            <div className="flex gap-1 bg-cream-100 dark:bg-white/10 p-1 rounded-lg">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">
+                              Add Units to Portfolio ({unitsList.length} added)
+                            </span>
+                            <div className="flex gap-1 bg-slate-100 dark:bg-white/10 p-1 rounded-lg">
                               <button
                                 type="button"
                                 onClick={() => setUnitAddTab("manual")}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none outline-none ${unitAddTab === "manual" ? "bg-white dark:bg-[#16241F] text-ink-900 dark:text-white shadow-xs" : "text-ink-600 dark:text-cream-100/70"
-                                  }`}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
+                                  unitAddTab === "manual" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                                }`}
                               >
-                                Add one at a time
+                                Single Unit
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setUnitAddTab("generator")}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none outline-none ${unitAddTab === "generator" ? "bg-white dark:bg-[#16241F] text-ink-900 dark:text-white shadow-xs" : "text-ink-600 dark:text-cream-100/70"
-                                  }`}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
+                                  unitAddTab === "generator" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                                }`}
                               >
-                                Generate many units
+                                Bulk Generator
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setUnitAddTab("csv")}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none outline-none ${unitAddTab === "csv" ? "bg-white dark:bg-[#16241F] text-ink-900 dark:text-white shadow-xs" : "text-ink-600 dark:text-cream-100/70"
-                                  }`}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
+                                  unitAddTab === "csv" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                                }`}
                               >
-                                Upload CSV/Excel
+                                CSV Upload
                               </button>
                             </div>
                           </div>
 
-                          {/* TAB 1: MANUAL SINGLE UNIT ENTRY */}
                           {unitAddTab === "manual" && (
-                            <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-ink-200 dark:border-white/10 mb-4">
+                            <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-slate-200 dark:border-white/10 mb-4">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                                 <div>
-                                  <label className="block text-[11px] font-bold text-ink-700 dark:text-cream-100/80 mb-1">
-                                    Unit Name or Number *
+                                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                                    Unit Name / Number *
                                   </label>
                                   <input
                                     type="text"
                                     value={manualUnitName}
                                     onChange={(e) => setManualUnitName(e.target.value)}
+                                    maxLength={500}
                                     placeholder={getUnitNamePlaceholder()}
-                                    className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none placeholder:text-ink-400 dark:placeholder:text-cream-100/40"
+                                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none"
                                   />
                                 </div>
-
-                                {blocksList.length > 0 && (
-                                  <div>
-                                    <label className="block text-[11px] font-bold text-ink-700 dark:text-cream-100/80 mb-1">
-                                      Block / Building
-                                    </label>
-                                    <select
-                                      value={manualBlockName}
-                                      onChange={(e) => setManualBlockName(e.target.value)}
-                                      className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none"
-                                    >
-                                      <option value="">No Block</option>
-                                      {blocksList.map((b, idx) => (
-                                        <option key={idx} value={b.name}>{b.name}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                )}
-
                                 <div>
-                                  <label className="block text-[11px] font-bold text-ink-700 dark:text-cream-100/80 mb-1">
-                                    Bedrooms / Bathrooms
-                                  </label>
-                                  <div className="flex gap-2">
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      value={manualBeds}
-                                      onChange={(e) => setManualBeds(e.target.value)}
-                                      placeholder="Beds (e.g. 2)"
-                                      className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none placeholder:text-ink-400 dark:placeholder:text-cream-100/40"
-                                    />
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      value={manualBaths}
-                                      onChange={(e) => setManualBaths(e.target.value)}
-                                      placeholder="Baths (e.g. 2)"
-                                      className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none placeholder:text-ink-400 dark:placeholder:text-cream-100/40"
-                                    />
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <label className="block text-[11px] font-bold text-ink-700 dark:text-cream-100/80 mb-1">
+                                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                                     Rent Amount (₦)
                                   </label>
                                   <input
                                     type="number"
-                                    min="0"
                                     value={manualRent}
                                     onChange={(e) => setManualRent(e.target.value)}
+                                    maxLength={500}
                                     placeholder="e.g. 2500000"
-                                    className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none placeholder:text-ink-400 dark:placeholder:text-cream-100/40"
+                                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none"
                                   />
                                 </div>
                               </div>
-
                               <button
                                 type="button"
                                 onClick={handleAddSingleUnit}
-                                className="w-full py-2.5 rounded-lg bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none outline-none hover:opacity-90 transition-all"
+                                className="w-full py-2 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none"
                               >
                                 + Add Unit to List
                               </button>
                             </div>
                           )}
 
-                          {/* TAB 2: BULK UNIT GENERATOR */}
                           {unitAddTab === "generator" && (
-                            <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-ink-200 dark:border-white/10 mb-4">
-                              <p className="text-[11px] text-ink-600 dark:text-cream-100/70 mb-3">
-                                Quickly generate a series of sequential units (e.g. Flat 101 to Flat 110) in one click.
-                              </p>
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                            <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-slate-200 dark:border-white/10 mb-4">
+                              <div className="grid grid-cols-3 gap-2 mb-3">
+                                <DropdownWithOther
+                                  label="Prefix"
+                                  value={bulkPrefix}
+                                  onChange={(val) => setBulkPrefix(val)}
+                                  options={["Flat ", "House ", "Room ", "Shop ", "Unit "]}
+                                />
                                 <div>
-                                  <DropdownWithOther
-                                    label="Name Prefix *"
-                                    value={bulkPrefix}
-                                    onChange={(val) => setBulkPrefix(val)}
-                                    options={[
-                                      "Flat ", "House ", "Room ", "Shop ",
-                                      "Suite ", "Block ", "Floor ", "Unit ",
-                                      "Apartment ", "Office ", "Villa "
-                                    ]}
-                                    placeholder="Select prefix..."
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-[11px] font-bold text-ink-700 dark:text-cream-100/80 mb-1">
-                                    Start Number
-                                  </label>
+                                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Start #</label>
                                   <input
                                     type="number"
                                     value={bulkStartNum}
                                     onChange={(e) => setBulkStartNum(e.target.value)}
-                                    placeholder="e.g. 101"
-                                    className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none placeholder:text-ink-400 dark:placeholder:text-cream-100/40"
+                                    placeholder="101"
+                                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none"
                                   />
                                 </div>
-
                                 <div>
-                                  <label className="block text-[11px] font-bold text-ink-700 dark:text-cream-100/80 mb-1">
-                                    Unit Count
-                                  </label>
+                                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Count</label>
                                   <input
                                     type="number"
-                                    min="1"
-                                    max="100"
                                     value={bulkCount}
                                     onChange={(e) => setBulkCount(e.target.value)}
-                                    placeholder="e.g. 6"
-                                    className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none placeholder:text-ink-400 dark:placeholder:text-cream-100/40"
-                                  />
-                                </div>
-
-                                {blocksList.length > 0 && (
-                                  <div>
-                                    <label className="block text-[11px] font-bold text-ink-700 dark:text-cream-100/80 mb-1">
-                                      Block
-                                    </label>
-                                    <select
-                                      value={bulkBlockName}
-                                      onChange={(e) => setBulkBlockName(e.target.value)}
-                                      className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none"
-                                    >
-                                      <option value="">No Block</option>
-                                      {blocksList.map((b, idx) => (
-                                        <option key={idx} value={b.name}>{b.name}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-                                <div>
-                                  <label className="block text-[11px] font-bold text-ink-700 dark:text-cream-100/80 mb-1">
-                                    Bedrooms
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={bulkBeds}
-                                    onChange={(e) => setBulkBeds(e.target.value)}
-                                    placeholder="e.g. 2"
-                                    className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none placeholder:text-ink-400 dark:placeholder:text-cream-100/40"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[11px] font-bold text-ink-700 dark:text-cream-100/80 mb-1">
-                                    Bathrooms
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={bulkBaths}
-                                    onChange={(e) => setBulkBaths(e.target.value)}
-                                    placeholder="e.g. 2"
-                                    className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none placeholder:text-ink-400 dark:placeholder:text-cream-100/40"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-[11px] font-bold text-ink-700 dark:text-cream-100/80 mb-1">
-                                    Rent / Unit (₦)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={bulkRent}
-                                    onChange={(e) => setBulkRent(e.target.value)}
-                                    placeholder="e.g. 2500000"
-                                    className="w-full px-3 py-2 text-xs rounded-lg border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white outline-none placeholder:text-ink-400 dark:placeholder:text-cream-100/40"
+                                    placeholder="6"
+                                    className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none"
                                   />
                                 </div>
                               </div>
-
                               <button
                                 type="button"
                                 onClick={handleGenerateBulkUnits}
-                                className="w-full py-2.5 rounded-lg bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none outline-none hover:opacity-90 transition-all"
+                                className="w-full py-2 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none"
                               >
-                                ⚡ Generate {bulkCount || 0} Units Now
+                                ⚡ Generate Units
                               </button>
                             </div>
                           )}
 
-                          {/* TAB 3: CSV FILE UPLOAD */}
                           {unitAddTab === "csv" && (
-                            <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-ink-200 dark:border-white/10 mb-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-[11px] font-bold text-ink-700 dark:text-cream-100/80">
-                                  Upload CSV spreadsheet of units
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={handleDownloadCsvTemplate}
-                                  className="text-[11px] font-bold text-moss-700 dark:text-[#E5C583] hover:underline cursor-pointer bg-transparent border-none outline-none"
-                                >
-                                  Download Sample CSV Template
-                                </button>
-                              </div>
-
-                              <input
-                                ref={csvFileInputRef}
-                                type="file"
-                                accept=".csv,.txt"
-                                onChange={handleCsvUpload}
-                                className="hidden"
-                              />
-
-                              <div className="flex gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => csvFileInputRef.current?.click()}
-                                  className="flex-1 py-2.5 px-4 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer flex items-center justify-center gap-2 border-none outline-none"
-                                >
-                                  <Upload className="h-4 w-4" />
-                                  {csvFileName ? `File Selected: ${csvFileName}` : "Upload CSV File"}
-                                </button>
-                              </div>
-
-                              {csvError && (
-                                <p className="mt-2 text-[11px] font-semibold text-rose-600 dark:text-rose-400">{csvError}</p>
-                              )}
+                            <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-slate-200 dark:border-white/10 mb-4 text-center">
+                              <input ref={csvFileInputRef} type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
+                              <button
+                                type="button"
+                                onClick={() => csvFileInputRef.current?.click()}
+                                className="py-2 px-4 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none"
+                              >
+                                Upload CSV Spreadsheet
+                              </button>
                             </div>
                           )}
 
-                          {/* DISPLAYED UNITS PREVIEW TABLE & BULK ACTIONS */}
-                          {unitsList.length > 0 ? (
-                            <div className="space-y-2">
-                              {/* BULK ACTION BAR */}
-                              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white dark:bg-[#16241F] rounded-xl border border-ink-200 dark:border-white/10 text-xs">
-                                <div className="flex items-center gap-2">
-                                  <label className="flex items-center gap-2 cursor-pointer font-bold text-ink-800 dark:text-cream-100 select-none">
-                                    <input
-                                      type="checkbox"
-                                      checked={unitsList.length > 0 && selectedUnitIndices.length === unitsList.length}
-                                      onChange={toggleSelectAllUnits}
-                                      className="rounded border-ink-300 dark:border-white/20 text-moss-600 focus:ring-moss-500 cursor-pointer h-4 w-4"
-                                    />
-                                    <span>Select All ({unitsList.length})</span>
-                                  </label>
-
-                                  {selectedUnitIndices.length > 0 && (
-                                    <span className="text-[11px] font-semibold text-ink-500 dark:text-cream-100/60">
-                                      • {selectedUnitIndices.length} selected
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  {selectedUnitIndices.length > 0 && (
-                                    <button
-                                      type="button"
-                                      onClick={handleDeleteSelectedUnits}
-                                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 hover:bg-rose-200 cursor-pointer transition-all border-none outline-none"
-                                    >
-                                      Delete Selected ({selectedUnitIndices.length})
-                                    </button>
-                                  )}
-
-                                  <button
-                                    type="button"
-                                    onClick={handleDeleteAllUnits}
-                                    className="px-3 py-1.5 text-xs font-bold rounded-lg bg-rose-600 dark:bg-rose-700 text-white hover:bg-rose-700 dark:hover:bg-rose-800 cursor-pointer transition-all border-none outline-none"
-                                  >
-                                    Delete All Units
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* TABLE */}
-                              <div className="max-h-60 overflow-y-auto border border-ink-200 dark:border-white/10 rounded-xl bg-white dark:bg-[#12221C]">
-                                <table className="w-full text-left border-collapse text-xs">
-                                  <thead>
-                                    <tr className="bg-cream-100/80 dark:bg-white/5 border-b border-ink-200 dark:border-white/10 text-ink-700 dark:text-cream-100/80 font-bold">
-                                      <th className="p-2.5 w-8">
-                                        <input
-                                          type="checkbox"
-                                          checked={unitsList.length > 0 && selectedUnitIndices.length === unitsList.length}
-                                          onChange={toggleSelectAllUnits}
-                                          className="rounded border-ink-300 dark:border-white/20 text-moss-600 focus:ring-moss-500 cursor-pointer h-4 w-4"
-                                        />
-                                      </th>
-                                      <th className="p-2.5">Unit Name</th>
-                                      <th className="p-2.5">Block</th>
-                                      <th className="p-2.5">Beds/Baths</th>
-                                      <th className="p-2.5">Rent</th>
-                                      <th className="p-2.5 text-right">Action</th>
+                          {unitsList.length > 0 && (
+                            <div className="max-h-52 overflow-y-auto border border-slate-200 dark:border-white/10 rounded-xl bg-white dark:bg-[#12221C]">
+                              <table className="w-full text-left text-xs">
+                                <thead>
+                                  <tr className="bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-white/10">
+                                    <th className="p-2.5">Unit Name</th>
+                                    <th className="p-2.5">Rent</th>
+                                    <th className="p-2.5 text-right">Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                                  {unitsList.map((u, i) => (
+                                    <tr key={i}>
+                                      <td className="p-2.5 font-bold">{u.unit_name}</td>
+                                      <td className="p-2.5 font-bold text-emerald-600 dark:text-emerald-400">₦{Number(u.rent_amount).toLocaleString()}</td>
+                                      <td className="p-2.5 text-right">
+                                        <button type="button" onClick={() => handleRemoveUnit(i)} className="text-rose-600 font-bold border-none bg-transparent cursor-pointer">Delete</button>
+                                      </td>
                                     </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-ink-100 dark:divide-white/5">
-                                    {unitsList.map((unit, uIdx) => {
-                                      const isChecked = selectedUnitIndices.includes(uIdx);
-                                      return (
-                                        <tr key={uIdx} className={`transition-colors text-ink-900 dark:text-white ${isChecked ? "bg-moss-50/70 dark:bg-moss-900/30" : "hover:bg-cream-50/50 dark:hover:bg-white/5"}`}>
-                                          <td className="p-2.5 w-8">
-                                            <input
-                                              type="checkbox"
-                                              checked={isChecked}
-                                              onChange={() => toggleSelectUnit(uIdx)}
-                                              className="rounded border-ink-300 dark:border-white/20 text-moss-600 focus:ring-moss-500 cursor-pointer h-4 w-4"
-                                            />
-                                          </td>
-                                          <td className="p-2.5 font-bold">{unit.unit_name}</td>
-                                          <td className="p-2.5 text-ink-500 dark:text-cream-100/60">{unit.block_name || "-"}</td>
-                                          <td className="p-2.5">{unit.bedrooms} bed / {unit.bathrooms} bath</td>
-                                          <td className="p-2.5 font-bold text-emerald-700 dark:text-emerald-400">
-                                            ₦{Number(unit.rent_amount).toLocaleString()}/yr
-                                          </td>
-                                          <td className="p-2.5 text-right">
-                                            <button
-                                              type="button"
-                                              onClick={() => handleRemoveUnit(uIdx)}
-                                              className="text-rose-600 dark:text-rose-400 font-bold hover:underline cursor-pointer bg-transparent border-none outline-none"
-                                            >
-                                              Delete
-                                            </button>
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
-                          ) : (
-                            <p className="text-xs text-ink-500 dark:text-cream-100/60 italic p-3 bg-white dark:bg-[#12221C] rounded-lg border border-dashed border-ink-200 dark:border-white/10 text-center">
-                              No units added yet. Fill in the form fields above and click "+ Add Unit to List".
-                            </p>
                           )}
                         </div>
                       </div>
                     ) : (
-                      /* CASE 3: STANDALONE SINGLE HOUSE / BQ (Direct 3-input Specs Form) */
                       <div className="space-y-4">
-                        <div className="border-b border-[#3A5A40]/20 dark:border-white/10 pb-3">
-                          <h3 className="text-sm font-bold text-ink-900 dark:text-white flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                            <span>Property Specifications & Asking Rent</span>
-                          </h3>
-                          <p className="text-[12px] text-ink-600 dark:text-cream-100/70">
-                            Enter the specifications and rent amount for this property.
-                          </p>
-                        </div>
-
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <DropdownWithOther
                             label="Bedrooms *"
                             value={bedrooms}
                             onChange={(val) => setBedrooms(val)}
-                            options={["1 Bedroom", "2 Bedrooms", "3 Bedrooms", "4 Bedrooms", "5 Bedrooms", "6+ Bedrooms"]}
-                            placeholder="Select bedrooms..."
-                            required={!isMultiUnit}
+                            options={["1 Bedroom", "2 Bedrooms", "3 Bedrooms", "4 Bedrooms", "5 Bedrooms"]}
                           />
                           <DropdownWithOther
                             label="Bathrooms *"
                             value={bathrooms}
                             onChange={(val) => setBathrooms(val)}
-                            options={["1 Bathroom", "2 Bathrooms", "3 Bathrooms", "4 Bathrooms", "5 Bathrooms", "6+ Bathrooms"]}
-                            placeholder="Select bathrooms..."
-                            required={!isMultiUnit}
+                            options={["1 Bathroom", "2 Bathrooms", "3 Bathrooms", "4 Bathrooms"]}
                           />
                         </div>
-
                         <div>
-                          <div className="flex items-center justify-between mb-1.5">
-                            <label className="block text-[12px] font-bold text-ink-900 dark:text-white">Asking Rent (₦) *</label>
-                            <div className="flex items-center gap-1 bg-[#3A5A40]/10 dark:bg-white/10 p-0.5 rounded-md">
-                              <button
-                                type="button"
-                                onClick={() => setRentCycle("annual")}
-                                className={`px-2.5 py-0.5 text-[11px] font-bold rounded transition-all cursor-pointer border-none outline-none ${rentCycle === "annual"
-                                  ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33] shadow-xs"
-                                  : "text-ink-700 dark:text-cream-100/70"
-                                  }`}
-                              >
-                                Annual
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRentCycle("monthly")}
-                                className={`px-2.5 py-0.5 text-[11px] font-bold rounded transition-all cursor-pointer border-none outline-none ${rentCycle === "monthly"
-                                  ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33] shadow-xs"
-                                  : "text-ink-700 dark:text-cream-100/70"
-                                  }`}
-                              >
-                                Monthly
-                              </button>
-                            </div>
-                          </div>
+                          <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">Asking Rent (₦) *</label>
                           <Input
                             id="rent"
                             type="number"
-                            min="0"
                             value={rent}
                             onChange={(e) => setRent(e.target.value)}
-                            placeholder={rentCycle === "annual" ? "e.g. 2,500,000" : "e.g. 200,000"}
+                            placeholder="e.g. 2,500,000"
+                            maxLength={500}
                             light={false}
-                            required={!isMultiUnit}
                           />
                         </div>
                       </div>
@@ -1529,463 +1615,577 @@ export default function DashboardAddProperty() {
                 </div>
               )}
 
-              {/* ────────────────────────────────────────────────────────────────
-                  STEP 3: AMENITIES & PROPERTY GUIDELINES (OPTIONAL / CAN SKIP)
-                 ──────────────────────────────────────────────────────────────── */}
+              {/* STEP 3: AMENITIES & RULES */}
               {currentStep === 3 && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-base font-bold text-ink-900 dark:text-white flex items-center gap-2">
-                      <Building2 className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" /> Amenities & Property Features
-                    </h2>
-                    <span className="text-xs font-bold px-2.5 py-1 bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 rounded-full">
-                      Optional Step
-                    </span>
-                  </div>
-
-                  {/* Property Description */}
+                <div className="space-y-6 animate-in fade-in">
                   <div>
-                    <label className="block text-[12px] font-bold text-ink-900 dark:text-white mb-1">
-                      Property Description / Special Features (Optional)
-                    </label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-xs font-bold text-slate-900 dark:text-white">Description & Overview</label>
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{description.length}/500</span>
+                    </div>
                     <textarea
-                      id="description"
-                      rows={3}
-                      maxLength={1000}
+                      maxLength={500}
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Describe your property layout, unique compound amenities, security detail, or tenant guidelines..."
-                      className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 text-ink-900 dark:text-white placeholder-ink-400 dark:placeholder-cream-100/40 outline-none focus:border-moss-600 dark:focus:border-[#E5C583] transition-all"
+                      placeholder="Describe compound highlights, security details, or neighborhood features (max 500 chars)..."
+                      className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none"
                     />
                   </div>
 
-                  {/* PROPERTY AMENITIES SELECTION SECTION */}
-                  <div className="rounded-xl border border-[#3A5A40]/30 dark:border-white/10 bg-[#3A5A40]/5 dark:bg-white/5 p-5">
-                    <label className="block text-[13px] font-bold text-ink-900 dark:text-white mb-2 flex items-center gap-1.5">
-                      <Building2 className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                      <span>Property Amenities & Facilities</span>
-                    </label>
-                    <p className="text-[12px] text-ink-700 dark:text-cream-100/70 mb-3 leading-relaxed">
-                      Select available building utilities or type custom features to highlight for prospective tenants.
-                    </p>
-
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {COMMON_AMENITIES.map((amenity) => {
-                        const isSelected = selectedAmenities.includes(amenity);
-                        return (
-                          <button
-                            key={amenity}
-                            type="button"
-                            onClick={() => toggleAmenity(amenity)}
-                            className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer border ${isSelected
-                              ? "bg-[#3A5A40] text-white border-[#3A5A40] dark:bg-[#E5C583] dark:text-[#263b33] dark:border-[#E5C583] shadow-xs"
-                              : "bg-white dark:bg-[#16241F] text-ink-800 dark:text-cream-100 border-ink-200 dark:border-white/15 hover:border-moss-600"
-                              }`}
-                          >
-                            {isSelected ? "✓ " : "+ "}
-                            {amenity}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Custom Amenity Adder */}
-                    <div className="flex gap-2 mt-4 items-center">
-                      <Input
-                        id="customAmenity"
-                        placeholder="E.g., Solar Inverter system"
-                        value={customAmenityInput}
-                        onChange={(e) => setCustomAmenityInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            handleAddCustomAmenity(e);
-                          }
-                        }}
-                        className="flex-1 m-0 mb-0"
-                        light={false}
-                      />
-                      <Button
-                        type="button"
-                        onClick={handleAddCustomAmenity}
-                        className="bg-moss-700 hover:bg-moss-800 text-white dark:bg-[#E5C583] dark:text-[#263b33] dark:hover:bg-[#d8b672] font-bold py-[11px] px-4 rounded-xl shrink-0"
-                      >
-                        Add
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Property Rules */}
-                  <div>
-                    <label className="block text-[13px] font-bold text-ink-900 dark:text-white mb-2">
-                      Property Rules (Optional)
-                    </label>
-                    <textarea
-                      className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#16241F] px-4 py-3 text-[13px] text-ink-900 dark:text-white placeholder-ink-400 focus:border-moss-600 focus:outline-none focus:ring-1 focus:ring-moss-600 dark:focus:border-[#E5C583] dark:focus:ring-[#E5C583] min-h-[90px] resize-y"
-                      placeholder="e.g., No smoking, No pets, Max 4 occupants, Quiet hours after 10 PM"
-                      value={rules}
-                      onChange={(e) => setRules(e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* ────────────────────────────────────────────────────────────────
-                  STEP 4: PROOF OF OWNERSHIP & MEDIA
-                 ──────────────────────────────────────────────────────────────── */}
-              {currentStep === 4 && (
-                <div className="space-y-6">
-                  {/* PROOF OF OWNERSHIP LEGAL PAPERS SECTION */}
-                  <div className="rounded-xl border border-[#3A5A40]/30 dark:border-white/10 bg-[#3A5A40]/5 dark:bg-white/5 p-5">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-[13px] font-bold text-ink-900 dark:text-white flex items-center gap-1.5">
-                        <Building2 className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                        <span>Proof of Ownership / Management Document *</span>
-                      </label>
-                      {docUploaded && (
-                        <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                          <Check className="h-3.5 w-3.5" /> File Attached
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[12px] text-ink-700 dark:text-cream-100/70 mb-3 leading-relaxed">
-                      Upload legal proof of ownership or management authority (Certificate of Occupancy, Deed of Assignment, Purchase document, or Management agreement) for Admin review.
-                    </p>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                      <div>
-                        <DropdownWithOther
-                          label="Document Type *"
-                          value={docType}
-                          onChange={(val) => setDocType(val)}
-                          options={[
-                            "Certificate of Occupancy (C of O)",
-                            "Deed of Assignment",
-                            "Governor's Consent",
-                            "Purchase Document / Agreement",
-                            "Right of Occupancy (R of O)",
-                            "Management Agreement / Power of Attorney"
-                          ]}
-                          placeholder="Select legal document type..."
-                          required
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-500 dark:text-cream-100/60 mb-1">
-                          Attached File
-                        </label>
-                        <div className="flex items-center gap-2 p-2 bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 rounded-lg text-xs font-mono text-ink-800 dark:text-[#E5C583] truncate">
-                          <span className="truncate">{docName || "No document attached"}</span>
+                  <div className="space-y-4 p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+                    {AMENITY_CATEGORIES.map((cat) => (
+                      <div key={cat.title}>
+                        <div className="text-[11px] font-bold text-slate-700 dark:text-[#E5C583] uppercase mb-2">{cat.title}</div>
+                        <div className="flex flex-wrap gap-2">
+                          {cat.items.map((amenity) => {
+                            const isSelected = selectedAmenities.includes(amenity);
+                            return (
+                              <button
+                                key={amenity}
+                                type="button"
+                                onClick={() => toggleAmenity(amenity)}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-[#2C4633] text-white border-transparent dark:bg-[#E5C583] dark:text-[#263b33]"
+                                    : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                                }`}
+                              >
+                                {isSelected ? "✓ " : "+ "}{amenity}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
-                    </div>
+                    ))}
 
-                    <input
-                      ref={docInputRef}
-                      type="file"
-                      accept=".pdf,.png,.jpg,.jpeg"
-                      onChange={handleDocUpload}
-                      className="hidden"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => docInputRef.current?.click()}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-[#3A5A40] text-white font-bold text-[12px] hover:bg-[#344E41] transition-all cursor-pointer border-none outline-none"
-                    >
-                      <Upload className="h-4 w-4" />
-                      {docName ? "Change Legal Proof File" : "Attach Legal Ownership Document (PDF / Image)"}
-                    </button>
-                  </div>
-
-                  {/* PROPERTY PICTURE PROMPT & PHOTO PICKER */}
-                  <div className="rounded-xl border border-[#3A5A40]/30 dark:border-white/10 bg-[#3A5A40]/5 dark:bg-white/5 p-5">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-[13px] font-bold text-ink-900 dark:text-white flex items-center gap-1.5">
-                        <Camera className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                        <span>Property Photos & Pictures *</span>
-                      </label>
-                      <span className="text-[11px] font-bold text-moss-700 dark:text-[#E5C583] flex items-center gap-1">
-                        <Check className="h-3.5 w-3.5" /> Photo Attached
-                      </span>
-                    </div>
-                    <p className="text-[12px] text-ink-700 dark:text-cream-100/70 mb-4 leading-relaxed">
-                      Add up to 5 pictures of your property. Select which image serves as the main cover photo.
-                    </p>
-
-                    {/* Photo Previews */}
-                    {propertyPhotos.length > 0 && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                        {propertyPhotos.map((photoUrl, idx) => (
-                          <div key={idx} className={`relative h-28 w-full overflow-hidden rounded-xl border-2 transition-all ${idx === coverPhotoIndex ? 'border-emerald-500 shadow-md' : 'border-ink-200 dark:border-white/15'}`}>
-                            <img
-                              src={photoUrl}
-                              alt={`Property Preview ${idx}`}
-                              className="h-full w-full object-cover"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-
-                            <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center">
-                              <button
-                                type="button"
-                                onClick={() => setCoverPhotoIndex(idx)}
-                                className={`text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 transition-colors ${idx === coverPhotoIndex ? 'bg-emerald-500 text-white' : 'bg-black/50 text-white hover:bg-black/80'}`}
-                              >
-                                {idx === coverPhotoIndex ? (
-                                  <><Check className="h-3 w-3" /> Cover</>
-                                ) : "Set Cover"}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPropertyPhotos(prev => prev.filter((_, i) => i !== idx));
-                                  if (coverPhotoIndex === idx) setCoverPhotoIndex(0);
-                                  else if (coverPhotoIndex > idx) setCoverPhotoIndex(coverPhotoIndex - 1);
-                                }}
-                                className="bg-rose-500 hover:bg-rose-600 text-white rounded-full p-1 transition-colors"
-                              >
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-
-                    {propertyPhotos.length < 5 && (
-                      <div className="flex flex-col sm:flex-row gap-2 mb-3">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-[12.5px] hover:bg-[#1E382A] dark:hover:bg-[#d8b672] transition-all cursor-pointer shadow-xs active:scale-95 border-none outline-none"
-                        >
-                          <Upload className="h-4 w-4" />
-                          Upload Photos from Device (Max 5)
-                        </button>
-                      </div>
-                    )}
-
-                    {propertyPhotos.length < 5 && (
-                      <div className="mt-3">
-                        <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-400 dark:text-cream-100/50 mb-2">
-                          Or pick a recommended sample photo:
-                        </span>
+                    {/* VISUAL DISPLAY OF CUSTOM ADDED AMENITIES */}
+                    {customAddedAmenities.length > 0 && (
+                      <div className="pt-3 border-t border-slate-200 dark:border-white/10">
+                        <div className="text-[11px] font-bold text-[#2C4633] dark:text-[#E5C583] uppercase mb-2 flex items-center justify-between">
+                          <span>Your Custom Amenities ({customAddedAmenities.length})</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">Click × to remove</span>
+                        </div>
                         <div className="flex flex-wrap gap-2">
-                          {PRESET_PHOTOS.map((preset, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => {
-                                if (!propertyPhotos.includes(preset.url)) {
-                                  setPropertyPhotos(prev => [...prev, preset.url]);
-                                }
-                              }}
-                              className={`text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer outline-none ${propertyPhotos.includes(preset.url)
-                                ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent shadow-xs"
-                                : "bg-white dark:bg-[#182C24] text-ink-700 dark:text-cream-100/80 border-ink-200 dark:border-white/10 hover:border-moss-500"
-                                }`}
+                          {customAddedAmenities.map((amenity) => (
+                            <span
+                              key={amenity}
+                              className="px-3 py-1.5 text-xs font-bold rounded-lg border bg-[#2C4633] text-white border-transparent dark:bg-[#E5C583] dark:text-[#263b33] flex items-center gap-1.5 shadow-xs"
                             >
-                              {preset.label}
-                            </button>
+                              <span>✓ {amenity}</span>
+                              <button
+                                type="button"
+                                onClick={() => toggleAmenity(amenity)}
+                                className="ml-1 text-xs opacity-80 hover:opacity-100 font-bold border-none bg-transparent cursor-pointer text-white dark:text-[#263b33]"
+                                title="Remove custom amenity"
+                              >
+                                ×
+                              </button>
+                            </span>
                           ))}
                         </div>
                       </div>
                     )}
-                    {photoError && (
-                      <p className="mt-2 text-[12px] font-semibold text-rose-600 dark:text-rose-400">{photoError}</p>
+
+                    {/* CUSTOM AMENITY INPUT SECTION */}
+                    <div className="pt-3 border-t border-slate-200 dark:border-white/10">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-[#E5C583] uppercase mb-2">
+                        Add Custom Amenity
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={customAmenityInput}
+                          onChange={(e) => setCustomAmenityInput(e.target.value)}
+                          maxLength={500}
+                          placeholder="e.g. Smart Door Lock, Private Swimming Pool..."
+                          className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddCustomAmenity();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCustomAmenity}
+                          className="px-4 py-2 text-xs font-bold rounded-xl bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] cursor-pointer border-none outline-none shrink-0 flex items-center gap-1 hover:opacity-90 transition-opacity"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-xs font-bold text-slate-900 dark:text-white">Property Rules (Optional)</label>
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{rules.length}/500</span>
+                    </div>
+                    <textarea
+                      maxLength={500}
+                      value={rules}
+                      onChange={(e) => setRules(e.target.value)}
+                      placeholder="e.g. No smoking, Quiet hours after 10 PM (max 500 chars)..."
+                      className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: LEGAL PROOF & PHOTOS */}
+              {currentStep === 4 && (
+                <div className="space-y-6 animate-in fade-in">
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+                    <label className="block text-xs font-bold text-slate-900 dark:text-white mb-2">Proof of Ownership Legal Paper *</label>
+                    <DropdownWithOther
+                      label="Document Type *"
+                      value={docType}
+                      onChange={(val) => setDocType(val)}
+                      options={["Certificate of Occupancy (C of O)", "Deed of Assignment", "Governor's Consent", "Purchase Document"]}
+                    />
+                    <input ref={docInputRef} type="file" accept=".pdf,.png,.jpg" onChange={handleDocUpload} className="hidden" />
+                    <button
+                      type="button"
+                      onClick={() => docInputRef.current?.click()}
+                      className="mt-3 w-full py-2.5 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs border-none cursor-pointer"
+                    >
+                      {docName ? `Attached: ${docName}` : "Upload Legal Proof Document (PDF/Image)"}
+                    </button>
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-900 dark:text-white">Property Photos Gallery *</label>
+                      <span className="text-[11px] font-semibold text-slate-400">{propertyPhotos.length}/5 attached</span>
+                    </div>
+
+                    <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full py-2.5 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs border-none cursor-pointer"
+                    >
+                      Upload Photos ({propertyPhotos.length}/5 attached)
+                    </button>
+
+                    {/* CLEAN TEXT FILE LISTING OF UPLOADED IMAGES */}
+                    {propertyPhotos.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        {propertyPhotos.map((photo, idx) => {
+                          const fileName = typeof photo === "object" ? photo.name : `Property Photo ${idx + 1}.jpg`;
+                          const isCover = idx === coverPhotoIndex;
+
+                          return (
+                            <div
+                              key={idx}
+                              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                                isCover
+                                  ? "bg-[#2C4633]/10 dark:bg-[#E5C583]/10 border-[#2C4633] dark:border-[#E5C583]"
+                                  : "bg-white dark:bg-[#16241F] border-slate-200 dark:border-white/10"
+                              }`}
+                            >
+                              <div className="flex items-center gap-3 min-w-0 pr-2">
+                                <Camera className="h-4 w-4 text-[#2C4633] dark:text-[#E5C583] shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                    {fileName}
+                                  </div>
+                                  {isCover && (
+                                    <span className="text-[10px] font-bold text-[#2C4633] dark:text-[#E5C583]">
+                                      ★ Primary Cover Image
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                {!isCover && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCoverPhotoIndex(idx)}
+                                    className="text-[10px] font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white underline cursor-pointer border-none bg-transparent"
+                                  >
+                                    Set Cover
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeletePhoto(idx, e)}
+                                  className="p-1 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg cursor-pointer border-none bg-transparent"
+                                  title="Delete file"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* ────────────────────────────────────────────────────────────────
-                  STEP 5: OCCUPANCY STATUS & TENANT DETAILS / FINAL SUBMIT
-                 ──────────────────────────────────────────────────────────────── */}
+              {/* STEP 5: OCCUPANCY & SUBMIT */}
               {currentStep === 5 && (
-                <div className="space-y-6">
-                  {/* Occupancy Choice Card buttons */}
-                  <div>
-                    <span className="dap-occupancy-label">
-                      Does this property currently have active tenants? *
-                    </span>
-                    <div className="dap-occupancy-grid">
-                      <button
-                        type="button"
-                        onClick={() => setOccupied(true)}
-                        className={`dap-choice-card${occupied === true ? " selected" : ""}`}
-                      >
-                        <div className="dap-choice-icon">
-                          <User style={{ height: 20, width: 20 }} />
-                        </div>
-                        <div>
-                          <div className="dap-choice-title">Yes, occupied</div>
-                          <div className="dap-choice-desc">
-                            Invite active tenants and link ledger logs to your portfolio.
-                          </div>
-                        </div>
-                      </button>
+                <div className="space-y-6 animate-in fade-in">
+                  <label className="block text-xs font-bold text-slate-900 dark:text-white mb-2">Occupancy Status *</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setOccupied(true)}
+                      className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${
+                        occupied === true ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent" : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                      }`}
+                    >
+                      Occupied (Invite Current Tenant)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOccupied(false)}
+                      className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${
+                        occupied === false ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent" : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                      }`}
+                    >
+                      Vacant (Public Listing)
+                    </button>
+                  </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setOccupied(false)}
-                        className={`dap-choice-card${occupied === false ? " selected" : ""}`}
-                      >
-                        <div className="dap-choice-icon">
-                          <Key style={{ height: 20, width: 20 }} />
-                        </div>
-                        <div>
-                          <div className="dap-choice-title">No, it&rsquo;s vacant</div>
-                          <div className="dap-choice-desc">
-                            List vacant units to accept prospective tenant applications.
-                          </div>
-                        </div>
-                      </button>
+                  {occupied === true && (
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 space-y-3">
+                      <div>
+                        <Input id="tName" label="Tenant Name *" value={tenantName} onChange={(e) => setTenantName(e.target.value)} maxLength={500} required />
+                        <div className="text-[10px] text-right font-medium text-slate-400 dark:text-slate-500 mt-1">{tenantName.length}/500</div>
+                      </div>
+                      <div>
+                        <Input id="tContact" label="Tenant Email/Phone *" value={tenantContact} onChange={(e) => setTenantContact(e.target.value)} maxLength={500} required />
+                        <div className="text-[10px] text-right font-medium text-slate-400 dark:text-slate-500 mt-1">{tenantContact.length}/500</div>
+                      </div>
+                      <Input id="lStart" label="Lease Start Date *" type="date" value={leaseStartDate} onChange={(e) => setLeaseStartDate(e.target.value)} required />
+                    </div>
+                  )}
+
+                  {occupied === false && (
+                    <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+                      <Input id="avail" label="Available From *" type="date" value={availableFrom} onChange={(e) => setAvailableFrom(e.target.value)} required />
+                    </div>
+                  )}
+
+                  <Button type="submit" variant="primary" className="w-full py-3 text-xs font-bold cursor-pointer mt-4">
+                    Complete Property Submission
+                  </Button>
+                </div>
+              )}
+            </form>
+          </div>
+
+          {/* FLOATING STEP PAGINATION CAPSULE BAR */}
+          <div className="dap-bottom-capsule-bar">
+            <button
+              type="button"
+              disabled={currentStep === 1}
+              onClick={handlePrevStep}
+              className="dap-capsule-nav-btn prev"
+            >
+              <ArrowLeft className="h-4 w-4" /> Previous
+            </button>
+
+            <div className="dap-capsule-step-pill">
+              Step {currentStep} of 5
+            </div>
+
+            <button
+              type="button"
+              onClick={currentStep < 5 ? handleNextStep : handleSubmit}
+              className="dap-capsule-nav-btn next"
+            >
+              {currentStep < 5 ? (
+                <>Next Step <ArrowRight className="h-4 w-4" /></>
+              ) : (
+                "Submit Listing"
+              )}
+            </button>
+          </div>
+        </main>
+
+        {/* ─────────────────────────────────────────────────────────────
+            4. STICKY RIGHT GALLERY & RICH LEGAL PROOF SUMMARY PANEL
+           ───────────────────────────────────────────────────────────── */}
+        <aside className="dap-right-panel">
+          <div>
+            <div className="dap-gallery-title">
+              <span>Attached Media</span>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold normal-case tracking-normal bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 shrink-0">
+                {propertyPhotos.length} photos
+              </span>
+            </div>
+            <div className="space-y-3">
+              {propertyPhotos.map((photo, idx) => {
+                const photoUrl = typeof photo === "object" ? photo.url : photo;
+                return (
+                  <div
+                    key={idx}
+                    className={`dap-gallery-thumb-card ${idx === coverPhotoIndex ? "cover" : ""} group relative`}
+                    onClick={() => setCoverPhotoIndex(idx)}
+                  >
+                    <img src={photoUrl} alt={`Photo ${idx}`} className="dap-gallery-thumb-img" />
+                    {idx === coverPhotoIndex && (
+                      <span className="dap-gallery-cover-badge">Cover Image</span>
+                    )}
+                    {/* TOP-RIGHT IMAGE DELETE BUTTON */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeletePhoto(idx, e)}
+                      className="absolute top-2 right-2 h-7 w-7 rounded-full bg-rose-600/90 hover:bg-rose-700 text-white flex items-center justify-center border-none cursor-pointer shadow-md transition-transform hover:scale-105 z-10"
+                      title="Delete photo"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <div className="dap-gallery-title">
+              <span>Legal Proof Document</span>
+              {docName ? (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold normal-case tracking-normal bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <CheckCircle2 className="h-3 w-3" /> Attached
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold normal-case tracking-normal bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                  <Clock className="h-3 w-3" /> Pending
+                </span>
+              )}
+            </div>
+
+            <div
+              className={`p-4 rounded-2xl border transition-all duration-200 ${
+                docName
+                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30 shadow-xs"
+                  : "bg-amber-50/30 dark:bg-amber-950/10 border-amber-500/25 border-dashed"
+              }`}
+            >
+              {docName ? (
+                /* OCCUPIED / ATTACHED STATE */
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-[#2C4633] text-[#E5C583] dark:bg-[#E5C583] dark:text-[#0B1512] shrink-0 shadow-xs">
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#2C4633] dark:text-[#E5C583]">
+                        {docType}
+                      </div>
+                      <div className="font-bold text-xs text-slate-900 dark:text-white truncate mt-0.5">
+                        {docName}
+                      </div>
+                      <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 inline" /> Verified Legal Proof
+                      </div>
                     </div>
                   </div>
 
-                  {/* Tenant details fields */}
-                  {occupied === true && (
-                    <div className="dap-subform animate-in fade-in">
-                      <p className="dap-subform-title">Invite your current tenant</p>
-                      <div className="dap-fields-group">
-                        <Input
-                          id="tenantName"
-                          label="Tenant's Name *"
-                          value={tenantName}
-                          onChange={(e) => setTenantName(e.target.value.replace(/[0-9]/g, ''))}
-                          placeholder="e.g. Emeka Obi"
-                          maxLength={50}
-                          light={false}
-                          required
-                        />
-                        <Input
-                          id="tenantContact"
-                          label="Tenant's Email or Phone *"
-                          value={tenantContact}
-                          onChange={(e) => setTenantContact(e.target.value)}
-                          placeholder="e.g. emeka@domain.com"
-                          maxLength={100}
-                          light={false}
-                          required
-                        />
-                        <Input
-                          id="leaseStart"
-                          label="Lease Start Date *"
-                          type="date"
-                          value={leaseStartDate}
-                          onChange={(e) => setLeaseStartDate(e.target.value)}
-                          light={false}
-                          required
-                        />
-                      </div>
+                  <div className="pt-2 border-t border-emerald-500/20 flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={handleOpenDocPicker}
+                      className="text-[11px] font-bold text-[#2C4633] dark:text-[#E5C583] hover:underline cursor-pointer border-none bg-transparent p-0"
+                    >
+                      Replace Paper
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDocName("");
+                        setDocDataUrl("");
+                        setDocUploaded(false);
+                      }}
+                      className="text-[11px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 cursor-pointer border-none bg-transparent p-0"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* EMPTY STATE */
+                <div className="flex flex-col items-center justify-center text-center py-3 space-y-2">
+                  <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                    <ShieldCheck className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-xs text-slate-900 dark:text-white">
+                      {docType} Needed
                     </div>
-                  )}
-
-                  {/* Listing details fields */}
-                  {occupied === false && (
-                    <div className="dap-subform animate-in fade-in">
-                      <p className="dap-subform-title">Public Listing Details</p>
-                      <div className="dap-fields-group">
-                        <Input
-                          id="availableFrom"
-                          label="Available From *"
-                          type="date"
-                          value={availableFrom}
-                          onChange={(e) => setAvailableFrom(e.target.value)}
-                          light={false}
-                          required
-                        />
-                      </div>
-                    </div>
-                  )}
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[200px] leading-tight mt-0.5">
+                      Attach proof of ownership document in Step 4 for verification.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenDocPicker}
+                    className="mt-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] cursor-pointer border-none transition-opacity hover:opacity-90"
+                  >
+                    + Upload Legal Document
+                  </button>
                 </div>
               )}
-
             </div>
-
-            {/* Incomplete steps warning helper on Step 5 */}
-            {currentStep === 5 && getIncompleteSteps().length > 0 && (
-              <div className="mt-4 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center justify-between gap-3 animate-in fade-in">
-                <span className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <span>
-                    Missing required fields in: <strong>{getIncompleteSteps().map(s => `Step ${s}`).join(", ")}</strong>
-                  </span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(getIncompleteSteps()[0])}
-                  className="text-xs font-bold text-amber-800 dark:text-amber-300 underline hover:text-amber-950 dark:hover:text-white cursor-pointer bg-transparent border-none outline-none shrink-0"
-                >
-                  Go to Step {getIncompleteSteps()[0]} →
-                </button>
-              </div>
-            )}
-
-            {/* ────────────────────────────────────────────────────────────────
-                WIZARD STEP NAVIGATION CONTROLS (PREVIOUS / SKIP / NEXT / SUBMIT)
-               ──────────────────────────────────────────────────────────────── */}
-            <div className="dap-wizard-nav">
-              {currentStep > 1 ? (
-                <button
-                  type="button"
-                  onClick={handlePrevStep}
-                  className="px-4 py-2.5 text-xs font-bold rounded-xl border border-ink-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-ink-800 dark:text-cream-100 hover:bg-cream-100 dark:hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1.5 outline-none"
-                >
-                  <ArrowLeft className="h-4 w-4" /> Previous
-                </button>
-              ) : (
-                <div />
-              )}
-
-              <div className="flex items-center gap-2">
-                {currentStep === 3 && (
-                  <button
-                    type="button"
-                    onClick={handleSkipStep}
-                    className="px-4 py-2.5 text-xs font-bold rounded-xl text-ink-600 dark:text-cream-100/70 hover:bg-cream-100 dark:hover:bg-white/10 transition-all cursor-pointer border-none bg-transparent outline-none"
-                  >
-                    Skip Step →
-                  </button>
-                )}
-
-                {currentStep < 5 ? (
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="px-6 py-2.5 text-xs font-bold rounded-xl bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] hover:bg-[#1E382A] dark:hover:bg-[#d8b672] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm outline-none border-none"
-                  >
-                    Next Step →
-                  </button>
-                ) : (
-                  <Button
-                    type="submit"
-                    className="dap-submit-btn active"
-                  >
-                    {occupied === true
-                      ? "Send Invite & Submit Property for Verification"
-                      : occupied === false
-                        ? "Submit Property for Verification"
-                        : "Choose Occupancy Status"}
-                  </Button>
-                )}
-              </div>
-            </div>
-
-          </form>
-        </div>
+          </div>
+        </aside>
       </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          5. MOVING SPOTLIGHT MASK & FLOATING TOUR TOOLTIP (TARGETING NAVBAR ITEMS)
+         ───────────────────────────────────────────────────────────── */}
+      {runTour && (
+        <div className="tour-portal-backdrop">
+          {/* Animated Glowing Spotlight Mask tracking target element in the sidebar */}
+          <div className="tour-spotlight-mask" style={spotlightStyle} />
+
+          {/* Floating Tooltip Speech Bubble positioning next to navigation item */}
+          <div className="tour-tooltip-card" style={tooltipStyle}>
+            <div className="tour-tooltip-header">
+              <span className="tour-mascot-badge">Ayla (Lodale Guide)</span>
+              <span className="tour-step-indicator">
+                {tourStep + 1} / {ADD_PROPERTY_TOUR_STEPS.length}
+              </span>
+            </div>
+
+            <h4 className="tour-tooltip-title">
+              {ADD_PROPERTY_TOUR_STEPS[tourStep]?.title}
+            </h4>
+            <p className="tour-tooltip-content">
+              {ADD_PROPERTY_TOUR_STEPS[tourStep]?.content}
+            </p>
+
+            <div className="tour-tooltip-actions">
+              <button
+                type="button"
+                className="tour-btn-skip"
+                onClick={() => setRunTour(false)}
+              >
+                Skip Tour
+              </button>
+
+              <div className="tour-nav-buttons">
+                {tourStep > 0 && (
+                  <button
+                    type="button"
+                    className="tour-btn-back"
+                    onClick={() => setTourStep((prev) => prev - 1)}
+                  >
+                    Back
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="tour-btn-next"
+                  onClick={() => {
+                    if (tourStep < ADD_PROPERTY_TOUR_STEPS.length - 1) {
+                      setTourStep((prev) => prev + 1);
+                    } else {
+                      setRunTour(false);
+                    }
+                  }}
+                >
+                  {tourStep === ADD_PROPERTY_TOUR_STEPS.length - 1 ? "Finish" : "Next"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          6. LANDLORD PROFILE DETAILS MODAL (MATCHING DASHBOARD HOMEPAGE)
+         ───────────────────────────────────────────────────────────── */}
+      {showLandlordProfileModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-[#12221C] rounded-3xl border border-[#E4EAE1] dark:border-white/10 max-w-sm w-full p-8 shadow-2xl relative text-center">
+            {/* Close Button */}
+            <button
+              className="absolute top-4 right-4 text-slate-400 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xl font-bold p-1 bg-[#FAF8F6] dark:bg-white/5 rounded-full h-8 w-8 flex items-center justify-center cursor-pointer transition-colors border-none outline-none"
+              onClick={() => setShowLandlordProfileModal(false)}
+            >
+              &times;
+            </button>
+
+            {/* Profile Avatar */}
+            <div className="relative mx-auto w-24 h-24 mb-4">
+              <div className="w-full h-full flex items-center justify-center bg-[#2C4633]/10 dark:bg-[#1E382A] rounded-full border-4 border-[#E4EAE1] dark:border-white/10 text-[#2C4633] dark:text-[#E5C583] overflow-hidden text-2xl font-bold">
+                {landlordAvatar ? (
+                  <img src={landlordAvatar} alt="Landlord profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span>{username ? username.charAt(0).toUpperCase() : <User className="w-12 h-12" />}</span>
+                )}
+              </div>
+              <span className="absolute bottom-0 right-0 bg-emerald-500 h-5 w-5 rounded-full border-2 border-white dark:border-[#12221C] shadow-sm z-10" />
+            </div>
+
+            {/* Name & Role */}
+            <h3 className="font-bold text-xl text-slate-900 dark:text-white mb-1">{username}</h3>
+            <span className="inline-block bg-[#2C4633]/10 dark:bg-[#E5C583]/10 text-[#2C4633] dark:text-[#E5C583] text-[11px] font-bold px-3 py-1 rounded-full mb-6">
+              Verified Landlord
+            </span>
+
+            {/* Details List */}
+            <div className="space-y-3.5 text-left border-t border-slate-100 dark:border-white/10 pt-5">
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-slate-400 dark:text-slate-400 font-medium">Email Address</span>
+                <span className="text-slate-900 dark:text-white font-semibold">
+                  {localStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-slate-400 dark:text-slate-400 font-medium">Phone Number</span>
+                <span className="text-slate-900 dark:text-white font-semibold">
+                  {(() => {
+                    try {
+                      const p = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      return p.phone || "+234 803 123 4567";
+                    } catch (e) {
+                      return "+234 803 123 4567";
+                    }
+                  })()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-slate-400 dark:text-slate-400 font-medium">Account Rating</span>
+                <span className="text-slate-900 dark:text-white font-semibold flex items-center gap-1">
+                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> 5.0{" "}
+                  <span className="text-[11px] text-slate-400 font-normal">(1 review)</span>
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-slate-400 dark:text-slate-400 font-medium">Member Since</span>
+                <span className="text-slate-900 dark:text-white font-semibold">
+                  Aug 2026
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-[13px]">
+                <span className="text-slate-400 dark:text-slate-400 font-medium">Portfolio Status</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                  Active Registration
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Action Button */}
+            <button
+              type="button"
+              onClick={() => setShowLandlordProfileModal(false)}
+              className="mt-6 w-full py-3 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] font-bold text-[13.5px] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.98] shadow-md border-none outline-none"
+            >
+              Close Profile
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

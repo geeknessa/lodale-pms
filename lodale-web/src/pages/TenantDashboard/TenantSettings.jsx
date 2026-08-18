@@ -127,25 +127,69 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [confirmCheck, setConfirmCheck] = useState(false);
   const [selectedDocToView, setSelectedDocToView] = useState(null);
 
+  const loadStoredProfile = () => {
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
+    let localProf = null;
+    try {
+      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || (emailKey ? localStorage.getItem("userProfile_" + emailKey) : null);
+      if (raw) localProf = JSON.parse(raw);
+    } catch (e) { }
+
+    const storedUsername = sessionStorage.getItem("username") || (emailKey ? localStorage.getItem("username_" + emailKey) : null) || localStorage.getItem("username") || "";
+
+    let fname = localProf?.firstName || localProf?.first_name || "";
+    let lname = localProf?.lastName || localProf?.last_name || "";
+    if (!fname && storedUsername) {
+      const parts = storedUsername.trim().split(" ");
+      fname = parts[0] || "";
+      lname = parts.slice(1).join(" ") || "";
+    }
+
+    setFirstName(fname);
+    setLastName(lname);
+    setEmail(localProf?.email || emailKey || "");
+    setPhone(localProf?.phone || localProf?.phone_number || "");
+    setAddress(localProf?.address || "");
+    setDob(localProf?.dob || "");
+    setLocation(localProf?.location || "");
+    setPostalCode(localProf?.postalCode || localProf?.postal_code || "");
+    if (localProf?.gender) setGender(localProf.gender);
+
+    let savedAvatar = "";
+    if (emailKey) {
+      savedAvatar = localStorage.getItem("tenantAvatar_" + emailKey);
+    }
+    if (!savedAvatar) {
+      savedAvatar = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl") || localProf?.avatar || localProf?.avatar_url || "";
+    }
+    setAvatarUrl(savedAvatar || "");
+    if (localProf) setUserProfile(localProf);
+  };
+
   useEffect(() => {
-    async function loadProfile() {
+    loadStoredProfile();
+
+    async function fetchProfile() {
       try {
         const profile = await userService.getProfile();
         if (profile) {
-          setUserProfile((prev) => ({ ...prev, ...profile }));
+          setUserProfile(prev => ({ ...prev, ...profile }));
           if (profile.first_name) setFirstName(profile.first_name);
           if (profile.last_name) setLastName(profile.last_name);
           if (profile.email) setEmail(profile.email);
-          if (profile.phone_number) setPhone(profile.phone_number);
-          if (profile.avatar_url && !avatarUrl) {
-            setAvatarUrl(profile.avatar_url);
-          }
+          if (profile.phone_number || profile.phone) setPhone(profile.phone_number || profile.phone);
+          if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
+          if (profile.address) setAddress(profile.address);
+          if (profile.dob) setDob(profile.dob);
+          if (profile.location) setLocation(profile.location);
+          if (profile.postal_code || profile.postalCode) setPostalCode(profile.postal_code || profile.postalCode);
+          if (profile.gender) setGender(profile.gender);
         }
       } catch (err) {
-        console.warn("Using local tenant profile cache:", err);
+        console.warn("Failed to fetch tenant profile", err);
       }
     }
-    loadProfile();
+    fetchProfile();
   }, []);
 
   // Listen to cross-tab storage changes for tenant documents
@@ -182,22 +226,36 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
       reader.onload = (evt) => {
         const base64Data = evt.target.result;
         setAvatarUrl(base64Data);
-
-        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
         if (emailKey) {
-          // Tenant-scoped avatar key — does not overwrite landlord avatar
           localStorage.setItem("tenantAvatar_" + emailKey, base64Data);
         }
-        // Session-level quick sync keys
         sessionStorage.setItem("tenantAvatarUrl", base64Data);
         localStorage.setItem("tenantAvatarUrl", base64Data);
 
-        const updatedProf = { ...userProfile, avatar: base64Data, avatar_url: base64Data };
+        const updatedProf = {
+          ...userProfile,
+          firstName,
+          lastName,
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          phone,
+          phone_number: phone,
+          address,
+          dob,
+          location,
+          postalCode,
+          postal_code: postalCode,
+          gender,
+          avatar: base64Data,
+          avatar_url: base64Data
+        };
         setUserProfile(updatedProf);
-        // Tenant-scoped profile session key
-        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(updatedProf));
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
         if (emailKey) {
-          localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(updatedProf));
+          localStorage.setItem("userProfile_" + emailKey, JSON.stringify(updatedProf));
         }
 
         // Notify parent / sidebar / header
@@ -220,89 +278,72 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     setFeedbackMessage(null);
 
     if (activeTab === "personal") {
-      if (!firstName.trim()) {
-        setFeedbackMessage({ type: "error", text: "First name is required." });
-        triggerToast("First name is required.", "error", "Validation Error");
-        return;
-      }
-
-      setIsSaving(true);
       try {
-        // Step 1: Always save locally first (tenant-scoped keys — never touches landlord data)
-        const newFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-        const curEmail = (sessionStorage.getItem("lastLoggedInEmail") || email || "").toLowerCase();
+        const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+        const updatedName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
-        sessionStorage.setItem("tenantUsername", newFullName);
-        if (curEmail) {
-          localStorage.setItem("tenantUsername_" + curEmail, newFullName);
-        }
-
-        const profToSave = {
-          ...userProfile,
+        const profileData = {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           email: email.trim(),
+          phone: phone.trim(),
+          phone_number: phone.trim(),
+          avatar_url: avatarUrl,
+          address: address.trim(),
+          dob: dob.trim(),
+          location: location,
+          postal_code: postalCode.trim(),
+          gender: gender
+        };
+
+        try {
+          await userService.updateProfile(profileData);
+        } catch (apiErr) {
+          console.warn("Backend updateProfile notice:", apiErr);
+        }
+
+        const updatedProf = {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          email: cleanEmail,
           phone: phone.trim(),
           phone_number: phone.trim(),
           address: address.trim(),
           dob: dob.trim(),
           location: location,
           postalCode: postalCode.trim(),
+          postal_code: postalCode.trim(),
+          gender: gender,
           avatar: avatarUrl,
-          avatar_url: avatarUrl
+          avatar_url: avatarUrl,
+          role: "tenant"
         };
-        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(profToSave));
-        if (curEmail) {
-          localStorage.setItem("tenantProfile_" + curEmail, JSON.stringify(profToSave));
+
+        setUserProfile(updatedProf);
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+
+        if (cleanEmail) {
+          localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
+          localStorage.setItem("username_" + cleanEmail, updatedName);
+          if (avatarUrl) {
+            localStorage.setItem("tenantAvatar_" + cleanEmail, avatarUrl);
+          }
+        }
+        if (updatedName) {
+          sessionStorage.setItem("username", updatedName);
+          localStorage.setItem("username", updatedName);
         }
         if (avatarUrl) {
-          if (curEmail) localStorage.setItem("tenantAvatar_" + curEmail, avatarUrl);
           sessionStorage.setItem("tenantAvatarUrl", avatarUrl);
           localStorage.setItem("tenantAvatarUrl", avatarUrl);
         }
 
-        // Notify parent / sidebar / header
-        onAvatarChange?.(avatarUrl);
-        onProfileUpdate?.(newFullName, avatarUrl);
-
-        // Notify sidebar and search header to refresh immediately
-        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: newFullName, avatar: avatarUrl } }));
         window.dispatchEvent(new Event("storage"));
 
-        // Step 2: Try to sync with backend — fail gracefully if session has expired
-        const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
-        if (token) {
-          try {
-            // Only send avatar_url to the backend if it's a real URL (not a >1MB base64 blob)
-            const isBase64 = avatarUrl && avatarUrl.startsWith("data:");
-            const updatedProfile = await userService.updateProfile({
-              first_name: firstName.trim(),
-              last_name: lastName.trim(),
-              phone_number: phone.trim(),
-              avatar_url: isBase64 ? undefined : (avatarUrl || undefined)
-            });
-
-            if (updatedProfile) {
-              const serverName = `${updatedProfile.first_name || ""} ${updatedProfile.last_name || ""}`.trim();
-              if (serverName) {
-                sessionStorage.setItem("tenantUsername", serverName);
-                if (curEmail) {
-                  localStorage.setItem("tenantUsername_" + curEmail, serverName);
-                }
-                window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: serverName, avatar: avatarUrl } }));
-              }
-            }
-          } catch (apiErr) {
-            console.warn("[TenantSettings] Background API sync note (profile saved locally):", apiErr?.message);
-          }
-        }
-
-        setIsSaving(false);
-        setSaveSuccess(true);
-        setFeedbackMessage({ type: "success", text: "Profile information updated successfully!" });
-        triggerToast("Profile information updated successfully!", "success", "Profile Saved");
-
-        setTimeout(() => setSaveSuccess(false), 3500);
+        triggerToast("Personal profile information updated successfully!", "success", "Profile Saved");
       } catch (err) {
         setIsSaving(false);
         setFeedbackMessage({ type: "error", text: err.message || "Failed to update profile." });
@@ -335,27 +376,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const handleDiscardChanges = () => {
     setFeedbackMessage(null);
     if (activeTab === "personal") {
-      const curEmail = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-      const name =
-        sessionStorage.getItem("tenantUsername") ||
-        (curEmail ? localStorage.getItem("tenantUsername_" + curEmail) : null) ||
-        sessionStorage.getItem("username") ||
-        localStorage.getItem("username");
-      if (name) {
-        const parts = name.split(" ");
-        setFirstName(parts[0]);
-        setLastName(parts.length > 1 ? parts.slice(1).join(" ") : "");
-      } else {
-        setFirstName("Roland");
-        setLastName("Donald");
-      }
-      setEmail(sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "rolandDonald@mail.com");
-      setGender("Male");
-      setAddress("");
-      setPhone("");
-      setDob("");
-      setLocation("");
-      setPostalCode("");
+      loadStoredProfile();
     } else {
       setCurrentPassword("");
       setNewPassword("");
@@ -810,13 +831,12 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             {/* Inline Feedback Banner */}
             {feedbackMessage && (
               <div
-                className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${
-                  feedbackMessage.type === "success"
+                className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${feedbackMessage.type === "success"
                     ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : feedbackMessage.type === "error"
-                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                    : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
-                }`}
+                      ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                      : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                  }`}
               >
                 <div className="flex items-center gap-2.5">
                   {feedbackMessage.type === "success" ? (
@@ -935,9 +955,9 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                   maxLength={15}
                   value={phone}
                   onInput={(e) => e.target.value = e.target.value.replace(/[^0-9+]/g, '')}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^0-9+]/g, ''))}
                   className="settings-form-input"
-                  placeholder="Phone Number"
+                  placeholder="e.g. +2348012345678"
                 />
               </div>
 
@@ -968,9 +988,11 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 <label className="settings-input-label">Postal Code</label>
                 <input
                   type="text"
+                  inputMode="numeric"
                   maxLength={20}
                   value={postalCode}
-                  onChange={(e) => setPostalCode(e.target.value)}
+                  onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
+                  onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9]/g, ''))}
                   className="settings-form-input"
                   placeholder="Postal Code"
                 />
@@ -989,9 +1011,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               <Button
                 type="submit"
                 disabled={isSaving}
-                className={`settings-btn settings-btn-save flex items-center justify-center gap-2 transition-all ${
-                  saveSuccess ? "!bg-emerald-600 !text-white" : ""
-                }`}
+                className={`settings-btn settings-btn-save flex items-center justify-center gap-2 transition-all ${saveSuccess ? "!bg-emerald-600 !text-white" : ""
+                  }`}
               >
                 {isSaving ? (
                   <>
@@ -1019,13 +1040,12 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             {/* Inline Feedback Banner for Security */}
             {feedbackMessage && (
               <div
-                className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${
-                  feedbackMessage.type === "success"
+                className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${feedbackMessage.type === "success"
                     ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : feedbackMessage.type === "error"
-                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                    : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
-                }`}
+                      ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                      : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                  }`}
               >
                 <div className="flex items-center gap-2.5">
                   {feedbackMessage.type === "success" ? (
@@ -1122,8 +1142,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 type="button"
                 onClick={() => setDocSubTab("pending")}
                 className={`px-4 py-2 rounded-xl text-[13px] font-extrabold transition-all cursor-pointer flex items-center gap-2 ${docSubTab === "pending"
-                    ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
-                    : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
+                  ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
+                  : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
                   }`}
               >
                 <PenTool className="h-4 w-4" />
@@ -1139,8 +1159,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 type="button"
                 onClick={() => setDocSubTab("signed")}
                 className={`px-4 py-2 rounded-xl text-[13px] font-extrabold transition-all cursor-pointer flex items-center gap-2 ${docSubTab === "signed"
-                    ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
-                    : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
+                  ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
+                  : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
                   }`}
               >
                 <CheckCircle2 className="h-4 w-4" />

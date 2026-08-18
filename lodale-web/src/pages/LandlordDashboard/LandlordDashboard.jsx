@@ -724,10 +724,79 @@ export default function LandlordDashboard() {
   useEffect(() => {
     async function loadProperties() {
       const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
-      const apiProps = await propertyService.getLandlordProperties(currentUserId);
-      setDisplayProperties(apiProps);
+      let apiProps = [];
+      try {
+        apiProps = await propertyService.getLandlordProperties(currentUserId);
+      } catch (err) {
+        console.warn("Error fetching landlord properties from API:", err);
+      }
+
+      let localProps = [];
+      try {
+        const savedLandlordProps = localStorage.getItem("landlordProperties");
+        if (savedLandlordProps) {
+          const parsed = JSON.parse(savedLandlordProps);
+          if (Array.isArray(parsed)) localProps.push(...parsed);
+        }
+        const savedGeneralProps = localStorage.getItem("properties");
+        if (savedGeneralProps) {
+          const parsedG = JSON.parse(savedGeneralProps);
+          if (Array.isArray(parsedG)) {
+            localProps.push(...parsedG);
+          }
+        }
+      } catch (err) {
+        console.warn("Error reading local landlord properties:", err);
+      }
+
+      const propMap = new Map();
+      if (Array.isArray(apiProps)) {
+        apiProps.forEach((p) => {
+          if (p && p.id) propMap.set(p.id, p);
+        });
+      }
+
+      localProps.forEach((p) => {
+        if (!p || !p.id) return;
+        const currentName = (username || "Tunde Bakare").toLowerCase();
+        const pLandlordName = (p.landlord?.name || p.landlord || "").toLowerCase();
+        const isMatch = !p.landlord || pLandlordName.includes(currentName) || currentName.includes(pLandlordName) || p.landlordId === currentUserId;
+
+        if (isMatch || !propMap.has(p.id)) {
+          // Sync status from general properties if approved in admin
+          const generalPropsStr = localStorage.getItem("properties");
+          if (generalPropsStr) {
+            try {
+              const genProps = JSON.parse(generalPropsStr);
+              const matchedGen = genProps.find((gp) => gp.id === p.id);
+              if (matchedGen && matchedGen.status) {
+                p.status = matchedGen.status;
+                if (matchedGen.status === "active_vacant" || matchedGen.status === "live" || matchedGen.status === "approved") {
+                  p.isPending = false;
+                }
+              }
+            } catch (_e) { }
+          }
+
+          propMap.set(p.id, {
+            ...p,
+            price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
+            location: p.location || `${p.city || "Abuja"}, ${p.state || "FCT"}`
+          });
+        }
+      });
+
+      setDisplayProperties(Array.from(propMap.values()));
     }
+
     loadProperties();
+
+    window.addEventListener("storage", loadProperties);
+    window.addEventListener("focus", loadProperties);
+    return () => {
+      window.removeEventListener("storage", loadProperties);
+      window.removeEventListener("focus", loadProperties);
+    };
   }, [username]);
 
   // Dynamic calculation for dashboard numbers & activity
