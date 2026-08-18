@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node --env-file=.env ../backend/src/server.js",
+    "server": "npm --prefix ../backend start",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview"
