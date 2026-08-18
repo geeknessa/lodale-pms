@@ -107,7 +107,7 @@ export default function AdminDashboard() {
       }
 
       setListings(() => {
-        const existingMap = new Map();
+        const map = new Map();
 
         // Add API properties
         if (Array.isArray(apiPending)) {
