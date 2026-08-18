@@ -152,7 +152,7 @@ body.dark .border-ink-200 {
 body.dark input,
 body.dark textarea,
 body.dark select {
-  background: var(--color-moss-700) !important;
+  background-color: var(--color-moss-700) !important;
   color: var(--color-white) !important;
   border-color: var(--color-moss-600) !important;
 }
@@ -283,6 +283,9 @@ body.dark select.form-select,
 body.dark select.card-select,
 .dark select {
   background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23E5C583' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 14px center !important;
+  background-size: 16px 16px !important;
   border-color: rgba(255, 255, 255, 0.12);
   background-color: #0E1C18;
   color: #F1F5F9;
