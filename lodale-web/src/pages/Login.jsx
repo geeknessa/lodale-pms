@@ -165,6 +165,12 @@ export default function Login() {
         localStorage.setItem("sessionExpiresAt", expiresAt);
         localStorage.setItem("username_" + cleanEmail, userFullName);
 
+        if (userRole === "admin") {
+          sessionStorage.setItem("adminAuthenticated", "true");
+          localStorage.setItem("adminAuthenticated", "true");
+          localStorage.removeItem("explicitAdminSignOut");
+        }
+
         let savedProfile = {};
         try {
           const rawSaved = localStorage.getItem("userProfile_" + cleanEmail);
