@@ -206,9 +206,9 @@ export default function AdminDashboard() {
                 if (uObj && (uObj.email || key.includes("@"))) {
                   localUsers.push({
                     email: uObj.email || key.replace(/^registeredUser_|^userProfile_/, ""),
-                    name: uObj.name || uObj.username || `${uObj.firstName || ""} ${uObj.lastName || ""}`.trim() || uObj.email,
-                    phone: uObj.phone || uObj.profile?.phone || "",
-                    role: uObj.role || uObj.profile?.role || "Tenant",
+                    name: uObj.name || uObj.username || `${uObj.firstName || uObj.first_name || ""} ${uObj.lastName || uObj.last_name || ""}`.trim() || uObj.email,
+                    phone: uObj.phone || uObj.phone_number || uObj.profile?.phone || "",
+                    role: uObj.role || uObj.profile?.role || uObj.userRole || "Tenant",
                     id: uObj.id
                   });
                 }
@@ -217,10 +217,20 @@ export default function AdminDashboard() {
               const uEmail = key.replace("username_", "").trim();
               const uName = localStorage.getItem(key);
               if (uEmail && uEmail.includes("@")) {
+                let userRole = "Tenant";
+                const rawProf = localStorage.getItem("userProfile_" + uEmail.toLowerCase()) || localStorage.getItem("registeredUser_" + uEmail.toLowerCase());
+                if (rawProf) {
+                  try {
+                    const parsedProf = JSON.parse(rawProf);
+                    if (parsedProf.role || parsedProf.userRole || parsedProf.profile?.role) {
+                      userRole = parsedProf.role || parsedProf.userRole || parsedProf.profile?.role;
+                    }
+                  } catch (e) { }
+                }
                 localUsers.push({
                   email: uEmail,
                   name: uName || uEmail,
-                  role: "Tenant"
+                  role: userRole
                 });
               }
             }
@@ -251,13 +261,26 @@ export default function AdminDashboard() {
       const activeEmail = localStorage.getItem("lastLoggedInEmail");
       const activeRole = localStorage.getItem("userRole");
 
-      setUsers((prev) => {
-        const existingMap = new Map(prev.map((u) => [u.email?.toLowerCase(), u]));
+      setUsers(() => {
+        const existingMap = new Map();
 
         // Add users fetched from Database API
         apiUsers.forEach((u) => {
           if (u && u.email) {
-            existingMap.set(u.email.toLowerCase(), u);
+            const roleStr = u.primary_role || u.role || "Tenant";
+            const formattedRole = roleStr.toLowerCase().includes("landlord") ? "Landlord" : (roleStr.toLowerCase().includes("admin") ? "Admin" : "Tenant");
+            const nameStr = `${u.first_name || ""} ${u.last_name || ""}`.trim() || u.email;
+            existingMap.set(u.email.toLowerCase(), {
+              id: u.id || "usr-" + Math.floor(Math.random() * 100000),
+              name: nameStr,
+              email: u.email,
+              phone: u.phone_number || u.phone || "",
+              role: formattedRole,
+              status: u.status || "Active",
+              joinedDate: u.created_at ? new Date(u.created_at).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+              listingsCount: formattedRole === "Landlord" ? 1 : 0,
+              verifications: ["ID Verified", "Email Verified"],
+            });
           }
         });
 
@@ -265,8 +288,8 @@ export default function AdminDashboard() {
         localUsers.forEach((r) => {
           if (r && r.email) {
             const emailKey = r.email.toLowerCase();
-            const userRole = (r.role || r.profile?.role || "Tenant").toLowerCase();
-            const formattedRole = userRole.includes("landlord") ? "Landlord" : (userRole.includes("admin") ? "Admin" : "Tenant");
+            const rawRole = (r.role || r.profile?.role || "Tenant").toLowerCase();
+            const formattedRole = rawRole.includes("landlord") ? "Landlord" : (rawRole.includes("admin") ? "Admin" : "Tenant");
             const nameStr = r.name || r.username || (r.profile ? `${r.profile.firstName || ''} ${r.profile.lastName || ''}`.trim() : null) || "Registered User";
 
             if (!existingMap.has(emailKey)) {
@@ -283,30 +306,43 @@ export default function AdminDashboard() {
               });
             } else {
               const existing = existingMap.get(emailKey);
-              if (nameStr && nameStr !== "Registered User" && existing.name === "Registered User") {
+              if (nameStr && nameStr !== "Registered User" && (existing.name === "Registered User" || existing.name === existing.email)) {
                 existing.name = nameStr;
               }
               if (r.phone && !existing.phone) {
                 existing.phone = r.phone;
               }
+              if (rawRole.includes("landlord")) {
+                existing.role = "Landlord";
+                existing.listingsCount = Math.max(existing.listingsCount || 0, 1);
+              }
             }
           }
         });
 
-        // Add active logged in user if not present
-        if (activeEmail && !existingMap.has(activeEmail.toLowerCase())) {
+        // Add or update active logged in user
+        if (activeEmail) {
+          const emailKey = activeEmail.toLowerCase();
           const formattedRole = (activeRole || "landlord").toLowerCase().includes("landlord") ? "Landlord" : "Tenant";
-          existingMap.set(activeEmail.toLowerCase(), {
-            id: "usr-" + Math.floor(Math.random() * 100000),
-            name: activeUsername || "Verified Landlord",
-            email: activeEmail,
-            phone: "",
-            role: formattedRole,
-            status: "Active",
-            joinedDate: new Date().toISOString().split("T")[0],
-            listingsCount: formattedRole === "Landlord" ? 1 : 0,
-            verifications: ["ID Verified", "Phone Verified"],
-          });
+          if (!existingMap.has(emailKey)) {
+            existingMap.set(emailKey, {
+              id: "usr-" + Math.floor(Math.random() * 100000),
+              name: activeUsername || "Verified User",
+              email: activeEmail,
+              phone: "",
+              role: formattedRole,
+              status: "Active",
+              joinedDate: new Date().toISOString().split("T")[0],
+              listingsCount: formattedRole === "Landlord" ? 1 : 0,
+              verifications: ["ID Verified", "Phone Verified"],
+            });
+          } else {
+            const existing = existingMap.get(emailKey);
+            existing.role = formattedRole;
+            if (activeUsername && activeUsername !== "Verified User") {
+              existing.name = activeUsername;
+            }
+          }
         }
 
         // Check landlord names in localProps
@@ -320,19 +356,34 @@ export default function AdminDashboard() {
 
         localProps.forEach((p) => {
           const lName = p.landlord?.name || activeUsername || "Landlord User";
-          const mockEmail = lName.toLowerCase().replace(/[^a-z0-9]+/g, ".") + "@lodale.com";
-          if (!existingMap.has(mockEmail)) {
-            existingMap.set(mockEmail, {
-              id: "usr-l-" + Math.floor(Math.random() * 10000),
-              name: lName,
-              email: mockEmail,
-              phone: "",
-              role: "Landlord",
-              status: "Active",
-              joinedDate: new Date().toISOString().split("T")[0],
-              listingsCount: 1,
-              verifications: ["ID Verified", "Title Proof Attached"],
-            });
+          const lNameLower = lName.toLowerCase().trim();
+
+          let matchedUser = null;
+          for (const u of existingMap.values()) {
+            if (u.name?.toLowerCase().trim() === lNameLower || u.email?.toLowerCase().includes(lNameLower.replace(/\s+/g, ""))) {
+              matchedUser = u;
+              break;
+            }
+          }
+
+          if (matchedUser) {
+            matchedUser.role = "Landlord";
+            matchedUser.listingsCount = Math.max(matchedUser.listingsCount || 0, 1);
+          } else {
+            const mockEmail = lNameLower.replace(/[^a-z0-9]+/g, ".") + "@lodale.com";
+            if (!existingMap.has(mockEmail)) {
+              existingMap.set(mockEmail, {
+                id: "usr-l-" + Math.floor(Math.random() * 10000),
+                name: lName,
+                email: mockEmail,
+                phone: "",
+                role: "Landlord",
+                status: "Active",
+                joinedDate: new Date().toISOString().split("T")[0],
+                listingsCount: 1,
+                verifications: ["ID Verified", "Title Proof Attached"],
+              });
+            }
           }
         });
 
