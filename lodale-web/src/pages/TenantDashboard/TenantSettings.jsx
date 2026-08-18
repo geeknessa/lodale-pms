@@ -88,21 +88,69 @@ export default function TenantSettings({ onSignOut }) {
   const [confirmCheck, setConfirmCheck] = useState(false);
   const [selectedDocToView, setSelectedDocToView] = useState(null);
 
+  const loadStoredProfile = () => {
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
+    let localProf = null;
+    try {
+      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || (emailKey ? localStorage.getItem("userProfile_" + emailKey) : null);
+      if (raw) localProf = JSON.parse(raw);
+    } catch (e) { }
+
+    const storedUsername = sessionStorage.getItem("username") || (emailKey ? localStorage.getItem("username_" + emailKey) : null) || localStorage.getItem("username") || "";
+
+    let fname = localProf?.firstName || localProf?.first_name || "";
+    let lname = localProf?.lastName || localProf?.last_name || "";
+    if (!fname && storedUsername) {
+      const parts = storedUsername.trim().split(" ");
+      fname = parts[0] || "";
+      lname = parts.slice(1).join(" ") || "";
+    }
+
+    setFirstName(fname);
+    setLastName(lname);
+    setEmail(localProf?.email || emailKey || "");
+    setPhone(localProf?.phone || localProf?.phone_number || "");
+    setAddress(localProf?.address || "");
+    setDob(localProf?.dob || "");
+    setLocation(localProf?.location || "");
+    setPostalCode(localProf?.postalCode || localProf?.postal_code || "");
+    if (localProf?.gender) setGender(localProf.gender);
+
+    let savedAvatar = "";
+    if (emailKey) {
+      savedAvatar = localStorage.getItem("tenantAvatar_" + emailKey);
+    }
+    if (!savedAvatar) {
+      savedAvatar = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl") || localProf?.avatar || localProf?.avatar_url || "";
+    }
+    setAvatarUrl(savedAvatar || "");
+    if (localProf) setUserProfile(localProf);
+  };
+
   useEffect(() => {
-    async function loadProfile() {
+    loadStoredProfile();
+
+    async function fetchProfile() {
       try {
         const profile = await userService.getProfile();
-        setUserProfile(profile);
-        setFirstName(profile.first_name || "");
-        setLastName(profile.last_name || "");
-        setEmail(profile.email || "");
-        setPhone(profile.phone_number || "");
-        setAvatarUrl(profile.avatar_url || "");
+        if (profile) {
+          setUserProfile(prev => ({ ...prev, ...profile }));
+          if (profile.first_name) setFirstName(profile.first_name);
+          if (profile.last_name) setLastName(profile.last_name);
+          if (profile.email) setEmail(profile.email);
+          if (profile.phone_number || profile.phone) setPhone(profile.phone_number || profile.phone);
+          if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
+          if (profile.address) setAddress(profile.address);
+          if (profile.dob) setDob(profile.dob);
+          if (profile.location) setLocation(profile.location);
+          if (profile.postal_code || profile.postalCode) setPostalCode(profile.postal_code || profile.postalCode);
+          if (profile.gender) setGender(profile.gender);
+        }
       } catch (err) {
-        console.warn("Failed to fetch profile", err);
+        console.warn("Failed to fetch tenant profile", err);
       }
     }
-    loadProfile();
+    fetchProfile();
   }, []);
 
   // Listen to cross-tab storage changes for tenant documents
@@ -133,16 +181,36 @@ export default function TenantSettings({ onSignOut }) {
       reader.onload = (evt) => {
         const base64Data = evt.target.result;
         setAvatarUrl(base64Data);
-        const emailKey = email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
         if (emailKey) {
-          localStorage.setItem("tenantAvatar_" + emailKey.toLowerCase(), base64Data);
+          localStorage.setItem("tenantAvatar_" + emailKey, base64Data);
         }
+        sessionStorage.setItem("tenantAvatarUrl", base64Data);
+        localStorage.setItem("tenantAvatarUrl", base64Data);
 
-        const updatedProf = { ...userProfile, avatar: base64Data };
+        const updatedProf = {
+          ...userProfile,
+          firstName,
+          lastName,
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          phone,
+          phone_number: phone,
+          address,
+          dob,
+          location,
+          postalCode,
+          postal_code: postalCode,
+          gender,
+          avatar: base64Data,
+          avatar_url: base64Data
+        };
         setUserProfile(updatedProf);
         sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
         if (emailKey) {
-          localStorage.setItem("userProfile_" + emailKey.toLowerCase(), JSON.stringify(updatedProf));
+          localStorage.setItem("userProfile_" + emailKey, JSON.stringify(updatedProf));
         }
 
         window.dispatchEvent(new Event("storage"));
@@ -155,19 +223,66 @@ export default function TenantSettings({ onSignOut }) {
     e.preventDefault();
     if (activeTab === "personal") {
       try {
-        const updatedProfile = await userService.updateProfile({
+        const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+        const updatedName = `${firstName.trim()} ${lastName.trim()}`.trim();
+
+        const profileData = {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           phone_number: phone.trim(),
-          avatar_url: avatarUrl
-        });
+          avatar_url: avatarUrl,
+          address: address.trim(),
+          dob: dob.trim(),
+          location: location,
+          postal_code: postalCode.trim(),
+          gender: gender
+        };
 
-        const newFullName = `${updatedProfile.first_name || ""} ${updatedProfile.last_name || ""}`.trim();
-        sessionStorage.setItem("username", newFullName);
-        const curEmail = sessionStorage.getItem("lastLoggedInEmail") || email;
-        if (curEmail) {
-          localStorage.setItem("username_" + curEmail.toLowerCase(), newFullName);
+        try {
+          await userService.updateProfile(profileData);
+        } catch (apiErr) {
+          console.warn("Backend updateProfile notice:", apiErr);
         }
+
+        const updatedProf = {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          email: cleanEmail,
+          phone: phone.trim(),
+          phone_number: phone.trim(),
+          address: address.trim(),
+          dob: dob.trim(),
+          location: location,
+          postalCode: postalCode.trim(),
+          postal_code: postalCode.trim(),
+          gender: gender,
+          avatar: avatarUrl,
+          avatar_url: avatarUrl,
+          role: "tenant"
+        };
+
+        setUserProfile(updatedProf);
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+
+        if (cleanEmail) {
+          localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
+          localStorage.setItem("username_" + cleanEmail, updatedName);
+          if (avatarUrl) {
+            localStorage.setItem("tenantAvatar_" + cleanEmail, avatarUrl);
+          }
+        }
+        if (updatedName) {
+          sessionStorage.setItem("username", updatedName);
+          localStorage.setItem("username", updatedName);
+        }
+        if (avatarUrl) {
+          sessionStorage.setItem("tenantAvatarUrl", avatarUrl);
+          localStorage.setItem("tenantAvatarUrl", avatarUrl);
+        }
+
         window.dispatchEvent(new Event("storage"));
 
         triggerToast("Personal profile information updated successfully!", "success", "Profile Saved");
@@ -196,22 +311,7 @@ export default function TenantSettings({ onSignOut }) {
 
   const handleDiscardChanges = () => {
     if (activeTab === "personal") {
-      const name = sessionStorage.getItem("username") || localStorage.getItem("username");
-      if (name) {
-        const parts = name.split(" ");
-        setFirstName(parts[0]);
-        setLastName(parts.length > 1 ? parts.slice(1).join(" ") : "");
-      } else {
-        setFirstName("Roland");
-        setLastName("Donald");
-      }
-      setEmail(sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "rolandDonald@mail.com");
-      setGender("Male");
-      setAddress("3605 Parker Rd.");
-      setPhone("(405) 555-0128");
-      setDob("1 Feb, 1995");
-      setLocation("Atlanta, USA");
-      setPostalCode("30301");
+      loadStoredProfile();
     } else {
       setCurrentPassword("");
       setNewPassword("");

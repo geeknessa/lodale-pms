@@ -149,18 +149,32 @@ export default function Login() {
         localStorage.setItem("lastLoggedInEmail", cleanEmail);
         localStorage.setItem("username_" + cleanEmail, userFullName);
 
+        let savedProfile = {};
+        try {
+          const rawSaved = localStorage.getItem("userProfile_" + cleanEmail);
+          if (rawSaved) savedProfile = JSON.parse(rawSaved);
+        } catch (e) { }
+
         const profileObj = {
-          firstName: res.user.first_name || "",
-          lastName: res.user.last_name || "",
+          firstName: res.user.first_name || savedProfile.firstName || savedProfile.first_name || "",
+          lastName: res.user.last_name || savedProfile.lastName || savedProfile.last_name || "",
+          first_name: res.user.first_name || savedProfile.first_name || savedProfile.firstName || "",
+          last_name: res.user.last_name || savedProfile.last_name || savedProfile.lastName || "",
           email: cleanEmail,
-          phone: res.user.phone_number || "",
+          phone: res.user.phone_number || savedProfile.phone || savedProfile.phone_number || "",
+          phone_number: res.user.phone_number || savedProfile.phone_number || savedProfile.phone || "",
           role: userRole,
-          address: "",
-          dob: "",
-          location: "",
-          postalCode: "",
+          address: res.user.address || savedProfile.address || "",
+          dob: res.user.dob || savedProfile.dob || "",
+          location: res.user.location || savedProfile.location || "",
+          postalCode: res.user.postal_code || res.user.postalCode || savedProfile.postalCode || savedProfile.postal_code || "",
+          postal_code: res.user.postal_code || res.user.postalCode || savedProfile.postal_code || savedProfile.postalCode || "",
+          gender: res.user.gender || savedProfile.gender || "Male",
+          avatar: res.user.avatar_url || savedProfile.avatar || savedProfile.avatar_url || "",
+          avatar_url: res.user.avatar_url || savedProfile.avatar_url || savedProfile.avatar || ""
         };
         sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
+        localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
         sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
         localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
 
