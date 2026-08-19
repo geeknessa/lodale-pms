@@ -38,13 +38,31 @@ import {
   User,
   KeyRound,
   Upload,
-  Menu
+  Menu,
+  Settings,
+  Palette,
+  Bell,
+  Sliders,
+  Info,
+  Shield,
+  Laptop,
+  Smartphone,
+  Monitor
 } from "lucide-react";
 
 // --- INITIAL DATA ---
 const INITIAL_USERS = [];
 const INITIAL_LISTINGS = [];
 const INITIAL_REVIEWS = [];
+
+const SETTINGS_PAGES = [
+  { id: "profile", label: "My Profile", icon: User },
+  { id: "account", label: "Account & Security", icon: KeyRound },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "preferences", label: "Preferences", icon: Sliders },
+  { id: "about", label: "System Info", icon: Info }
+];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -53,8 +71,9 @@ export default function AdminDashboard() {
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings'
+  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings' | 'profile'
   const [activeTab, setActiveTab] = useState("overview");
+  const [settingsSubTab, setSettingsSubTab] = useState("profile");
 
   // Handle Escape key to close mobile sidebar drawer
   useEffect(() => {
@@ -719,7 +738,7 @@ export default function AdminDashboard() {
                 Safety &amp; Management
               </div>
 
-              {/* 1. User Management */}
+              {/* User Management */}
               <button
                 onClick={() => {
                   setActiveTab("users");
@@ -732,14 +751,14 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Users className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-                  <span className="truncate">1. User Management</span>
+                  <span className="truncate">User Management</span>
                 </div>
                 <span className="text-[11px] bg-[#262626]/40 dark:bg-black/40 px-1.5 py-0.5 rounded-full text-[#DAD7CD] ml-1 shrink-0">
                   {users.length}
                 </span>
               </button>
 
-              {/* 2. Listing Oversight */}
+              {/* Listing Oversight */}
               <button
                 onClick={() => {
                   setActiveTab("listings");
@@ -761,7 +780,7 @@ export default function AdminDashboard() {
                 )}
               </button>
 
-              {/* 3. Review & Rating Moderation */}
+              {/* Review & Rating Moderation */}
               <button
                 onClick={() => {
                   setActiveTab("reviews");
@@ -774,7 +793,7 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <MessageSquareWarning className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-                  <span className="truncate">3. Review Moderation</span>
+                  <span className="truncate">Review Moderation</span>
                 </div>
                 {flaggedReviewsCount > 0 && (
                   <span className="text-[11px] bg-rose-700 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
@@ -786,11 +805,11 @@ export default function AdminDashboard() {
               {/* My Profile */}
               <button
                 onClick={() => {
-                  setActiveTab("settings");
+                  setActiveTab("profile");
                   setSettingsSubTab("profile");
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "profile"
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "profile" || activeTab === "settings"
                   ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
                   : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
@@ -1472,8 +1491,8 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* --- TAB 4: MY PROFILE (SIMPLIFIED & SINGLE PAGE) --- */}
-          {activeTab === "profile" && (
+          {/* --- TAB 4: MY PROFILE --- */}
+          {(activeTab === "profile" || activeTab === "settings") && (
             <div className="space-y-6 animate-fade-in">
               {/* Main Header */}
               <div>
@@ -1619,7 +1638,7 @@ export default function AdminDashboard() {
                 </form>
               </div>
 
-              {/* Change Password Card */}
+              {/* Change Password Card directly underneath Profile Details */}
               <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
                 <div>
                   <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
