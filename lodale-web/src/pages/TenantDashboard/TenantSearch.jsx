@@ -93,7 +93,7 @@ function LandlordCard({ landlord, onInspect }) {
   );
 }
 
-export default function TenantSearch({ setShowProfileModal, onStartChat, tenantAvatar }) {
+export default function TenantSearch({ setActiveTab, setShowProfileModal, onStartChat, tenantAvatar }) {
   const navigate = useNavigate();
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -250,6 +250,8 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
     });
   };
 
+
+
   // Landlord Details modal states
   const [selectedLandlord, setSelectedLandlord] = useState(null);
   const [showLandlordDetailsModal, setShowLandlordDetailsModal] = useState(false);
@@ -366,6 +368,18 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
       return true;
     });
   })();
+
+  useEffect(() => {
+    const handleResumeApply = (e) => {
+      const propId = e.detail;
+      const property = allAvailableProperties.find(p => p.id == propId);
+      if (property) {
+        handleInspectProperty(property);
+      }
+    };
+    window.addEventListener("resumeQuickApply", handleResumeApply);
+    return () => window.removeEventListener("resumeQuickApply", handleResumeApply);
+  }, [allAvailableProperties]);
 
   const searchSuggestions = (() => {
     const q = searchQuery.toLowerCase().trim();
@@ -1067,6 +1081,19 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
                 </Button>
                 <Button
                   onClick={() => {
+                    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                    const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                    const prof = JSON.parse(raw);
+                    
+                    if (!prof.phone && !prof.phone_number || !prof.occupation || !prof.income) {
+                      triggerToast("Please complete your profile details before applying.", "warning", "Incomplete Profile");
+                      setShowPropertyDetailsModal(false);
+                      // Save intent to apply
+                      localStorage.setItem("pendingQuickApplyPropertyId", selectedProperty.id);
+                      if (setActiveTab) setActiveTab(3); // Navigate to Settings
+                      return;
+                    }
+
                     const username = sessionStorage.getItem("username") || "Tenant User";
                     const userEmail = sessionStorage.getItem("lastLoggedInEmail") || "tenant@example.com";
                     const saved = localStorage.getItem("propertyApplications");
@@ -1077,18 +1104,21 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
                       tenantName: username,
                       name: username,
                       email: userEmail,
+                      phone: prof.phone || prof.phone_number,
+                      occupation: prof.occupation,
+                      income: prof.income,
                       propertyId: selectedProperty?.id,
                       propertyTitle: selectedProperty?.title || "Rental Property",
                       date: "Just now",
                       status: "Applicant",
-                      reliabilityScore: "5.0",
+                      reliabilityScore: 0,
                       notes: "Verified NIN application submitted via Quick Apply."
                     };
 
                     localStorage.setItem("propertyApplications", JSON.stringify([newApp, ...currentApps]));
                     window.dispatchEvent(new Event("storage"));
 
-                    triggerToast("Application submitted successfully! Your pre-verified NIN profile has been shared with the landlord.", "success", "Application Sent");
+                    triggerToast("Application submitted successfully! Your profile has been shared with the landlord.", "success", "Application Sent");
                     setShowPropertyDetailsModal(false);
                   }}
                   variant="secondary"

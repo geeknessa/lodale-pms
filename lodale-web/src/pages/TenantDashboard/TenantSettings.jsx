@@ -56,6 +56,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const initialDob = initialProf?.dob || "";
   const initialLocation = initialProf?.location || "";
   const initialPostalCode = initialProf?.postalCode || "";
+  const initialOccupation = initialProf?.occupation || "";
+  const initialIncome = initialProf?.income || "";
   const initialAvatar =
     currentAvatar ||
     initialProf?.avatar ||
@@ -77,6 +79,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [dob, setDob] = useState(initialDob);
   const [location, setLocation] = useState(initialLocation);
   const [postalCode, setPostalCode] = useState(initialPostalCode);
+  const [occupation, setOccupation] = useState(initialOccupation);
+  const [income, setIncome] = useState(initialIncome);
   const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -248,8 +252,9 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           dob: dob.trim(),
           location: location,
           postalCode: postalCode.trim(),
-          avatar: avatarUrl,
-          avatar_url: avatarUrl
+          occupation: occupation.trim(),
+          income: income.trim(),
+          avatar: avatarUrl || userProfile.avatar || ""
         };
         sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(profToSave));
         if (curEmail) {
@@ -301,6 +306,14 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         setSaveSuccess(true);
         setFeedbackMessage({ type: "success", text: "Profile information updated successfully!" });
         triggerToast("Profile information updated successfully!", "success", "Profile Saved");
+
+        const pendingPropertyId = localStorage.getItem("pendingQuickApplyPropertyId");
+        if (pendingPropertyId) {
+          localStorage.removeItem("pendingQuickApplyPropertyId");
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("resumeQuickApply", { detail: pendingPropertyId }));
+          }, 500);
+        }
 
         setTimeout(() => setSaveSuccess(false), 3500);
       } catch (err) {
@@ -929,7 +942,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               </div>
 
               <div className="settings-form-group">
-                <label className="settings-input-label">Phone Number</label>
+                <label className="settings-input-label">Phone Number <span className="text-red-500">*</span></label>
                 <input
                   type="tel"
                   maxLength={15}
@@ -938,6 +951,28 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                   onChange={(e) => setPhone(e.target.value)}
                   className="settings-form-input"
                   placeholder="Phone Number"
+                />
+              </div>
+
+              <div className="settings-form-group">
+                <label className="settings-input-label">Occupation <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  className="settings-form-input"
+                  placeholder="e.g. Software Engineer"
+                />
+              </div>
+
+              <div className="settings-form-group">
+                <label className="settings-input-label">Monthly Income <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={income}
+                  onChange={(e) => setIncome(e.target.value)}
+                  className="settings-form-input"
+                  placeholder="e.g. ₦500,000"
                 />
               </div>
 

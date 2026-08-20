@@ -342,6 +342,10 @@ export default function TenantDashboard() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [payingState, setPayingState] = useState("idle"); // idle | processing | success
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editPhone, setEditPhone] = useState("");
+  const [editOccupation, setEditOccupation] = useState("");
+  const [editIncome, setEditIncome] = useState("");
 
   // Ticket detail & modal states
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -361,6 +365,16 @@ export default function TenantDashboard() {
       localStorage.setItem("tenantChats", JSON.stringify([]));
       localStorage.removeItem("isNewSignUp");
     }
+
+    // Listen for resume quick apply to switch back to Search tab
+    const handleResumeApply = () => {
+      setActiveTab(1);
+    };
+    window.addEventListener("resumeQuickApply", handleResumeApply);
+    
+    return () => {
+      window.removeEventListener("resumeQuickApply", handleResumeApply);
+    };
   }, []);
 
   // Load tenant specific requests
@@ -911,27 +925,73 @@ export default function TenantDashboard() {
             <div className="flex flex-col gap-3 mt-2 border-t border-neutral-100 dark:border-neutral-800/60 pt-4">
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Email Address</span>
-                <span className="text-[13px] font-bold">{sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
+                <span className="text-[13px] font-bold">{sessionStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Phone Number</span>
-                <span className="text-[13px] font-bold">
-                  {(() => {
-                    try {
-                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-                      const raw =
-                        sessionStorage.getItem("tenantCurrentProfile") ||
-                        (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) ||
-                        sessionStorage.getItem("currentUserProfile") ||
-                        sessionStorage.getItem("currentUserProfile") ||
-                        "{}";
-                      const prof = JSON.parse(raw);
-                      return prof.phone || prof.phone_number || "Not provided";
-                    } catch (e) {
-                      return "Not provided";
-                    }
-                  })()}
-                </span>
+                {isEditingProfile ? (
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="bg-cream-50 dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
+                    placeholder="+234..."
+                  />
+                ) : (
+                  <span className="text-[13px] font-bold">
+                    {(() => {
+                      try {
+                        const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                        const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                        return JSON.parse(raw).phone || "Not provided";
+                      } catch (e) { return "Not provided"; }
+                    })()}
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
+                <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Occupation</span>
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={editOccupation}
+                    onChange={(e) => setEditOccupation(e.target.value)}
+                    className="bg-cream-50 dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
+                    placeholder="e.g. Engineer"
+                  />
+                ) : (
+                  <span className="text-[13px] font-bold">
+                    {(() => {
+                      try {
+                        const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                        const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                        return JSON.parse(raw).occupation || "Not provided";
+                      } catch (e) { return "Not provided"; }
+                    })()}
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
+                <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Monthly Income</span>
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={editIncome}
+                    onChange={(e) => setEditIncome(e.target.value)}
+                    className="bg-cream-50 dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
+                    placeholder="e.g. ₦400,000"
+                  />
+                ) : (
+                  <span className="text-[13px] font-bold">
+                    {(() => {
+                      try {
+                        const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                        const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                        return JSON.parse(raw).income || "Not provided";
+                      } catch (e) { return "Not provided"; }
+                    })()}
+                  </span>
+                )}
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Active Unit</span>
@@ -943,12 +1003,61 @@ export default function TenantDashboard() {
               </div>
             </div>
 
-            <Button
-              onClick={() => setShowProfileModal(false)}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
-            >
-              Close Profile Details
-            </Button>
+            <div className="flex gap-2 mt-6">
+              {isEditingProfile ? (
+                <>
+                  <Button
+                    onClick={() => setIsEditingProfile(false)}
+                    variant="secondary"
+                    className="flex-1 bg-neutral-200 dark:bg-neutral-800 text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                      const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                      const prof = JSON.parse(raw);
+                      prof.phone = editPhone;
+                      prof.occupation = editOccupation;
+                      prof.income = editIncome;
+                      sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(prof));
+                      if (emailKey) localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(prof));
+                      window.dispatchEvent(new Event("storage"));
+                      setIsEditingProfile(false);
+                      triggerToast("Profile updated successfully!", "success", "Profile Saved");
+                    }}
+                    className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
+                  >
+                    Save Profile
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => setShowProfileModal(false)}
+                    variant="secondary"
+                    className="flex-1 bg-neutral-200 dark:bg-neutral-800 text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                      const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                      const prof = JSON.parse(raw);
+                      setEditPhone(prof.phone || "");
+                      setEditOccupation(prof.occupation || "");
+                      setEditIncome(prof.income || "");
+                      setIsEditingProfile(true);
+                    }}
+                    className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
+                  >
+                    Edit Profile
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1773,6 +1882,7 @@ export default function TenantDashboard() {
           </main>
         ) : activeTab === 1 ? (
           <TenantSearch
+            setActiveTab={setActiveTab}
             setShowProfileModal={setShowProfileModal}
             tenantAvatar={tenantAvatar}
             onStartChat={(landlordName) => {
