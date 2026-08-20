@@ -248,17 +248,49 @@ export default function ListingDetail() {
     setChatMessages((prev) => [...prev, userMsg]);
     setInputMessage("");
 
-    // Simulate instant landlord response
+    // Sync to P2P chats in localStorage
+    const tenantName = sessionStorage.getItem("username") || "Tenant User";
+    const tenantEmail = sessionStorage.getItem("lastLoggedInEmail") || "tenant@example.com";
+    const propertyLandlordName = listing.landlord?.name || listing.landlord_name || "Skyline Properties Ltd";
+
+    // 1. Add to Tenant's chat list
+    const tChats = JSON.parse(localStorage.getItem("tenantChats") || "[]");
+    let tThread = tChats.find(c => c.name === propertyLandlordName);
+    if (!tThread) {
+      tThread = { id: Date.now() + Math.random(), name: propertyLandlordName, messages: [], unread: 0, avatar: propertyLandlordName.charAt(0).toUpperCase() };
+      tChats.unshift(tThread);
+    }
+    tThread.messages.push({ ...userMsg, sender: 'user' });
+    localStorage.setItem("tenantChats", JSON.stringify(tChats));
+
+    // 2. Add to Landlord's chat list
+    const lChats = JSON.parse(localStorage.getItem("landlordChats") || "[]");
+    let lThread = lChats.find(c => c.name === tenantName);
+    if (!lThread) {
+      lThread = { id: Date.now() + Math.random(), name: tenantName, messages: [], unread: 1, avatar: tenantName.charAt(0).toUpperCase() };
+      lChats.unshift(lThread);
+    }
+    lThread.messages.push({ ...userMsg, sender: 'tenant' });
+    lThread.unread = (lThread.unread || 0) + 1;
+    localStorage.setItem("landlordChats", JSON.stringify(lChats));
+
+    window.dispatchEvent(new Event("storage"));
+
+    // Simulate instant system notification
     setTimeout(() => {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: "landlord",
-          text: "Thank you for reaching out! I've received your message and will arrange a viewing inspection for you shortly.",
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
+      const replyText = `Your message has been sent to ${propertyLandlordName}. You will receive a response shortly.`;
+      const replyMsg = {
+        id: Date.now() + 1,
+        sender: "system",
+        text: replyText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setChatMessages((prev) => [...prev, replyMsg]);
+
+      // Note: We don't sync the "system" message to P2P because it's a local UI notification.
+      // The user's actual message was already synced to the Landlord above.
+
+      window.dispatchEvent(new Event("storage"));
     }, 1200);
   };
 
@@ -582,15 +614,15 @@ export default function ListingDetail() {
           <div className="w-full sm:w-[420px] bg-white dark:bg-[#12221C] h-full shadow-2xl flex flex-col justify-between border-l border-ink-200 dark:border-white/10">
             
             {/* Chat Drawer Header */}
-            <div className="p-4 bg-moss-800 dark:bg-[#16241F] text-white flex items-center justify-between border-b border-white/10">
+            <div className="p-4 bg-white dark:bg-[#16241F] border-b border-ink-100 dark:border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-full bg-[#E5C583] text-[#263b33] font-bold text-sm flex items-center justify-center shrink-0">
                   {landlordName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <div className="font-bold text-xs text-white">{landlordName}</div>
-                  <div className="text-[10px] text-emerald-300 flex items-center gap-1 font-medium">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <div className="font-bold text-xs text-ink-900 dark:text-white">{landlordName}</div>
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-300 flex items-center gap-1 font-medium">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                     Online — usually responds in minutes
                   </div>
                 </div>
@@ -599,7 +631,8 @@ export default function ListingDetail() {
               <button
                 type="button"
                 onClick={() => setIsChatOpen(false)}
-                className="text-white/80 hover:text-white p-1 rounded-lg cursor-pointer bg-transparent border-none outline-none"
+                className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 dark:bg-white/10 dark:hover:bg-white/20 text-ink-900 dark:text-white cursor-pointer transition-colors border-none outline-none shadow-sm"
+                title="Close Chat"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -610,19 +643,24 @@ export default function ListingDetail() {
               {chatMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex flex-col max-w-[80%] ${msg.sender === "user" ? "ml-auto items-end" : "items-start"}`}
+                  className={`flex flex-col ${msg.sender === "system" ? "w-full items-center my-4" : `max-w-[80%] ${msg.sender === "user" ? "ml-auto items-end" : "items-start"}`}`}
                 >
                   <div
-                    className={`p-3 rounded-2xl text-xs font-medium leading-relaxed ${msg.sender === "user"
-                      ? "bg-moss-700 text-white rounded-br-none"
-                      : "bg-white dark:bg-[#16241F] text-ink-900 dark:text-white border border-ink-200 dark:border-white/10 rounded-bl-none shadow-xs"
-                      }`}
+                    className={`p-3 text-xs font-medium leading-relaxed ${
+                      msg.sender === "user"
+                        ? "bg-moss-700 text-white rounded-2xl rounded-br-none"
+                        : msg.sender === "system"
+                        ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 italic rounded-xl text-center border border-dashed border-neutral-300 dark:border-neutral-700 mx-auto"
+                        : "bg-white dark:bg-[#16241F] text-ink-900 dark:text-white border border-ink-200 dark:border-white/10 rounded-2xl rounded-bl-none shadow-xs"
+                    }`}
                   >
                     {msg.text}
                   </div>
-                  <span className="text-[10px] text-ink-400 dark:text-cream-100/50 mt-1 px-1 font-mono">
-                    {msg.time}
-                  </span>
+                  {msg.sender !== "system" && (
+                    <span className="text-[10px] text-ink-400 dark:text-cream-100/50 mt-1 px-1 font-mono">
+                      {msg.time}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

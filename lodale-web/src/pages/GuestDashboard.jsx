@@ -305,8 +305,42 @@ export default function GuestDashboard() {
           }
         } catch (e) { }
 
+        const formatted = apiProps.map((item) => {
+          if (!item) return null;
+          const key = String(item.id || item.title);
+          
+          let landlordObj;
+          if (item.landlord && typeof item.landlord === "object" && (item.landlord.first_name || item.landlord.name)) {
+            const l = item.landlord;
+            landlordObj = {
+              id: l.id || null,
+              name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
+              score: l.score ?? 5.0,
+              reviews: l.reviews ?? 1,
+              phone_number: l.phone_number || null
+            };
+          } else {
+            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 5.0, reviews: 1, phone_number: null };
+          }
+          
+          return {
+            id: item.id || key,
+            title: item.title || item.address_line1 || "Property",
+            location: item.location || item.city || "Lagos, Nigeria",
+            price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
+            beds: item.beds || item.bedrooms || 1,
+            baths: item.baths || item.bathrooms || 1,
+            type: item.type || item.property_type || "apartment",
+            image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
+            amenities: item.amenities || [],
+            landlord: landlordObj,
+            status: item.status,
+            isPending: item.isPending
+          };
+        }).filter(Boolean);
+
         // STRICT FILTER: Exclude unapproved / pending / rejected listings from guest view
-        const approvedOnly = apiProps.filter((p) => {
+        const approvedOnly = formatted.filter((p) => {
           if (!p) return false;
           const status = (p.status || "").toLowerCase();
           if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {

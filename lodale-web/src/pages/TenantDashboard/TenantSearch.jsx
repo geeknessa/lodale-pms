@@ -16,7 +16,7 @@ function PropertyCard({ property, onInspect }) {
       <div className="property-card-image-wrapper">
         <img src={property.image} alt={property.title} className="property-card-image" />
         <span className="property-card-price-tag">
-          {formatCurrency(property.price, "/mo")}
+          {property.price}
         </span>
       </div>
 
@@ -62,7 +62,7 @@ function LandlordCard({ landlord, onInspect }) {
           <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Rating Score</span>
           <span className="font-bold text-amber-500 flex items-center gap-1">
             <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-            <span>{landlord.score} ({landlord.reviews} reviews)</span>
+            <span>{landlord.score > 0 ? `${landlord.score} (${landlord.reviews} reviews)` : "No rating yet"}</span>
           </span>
         </div>
         <div className="landlord-metric flex justify-between items-center text-[12.5px] mb-3">
@@ -137,18 +137,18 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
             landlordObj = {
               id: l.id || null,
               name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
-              score: l.score ?? 5.0,
-              reviews: l.reviews ?? 1,
+              score: l.score || 0,
+              reviews: l.reviews || 0,
               phone_number: l.phone_number || null
             };
           } else {
-            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 5.0, reviews: 1, phone_number: null };
+            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 0, reviews: 0, phone_number: null };
           }
           return {
             id: item.id || key,
             title: item.title || item.address_line1 || "Property",
             location: item.location || item.city || "Lagos, Nigeria",
-            price: typeof item.price === "number" ? item.price : Number(String(item.price || item.rent_amount || "0").replace(/[^0-9]/g, "")) || 0,
+            price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
             beds: item.beds || item.bedrooms || 1,
             baths: item.baths || item.bathrooms || 1,
             type: item.type || item.property_type || "apartment",
@@ -191,8 +191,8 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
         seen.set(key, {
           id: l.id || key,
           name: l.name,
-          score: l.score ?? 5.0,
-          reviews: l.reviews ?? 1,
+          score: l.score || 0,
+          reviews: l.reviews || 0,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(l.name)}&background=2C4633&color=E5C583&size=96`,
           location: p.location || "Lagos, Nigeria",
           properties: [p.title],
@@ -430,6 +430,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
   const availablePropertyIds = new Set(allAvailableProperties.map(p => p.id));
   const lastVisitedProperties = lastVisitedListings
     .filter(p => p && availablePropertyIds.has(p.id))
+    .map(p => allAvailableProperties.find(l => l.id === p.id) || p)
     .slice(0, 5);
   const lastVisitedIds = new Set(lastVisitedProperties.map(p => p.id));
 
@@ -1022,12 +1023,14 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
               {/* Landlord validation details */}
               <div className="flex flex-col gap-3 border-t border-neutral-100 dark:border-neutral-800/60 pt-4 mb-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Verified Landlord</span>
+                  <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Landlord / Manager</span>
                   <span className="text-[13px] font-bold">{selectedProperty.landlord.name}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Landlord Rating Score</span>
-                  <span className="text-[13px] font-bold text-amber-500">★ {selectedProperty.landlord.score} ({selectedProperty.landlord.reviews} reviews)</span>
+                  <span className="text-[13px] font-bold text-amber-500">
+                    {selectedProperty.landlord.score > 0 ? `★ ${selectedProperty.landlord.score} (${selectedProperty.landlord.reviews} reviews)` : "No rating yet"}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Ownership Status</span>
@@ -1064,6 +1067,27 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
                 </Button>
                 <Button
                   onClick={() => {
+                    const username = sessionStorage.getItem("username") || "Tenant User";
+                    const userEmail = sessionStorage.getItem("lastLoggedInEmail") || "tenant@example.com";
+                    const saved = localStorage.getItem("propertyApplications");
+                    const currentApps = saved ? JSON.parse(saved) : [];
+                    
+                    const newApp = {
+                      id: Date.now(),
+                      tenantName: username,
+                      name: username,
+                      email: userEmail,
+                      propertyId: selectedProperty?.id,
+                      propertyTitle: selectedProperty?.title || "Rental Property",
+                      date: "Just now",
+                      status: "Applicant",
+                      reliabilityScore: "5.0",
+                      notes: "Verified NIN application submitted via Quick Apply."
+                    };
+
+                    localStorage.setItem("propertyApplications", JSON.stringify([newApp, ...currentApps]));
+                    window.dispatchEvent(new Event("storage"));
+
                     triggerToast("Application submitted successfully! Your pre-verified NIN profile has been shared with the landlord.", "success", "Application Sent");
                     setShowPropertyDetailsModal(false);
                   }}
@@ -1107,8 +1131,10 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
                 <span className="summary-lbl">Reliability Breakdown</span>
 
                 <div className="flex justify-between items-center text-[12.5px]">
-                  <span>Overall Rating</span>
-                  <span className="font-bold text-amber-500">★ {selectedLandlord.score} / 5.0 ({selectedLandlord.reviews} Reviews)</span>
+                  <span className="text-xs text-[#6C6E73] dark:text-[#A3BCA7]">Total Rating</span>
+                  <span className="font-bold text-amber-500">
+                    {selectedLandlord.score > 0 ? `★ ${selectedLandlord.score} / 5.0 (${selectedLandlord.reviews} Reviews)` : "No rating yet"}
+                  </span>
                 </div>
 
                 <div className="flex justify-between items-center text-[12.5px] mt-1">

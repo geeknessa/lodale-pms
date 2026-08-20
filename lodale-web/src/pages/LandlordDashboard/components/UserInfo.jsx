@@ -184,7 +184,7 @@ export default function UserInfo({ tenant, onClose }) {
               >
                 <Star className="h-3.5 w-3.5 fill-[#D69E2E] text-[#D69E2E]" />
                 <span className="score-text">
-                  <strong>{tenant.reliabilityScore || "4.7"}</strong> Reliability Score
+                  <strong>{tenant.reliabilityScore > 0 ? tenant.reliabilityScore : "No rating"}</strong>
                 </span>
                 <span className="ui-score-details-link">View Details →</span>
               </button>
