@@ -290,33 +290,44 @@ export default function AdminDashboard() {
 
 
   // --- CORE ACTIONS ---
-  const handleToggleUserStatus = (userId) => {
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === userId) {
-          const newStatus = u.status === "Active" ? "Suspended" : "Active";
-          showToast(`User ${u.name} is now ${newStatus}.`);
-          return {
-            ...u,
-            status: newStatus,
-            suspensionReason:
-              newStatus === "Suspended"
-                ? "Suspended by Admin for safety review."
-                : null,
-          };
-        }
-        return u;
-      })
-    );
-    if (selectedUser?.id === userId) {
-      setSelectedUser((prev) =>
-        prev
-          ? {
-            ...prev,
-            status: prev.status === "Active" ? "Suspended" : "Active",
+  const handleToggleUserStatus = async (userId) => {
+    const target = users.find((u) => u.id === userId);
+    if (!target) return;
+
+    const newStatus = target.status === "Active" ? "Suspended" : "Active";
+    const rawStatus = newStatus.toLowerCase();
+
+    try {
+      await adminService.updateUserStatus(userId, rawStatus);
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id === userId) {
+            return {
+              ...u,
+              status: newStatus,
+              suspensionReason:
+                newStatus === "Suspended"
+                  ? "Suspended by Admin for safety review."
+                  : null,
+            };
           }
-          : null
+          return u;
+        })
       );
+      showToast(`User ${target.name} account is now ${newStatus}.`);
+      if (selectedUser?.id === userId) {
+        setSelectedUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: newStatus,
+              }
+            : null
+        );
+      }
+    } catch (err) {
+      console.error("Failed to update user status:", err);
+      showToast(`Failed to update user status: ${err.message || "Server error"}`);
     }
   };
 
