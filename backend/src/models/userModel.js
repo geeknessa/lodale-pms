@@ -28,7 +28,7 @@ export const UserModel = {
     }
     if (!UUID_REGEX.test(id)) return null;
     const res = await pool.query(
-      'SELECT id, first_name, last_name, email, phone_number, primary_role, id_verification_status, avatar_url, created_at FROM users WHERE id = $1',
+      'SELECT id, first_name, last_name, email, phone_number, primary_role, id_verification_status, account_status, avatar_url, created_at FROM users WHERE id = $1',
       [id]
     );
     return res.rows[0] || null;
@@ -39,7 +39,7 @@ export const UserModel = {
     const res = await pool.query(`
       INSERT INTO users (first_name, last_name, email, password_hash, phone_number, primary_role)
       VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, first_name, last_name, email, phone_number, primary_role, created_at
+      RETURNING id, first_name, last_name, email, phone_number, primary_role, account_status, created_at
     `, [firstName, lastName, email, hashedPassword, phone, role]);
     return res.rows[0];
   },
@@ -65,9 +65,17 @@ export const UserModel = {
           phone_number = COALESCE($3, phone_number),
           avatar_url = COALESCE($4, avatar_url)
       WHERE id = $5
-      RETURNING id, first_name, last_name, email, phone_number, primary_role, id_verification_status, avatar_url, created_at
+      RETURNING id, first_name, last_name, email, phone_number, primary_role, id_verification_status, account_status, avatar_url, created_at
     `, [first_name, last_name, phone_number, avatar_url, id]);
     
+    return res.rows[0] || null;
+  },
+
+  async updateUserStatus(id, status) {
+    const res = await pool.query(
+      'UPDATE users SET account_status = $1 WHERE id = $2 RETURNING id, first_name, last_name, email, primary_role, account_status',
+      [status, id]
+    );
     return res.rows[0] || null;
   },
 

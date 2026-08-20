@@ -31,7 +31,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
   // Helper to read initial local tenant profile
   const getInitialProfile = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
     try {
       const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null);
       if (raw) return JSON.parse(raw);
@@ -40,23 +40,25 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   };
 
   const initialProf = getInitialProfile();
-  const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+  const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
 
   const initialUsername =
     sessionStorage.getItem("tenantUsername") ||
     (emailKey ? localStorage.getItem("tenantUsername_" + emailKey) : null) ||
     sessionStorage.getItem("username") ||
-    localStorage.getItem("username") ||
+    sessionStorage.getItem("username") ||
     "Tunde";
   const nameParts = initialUsername.split(" ");
   const initialFirst = initialProf?.first_name || initialProf?.firstName || nameParts[0] || "";
   const initialLast = initialProf?.last_name || initialProf?.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
-  const initialEmail = initialProf?.email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "";
+  const initialEmail = initialProf?.email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "";
   const initialPhone = initialProf?.phone_number || initialProf?.phone || "";
   const initialAddress = initialProf?.address || "";
   const initialDob = initialProf?.dob || "";
   const initialLocation = initialProf?.location || "";
   const initialPostalCode = initialProf?.postalCode || "";
+  const initialOccupation = initialProf?.occupation || "";
+  const initialIncome = initialProf?.income || "";
   const initialAvatar =
     currentAvatar ||
     initialProf?.avatar ||
@@ -78,6 +80,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [dob, setDob] = useState(initialDob);
   const [location, setLocation] = useState(initialLocation);
   const [postalCode, setPostalCode] = useState(initialPostalCode);
+  const [occupation, setOccupation] = useState(initialOccupation);
+  const [income, setIncome] = useState(initialIncome);
   const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -128,69 +132,25 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [confirmCheck, setConfirmCheck] = useState(false);
   const [selectedDocToView, setSelectedDocToView] = useState(null);
 
-  const loadStoredProfile = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
-    let localProf = null;
-    try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || (emailKey ? localStorage.getItem("userProfile_" + emailKey) : null);
-      if (raw) localProf = JSON.parse(raw);
-    } catch (e) { }
-
-    const storedUsername = sessionStorage.getItem("username") || (emailKey ? localStorage.getItem("username_" + emailKey) : null) || localStorage.getItem("username") || "";
-
-    let fname = localProf?.firstName || localProf?.first_name || "";
-    let lname = localProf?.lastName || localProf?.last_name || "";
-    if (!fname && storedUsername) {
-      const parts = storedUsername.trim().split(" ");
-      fname = parts[0] || "";
-      lname = parts.slice(1).join(" ") || "";
-    }
-
-    setFirstName(fname);
-    setLastName(lname);
-    setEmail(localProf?.email || emailKey || "");
-    setPhone(localProf?.phone || localProf?.phone_number || "");
-    setAddress(localProf?.address || "");
-    setDob(localProf?.dob || "");
-    setLocation(localProf?.location || "");
-    setPostalCode(localProf?.postalCode || localProf?.postal_code || "");
-    if (localProf?.gender) setGender(localProf.gender);
-
-    let savedAvatar = "";
-    if (emailKey) {
-      savedAvatar = localStorage.getItem("tenantAvatar_" + emailKey);
-    }
-    if (!savedAvatar) {
-      savedAvatar = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl") || localProf?.avatar || localProf?.avatar_url || "";
-    }
-    setAvatarUrl(savedAvatar || "");
-    if (localProf) setUserProfile(localProf);
-  };
-
   useEffect(() => {
-    loadStoredProfile();
-
-    async function fetchProfile() {
+    async function loadProfile() {
       try {
         const profile = await userService.getProfile();
         if (profile) {
-          setUserProfile(prev => ({ ...prev, ...profile }));
+          setUserProfile((prev) => ({ ...prev, ...profile }));
           if (profile.first_name) setFirstName(profile.first_name);
           if (profile.last_name) setLastName(profile.last_name);
           if (profile.email) setEmail(profile.email);
-          if (profile.phone_number || profile.phone) setPhone(profile.phone_number || profile.phone);
-          if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
-          if (profile.address) setAddress(profile.address);
-          if (profile.dob) setDob(profile.dob);
-          if (profile.location) setLocation(profile.location);
-          if (profile.postal_code || profile.postalCode) setPostalCode(profile.postal_code || profile.postalCode);
-          if (profile.gender) setGender(profile.gender);
+          if (profile.phone_number) setPhone(profile.phone_number);
+          if (profile.avatar_url && !avatarUrl) {
+            setAvatarUrl(profile.avatar_url);
+          }
         }
       } catch (err) {
-        console.warn("Failed to fetch tenant profile", err);
+        console.warn("Using local tenant profile cache:", err);
       }
     }
-    fetchProfile();
+    loadProfile();
   }, []);
 
   // Listen to cross-tab storage changes for tenant documents
@@ -231,46 +191,26 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
       return;
     }
 
-    // Image is within the size limit — compress to avatar size to avoid Storage QuotaExceededError
-    try {
-      const base64Data = await compressImageForStorage(file, 350, 350, 0.82);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64Data = evt.target.result;
       setAvatarUrl(base64Data);
-      const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-      if (emailKey) {
-        safeSetLocalStorage("tenantAvatar_" + emailKey, base64Data);
-      }
-      safeSetSessionStorage("tenantAvatarUrl", base64Data);
-      safeSetLocalStorage("tenantAvatarUrl", base64Data);
 
-      const updatedProf = {
-        ...userProfile,
-        firstName,
-        lastName,
-        first_name: firstName,
-        last_name: lastName,
-        email,
-        phone,
-        phone_number: phone,
-        address,
-        dob,
-        location,
-        postalCode,
-        postal_code: postalCode,
-        gender,
-        avatar: base64Data,
-        avatar_url: base64Data
-      };
+      const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+      if (emailKey) {
+        // Tenant-scoped avatar key — does not overwrite landlord avatar
+        localStorage.setItem("tenantAvatar_" + emailKey, base64Data);
+      }
+      // Session-level quick sync keys
+      sessionStorage.setItem("tenantAvatarUrl", base64Data);
+      localStorage.setItem("tenantAvatarUrl", base64Data);
+
+      const updatedProf = { ...userProfile, avatar: base64Data, avatar_url: base64Data };
       setUserProfile(updatedProf);
-      safeSetSessionStorage("currentUserProfile", JSON.stringify(updatedProf));
-      const savedSuccessfully = safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
-      if (!savedSuccessfully) {
-        // Fallback: save profile without large avatar string if quota is reached
-        const slimProf = { ...updatedProf, avatar: "", avatar_url: "" };
-        safeSetLocalStorage("currentUserProfile", JSON.stringify(slimProf));
-      }
-
+      // Tenant-scoped profile session key
+      sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(updatedProf));
       if (emailKey) {
-        safeSetLocalStorage("userProfile_" + emailKey, JSON.stringify(updatedProf));
+        localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(updatedProf));
       }
 
       // Notify parent / sidebar / header
@@ -338,77 +278,98 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     setFeedbackMessage(null);
 
     if (activeTab === "personal") {
-      try {
-        const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-        const updatedName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      if (!firstName.trim()) {
+        setFeedbackMessage({ type: "error", text: "First name is required." });
+        triggerToast("First name is required.", "error", "Validation Error");
+        return;
+      }
 
-        const profileData = {
+      setIsSaving(true);
+      try {
+        // Step 1: Always save locally first (tenant-scoped keys — never touches landlord data)
+        const newFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+        const curEmail = (sessionStorage.getItem("lastLoggedInEmail") || email || "").toLowerCase();
+
+        sessionStorage.setItem("tenantUsername", newFullName);
+        if (curEmail) {
+          localStorage.setItem("tenantUsername_" + curEmail, newFullName);
+        }
+
+        const profToSave = {
+          ...userProfile,
           first_name: firstName.trim(),
           last_name: lastName.trim(),
           email: email.trim(),
-          phone: phone.trim(),
-          phone_number: phone.trim(),
-          avatar_url: avatarUrl,
-          address: address.trim(),
-          dob: dob.trim(),
-          location: location,
-          postal_code: postalCode.trim(),
-          gender: gender
-        };
-
-        try {
-          await userService.updateProfile(profileData);
-        } catch (apiErr) {
-          console.warn("Backend updateProfile notice:", apiErr);
-        }
-
-        const updatedProf = {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          email: cleanEmail,
           phone: phone.trim(),
           phone_number: phone.trim(),
           address: address.trim(),
           dob: dob.trim(),
           location: location,
           postalCode: postalCode.trim(),
-          postal_code: postalCode.trim(),
-          gender: gender,
-          avatar: avatarUrl,
-          avatar_url: avatarUrl,
-          role: "tenant"
+          occupation: occupation.trim(),
+          income: income.trim(),
+          avatar: avatarUrl || userProfile.avatar || ""
         };
-
-        setUserProfile(updatedProf);
-        safeSetSessionStorage("currentUserProfile", JSON.stringify(updatedProf));
-        const savedProf = safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
-        if (!savedProf) {
-          // Fallback: save profile without heavy avatar data if storage quota reached
-          const slimProf = { ...updatedProf, avatar: "", avatar_url: "" };
-          safeSetLocalStorage("currentUserProfile", JSON.stringify(slimProf));
-        }
-
-        if (cleanEmail) {
-          safeSetLocalStorage("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
-          safeSetLocalStorage("username_" + cleanEmail, updatedName);
-          if (avatarUrl) {
-            safeSetLocalStorage("tenantAvatar_" + cleanEmail, avatarUrl);
-          }
-        }
-        if (updatedName) {
-          safeSetSessionStorage("username", updatedName);
-          safeSetLocalStorage("username", updatedName);
+        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(profToSave));
+        if (curEmail) {
+          localStorage.setItem("tenantProfile_" + curEmail, JSON.stringify(profToSave));
         }
         if (avatarUrl) {
-          safeSetSessionStorage("tenantAvatarUrl", avatarUrl);
-          safeSetLocalStorage("tenantAvatarUrl", avatarUrl);
+          if (curEmail) localStorage.setItem("tenantAvatar_" + curEmail, avatarUrl);
+          sessionStorage.setItem("tenantAvatarUrl", avatarUrl);
+          localStorage.setItem("tenantAvatarUrl", avatarUrl);
         }
 
+        // Notify parent / sidebar / header
+        onAvatarChange?.(avatarUrl);
+        onProfileUpdate?.(newFullName, avatarUrl);
+
+        // Notify sidebar and search header to refresh immediately
+        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: newFullName, avatar: avatarUrl } }));
         window.dispatchEvent(new Event("storage"));
 
-        triggerToast("Personal profile information updated successfully!", "success", "Profile Saved");
+        // Step 2: Try to sync with backend — fail gracefully if session has expired
+        const token = sessionStorage.getItem("lodale_token") || sessionStorage.getItem("lodale_token");
+        if (token) {
+          try {
+            // Only send avatar_url to the backend if it's a real URL (not a >1MB base64 blob)
+            const isBase64 = avatarUrl && avatarUrl.startsWith("data:");
+            const updatedProfile = await userService.updateProfile({
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+              phone_number: phone.trim(),
+              avatar_url: isBase64 ? undefined : (avatarUrl || undefined)
+            });
+
+            if (updatedProfile) {
+              const serverName = `${updatedProfile.first_name || ""} ${updatedProfile.last_name || ""}`.trim();
+              if (serverName) {
+                sessionStorage.setItem("tenantUsername", serverName);
+                if (curEmail) {
+                  localStorage.setItem("tenantUsername_" + curEmail, serverName);
+                }
+                window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: serverName, avatar: avatarUrl } }));
+              }
+            }
+          } catch (apiErr) {
+            console.warn("[TenantSettings] Background API sync note (profile saved locally):", apiErr?.message);
+          }
+        }
+
+        setIsSaving(false);
+        setSaveSuccess(true);
+        setFeedbackMessage({ type: "success", text: "Profile information updated successfully!" });
+        triggerToast("Profile information updated successfully!", "success", "Profile Saved");
+
+        const pendingPropertyId = localStorage.getItem("pendingQuickApplyPropertyId");
+        if (pendingPropertyId) {
+          localStorage.removeItem("pendingQuickApplyPropertyId");
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("resumeQuickApply", { detail: pendingPropertyId }));
+          }, 500);
+        }
+
+        setTimeout(() => setSaveSuccess(false), 3500);
       } catch (err) {
         setIsSaving(false);
         setFeedbackMessage({ type: "error", text: err.message || "Failed to update profile." });
@@ -441,7 +402,27 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const handleDiscardChanges = () => {
     setFeedbackMessage(null);
     if (activeTab === "personal") {
-      loadStoredProfile();
+      const curEmail = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+      const name =
+        sessionStorage.getItem("tenantUsername") ||
+        (curEmail ? localStorage.getItem("tenantUsername_" + curEmail) : null) ||
+        sessionStorage.getItem("username") ||
+        sessionStorage.getItem("username");
+      if (name) {
+        const parts = name.split(" ");
+        setFirstName(parts[0]);
+        setLastName(parts.length > 1 ? parts.slice(1).join(" ") : "");
+      } else {
+        setFirstName("Roland");
+        setLastName("Donald");
+      }
+      setEmail(sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "rolandDonald@mail.com");
+      setGender("Male");
+      setAddress("");
+      setPhone("");
+      setDob("");
+      setLocation("");
+      setPostalCode("");
     } else {
       setCurrentPassword("");
       setNewPassword("");
@@ -487,7 +468,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     try {
       const savedLandlordDocs = localStorage.getItem("landlordDocuments");
       const landlordDocs = savedLandlordDocs ? JSON.parse(savedLandlordDocs) : [];
-      const tenantName = (sessionStorage.getItem("username") || localStorage.getItem("username") || `${firstName} ${lastName}`).trim();
+      const tenantName = (sessionStorage.getItem("username") || sessionStorage.getItem("username") || `${firstName} ${lastName}`).trim();
       const updatedLandlord = [
         ...landlordDocs.filter(d => d.id !== selectedDocToSign.id),
         {
@@ -1014,15 +995,37 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               </div>
 
               <div className="settings-form-group">
-                <label className="settings-input-label">Phone Number</label>
+                <label className="settings-input-label">Phone Number <span className="text-red-500">*</span></label>
                 <input
                   type="tel"
                   maxLength={15}
                   value={phone}
                   onInput={(e) => e.target.value = e.target.value.replace(/[^0-9+]/g, '')}
-                  onChange={(e) => setPhone(e.target.value.replace(/[^0-9+]/g, ''))}
+                  onChange={(e) => setPhone(e.target.value)}
                   className="settings-form-input"
-                  placeholder="e.g. +2348012345678"
+                  placeholder="Phone Number"
+                />
+              </div>
+
+              <div className="settings-form-group">
+                <label className="settings-input-label">Occupation <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  className="settings-form-input"
+                  placeholder="e.g. Software Engineer"
+                />
+              </div>
+
+              <div className="settings-form-group">
+                <label className="settings-input-label">Monthly Income <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={income}
+                  onChange={(e) => setIncome(e.target.value)}
+                  className="settings-form-input"
+                  placeholder="e.g. ₦500,000"
                 />
               </div>
 
@@ -1053,11 +1056,9 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 <label className="settings-input-label">Postal Code</label>
                 <input
                   type="text"
-                  inputMode="numeric"
                   maxLength={20}
                   value={postalCode}
-                  onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
-                  onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9]/g, ''))}
+                  onChange={(e) => setPostalCode(e.target.value)}
                   className="settings-form-input"
                   placeholder="Postal Code"
                 />

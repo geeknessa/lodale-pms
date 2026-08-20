@@ -170,9 +170,9 @@ export default function LandlordDashboard() {
   const [username, setUsername] = useState(() => {
     const sessName = sessionStorage.getItem("username");
     if (sessName) return sessName;
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    return storedName || localStorage.getItem("username") || "Ada";
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+    const storedName = emailKey ? sessionStorage.getItem("username_" + emailKey) : null;
+    return storedName || sessionStorage.getItem("username") || "Ada";
   });
 
   const getActiveTenantsList = () => {
@@ -255,20 +255,18 @@ export default function LandlordDashboard() {
   });
 
   // Landlord profile avatar state (persisted across uploads)
-  // Reads from landlord-scoped key to avoid contamination from tenant profile saves
-  const getLandlordAvatar = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+  const [landlordAvatar, setLandlordAvatar] = useState(() => {
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey);
       if (savedUserAvatar) return savedUserAvatar;
     }
     // Fallback: read from landlord-scoped profile only (role guard)
     try {
-      const emailForProfile = emailKey || "";
-      const scopedRaw = emailForProfile ? localStorage.getItem("userProfile_" + emailForProfile) : null;
-      if (scopedRaw) {
-        const parsed = JSON.parse(scopedRaw);
-        if (parsed.role === "landlord" && parsed.avatar) return parsed.avatar;
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
       }
     } catch (e) { }
     return "";
@@ -278,7 +276,7 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     const handleAvatarUpdate = () => {
-      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+      const emailKey = sessionStorage.getItem("lastLoggedInEmail");
       let updated = null;
       if (emailKey) {
         updated = localStorage.getItem("landlordAvatar_" + emailKey);
@@ -286,10 +284,10 @@ export default function LandlordDashboard() {
       if (!updated) {
         // Only fall back to scoped profile with role guard
         try {
-          const scopedRaw = emailKey ? localStorage.getItem("userProfile_" + emailKey) : null;
-          if (scopedRaw) {
-            const parsed = JSON.parse(scopedRaw);
-            if (parsed.role === "landlord" && parsed.avatar) updated = parsed.avatar;
+          const raw = sessionStorage.getItem("currentUserProfile");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.avatar) updated = parsed.avatar;
           }
         } catch (e) { }
       }
@@ -334,9 +332,9 @@ export default function LandlordDashboard() {
   // Sync username, applications & notifications if changed in storage
   useEffect(() => {
     const handleStorageChange = () => {
-      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-      const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-      setUsername(sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "Landlord User");
+      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+      const storedName = emailKey ? sessionStorage.getItem("username_" + emailKey) : null;
+      setUsername(sessionStorage.getItem("username") || storedName || sessionStorage.getItem("username") || "Landlord User");
       const savedApps = localStorage.getItem("propertyApplications");
       if (savedApps) {
         try {
@@ -702,10 +700,10 @@ export default function LandlordDashboard() {
     sessionStorage.removeItem("currentUserProfile");
     sessionStorage.removeItem("lodale_token");
     sessionStorage.removeItem("lodale_user");
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("userRole");
     navigate("/login", { replace: true });
   }
 
@@ -724,7 +722,7 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     async function loadProperties() {
-      const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
       let apiProps = [];
       try {
         apiProps = await propertyService.getLandlordProperties(currentUserId);
@@ -1862,36 +1860,7 @@ export default function LandlordDashboard() {
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Email Address</span>
                 <span className="text-ink-900 dark:text-white font-semibold">
-                  {(() => {
-                    try {
-                      // Prefer session-scoped email (not shared across tabs)
-                      const sessEmail = sessionStorage.getItem("lastLoggedInEmail");
-                      if (sessEmail) {
-                        // Verify this is actually a landlord account
-                        const scopedRaw = localStorage.getItem("userProfile_" + sessEmail.toLowerCase());
-                        if (scopedRaw) {
-                          const p = JSON.parse(scopedRaw);
-                          if (p.role === "landlord") return p.email || sessEmail;
-                        }
-                        return sessEmail;
-                      }
-                      // Fallback: read from landlord-scoped profile
-                      const lsEmail = localStorage.getItem("lastLoggedInEmail");
-                      if (lsEmail) {
-                        const scopedRaw = localStorage.getItem("userProfile_" + lsEmail.toLowerCase());
-                        if (scopedRaw) {
-                          const p = JSON.parse(scopedRaw);
-                          if (p.role === "landlord") return p.email || lsEmail;
-                        }
-                      }
-                      // Last resort: currentUserProfile only if landlord
-                      const current = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
-                      if (current.role === "landlord") return current.email || lsEmail || "Not provided";
-                      return lsEmail || "Not provided";
-                    } catch (e) {
-                      return "Not provided";
-                    }
-                  })()}
+                  {sessionStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
@@ -1899,17 +1868,8 @@ export default function LandlordDashboard() {
                 <span className="text-ink-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      // Read from landlord-scoped profile to avoid tenant bleed-over
-                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-                      const scopedRaw = emailKey ? localStorage.getItem("userProfile_" + emailKey) : null;
-                      if (scopedRaw) {
-                        const p = JSON.parse(scopedRaw);
-                        if (p.role === "landlord") return p.phone || p.phone_number || "Not provided";
-                      }
-                      // Secondary fallback: currentUserProfile only if role is landlord
-                      const current = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
-                      if (current.role === "landlord") return current.phone || current.phone_number || "Not provided";
-                      return "Not provided";
+                      const p = JSON.parse(sessionStorage.getItem("currentUserProfile") || "{}");
+                      return p.phone || "Not provided";
                     } catch (e) {
                       return "Not provided";
                     }
@@ -1949,7 +1909,7 @@ export default function LandlordDashboard() {
                 <span className="text-ink-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      const email = localStorage.getItem("lastLoggedInEmail");
+                      const email = sessionStorage.getItem("lastLoggedInEmail");
                       if (email) {
                         const reg = localStorage.getItem("registeredUser_" + email);
                         if (reg) {

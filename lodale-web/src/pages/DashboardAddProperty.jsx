@@ -246,41 +246,35 @@ export default function DashboardAddProperty() {
 
   // Landlord Profile & Avatar Modal State
   const [showLandlordProfileModal, setShowLandlordProfileModal] = useState(false);
-  const [username, setUsername] = useState(() => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+  const [username] = useState(() => {
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       // Settings.jsx saves username under username_<email>
       const savedName = localStorage.getItem("username_" + emailKey);
       if (savedName) return savedName;
     }
-    const sessName = sessionStorage.getItem("username");
-    if (sessName) return sessName;
     try {
-      const scopedRaw = emailKey ? localStorage.getItem("userProfile_" + emailKey) : null;
-      if (scopedRaw) {
-        const p = JSON.parse(scopedRaw);
-        if (p.role === "landlord") {
-          const full = `${p.firstName || p.first_name || ""} ${p.lastName || p.last_name || ""}`.trim();
-          if (full) return full;
-        }
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.name || parsed.displayName) return parsed.name || parsed.displayName;
       }
     } catch (e) { }
     return localStorage.getItem("username") || "Landlord Account";
   });
 
-  // Reads from landlord-scoped key to avoid contamination from tenant profile saves
-  const getDashboardLandlordAvatar = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+  const [landlordAvatar, setLandlordAvatar] = useState(() => {
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey);
       if (savedUserAvatar) return savedUserAvatar;
     }
     // Fallback: read from landlord-scoped profile only (role guard)
     try {
-      const scopedRaw = emailKey ? localStorage.getItem("userProfile_" + emailKey) : null;
-      if (scopedRaw) {
-        const parsed = JSON.parse(scopedRaw);
-        if (parsed.role === "landlord" && parsed.avatar) return parsed.avatar;
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
       }
     } catch (e) { }
     return "";
@@ -290,7 +284,7 @@ export default function DashboardAddProperty() {
 
   useEffect(() => {
     const handleAvatarUpdate = () => {
-      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+      const emailKey = sessionStorage.getItem("lastLoggedInEmail");
       let updated = null;
       if (emailKey) {
         updated = localStorage.getItem("landlordAvatar_" + emailKey);
@@ -298,10 +292,10 @@ export default function DashboardAddProperty() {
       if (!updated) {
         // Only fall back to scoped profile with role guard
         try {
-          const scopedRaw = emailKey ? localStorage.getItem("userProfile_" + emailKey) : null;
-          if (scopedRaw) {
-            const parsed = JSON.parse(scopedRaw);
-            if (parsed.role === "landlord" && parsed.avatar) updated = parsed.avatar;
+          const raw = sessionStorage.getItem("currentUserProfile");
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed.avatar) updated = parsed.avatar;
           }
         } catch (e) { }
       }
@@ -695,6 +689,30 @@ export default function DashboardAddProperty() {
     );
   };
 
+  const isStepValid = (stepNum) => {
+    if (stepNum === 1) {
+      return !!(displayName?.trim() && address?.trim() && stateName && cityName);
+    }
+    if (stepNum === 2) {
+      if (isMultiUnit) {
+        return !!(unitsList && unitsList.length > 0);
+      } else {
+        const numericRent = Number(rent?.replace(/[^0-9]/g, ""));
+        return !!(rent && !isNaN(numericRent) && numericRent > 0);
+      }
+    }
+    if (stepNum === 3) {
+      return true;
+    }
+    if (stepNum === 4) {
+      return !!(docName?.trim() && propertyPhotos && propertyPhotos.length > 0);
+    }
+    if (stepNum === 5) {
+      return occupied !== null;
+    }
+    return false;
+  };
+
   const handleNextStep = () => {
     setFormError("");
     if (currentStep === 1) {
@@ -817,7 +835,7 @@ export default function DashboardAddProperty() {
       : propertyPhotos[coverPhotoIndex];
 
     await handlePropertySubmit({
-      e: { preventDefault: () => {}, target: syntheticForm.target },
+      e: { preventDefault: () => { }, target: syntheticForm.target },
       displayName,
       stateName,
       cityName,
@@ -1096,7 +1114,7 @@ export default function DashboardAddProperty() {
               <div className="dap-panel-section-title">PORTFOLIO ONBOARDING</div>
               {stepsInfo.map((sObj) => {
                 const isActive = currentStep === sObj.step;
-                const isCompleted = currentStep > sObj.step;
+                const isCompleted = isStepValid(sObj.step);
                 const StepIcon = sObj.icon;
                 return (
                   <button
@@ -1225,11 +1243,10 @@ export default function DashboardAddProperty() {
                               key={sub.id}
                               type="button"
                               onClick={() => setHouseSubtype(sub.id)}
-                              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer outline-none ${
-                                houseSubtype === sub.id
+                              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer outline-none ${houseSubtype === sub.id
                                   ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
                                   : "bg-white dark:bg-[#16241F] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15"
-                              }`}
+                                }`}
                             >
                               {sub.label}
                             </button>
@@ -1356,11 +1373,10 @@ export default function DashboardAddProperty() {
                           <button
                             type="button"
                             onClick={() => setIsMultiUnit(false)}
-                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${
-                              !isMultiUnit
+                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${!isMultiUnit
                                 ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
                                 : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
-                            }`}
+                              }`}
                           >
                             <div className="font-bold text-sm">1</div>
                             <div>
@@ -1372,11 +1388,10 @@ export default function DashboardAddProperty() {
                           <button
                             type="button"
                             onClick={() => setIsMultiUnit(true)}
-                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${
-                              isMultiUnit
+                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${isMultiUnit
                                 ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
                                 : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
-                            }`}
+                              }`}
                           >
                             <div className="font-bold text-sm">2+</div>
                             <div>
@@ -1445,27 +1460,24 @@ export default function DashboardAddProperty() {
                               <button
                                 type="button"
                                 onClick={() => setUnitAddTab("manual")}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
-                                  unitAddTab === "manual" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
-                                }`}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "manual" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                                  }`}
                               >
                                 Single Unit
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setUnitAddTab("generator")}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
-                                  unitAddTab === "generator" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
-                                }`}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "generator" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                                  }`}
                               >
                                 Bulk Generator
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setUnitAddTab("csv")}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
-                                  unitAddTab === "csv" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
-                                }`}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "csv" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                                  }`}
                               >
                                 CSV Upload
                               </button>
@@ -1654,11 +1666,10 @@ export default function DashboardAddProperty() {
                                 key={amenity}
                                 type="button"
                                 onClick={() => toggleAmenity(amenity)}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                                  isSelected
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${isSelected
                                     ? "bg-[#2C4633] text-white border-transparent dark:bg-[#E5C583] dark:text-[#263b33]"
                                     : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
-                                }`}
+                                  }`}
                               >
                                 {isSelected ? "✓ " : "+ "}{amenity}
                               </button>
@@ -1789,11 +1800,10 @@ export default function DashboardAddProperty() {
                           return (
                             <div
                               key={idx}
-                              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                                isCover
+                              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isCover
                                   ? "bg-[#2C4633]/10 dark:bg-[#E5C583]/10 border-[#2C4633] dark:border-[#E5C583]"
                                   : "bg-white dark:bg-[#16241F] border-slate-200 dark:border-white/10"
-                              }`}
+                                }`}
                             >
                               <div className="flex items-center gap-3 min-w-0 pr-2">
                                 <Camera className="h-4 w-4 text-[#2C4633] dark:text-[#E5C583] shrink-0" />
@@ -1845,18 +1855,16 @@ export default function DashboardAddProperty() {
                     <button
                       type="button"
                       onClick={() => setOccupied(true)}
-                      className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${
-                        occupied === true ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent" : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
-                      }`}
+                      className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${occupied === true ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent" : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                        }`}
                     >
                       Occupied (Invite Current Tenant)
                     </button>
                     <button
                       type="button"
                       onClick={() => setOccupied(false)}
-                      className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${
-                        occupied === false ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent" : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
-                      }`}
+                      className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${occupied === false ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent" : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                        }`}
                     >
                       Vacant (Public Listing)
                     </button>
@@ -1919,133 +1927,6 @@ export default function DashboardAddProperty() {
           </div>
         </main>
 
-        {/* ─────────────────────────────────────────────────────────────
-            4. STICKY RIGHT GALLERY & RICH LEGAL PROOF SUMMARY PANEL
-           ───────────────────────────────────────────────────────────── */}
-        <aside className="dap-right-panel">
-          <div>
-            <div className="dap-gallery-title">
-              <span>Attached Media</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold normal-case tracking-normal bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 shrink-0">
-                {propertyPhotos.length} photos
-              </span>
-            </div>
-            <div className="space-y-3">
-              {propertyPhotos.map((photo, idx) => {
-                const photoUrl = typeof photo === "object" ? photo.url : photo;
-                return (
-                  <div
-                    key={idx}
-                    className={`dap-gallery-thumb-card ${idx === coverPhotoIndex ? "cover" : ""} group relative`}
-                    onClick={() => setCoverPhotoIndex(idx)}
-                  >
-                    <img src={photoUrl} alt={`Photo ${idx}`} className="dap-gallery-thumb-img" />
-                    {idx === coverPhotoIndex && (
-                      <span className="dap-gallery-cover-badge">Cover Image</span>
-                    )}
-                    {/* TOP-RIGHT IMAGE DELETE BUTTON */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleDeletePhoto(idx, e)}
-                      className="absolute top-2 right-2 h-7 w-7 rounded-full bg-rose-600/90 hover:bg-rose-700 text-white flex items-center justify-center border-none cursor-pointer shadow-md transition-transform hover:scale-105 z-10"
-                      title="Delete photo"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <div className="dap-gallery-title">
-              <span>Legal Proof Document</span>
-              {docName ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold normal-case tracking-normal bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
-                  <CheckCircle2 className="h-3 w-3" /> Attached
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold normal-case tracking-normal bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
-                  <Clock className="h-3 w-3" /> Pending
-                </span>
-              )}
-            </div>
-
-            <div
-              className={`p-4 rounded-2xl border transition-all duration-200 ${
-                docName
-                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30 shadow-xs"
-                  : "bg-amber-50/30 dark:bg-amber-950/10 border-amber-500/25 border-dashed"
-              }`}
-            >
-              {docName ? (
-                /* OCCUPIED / ATTACHED STATE */
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2.5 rounded-xl bg-[#2C4633] text-[#E5C583] dark:bg-[#E5C583] dark:text-[#0B1512] shrink-0 shadow-xs">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#2C4633] dark:text-[#E5C583]">
-                        {docType}
-                      </div>
-                      <div className="font-bold text-xs text-slate-900 dark:text-white truncate mt-0.5">
-                        {docName}
-                      </div>
-                      <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3 inline" /> Verified Legal Proof
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-emerald-500/20 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={handleOpenDocPicker}
-                      className="text-[11px] font-bold text-[#2C4633] dark:text-[#E5C583] hover:underline cursor-pointer border-none bg-transparent p-0"
-                    >
-                      Replace Paper
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDocName("");
-                        setDocDataUrl("");
-                        setDocUploaded(false);
-                      }}
-                      className="text-[11px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 cursor-pointer border-none bg-transparent p-0"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* EMPTY STATE */
-                <div className="flex flex-col items-center justify-center text-center py-3 space-y-2">
-                  <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                    <ShieldCheck className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-xs text-slate-900 dark:text-white">
-                      {docType} Needed
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[200px] leading-tight mt-0.5">
-                      Attach proof of ownership document in Step 4 for verification.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleOpenDocPicker}
-                    className="mt-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] cursor-pointer border-none transition-opacity hover:opacity-90"
-                  >
-                    + Upload Legal Document
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
@@ -2148,35 +2029,7 @@ export default function DashboardAddProperty() {
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-slate-400 dark:text-slate-400 font-medium">Email Address</span>
                 <span className="text-slate-900 dark:text-white font-semibold">
-                  {(() => {
-                    try {
-                      // Prefer session-scoped email (not shared across tabs)
-                      const sessEmail = sessionStorage.getItem("lastLoggedInEmail");
-                      if (sessEmail) {
-                        const scopedRaw = localStorage.getItem("userProfile_" + sessEmail.toLowerCase());
-                        if (scopedRaw) {
-                          const p = JSON.parse(scopedRaw);
-                          if (p.role === "landlord") return p.email || sessEmail;
-                        }
-                        return sessEmail;
-                      }
-                      // Fallback: read from landlord-scoped profile
-                      const lsEmail = localStorage.getItem("lastLoggedInEmail");
-                      if (lsEmail) {
-                        const scopedRaw = localStorage.getItem("userProfile_" + lsEmail.toLowerCase());
-                        if (scopedRaw) {
-                          const p = JSON.parse(scopedRaw);
-                          if (p.role === "landlord") return p.email || lsEmail;
-                        }
-                      }
-                      // Last resort: currentUserProfile only if landlord
-                      const current = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
-                      if (current.role === "landlord") return current.email || lsEmail || "Not provided";
-                      return lsEmail || "Not provided";
-                    } catch (e) {
-                      return "Not provided";
-                    }
-                  })()}
+                  {sessionStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
@@ -2184,16 +2037,8 @@ export default function DashboardAddProperty() {
                 <span className="text-slate-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      // Read from landlord-scoped profile to avoid tenant bleed-over
-                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-                      const scopedRaw = emailKey ? localStorage.getItem("userProfile_" + emailKey) : null;
-                      if (scopedRaw) {
-                        const p = JSON.parse(scopedRaw);
-                        if (p.role === "landlord") return p.phone || p.phone_number || "Not provided";
-                      }
-                      const current = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
-                      if (current.role === "landlord") return current.phone || current.phone_number || "Not provided";
-                      return "Not provided";
+                      const p = JSON.parse(sessionStorage.getItem("currentUserProfile") || "{}");
+                      return p.phone || "+234 803 123 4567";
                     } catch (e) {
                       return "Not provided";
                     }

@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS properties (
     state VARCHAR(100) NOT NULL,
     bedrooms INTEGER DEFAULT 0,
     bathrooms INTEGER DEFAULT 0,
-    rent_amount DECIMAL(15, 2) NOT NULL,
+    rent_amount NUMERIC(20, 2) NOT NULL DEFAULT 0.00,
     rent_period VARCHAR(20) DEFAULT 'annually',
     status VARCHAR(50) DEFAULT 'pending_review',
     cover_image TEXT,
@@ -97,4 +97,16 @@ CREATE TABLE IF NOT EXISTS listing_approval_queue (
     rejection_reason TEXT,
     submitted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     reviewed_at TIMESTAMP WITH TIME ZONE
+);
+
+-- PROPERTY APPLICATIONS TABLE
+CREATE TABLE IF NOT EXISTS property_applications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'pending',
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(property_id, tenant_id)
 );

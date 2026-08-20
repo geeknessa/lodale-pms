@@ -68,7 +68,15 @@ export const authController = {
 
     // 2. Regular user login flow
     const user = await UserModel.findByEmail(email);
-    if (!user || !user.password_hash) {
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    if ((user.account_status || '').toLowerCase() === 'suspended') {
+      return res.status(403).json({ error: 'Your account has been suspended. Contact support.' });
+    }
+
+    if (!user.password_hash) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 

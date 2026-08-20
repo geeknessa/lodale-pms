@@ -10,7 +10,7 @@ import { useTheme } from "../context/ThemeContext";
 function RoleAccessPrompt({ requiredRole = "landlord" }) {
   useTheme();
   const navigate = useNavigate();
-  const userEmail = localStorage.getItem("lastLoggedInEmail") || "your account";
+  const userEmail = sessionStorage.getItem("lastLoggedInEmail") || "your account";
 
   const isLandlordRequired = requiredRole === "landlord";
   const currentRoleName = isLandlordRequired ? "Tenant" : "Landlord";

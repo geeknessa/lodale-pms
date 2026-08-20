@@ -9,13 +9,24 @@ export const propertyController = {
     const formatted = await Promise.all(properties.map(async p => {
       const amenities = await PropertyModel.getAmenities(p.id);
       const coverImage = await PropertyModel.getCoverImage(p.id);
+      const landlord = await UserModel.findById(p.landlord_id);
+      
+      let parsedImages = [];
+      try { parsedImages = typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []); } catch(e) {}
+      
+      const actualCoverImage = p.cover_image || coverImage || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
 
       return {
         ...p,
         amenities,
-        cover_image: coverImage || '/src/assets/skyline_apartment.png',
+        images: parsedImages,
+        cover_image: actualCoverImage,
         price: `₦${Number(p.rent_amount).toLocaleString()}/yr`,
         location: `${p.address_line1}, ${p.city}`,
+        landlord: landlord ? { 
+          id: landlord.id, 
+          name: `${landlord.first_name || ''} ${landlord.last_name || ''}`.trim() || 'Verified Landlord' 
+        } : null
       };
     }));
 
@@ -31,15 +42,27 @@ export const propertyController = {
       const adminNotes = await PropertyModel.getRejectionReason(p.id);
       const blocks = await PropertyModel.getBlocks(p.id);
       const units = await PropertyModel.getUnits(p.id);
+      const landlord = await UserModel.findById(p.landlord_id);
+
+      let parsedImages = [];
+      try { parsedImages = typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []); } catch(e) {}
+      
+      const actualCoverImage = p.cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
 
       return {
         ...p,
         amenities,
         blocks,
         units,
+        images: parsedImages,
+        cover_image: actualCoverImage,
         admin_notes: adminNotes,
         price: `₦${Number(p.rent_amount).toLocaleString()}/yr`,
         location: `${p.address_line1}, ${p.city}`,
+        landlord: landlord ? { 
+          id: landlord.id, 
+          name: `${landlord.first_name || ''} ${landlord.last_name || ''}`.trim() || 'Verified Landlord' 
+        } : null
       };
     }));
 
@@ -63,17 +86,27 @@ export const propertyController = {
     if (landlord) {
        landlordResponse = {
           id: landlord.id,
+          name: `${landlord.first_name || ''} ${landlord.last_name || ''}`.trim() || 'Verified Landlord',
           first_name: landlord.first_name,
           last_name: landlord.last_name,
           phone_number: landlord.phone_number
        };
     }
 
+    let parsedImages = [];
+    try { parsedImages = typeof property.images === 'string' ? JSON.parse(property.images) : (property.images || []); } catch(e) {}
+    
+    // Also try to get from PropertyModel if there's a property_images table
+    const coverImage = await PropertyModel.getCoverImage(property.id);
+    const actualCoverImage = property.cover_image || coverImage || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
+
     res.json({
       ...property,
       amenities,
       blocks,
       units,
+      images: parsedImages,
+      cover_image: actualCoverImage,
       landlord: landlordResponse,
       price: `₦${Number(property.rent_amount).toLocaleString()}/yr`,
       location: `${property.address_line1}, ${property.city}`,

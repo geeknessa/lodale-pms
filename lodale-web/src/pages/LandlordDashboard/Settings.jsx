@@ -32,10 +32,10 @@ export default function Settings() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  
+
   // Scoped helper to define landlord fullName cleanly
   const getFullName = () => {
-    return `${firstName} ${lastName}`.trim() || localStorage.getItem("username") || "Landlord User";
+    return `${firstName} ${lastName}`.trim() || sessionStorage.getItem("username") || "Landlord User";
   };
   const fullName = getFullName();
   const [email, setEmail] = useState("");
@@ -47,15 +47,15 @@ export default function Settings() {
   const [avatarUrl, setAvatarUrl] = useState("");
 
   const loadStoredProfile = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
     let localProf = null;
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || (emailKey ? localStorage.getItem("userProfile_" + emailKey) : null);
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile") || (emailKey ? sessionStorage.getItem("userProfile_" + emailKey) : null);
       if (raw) localProf = JSON.parse(raw);
     } catch (e) { }
 
-    const storedUsername = sessionStorage.getItem("username") || (emailKey ? localStorage.getItem("username_" + emailKey) : null) || localStorage.getItem("username") || "";
-    
+    const storedUsername = sessionStorage.getItem("username") || (emailKey ? sessionStorage.getItem("username_" + emailKey) : null) || sessionStorage.getItem("username") || "";
+
     let fname = localProf?.firstName || localProf?.first_name || "";
     let lname = localProf?.lastName || localProf?.last_name || "";
     if (!fname && storedUsername) {
@@ -117,54 +117,18 @@ export default function Settings() {
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-    // Reset input so the same file can be re-selected after an error
-    e.target.value = "";
-    if (!file) return;
-
-    if (file.size > IMAGE_SIZE_LIMIT_BYTES) {
-      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      const msg = `This image is above the required image size limit (${fileSizeMB} MB uploaded — max ${IMAGE_SIZE_LIMIT_MB} MB allowed).`;
-      setFeedbackMessage({ type: "error", text: msg });
-      triggerToast(msg, "error", "Upload Failed");
-      return;
-    }
-
-    // Image is within the size limit — compress to avatar size to avoid Storage QuotaExceededError
-    try {
-      const base64Data = await compressImageForStorage(file, 350, 350, 0.82);
-      setAvatarUrl(base64Data);
-      if (email) {
-        safeSetLocalStorage("landlordAvatar_" + email.toLowerCase(), base64Data);
-      }
-      const updatedProf = { ...userProfile, avatar: base64Data };
-      setUserProfile(updatedProf);
-      
-      const savedSuccessfully = safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
-      if (!savedSuccessfully) {
-        // Fallback: store profile without full heavy avatar in currentUserProfile if quota still tight
-        const trimmedProf = { ...updatedProf, avatar: "" };
-        safeSetLocalStorage("currentUserProfile", JSON.stringify(trimmedProf));
-      }
-
-      window.dispatchEvent(new Event("storage"));
-      setFeedbackMessage({ type: "success", text: "Profile picture updated successfully!" });
-      triggerToast("Profile picture updated successfully!", "success", "Photo Updated");
-    } catch (err) {
-      console.warn("Avatar processing fallback:", err);
-      // Direct FileReader fallback if canvas compression fails
+    if (file) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const rawBase64 = evt.target.result;
-        setAvatarUrl(rawBase64);
+        const base64Data = evt.target.result;
+        setAvatarUrl(base64Data);
         if (email) {
-          safeSetLocalStorage("landlordAvatar_" + email.toLowerCase(), rawBase64);
+          localStorage.setItem("landlordAvatar_" + email.toLowerCase(), base64Data);
         }
-        const updatedProf = { ...userProfile, avatar: rawBase64 };
+        const updatedProf = { ...userProfile, avatar: base64Data };
         setUserProfile(updatedProf);
-        safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
         window.dispatchEvent(new Event("storage"));
-        setFeedbackMessage({ type: "success", text: "Profile picture updated successfully!" });
-        triggerToast("Profile picture updated successfully!", "success", "Photo Updated");
       };
       reader.readAsDataURL(file);
     }
@@ -214,7 +178,7 @@ export default function Settings() {
   useEffect(() => {
     async function fetchProperties() {
       try {
-        const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+        const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
         const props = await propertyService.getLandlordProperties(currentUserId);
         setProperties(props);
         if (props.length > 0) {
@@ -564,7 +528,7 @@ export default function Settings() {
     e.preventDefault();
     try {
       const updatedName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+      const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
 
       try {
         await userService.updateProfile({
@@ -592,21 +556,15 @@ export default function Settings() {
       };
 
       setUserProfile(updatedProf);
-      safeSetSessionStorage("currentUserProfile", JSON.stringify(updatedProf));
-      const savedProf = safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
-      if (!savedProf) {
-        // Fallback: save profile without heavy avatar data if quota exceeded
-        const slimProf = { ...updatedProf, avatar: "" };
-        safeSetLocalStorage("currentUserProfile", JSON.stringify(slimProf));
-      }
-
+      sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+      sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
       if (cleanEmail) {
-        safeSetLocalStorage("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
-        safeSetLocalStorage("username_" + cleanEmail, updatedName);
+        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
+        sessionStorage.setItem("username_" + cleanEmail, updatedName);
       }
       if (updatedName) {
-        safeSetSessionStorage("username", updatedName);
-        safeSetLocalStorage("username", updatedName);
+        sessionStorage.setItem("username", updatedName);
+        sessionStorage.setItem("username", updatedName);
       }
       if (avatarUrl && cleanEmail) {
         safeSetLocalStorage("landlordAvatar_" + cleanEmail, avatarUrl);
@@ -646,10 +604,10 @@ export default function Settings() {
 
   const handleSignOut = () => {
     if (window.confirm("Are you sure you want to log out?")) {
-      localStorage.removeItem("isAuthenticated");
-      localStorage.removeItem("sessionExpiresAt");
-      localStorage.removeItem("username");
-      localStorage.removeItem("userRole");
+      sessionStorage.removeItem("isAuthenticated");
+      sessionStorage.removeItem("sessionExpiresAt");
+      sessionStorage.removeItem("username");
+      sessionStorage.removeItem("userRole");
       sessionStorage.removeItem("isAuthenticated");
       sessionStorage.removeItem("sessionExpiresAt");
       sessionStorage.removeItem("username");
@@ -696,11 +654,10 @@ export default function Settings() {
             {/* Avatar upload feedback banner */}
             {feedbackMessage && (
               <div
-                className={`mt-3 px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 text-[12px] font-medium transition-all ${
-                  feedbackMessage.type === "success"
+                className={`mt-3 px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 text-[12px] font-medium transition-all ${feedbackMessage.type === "success"
                     ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                }`}
+                  }`}
               >
                 <span className="leading-snug">{feedbackMessage.text}</span>
                 <button
@@ -1112,7 +1069,7 @@ export default function Settings() {
 
                   <div className="doc-gen-clauses space-y-2 mt-4">
                     <label className="set-ref-lbl font-extrabold mb-1 block">Lease Policies</label>
-                    
+
                     <label className="flex items-center gap-2 text-xs font-semibold text-ink-700 dark:text-cream-100/80 cursor-pointer">
                       <input
                         type="checkbox"
@@ -1158,7 +1115,7 @@ export default function Settings() {
                 {/* Live Preview Paper */}
                 <div className="doc-preview-card">
                   <div className="doc-paper shadow-xl bg-white dark:bg-[#16241F] border border-[#E4EAE1] dark:border-white/10 rounded-2xl p-6 md:p-8 overflow-y-auto max-h-[500px] text-left relative">
-                    
+
                     {/* Stylized Document Watermark / Seal background */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none" style={{ opacity: 0.03 }}>
                       <span className="font-serif text-[100px] font-extrabold text-[#2C4633] tracking-widest leading-none">LODALE</span>
@@ -1177,7 +1134,7 @@ export default function Settings() {
                     {/* Document body text */}
                     <div className="space-y-4 text-xs font-serif text-ink-800 dark:text-cream-100/90 leading-relaxed">
                       <p><strong>THIS AGREEMENT</strong> is made this <strong>{formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" })}</strong>,</p>
-                      
+
                       <p className="font-bold border-b pb-1 border-ink-100 dark:border-white/5 text-[11px] text-[#2C4633] dark:text-[#E5C583] uppercase tracking-wider">The Parties</p>
                       <div className="grid grid-cols-2 gap-4 bg-ink-50/50 dark:bg-white/2 p-3 rounded-xl">
                         <div>

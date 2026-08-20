@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2 } from "lucide-react";
+import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, Heart } from "lucide-react";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
+import { applicationService } from "../../services/applicationService";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import "./TenantSearch.css";
@@ -16,7 +17,7 @@ function PropertyCard({ property, onInspect }) {
       <div className="property-card-image-wrapper">
         <img src={property.image} alt={property.title} className="property-card-image" />
         <span className="property-card-price-tag">
-          {formatCurrency(property.price, "/mo")}
+          {property.price}
         </span>
       </div>
 
@@ -62,7 +63,7 @@ function LandlordCard({ landlord, onInspect }) {
           <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Rating Score</span>
           <span className="font-bold text-amber-500 flex items-center gap-1">
             <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-            <span>{landlord.score} ({landlord.reviews} reviews)</span>
+            <span>{landlord.score > 0 ? `${landlord.score} (${landlord.reviews} reviews)` : "No rating yet"}</span>
           </span>
         </div>
         <div className="landlord-metric flex justify-between items-center text-[12.5px] mb-3">
@@ -93,7 +94,7 @@ function LandlordCard({ landlord, onInspect }) {
   );
 }
 
-export default function TenantSearch({ setShowProfileModal, onStartChat, tenantAvatar }) {
+export default function TenantSearch({ setActiveTab, setShowProfileModal, onStartChat, tenantAvatar }) {
   const navigate = useNavigate();
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -137,18 +138,18 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
             landlordObj = {
               id: l.id || null,
               name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
-              score: l.score ?? 5.0,
-              reviews: l.reviews ?? 1,
+              score: l.score || 0,
+              reviews: l.reviews || 0,
               phone_number: l.phone_number || null
             };
           } else {
-            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 5.0, reviews: 1, phone_number: null };
+            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 0, reviews: 0, phone_number: null };
           }
           return {
             id: item.id || key,
             title: item.title || item.address_line1 || "Property",
             location: item.location || item.city || "Lagos, Nigeria",
-            price: typeof item.price === "number" ? item.price : Number(String(item.price || item.rent_amount || "0").replace(/[^0-9]/g, "")) || 0,
+            price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
             beds: item.beds || item.bedrooms || 1,
             baths: item.baths || item.bathrooms || 1,
             type: item.type || item.property_type || "apartment",
@@ -191,8 +192,8 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
         seen.set(key, {
           id: l.id || key,
           name: l.name,
-          score: l.score ?? 5.0,
-          reviews: l.reviews ?? 1,
+          score: l.score || 0,
+          reviews: l.reviews || 0,
           avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(l.name)}&background=2C4633&color=E5C583&size=96`,
           location: p.location || "Lagos, Nigeria",
           properties: [p.title],
@@ -229,11 +230,36 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
   const [lastVisitedListings, setLastVisitedListings] = useState(() => {
     try {
       const saved = localStorage.getItem("lastVisitedListings");
-      return saved ? JSON.parse(saved) : [];
+      return saved ? JSON.parse(saved).slice(0, 5) : [];
     } catch (e) {
       return [];
     }
   });
+
+  const [savedPropertiesList, setSavedPropertiesList] = useState([]);
+
+  useEffect(() => {
+    const fetchSavedProperties = () => {
+      try {
+        const saved = localStorage.getItem("savedProperties");
+        if (saved) {
+          // Filter to only those that still exist in allAvailableProperties to avoid stale data
+          const parsed = JSON.parse(saved);
+          setSavedPropertiesList(parsed);
+        } else {
+          setSavedPropertiesList([]);
+        }
+      } catch (e) {}
+    };
+    fetchSavedProperties();
+    window.addEventListener("propertySavedChanged", fetchSavedProperties);
+    // Refresh when returning to the tab
+    window.addEventListener("focus", fetchSavedProperties);
+    return () => {
+      window.removeEventListener("propertySavedChanged", fetchSavedProperties);
+      window.removeEventListener("focus", fetchSavedProperties);
+    };
+  }, []);
 
   const handleInspectProperty = (property) => {
     setSelectedProperty(property);
@@ -242,13 +268,15 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
     // Dynamic Last Visited update on tap
     setLastVisitedListings(prev => {
       const filtered = prev.filter(p => p && p.id !== property.id);
-      const updated = [property, ...filtered].slice(0, 10);
+      const updated = [property, ...filtered].slice(0, 5);
       try {
         localStorage.setItem("lastVisitedListings", JSON.stringify(updated));
       } catch (e) { }
       return updated;
     });
   };
+
+
 
   // Landlord Details modal states
   const [selectedLandlord, setSelectedLandlord] = useState(null);
@@ -347,7 +375,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
 
   const userLocationStr = (() => {
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const prof = JSON.parse(raw);
         return prof.location || "";
@@ -366,6 +394,18 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
       return true;
     });
   })();
+
+  useEffect(() => {
+    const handleResumeApply = (e) => {
+      const propId = e.detail;
+      const property = allAvailableProperties.find(p => p.id == propId);
+      if (property) {
+        handleInspectProperty(property);
+      }
+    };
+    window.addEventListener("resumeQuickApply", handleResumeApply);
+    return () => window.removeEventListener("resumeQuickApply", handleResumeApply);
+  }, [allAvailableProperties]);
 
   const searchSuggestions = (() => {
     const q = searchQuery.toLowerCase().trim();
@@ -427,8 +467,12 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
     return suggestions.slice(0, 6);
   })();
 
-  const lastVisitedProperties = lastVisitedListings;
-  const lastVisitedIds = new Set(lastVisitedProperties.map(p => p && p.id).filter(Boolean));
+  const availablePropertyIds = new Set(allAvailableProperties.map(p => p.id));
+  const lastVisitedProperties = lastVisitedListings
+    .filter(p => p && availablePropertyIds.has(p.id))
+    .map(p => allAvailableProperties.find(l => l.id === p.id) || p)
+    .slice(0, 5);
+  const lastVisitedIds = new Set(lastVisitedProperties.map(p => p.id));
 
   const closeToYouProperties = (() => {
     const locLower = userLocationStr.toLowerCase().trim();
@@ -653,6 +697,21 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
                   </div>
                 )}
               </div>
+
+              {/* Section 1.5: Saved Properties */}
+              {savedPropertiesList.length > 0 && (
+                <div className="recommendation-row mb-8">
+                  <h3 className="recommendation-section-title flex items-center gap-2">
+                    <Heart className="h-4.5 w-4.5 text-rose-500 fill-rose-500" />
+                    Saved Properties
+                  </h3>
+                  <div className="recommendation-cards-scroller">
+                    {savedPropertiesList.map(p => (
+                      <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Section 2: Close to You */}
               <div className="recommendation-row mb-8">
@@ -1019,12 +1078,14 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
               {/* Landlord validation details */}
               <div className="flex flex-col gap-3 border-t border-neutral-100 dark:border-neutral-800/60 pt-4 mb-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Verified Landlord</span>
+                  <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Landlord / Manager</span>
                   <span className="text-[13px] font-bold">{selectedProperty.landlord.name}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Landlord Rating Score</span>
-                  <span className="text-[13px] font-bold text-amber-500">★ {selectedProperty.landlord.score} ({selectedProperty.landlord.reviews} reviews)</span>
+                  <span className="text-[13px] font-bold text-amber-500">
+                    {selectedProperty.landlord.score > 0 ? `★ ${selectedProperty.landlord.score} (${selectedProperty.landlord.reviews} reviews)` : "No rating yet"}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Ownership Status</span>
@@ -1060,9 +1121,39 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
                   Landlord Profile
                 </Button>
                 <Button
-                  onClick={() => {
-                    triggerToast("Application submitted successfully! Your pre-verified NIN profile has been shared with the landlord.", "success", "Application Sent");
-                    setShowPropertyDetailsModal(false);
+                  onClick={async () => {
+                    const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                    const raw = sessionStorage.getItem("tenantCurrentProfile") || (userEmail ? localStorage.getItem("tenantProfile_" + userEmail) : null) || "{}";
+                    const prof = JSON.parse(raw);
+                    
+                    if (!prof.phone && !prof.phone_number || !prof.occupation || !prof.income) {
+                      triggerToast("Please complete your profile details before applying.", "warning", "Incomplete Profile");
+                      setShowPropertyDetailsModal(false);
+                      localStorage.setItem("pendingQuickApplyPropertyId", selectedProperty.id);
+                      if (setActiveTab) setActiveTab(3);
+                      return;
+                    }
+
+                    try {
+                      // Check for existing application first
+                      const existingApp = await applicationService.getApplicationForProperty(selectedProperty.id);
+                      if (existingApp) {
+                        triggerToast(`You have already applied for this property. Status: ${existingApp.status || "Pending"}`, "info", "Already Applied");
+                        return;
+                      }
+
+                      await applicationService.apply(selectedProperty.id, "Quick Apply via Tenant Search.");
+                      triggerToast("Application submitted! Your profile has been shared with the landlord.", "success", "Application Sent");
+                      setShowPropertyDetailsModal(false);
+                      if (setActiveTab) setActiveTab(4); // Navigate to Applications tab
+                    } catch (err) {
+                      const message = err.message || "Failed to submit application.";
+                      if (message.toLowerCase().includes("already")) {
+                        triggerToast("You have already applied for this property.", "info", "Already Applied");
+                      } else {
+                        triggerToast(message, "error", "Application Error");
+                      }
+                    }
                   }}
                   variant="secondary"
                   className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3 text-[12.5px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white border border-neutral-200 dark:border-neutral-700"
@@ -1104,8 +1195,10 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
                 <span className="summary-lbl">Reliability Breakdown</span>
 
                 <div className="flex justify-between items-center text-[12.5px]">
-                  <span>Overall Rating</span>
-                  <span className="font-bold text-amber-500">★ {selectedLandlord.score} / 5.0 ({selectedLandlord.reviews} Reviews)</span>
+                  <span className="text-xs text-[#6C6E73] dark:text-[#A3BCA7]">Total Rating</span>
+                  <span className="font-bold text-amber-500">
+                    {selectedLandlord.score > 0 ? `★ ${selectedLandlord.score} / 5.0 (${selectedLandlord.reviews} Reviews)` : "No rating yet"}
+                  </span>
                 </div>
 
                 <div className="flex justify-between items-center text-[12.5px] mt-1">

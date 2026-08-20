@@ -36,7 +36,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     // Load properties
     let propertyList = [];
     try {
-      const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
       propertyList = await propertyService.getLandlordProperties(currentUserId);
     } catch (e) {
       console.warn("Could not load properties:", e);
@@ -127,7 +127,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
       avatar: "",
       email: formData.email,
       phone: formData.phone || "",
-      reliabilityScore: (4.5 + Math.random() * 0.5).toFixed(1), // Auto-generate score 4.5-5.0
+      reliabilityScore: 0,
       occupation: formData.occupation || "Independent Professional",
       income: formData.income ? formatCurrency(formData.income, "/mo") : "₦450,000/mo",
       notes: formData.notes || "NIN verified. Clean background check.",
@@ -287,15 +287,15 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
 
           // Only update score if rating is selected (> 0)
           if (rating > 0) {
-            const prevScore = parseFloat(t.reliabilityScore) || 4.7;
-            updatedScore = ((prevScore + rating) / 2).toFixed(1);
+            const prevScore = parseFloat(t.reliabilityScore) || 0;
+            updatedScore = prevScore > 0 ? ((prevScore + rating) / 2).toFixed(1) : rating.toFixed(1);
           }
 
           // Add review if rating > 0 or comment is filled
           if (rating > 0 || comment.trim()) {
             const newReview = {
               landlord: "You (Current Landlord)",
-              rating: rating > 0 ? rating : parseFloat(t.reliabilityScore) || 4.7,
+              rating: rating > 0 ? rating : parseFloat(t.reliabilityScore) || 0,
               text: comment.trim() || "Lease ended. No written review comment provided.",
               rentAgain: rentAgain === "yes" ? "Yes" : "No"
             };
@@ -438,7 +438,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
 
                 <div className="tenant-card-score" title="Tenant Reliability Score">
                   <Star className="h-3.5 w-3.5 fill-[#D69E2E] text-[#D69E2E]" />
-                  <span>{tenant.reliabilityScore || "4.7"}</span>
+                  <span>{tenant.reliabilityScore > 0 ? tenant.reliabilityScore : "No rating"}</span>
                 </div>
               </div>
 

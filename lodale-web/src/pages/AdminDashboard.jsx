@@ -4,12 +4,14 @@ import { Logo } from "../components/Logo";
 import { useTheme } from "../context/ThemeContext";
 import { adminService } from "../services/adminService";
 import { propertyService } from "../services/propertyService";
+import AdminSupportChat from "./AdminDashboard/AdminSupportChat";
 import { formatCurrency, formatDate } from "../utils/formatters";
 import {
   LayoutDashboard,
   Users,
   Building2,
   MessageSquareWarning,
+  MessageSquare,
   Search,
   Filter,
   CheckCircle2,
@@ -71,7 +73,7 @@ export default function AdminDashboard() {
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings' | 'profile'
+  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings' | 'profile' | 'support'
   const [activeTab, setActiveTab] = useState("overview");
   const [settingsSubTab, setSettingsSubTab] = useState("profile");
 
@@ -92,11 +94,11 @@ export default function AdminDashboard() {
 
   const handleAdminSignOut = () => {
     sessionStorage.clear();
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("adminAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("lodale_token");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("adminAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("lodale_token");
     localStorage.setItem("explicitAdminSignOut", "true");
     navigate("/admin/login", { replace: true });
   };
@@ -299,33 +301,44 @@ export default function AdminDashboard() {
 
 
   // --- CORE ACTIONS ---
-  const handleToggleUserStatus = (userId) => {
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === userId) {
-          const newStatus = u.status === "Active" ? "Suspended" : "Active";
-          showToast(`User ${u.name} is now ${newStatus}.`);
-          return {
-            ...u,
-            status: newStatus,
-            suspensionReason:
-              newStatus === "Suspended"
-                ? "Suspended by Admin for safety review."
-                : null,
-          };
-        }
-        return u;
-      })
-    );
-    if (selectedUser?.id === userId) {
-      setSelectedUser((prev) =>
-        prev
-          ? {
-            ...prev,
-            status: prev.status === "Active" ? "Suspended" : "Active",
+  const handleToggleUserStatus = async (userId) => {
+    const target = users.find((u) => u.id === userId);
+    if (!target) return;
+
+    const newStatus = target.status === "Active" ? "Suspended" : "Active";
+    const rawStatus = newStatus.toLowerCase();
+
+    try {
+      await adminService.updateUserStatus(userId, rawStatus);
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id === userId) {
+            return {
+              ...u,
+              status: newStatus,
+              suspensionReason:
+                newStatus === "Suspended"
+                  ? "Suspended by Admin for safety review."
+                  : null,
+            };
           }
-          : null
+          return u;
+        })
       );
+      showToast(`User ${target.name} account is now ${newStatus}.`);
+      if (selectedUser?.id === userId) {
+        setSelectedUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: newStatus,
+              }
+            : null
+        );
+      }
+    } catch (err) {
+      console.error("Failed to update user status:", err);
+      showToast(`Failed to update user status: ${err.message || "Server error"}`);
     }
   };
 
@@ -346,8 +359,8 @@ export default function AdminDashboard() {
         if (target?.email) {
           const lowerEmail = target.email.toLowerCase();
           localStorage.removeItem(`registeredUser_${lowerEmail}`);
-          localStorage.removeItem(`userProfile_${lowerEmail}`);
-          localStorage.removeItem(`username_${lowerEmail}`);
+          sessionStorage.removeItem(`userProfile_${lowerEmail}`);
+          sessionStorage.removeItem(`username_${lowerEmail}`);
         }
       } catch (err) {
         console.error("Failed to delete user:", err);
@@ -800,6 +813,23 @@ export default function AdminDashboard() {
                     {flaggedReviewsCount}
                   </span>
                 )}
+              </button>
+
+              {/* Support Messages */}
+              <button
+                onClick={() => {
+                  setActiveTab("support");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "support"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <MessageSquare className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">Support Messages</span>
+                </div>
               </button>
 
               {/* My Profile */}
@@ -1492,6 +1522,13 @@ export default function AdminDashboard() {
           )}
 
           {/* --- TAB 4: MY PROFILE --- */}
+          {activeTab === "support" && (
+            <div className="h-full">
+              <AdminSupportChat />
+            </div>
+          )}
+
+          {/* Settings Tab / Sub-Tabs */}
           {(activeTab === "profile" || activeTab === "settings") && (
             <div className="space-y-6 animate-fade-in">
               {/* Main Header */}
