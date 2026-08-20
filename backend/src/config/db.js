@@ -174,6 +174,17 @@ export async function initDb() {
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS property_applications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+        tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(50) DEFAULT 'pending',
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(property_id, tenant_id)
+      );
     `);
 
     client.release();

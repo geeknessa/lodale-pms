@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2 } from "lucide-react";
+import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, Heart } from "lucide-react";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
+import { applicationService } from "../../services/applicationService";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import "./TenantSearch.css";
@@ -234,6 +235,31 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
       return [];
     }
   });
+
+  const [savedPropertiesList, setSavedPropertiesList] = useState([]);
+
+  useEffect(() => {
+    const fetchSavedProperties = () => {
+      try {
+        const saved = localStorage.getItem("savedProperties");
+        if (saved) {
+          // Filter to only those that still exist in allAvailableProperties to avoid stale data
+          const parsed = JSON.parse(saved);
+          setSavedPropertiesList(parsed);
+        } else {
+          setSavedPropertiesList([]);
+        }
+      } catch (e) {}
+    };
+    fetchSavedProperties();
+    window.addEventListener("propertySavedChanged", fetchSavedProperties);
+    // Refresh when returning to the tab
+    window.addEventListener("focus", fetchSavedProperties);
+    return () => {
+      window.removeEventListener("propertySavedChanged", fetchSavedProperties);
+      window.removeEventListener("focus", fetchSavedProperties);
+    };
+  }, []);
 
   const handleInspectProperty = (property) => {
     setSelectedProperty(property);
@@ -672,6 +698,21 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 )}
               </div>
 
+              {/* Section 1.5: Saved Properties */}
+              {savedPropertiesList.length > 0 && (
+                <div className="recommendation-row mb-8">
+                  <h3 className="recommendation-section-title flex items-center gap-2">
+                    <Heart className="h-4.5 w-4.5 text-rose-500 fill-rose-500" />
+                    Saved Properties
+                  </h3>
+                  <div className="recommendation-cards-scroller">
+                    {savedPropertiesList.map(p => (
+                      <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Section 2: Close to You */}
               <div className="recommendation-row mb-8">
                 <h3 className="recommendation-section-title">
@@ -1080,46 +1121,39 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                   Landlord Profile
                 </Button>
                 <Button
-                  onClick={() => {
-                    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-                    const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                  onClick={async () => {
+                    const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                    const raw = sessionStorage.getItem("tenantCurrentProfile") || (userEmail ? localStorage.getItem("tenantProfile_" + userEmail) : null) || "{}";
                     const prof = JSON.parse(raw);
                     
                     if (!prof.phone && !prof.phone_number || !prof.occupation || !prof.income) {
                       triggerToast("Please complete your profile details before applying.", "warning", "Incomplete Profile");
                       setShowPropertyDetailsModal(false);
-                      // Save intent to apply
                       localStorage.setItem("pendingQuickApplyPropertyId", selectedProperty.id);
-                      if (setActiveTab) setActiveTab(3); // Navigate to Settings
+                      if (setActiveTab) setActiveTab(3);
                       return;
                     }
 
-                    const username = sessionStorage.getItem("username") || "Tenant User";
-                    const userEmail = sessionStorage.getItem("lastLoggedInEmail") || "tenant@example.com";
-                    const saved = localStorage.getItem("propertyApplications");
-                    const currentApps = saved ? JSON.parse(saved) : [];
-                    
-                    const newApp = {
-                      id: Date.now(),
-                      tenantName: username,
-                      name: username,
-                      email: userEmail,
-                      phone: prof.phone || prof.phone_number,
-                      occupation: prof.occupation,
-                      income: prof.income,
-                      propertyId: selectedProperty?.id,
-                      propertyTitle: selectedProperty?.title || "Rental Property",
-                      date: "Just now",
-                      status: "Applicant",
-                      reliabilityScore: 0,
-                      notes: "Verified NIN application submitted via Quick Apply."
-                    };
+                    try {
+                      // Check for existing application first
+                      const existingApp = await applicationService.getApplicationForProperty(selectedProperty.id);
+                      if (existingApp) {
+                        triggerToast(`You have already applied for this property. Status: ${existingApp.status || "Pending"}`, "info", "Already Applied");
+                        return;
+                      }
 
-                    localStorage.setItem("propertyApplications", JSON.stringify([newApp, ...currentApps]));
-                    window.dispatchEvent(new Event("storage"));
-
-                    triggerToast("Application submitted successfully! Your profile has been shared with the landlord.", "success", "Application Sent");
-                    setShowPropertyDetailsModal(false);
+                      await applicationService.apply(selectedProperty.id, "Quick Apply via Tenant Search.");
+                      triggerToast("Application submitted! Your profile has been shared with the landlord.", "success", "Application Sent");
+                      setShowPropertyDetailsModal(false);
+                      if (setActiveTab) setActiveTab(4); // Navigate to Applications tab
+                    } catch (err) {
+                      const message = err.message || "Failed to submit application.";
+                      if (message.toLowerCase().includes("already")) {
+                        triggerToast("You have already applied for this property.", "info", "Already Applied");
+                      } else {
+                        triggerToast(message, "error", "Application Error");
+                      }
+                    }
                   }}
                   variant="secondary"
                   className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3 text-[12.5px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white border border-neutral-200 dark:border-neutral-700"

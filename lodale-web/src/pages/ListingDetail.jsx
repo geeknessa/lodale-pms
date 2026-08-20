@@ -135,6 +135,12 @@ export default function ListingDetail() {
       try {
         const item = await propertyService.getPropertyById(id);
         setListing(item || null);
+        
+        if (item) {
+          const savedStr = localStorage.getItem("savedProperties");
+          const savedArr = savedStr ? JSON.parse(savedStr) : [];
+          setIsSaved(savedArr.some(p => p.id === item.id));
+        }
       } catch (err) {
         setListing(null);
       } finally {
@@ -143,6 +149,25 @@ export default function ListingDetail() {
     }
     fetchListing();
   }, [id]);
+
+  const handleToggleSave = () => {
+    if (!listing) return;
+    const savedStr = localStorage.getItem("savedProperties");
+    const currentSaved = savedStr ? JSON.parse(savedStr) : [];
+    
+    if (isSaved) {
+      const updated = currentSaved.filter(p => p.id !== listing.id);
+      localStorage.setItem("savedProperties", JSON.stringify(updated));
+      setIsSaved(false);
+      triggerToast("Property removed from saved.", "info", "Removed");
+    } else {
+      const updated = [listing, ...currentSaved.filter(p => p.id !== listing.id)];
+      localStorage.setItem("savedProperties", JSON.stringify(updated));
+      setIsSaved(true);
+      triggerToast("Property saved successfully!", "success", "Saved");
+    }
+    window.dispatchEvent(new Event("propertySavedChanged"));
+  };
 
   if (isLoading) {
     return isTenant ? (
@@ -341,7 +366,7 @@ export default function ListingDetail() {
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
             <button
-              onClick={() => setIsSaved(!isSaved)}
+              onClick={handleToggleSave}
               className={`px-3.5 py-1.5 rounded-full border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer outline-none ${isSaved
                 ? "bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-950/60 dark:border-rose-800 dark:text-rose-300"
                 : "bg-white dark:bg-[#16241F] border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100 hover:border-moss-500"

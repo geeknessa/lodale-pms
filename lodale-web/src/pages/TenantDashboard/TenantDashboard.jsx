@@ -39,6 +39,7 @@ import "./TenantDashboard.css";
 import TenantSearch from "./TenantSearch";
 import TenantChat from "./TenantChat";
 import TenantSettings from "./TenantSettings";
+import TenantApplications from "./TenantApplications";
 
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
@@ -166,7 +167,7 @@ export default function TenantDashboard() {
   const { theme, toggleTheme } = useTheme();
 
   // Active navigation tab (persisted on page reload, or from navigation state)
-  // 0: Dashboard, 1: Search, 2: Chat, 3: Settings
+  // 0: Dashboard, 1: Search, 2: Chat, 3: Settings, 4: Applications
   const [activeTab, setActiveTabState] = useState(() => {
     try {
       // If navigated from ListingDetail with a specific tab request, honour it
@@ -675,6 +676,7 @@ export default function TenantDashboard() {
     if (activeTab === 1) return "Search";
     if (activeTab === 2) return "Chat";
     if (activeTab === 3) return "Settings";
+    if (activeTab === 4) return "Applications";
     return "";
   };
 
@@ -711,7 +713,8 @@ export default function TenantDashboard() {
                 { icon: LayoutDashboard, label: "Dashboard home", idx: 0 },
                 { icon: Search, label: "Search properties", idx: 1 },
                 { icon: MessageSquare, label: "Chat Room", idx: 2 },
-                { icon: Settings, label: "Settings & Profile", idx: 3 }
+                { icon: Settings, label: "Settings & Profile", idx: 3 },
+                { icon: FileText, label: "Applications", idx: 4 }
               ].map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.idx;
@@ -1459,7 +1462,8 @@ export default function TenantDashboard() {
                 { icon: LayoutDashboard, label: "Dashboard home" },
                 { icon: Search, label: "Search" },
                 { icon: MessageSquare, label: "Chat" },
-                { icon: Settings, label: "Settings" }
+                { icon: Settings, label: "Settings" },
+                { icon: FileText, label: "Applications" }
               ].map((item, index) => {
                 const Icon = item.icon;
                 const isActive = activeTab === index;
@@ -1906,8 +1910,12 @@ export default function TenantDashboard() {
               }}
             />
           </main>
+        ) : activeTab === 4 ? (
+          <main className="db-main-content">
+            <TenantApplications setActiveTab={setActiveTab} />
+          </main>
         ) : (
-          /* TAB 4+: UNDER DEVELOPMENT VIEWS */
+          /* TAB 5+: UNDER DEVELOPMENT VIEWS */
           <div className="under-development-wrapper flex-1 flex items-center justify-center">
             <div className="under-dev-card text-center">
               <div className="sparkle-icon flex justify-center"><Sparkles className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>
