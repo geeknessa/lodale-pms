@@ -37,4 +37,13 @@ export const adminService = {
       body: { action, reason: notes, notes },
     });
   },
+
+  /**
+   * Delete a registered user account
+   */
+  async deleteUser(userId) {
+    return await apiClient(`/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+  },
 };

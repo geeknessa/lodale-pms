@@ -106,13 +106,24 @@ export default function Login() {
       try {
         const res = await authService.signIn({ email: cleanUsername, password: cleanPassword });
         if (res && res.user && res.user.primary_role === "admin") {
+          const expiresAt = (Date.now() + 24 * 60 * 60 * 1000).toString();
+
           sessionStorage.setItem("isAuthenticated", "true");
           sessionStorage.setItem("userRole", "admin");
           sessionStorage.setItem("adminAuthenticated", "true");
           sessionStorage.setItem("lastLoggedInEmail", cleanUsername);
           sessionStorage.setItem("username", `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "Admin");
-          sessionStorage.setItem("sessionExpiresAt", (Date.now() + 8 * 60 * 60 * 1000).toString());
+          sessionStorage.setItem("sessionExpiresAt", expiresAt);
           sessionStorage.setItem("db_user_id", res.user.id);
+          if (res.token) sessionStorage.setItem("lodale_token", res.token);
+
+          localStorage.setItem("isAuthenticated", "true");
+          localStorage.setItem("userRole", "admin");
+          localStorage.setItem("adminAuthenticated", "true");
+          localStorage.setItem("lastLoggedInEmail", cleanUsername);
+          localStorage.setItem("sessionExpiresAt", expiresAt);
+          if (res.token) localStorage.setItem("lodale_token", res.token);
+          localStorage.removeItem("explicitAdminSignOut");
 
           navigate("/admin/dashboard");
           return;
@@ -137,34 +148,59 @@ export default function Login() {
       if (res && res.user) {
         const userRole = res.user.primary_role || "tenant";
         const userFullName = `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "User";
+        const expiresAt = (Date.now() + 24 * 60 * 60 * 1000).toString();
 
         sessionStorage.setItem("isAuthenticated", "true");
         sessionStorage.setItem("userRole", userRole);
         sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
         sessionStorage.setItem("username", userFullName);
         sessionStorage.setItem("db_user_id", res.user.id);
+        sessionStorage.setItem("sessionExpiresAt", expiresAt);
 
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userRole", userRole);
         localStorage.setItem("lastLoggedInEmail", cleanEmail);
+        localStorage.setItem("sessionExpiresAt", expiresAt);
         localStorage.setItem("username_" + cleanEmail, userFullName);
 
+        if (userRole === "admin") {
+          sessionStorage.setItem("adminAuthenticated", "true");
+          localStorage.setItem("adminAuthenticated", "true");
+          localStorage.removeItem("explicitAdminSignOut");
+        }
+
+        let savedProfile = {};
+        try {
+          const rawSaved = localStorage.getItem("userProfile_" + cleanEmail);
+          if (rawSaved) savedProfile = JSON.parse(rawSaved);
+        } catch (e) { }
+
         const profileObj = {
-          firstName: res.user.first_name || "",
-          lastName: res.user.last_name || "",
+          firstName: res.user.first_name || savedProfile.firstName || savedProfile.first_name || "",
+          lastName: res.user.last_name || savedProfile.lastName || savedProfile.last_name || "",
+          first_name: res.user.first_name || savedProfile.first_name || savedProfile.firstName || "",
+          last_name: res.user.last_name || savedProfile.last_name || savedProfile.lastName || "",
           email: cleanEmail,
-          phone: res.user.phone_number || "",
+          phone: res.user.phone_number || savedProfile.phone || savedProfile.phone_number || "",
+          phone_number: res.user.phone_number || savedProfile.phone_number || savedProfile.phone || "",
           role: userRole,
-          address: "",
-          dob: "",
-          location: "",
-          postalCode: "",
+          address: res.user.address || savedProfile.address || "",
+          dob: res.user.dob || savedProfile.dob || "",
+          location: res.user.location || savedProfile.location || "",
+          postalCode: res.user.postal_code || res.user.postalCode || savedProfile.postalCode || savedProfile.postal_code || "",
+          postal_code: res.user.postal_code || res.user.postalCode || savedProfile.postal_code || savedProfile.postalCode || "",
+          gender: res.user.gender || savedProfile.gender || "Male",
+          avatar: res.user.avatar_url || savedProfile.avatar || savedProfile.avatar_url || "",
+          avatar_url: res.user.avatar_url || savedProfile.avatar_url || savedProfile.avatar || ""
         };
         sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
+        localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
         sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
         localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
 
-        navigate(`/dashboard/${userRole}`);
+        navigate(userRole === "admin" ? "/admin/dashboard" : `/dashboard/${userRole}`);
         return;
       }
     } catch (apiErr) {

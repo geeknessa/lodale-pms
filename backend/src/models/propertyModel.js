@@ -4,8 +4,8 @@ export const PropertyModel = {
   async getProperties(queryParams) {
     const { city, search, propertyType } = queryParams;
 
-    let query = 'SELECT * FROM properties WHERE status::text = $1';
-    const params = ['active_vacant'];
+    let query = "SELECT * FROM properties WHERE status::text IN ('active_vacant', 'approved', 'live', 'active', 'occupied', 'active_occupied')";
+    const params = [];
 
     if (city) {
       params.push(`%${city.toLowerCase()}%`);

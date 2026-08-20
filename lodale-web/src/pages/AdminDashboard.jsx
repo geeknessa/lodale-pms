@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Logo } from "../components/Logo";
 import { useTheme } from "../context/ThemeContext";
 import { adminService } from "../services/adminService";
+import { propertyService } from "../services/propertyService";
 import { formatCurrency, formatDate } from "../utils/formatters";
 import {
   LayoutDashboard,
@@ -71,9 +72,12 @@ export default function AdminDashboard() {
   }, [isSidebarOpen]);
 
   const handleAdminSignOut = () => {
+    sessionStorage.clear();
     localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("userRole");
+    localStorage.removeItem("adminAuthenticated");
     localStorage.removeItem("sessionExpiresAt");
+    localStorage.removeItem("lodale_token");
     localStorage.setItem("explicitAdminSignOut", "true");
     navigate("/admin/login", { replace: true });
   };
@@ -86,7 +90,15 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function loadAdminData() {
-      // 1. Load Pending Properties from API
+      // Clear legacy/cached property arrays so admin dashboard starts completely empty
+      try {
+        localStorage.removeItem("properties");
+        localStorage.removeItem("landlordProperties");
+        localStorage.removeItem("userProperties");
+        localStorage.removeItem("pendingProperties");
+      } catch (_e) {}
+
+      // 1. Load Property Listings from Backend API
       let apiPending = [];
       try {
         apiPending = await adminService.getPendingProperties();
@@ -94,191 +106,102 @@ export default function AdminDashboard() {
         console.warn("Backend API offline fallback:", err);
       }
 
-      setListings((prev) => {
-        const existingMap = new Map(prev.map(l => [l.id, l]));
+      setListings(() => {
+        const map = new Map();
 
-        apiPending.forEach((p) => {
-          if (!p || !p.id) return;
-          const formattedProp = {
-            ...p,
-            status: 'Pending Approval',
-            ownershipDoc: p.ownershipDoc || p.ownership_doc || 'Deed of Assignment',
-            ownershipDocUrl: p.ownershipDocUrl || p.ownership_doc_url,
-            docName: p.docName || p.ownership_doc || 'Legal_Document.pdf',
-            docDataUrl: p.docDataUrl || p.ownership_doc_url,
-            deedVerified: true,
-            type: p.property_type || 'Apartment',
-            rent: formatCurrency(p.rent_amount || 2500000, "/yr"),
-            landlord: p.landlord || { name: 'Verified Landlord', score: 5.0, reviews: 1 }
-          };
-          existingMap.set(p.id, formattedProp);
-        });
+        // Add API properties
+        if (Array.isArray(apiPending)) {
+          apiPending.forEach((p) => {
+            if (!p || !p.id) return;
+            const rawS = (p.rawStatus || p.status || "").toLowerCase();
+            let sLabel = "Pending Approval";
+            if (rawS === "active_vacant" || rawS === "approved" || rawS === "live" || rawS === "active" || p.status === "Live") {
+              sLabel = "Live";
+            } else if (rawS === "inactive" || rawS === "rejected" || p.status === "Rejected") {
+              sLabel = "Rejected";
+            } else if (rawS === "pending_review" || rawS === "pending" || rawS === "draft" || p.status === "Pending Approval" || p.status === "Info Requested") {
+              sLabel = p.queue_status === "under_review" || p.status === "Info Requested" ? "Info Requested" : "Pending Approval";
+            }
 
-        return Array.from(existingMap.values());
-      });
-
-      // 2. Load Registered Users from Backend API + LocalStorage Scan
-      let apiUsers = [];
-      try {
-        apiUsers = await adminService.getUsers();
-      } catch (err) {
-        console.warn("Backend API users fallback:", err);
-      }
-
-      // Collect all users from localStorage (registeredUsers array + registeredUser_* keys + userProfile_* keys)
-      let localUsers = [];
-      try {
-        const savedUsers = localStorage.getItem("registeredUsers");
-        if (savedUsers) {
-          const parsed = JSON.parse(savedUsers);
-          if (Array.isArray(parsed)) localUsers.push(...parsed);
+            map.set(String(p.id), {
+              ...p,
+              status: sLabel,
+              rawStatus: rawS || "active_vacant",
+              ownershipDoc: p.ownershipDoc || p.ownership_doc || 'Deed of Assignment',
+              ownershipDocUrl: p.ownershipDocUrl || p.ownership_doc_url,
+              docName: p.docName || p.ownership_doc || 'Legal_Document.pdf',
+              docDataUrl: p.docDataUrl || p.ownership_doc_url,
+              deedVerified: true,
+              type: p.type || p.property_type || 'Apartment',
+              rent: p.price || formatCurrency(p.rent_amount || 2500000, "/yr"),
+              landlord: p.landlord || { name: 'Verified Landlord', score: 5.0, reviews: 1 }
+            });
+          });
         }
-      } catch (_e) { }
 
-      // Scan localStorage for any registeredUser_, userProfile_, or username_ key
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key) {
-            if (key.startsWith("registeredUser_") || key.startsWith("userProfile_")) {
-              const raw = localStorage.getItem(key);
-              if (raw) {
-                const uObj = JSON.parse(raw);
-                if (uObj && (uObj.email || key.includes("@"))) {
-                  localUsers.push({
-                    email: uObj.email || key.replace(/^registeredUser_|^userProfile_/, ""),
-                    name: uObj.name || uObj.username || `${uObj.firstName || ""} ${uObj.lastName || ""}`.trim() || uObj.email,
-                    phone: uObj.phone || uObj.profile?.phone || "",
-                    role: uObj.role || uObj.profile?.role || "Tenant",
-                    id: uObj.id
-                  });
-                }
-              }
-            } else if (key.startsWith("username_")) {
-              const uEmail = key.replace("username_", "").trim();
-              const uName = localStorage.getItem(key);
-              if (uEmail && uEmail.includes("@")) {
-                localUsers.push({
-                  email: uEmail,
-                  name: uName || uEmail,
-                  role: "Tenant"
+        // Add local storage properties (from "properties" and "landlordProperties")
+        const localPropsSources = ["properties", "landlordProperties"];
+        localPropsSources.forEach((srcKey) => {
+          try {
+            const raw = localStorage.getItem(srcKey);
+            if (raw) {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list)) {
+                list.forEach((lp) => {
+                  if (!lp || (!lp.id && !lp.title)) return;
+                  const key = String(lp.id || lp.title);
+                  const rawS = (lp.status || "").toLowerCase();
+                  let sLabel = "Pending Approval";
+                  if (rawS === "active_vacant" || rawS === "approved" || rawS === "live" || rawS === "active" || lp.status === "Live") {
+                    sLabel = "Live";
+                  } else if (rawS === "inactive" || rawS === "rejected" || lp.status === "Rejected") {
+                    sLabel = "Rejected";
+                  }
+
+                  if (!map.has(key)) {
+                    map.set(key, {
+                      id: lp.id || key,
+                      title: lp.title || lp.name || "Property Listing",
+                      location: lp.location || `${lp.address_line1 || lp.address || 'Lagos'}, ${lp.city || 'Lagos'}`,
+                      price: lp.price || formatCurrency(lp.rent_amount || lp.rent || 2500000, "/yr"),
+                      type: lp.type || lp.property_type || "Apartment",
+                      status: sLabel,
+                      rawStatus: lp.status || "pending_review",
+                      submittedAt: lp.submittedAt || lp.created_at || new Date().toISOString(),
+                      landlord: lp.landlord || { name: lp.landlordName || "Verified Landlord", score: 5.0, reviews: 1 },
+                      description: lp.description || "",
+                      amenities: lp.amenities || [],
+                      blocks: lp.blocks || [],
+                      units: lp.units || [],
+                      ownershipDoc: lp.ownershipDoc || lp.ownership_doc || "Deed of Assignment",
+                      ownershipDocUrl: lp.ownershipDocUrl || lp.ownership_doc_url,
+                      deedVerified: true
+                    });
+                  } else {
+                    const existing = map.get(key);
+                    if (sLabel === "Live" && existing.status !== "Live") {
+                      existing.status = "Live";
+                      existing.rawStatus = "active_vacant";
+                    }
+                  }
                 });
               }
             }
-          }
-        }
-      } catch (_e) { }
-
-      // Scan propertyTenants map for tenants registered by landlords
-      try {
-        const savedPropTenants = localStorage.getItem("propertyTenants");
-        if (savedPropTenants) {
-          const parsedObj = JSON.parse(savedPropTenants);
-          Object.values(parsedObj).flat().forEach((t) => {
-            if (t && (t.email || t.name)) {
-              localUsers.push({
-                email: t.email || `${t.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@tenant.lodale.com`,
-                name: t.name,
-                phone: t.phone || "",
-                role: "Tenant",
-                id: t.id
-              });
-            }
-          });
-        }
-      } catch (_e) { }
-
-      const activeUsername = localStorage.getItem("username");
-      const activeEmail = localStorage.getItem("lastLoggedInEmail");
-      const activeRole = localStorage.getItem("userRole");
-
-      setUsers((prev) => {
-        const existingMap = new Map(prev.map((u) => [u.email?.toLowerCase(), u]));
-
-        // Add users fetched from Database API
-        apiUsers.forEach((u) => {
-          if (u && u.email) {
-            existingMap.set(u.email.toLowerCase(), u);
-          }
+          } catch (_e) {}
         });
 
-        // Add from localUsers list
-        localUsers.forEach((r) => {
-          if (r && r.email) {
-            const emailKey = r.email.toLowerCase();
-            const userRole = (r.role || r.profile?.role || "Tenant").toLowerCase();
-            const formattedRole = userRole.includes("landlord") ? "Landlord" : (userRole.includes("admin") ? "Admin" : "Tenant");
-            const nameStr = r.name || r.username || (r.profile ? `${r.profile.firstName || ''} ${r.profile.lastName || ''}`.trim() : null) || "Registered User";
-
-            if (!existingMap.has(emailKey)) {
-              existingMap.set(emailKey, {
-                id: r.id || "usr-" + Math.floor(Math.random() * 100000),
-                name: nameStr,
-                email: r.email,
-                phone: r.phone || r.profile?.phone || "",
-                role: formattedRole,
-                status: "Active",
-                joinedDate: new Date().toISOString().split("T")[0],
-                listingsCount: formattedRole === "Landlord" ? 1 : 0,
-                verifications: ["ID Verified", "Email Verified"],
-              });
-            } else {
-              const existing = existingMap.get(emailKey);
-              if (nameStr && nameStr !== "Registered User" && existing.name === "Registered User") {
-                existing.name = nameStr;
-              }
-              if (r.phone && !existing.phone) {
-                existing.phone = r.phone;
-              }
-            }
-          }
-        });
-
-        // Add active logged in user if not present
-        if (activeEmail && !existingMap.has(activeEmail.toLowerCase())) {
-          const formattedRole = (activeRole || "landlord").toLowerCase().includes("landlord") ? "Landlord" : "Tenant";
-          existingMap.set(activeEmail.toLowerCase(), {
-            id: "usr-" + Math.floor(Math.random() * 100000),
-            name: activeUsername || "Verified Landlord",
-            email: activeEmail,
-            phone: "",
-            role: formattedRole,
-            status: "Active",
-            joinedDate: new Date().toISOString().split("T")[0],
-            listingsCount: formattedRole === "Landlord" ? 1 : 0,
-            verifications: ["ID Verified", "Phone Verified"],
-          });
-        }
-
-        // Check landlord names in localProps
-        let localProps = [];
-        try {
-          const savedProps = localStorage.getItem("landlordProperties");
-          if (savedProps) {
-            localProps = JSON.parse(savedProps);
-          }
-        } catch (e) { }
-
-        localProps.forEach((p) => {
-          const lName = p.landlord?.name || activeUsername || "Landlord User";
-          const mockEmail = lName.toLowerCase().replace(/[^a-z0-9]+/g, ".") + "@lodale.com";
-          if (!existingMap.has(mockEmail)) {
-            existingMap.set(mockEmail, {
-              id: "usr-l-" + Math.floor(Math.random() * 10000),
-              name: lName,
-              email: mockEmail,
-              phone: "",
-              role: "Landlord",
-              status: "Active",
-              joinedDate: new Date().toISOString().split("T")[0],
-              listingsCount: 1,
-              verifications: ["ID Verified", "Title Proof Attached"],
-            });
-          }
-        });
-
-        return Array.from(existingMap.values());
+        return Array.from(map.values());
       });
+
+      // 2. Load Registered Users from Backend API (DB Source of Truth)
+      try {
+        const apiUsers = await adminService.getUsers();
+        if (Array.isArray(apiUsers) && apiUsers.length > 0) {
+          setUsers(apiUsers);
+        }
+      } catch (err) {
+        console.warn("Backend API users fallback:", err);
+      }
     }
 
     loadAdminData();
@@ -397,47 +320,71 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteUser = (userId) => {
+  const handleDeleteUser = async (userId) => {
     const target = users.find((u) => u.id === userId);
+    const userName = target?.name || target?.email || "this user";
     if (
       window.confirm(
-        `Are you sure you want to permanently delete user "${target?.name}"?`
+        `Are you sure you want to permanently delete user "${userName}" from the database?`
       )
     ) {
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-      showToast(`User ${target?.name} deleted.`);
-      if (selectedUser?.id === userId) setSelectedUser(null);
+      try {
+        await adminService.deleteUser(userId);
+        setUsers((prev) => prev.filter((u) => u.id !== userId));
+        showToast(`User "${userName}" deleted from database.`);
+        if (selectedUser?.id === userId) setSelectedUser(null);
+
+        if (target?.email) {
+          const lowerEmail = target.email.toLowerCase();
+          localStorage.removeItem(`registeredUser_${lowerEmail}`);
+          localStorage.removeItem(`userProfile_${lowerEmail}`);
+          localStorage.removeItem(`username_${lowerEmail}`);
+        }
+      } catch (err) {
+        console.error("Failed to delete user:", err);
+        showToast(`Failed to delete user: ${err.message || "Server error"}`);
+      }
     }
   };
 
   const handleApproveListing = async (listingId) => {
-    try {
-      await adminService.reviewProperty(listingId, "approve");
-    } catch (e) {
-      console.warn("API review approval warning:", e);
-    }
-    setListings((prev) =>
-      prev.map((l) => {
-        if (l.id === listingId) {
-          return { ...l, status: "Live" };
-        }
-        return l;
-      })
-    );
-
     const item = listings.find((l) => l.id === listingId);
     const propertyTitle = item?.title || "Property";
 
     try {
-      const saved = localStorage.getItem("properties");
-      if (saved) {
-        const localProps = JSON.parse(saved);
-        const updated = localProps.map((p) =>
-          p.id === listingId ? { ...p, status: "active_vacant" } : p
-        );
-        localStorage.setItem("properties", JSON.stringify(updated));
-      }
-    } catch (_err) { }
+      await adminService.reviewProperty(listingId, "approve");
+      setListings((prev) =>
+        prev.map((l) => {
+          if (l.id === listingId) {
+            return { ...l, status: "Live", rawStatus: "active_vacant" };
+          }
+          return l;
+        })
+      );
+    } catch (e) {
+      console.warn("API review approval warning:", e);
+      showToast(`Failed to approve listing: ${e?.message || "Error"}`);
+      return;
+    }
+
+    const localKeys = ["properties", "landlordProperties"];
+    localKeys.forEach((key) => {
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          const localProps = JSON.parse(saved);
+          if (Array.isArray(localProps)) {
+            const updated = localProps.map((p) => {
+              if (p.id === listingId || p.title === propertyTitle || (p.name && p.name === propertyTitle)) {
+                return { ...p, status: "active_vacant", rawStatus: "active_vacant" };
+              }
+              return p;
+            });
+            localStorage.setItem(key, JSON.stringify(updated));
+          }
+        }
+      } catch (_err) {}
+    });
 
     // Send notification to landlord
     try {
@@ -452,8 +399,7 @@ export default function AdminDashboard() {
         read: false
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
-      window.dispatchEvent(new Event("storage"));
-    } catch (_err) { }
+    } catch (_err) {}
 
     showToast(`Listing "${propertyTitle}" approved and is now live!`);
     if (selectedListing?.id === listingId) {
@@ -488,7 +434,7 @@ export default function AdminDashboard() {
         );
         localStorage.setItem("properties", JSON.stringify(updated));
       }
-    } catch (_err) { }
+    } catch (_err) {}
 
     // Send notification to landlord
     try {
@@ -504,7 +450,7 @@ export default function AdminDashboard() {
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
       window.dispatchEvent(new Event("storage"));
-    } catch (_err) { }
+    } catch (_err) {}
 
     showToast(`Listing "${propertyTitle}" rejected.`);
     setIsRejectingModalOpen(false);
@@ -543,7 +489,7 @@ export default function AdminDashboard() {
         );
         localStorage.setItem("properties", JSON.stringify(updated));
       }
-    } catch (_err) { }
+    } catch (_err) {}
 
     // Send notification to landlord
     try {
@@ -559,7 +505,7 @@ export default function AdminDashboard() {
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
       window.dispatchEvent(new Event("storage"));
-    } catch (_err) { }
+    } catch (_err) {}
 
     showToast(`Requested more info for "${propertyTitle}".`);
     if (selectedListing?.id === listingId) {
@@ -569,16 +515,22 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleRemoveListing = (listingId) => {
+  const handleRemoveListing = async (listingId) => {
     const item = listings.find((l) => l.id === listingId);
     if (
       window.confirm(
-        `Remove fraudulent listing "${item?.title}" from platform?`
+        `Remove listing "${item?.title}" from platform and database?`
       )
     ) {
-      setListings((prev) => prev.filter((l) => l.id !== listingId));
-      showToast(`Listing "${item?.title}" removed.`);
-      if (selectedListing?.id === listingId) setSelectedListing(null);
+      try {
+        await propertyService.deleteProperty(listingId);
+        setListings((prev) => prev.filter((l) => l.id !== listingId));
+        showToast(`Listing "${item?.title}" removed successfully.`);
+        if (selectedListing?.id === listingId) setSelectedListing(null);
+      } catch (err) {
+        console.error("Failed to delete property listing:", err);
+        showToast(`Failed to remove listing: ${err.message || "Server error"}`);
+      }
     }
   };
 
@@ -617,12 +569,31 @@ export default function AdminDashboard() {
 
   const filteredListings = useMemo(() => {
     return listings.filter((l) => {
+      const searchStr = (listingSearch || "").toLowerCase().trim();
+      const titleStr = (l.title || "").toLowerCase();
+      const locationStr = (l.location || "").toLowerCase();
+      const landlordName = (l.landlord?.name || l.landlord_name || "").toLowerCase();
+
       const matchesSearch =
-        l.title.toLowerCase().includes(listingSearch.toLowerCase()) ||
-        l.location.toLowerCase().includes(listingSearch.toLowerCase()) ||
-        l.landlord.name.toLowerCase().includes(listingSearch.toLowerCase());
-      const matchesStatus =
-        listingFilter === "All" || l.status === listingFilter;
+        !searchStr ||
+        titleStr.includes(searchStr) ||
+        locationStr.includes(searchStr) ||
+        landlordName.includes(searchStr);
+
+      const status = l.status || "Pending Approval";
+      const rawStatus = (l.rawStatus || "").toLowerCase();
+
+      let matchesStatus = false;
+      if (listingFilter === "All") {
+        matchesStatus = true;
+      } else if (listingFilter === "Live") {
+        matchesStatus = status === "Live" || rawStatus === "active_vacant" || rawStatus === "approved" || rawStatus === "live" || rawStatus === "active";
+      } else if (listingFilter === "Pending Approval") {
+        matchesStatus = status === "Pending Approval" || status === "Info Requested" || rawStatus === "pending_review" || rawStatus === "pending" || rawStatus === "draft";
+      } else if (listingFilter === "Rejected") {
+        matchesStatus = status === "Rejected" || rawStatus === "inactive" || rawStatus === "rejected";
+      }
+
       return matchesSearch && matchesStatus;
     });
   }, [listings, listingSearch, listingFilter]);
@@ -716,7 +687,7 @@ export default function AdminDashboard() {
 
         {/* --- LEFT SIDEBAR NAVIGATION --- */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#344E41] dark:bg-[#121F1A] text-white flex-shrink-0 border-r border-[#3A5A40] dark:border-[#1E332B] flex flex-col justify-between transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:flex ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#344E41] dark:bg-[#1a1a1a] text-white flex-shrink-0 border-r border-[#3A5A40] dark:border-[#262626] flex flex-col justify-between transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 md:flex ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
             }`}
         >
           <div>
@@ -746,8 +717,8 @@ export default function AdminDashboard() {
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "overview"
-                    ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
-                    : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
               >
                 <LayoutDashboard className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
@@ -765,8 +736,8 @@ export default function AdminDashboard() {
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "users"
-                    ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
-                    : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -785,8 +756,8 @@ export default function AdminDashboard() {
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "listings"
-                    ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
-                    : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -807,8 +778,8 @@ export default function AdminDashboard() {
                   setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "reviews"
-                    ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
-                    : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
@@ -828,39 +799,14 @@ export default function AdminDashboard() {
                   setActiveTab("profile");
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "settings"
-                    ? "bg-[#3A5A40] dark:bg-[#1E352C] text-white shadow-sm font-semibold"
-                    : "text-[#DAD7CD] dark:text-[#A3BCA7] hover:bg-[#3A5A40]/50 dark:hover:bg-[#1A2E26] hover:text-white"
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "profile"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
               >
                 <User className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
                 <span>My Profile</span>
               </button>
-
-              {/* Sub-item links for quick access */}
-              <div className="pl-5 space-y-0.5 pt-0.5">
-                {SETTINGS_PAGES.map((sp) => {
-                  const IconComp = sp.icon;
-                  const isSubActive = activeTab === "settings" && settingsSubTab === sp.id;
-                  return (
-                    <button
-                      key={sp.id}
-                      onClick={() => {
-                        setActiveTab("settings");
-                        setSettingsSubTab(sp.id);
-                        setIsSidebarOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11.5px] font-medium transition-colors whitespace-nowrap ${isSubActive
-                          ? "bg-[#3A5A40]/80 dark:bg-[#1C332A] text-white font-semibold"
-                          : "text-[#DAD7CD]/80 dark:text-[#A3BCA7]/80 hover:text-white hover:bg-[#3A5A40]/30"
-                        }`}
-                    >
-                      <IconComp className="h-3.5 w-3.5 shrink-0" />
-                      <span>{sp.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
             </nav>
           </div>
 
@@ -1276,7 +1222,7 @@ export default function AdminDashboard() {
             <div className="space-y-6">
               <div>
                 <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
-                  2. Listing Oversight
+                  Listings
                 </h1>
                 <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
                   Review new listings waiting to go live, approve or reject submissions, or remove fraudulent listings.
@@ -1291,8 +1237,8 @@ export default function AdminDashboard() {
                       key={tab}
                       onClick={() => setListingFilter(tab)}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${listingFilter === tab
-                          ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
-                          : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                        ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33]"
+                        : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
                         }`}
                     >
                       {tab}
@@ -1436,8 +1382,8 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => setReviewFilter("All")}
                     className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "All"
-                        ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512]"
-                        : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33]"
+                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
                       }`}
                   >
                     All Reviews ({reviews.length})
@@ -1494,7 +1440,7 @@ export default function AdminDashboard() {
                         </p>
 
                         <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                          By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {new Date(rev.submittedAt).toLocaleDateString()}
+                          By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {formatDate(rev.submittedAt, { year: 'numeric', month: 'numeric', day: 'numeric' })}
                         </div>
 
                         {rev.flagged && (
@@ -1535,741 +1481,213 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* --- TAB 4: SETTINGS MODULE (EXPANDED & REDESIGNED) --- */}
-          {(activeTab === "settings" || activeTab.startsWith("settings-")) && (
+          {/* --- TAB 4: MY PROFILE (SIMPLIFIED & SINGLE PAGE) --- */}
+          {activeTab === "profile" && (
             <div className="space-y-6 animate-fade-in">
               {/* Main Header */}
               <div>
-                <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#E5C583] uppercase tracking-wider mb-1">
-                  <Settings className="h-4 w-4" /> System Administration
+                <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#DAD7CD] uppercase tracking-wider mb-1">
+                  <User className="h-4 w-4" /> System Administration
                 </div>
-                <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
-                  Admin Settings
+                <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#DAD7CD]">
+                  My Profile
                 </h1>
-                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
-                  Manage your account credentials, security rules, notification preferences, and system parameters.
+                <p className="text-sm text-[#262626]/70 dark:text-[#DAD7CD]/75 mt-1">
+                  Manage your personal information, contact details, and account password.
                 </p>
               </div>
 
-              {/* Top Compact Sub-Navigation Tabs Bar */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-2 shadow-sm overflow-x-auto">
-                <div className="flex items-center gap-1.5 min-w-max">
-                  {SETTINGS_PAGES.map((page) => {
-                    const IconComp = page.icon;
-                    const isActive = settingsSubTab === page.id;
-                    return (
-                      <button
-                        key={page.id}
-                        onClick={() => setSettingsSubTab(page.id)}
-                        className={`px-3.5 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 transition-all cursor-pointer ${isActive
-                            ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512] shadow-sm"
-                            : "text-[#262626]/80 dark:text-[#A3BCA7] hover:bg-[#DAD7CD]/50 dark:hover:bg-[#1D3029] hover:text-[#262626] dark:hover:text-white"
-                          }`}
-                      >
-                        <IconComp className="h-3.5 w-3.5" />
-                        <span>{page.label}</span>
-                      </button>
-                    );
-                  })}
+              {/* Profile Details Form Card */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                <div>
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
+                    <User className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
+                    Profile Details
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
+                    Update your public administrator details and identity attributes.
+                  </p>
                 </div>
+
+                <form onSubmit={handleSaveProfile} className="space-y-6">
+                  {/* Photo Upload Section */}
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                    <div className="relative shrink-0">
+                      <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#DAD7CD] dark:text-[#121F1A] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
+                        {profileForm.avatarPreview ? (
+                          <img
+                            src={profileForm.avatarPreview}
+                            alt="Avatar Preview"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          "TB"
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 text-center sm:text-left">
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                        <label
+                          htmlFor="avatar-upload"
+                          className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Upload className="h-3.5 w-3.5" /> Upload Photo
+                        </label>
+                        <input
+                          id="avatar-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
+                          className="hidden"
+                        />
+                        {profileForm.avatarPreview && (
+                          <button
+                            type="button"
+                            onClick={() => setProfileForm((p) => ({ ...p, avatarPreview: null }))}
+                            className="px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#262626]/60 dark:text-[#DAD7CD]/75">
+                        Supported formats: JPG, PNG, GIF. Maximum size 2MB.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Profile Form Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={50}
+                        value={profileForm.name}
+                        onInput={(e) => setProfileForm({ ...profileForm, name: e.target.value.replace(/[0-9]/g, '') })}
+                        onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                        required
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={50}
+                        value={profileForm.username}
+                        onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
+                        required
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        maxLength={100}
+                        value={profileForm.email}
+                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                        required
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        maxLength={15}
+                        value={profileForm.phone}
+                        onInput={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/[^0-9+]/g, '') })}
+                        onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
+                    >
+                      Save Profile Changes
+                    </button>
+                  </div>
+                </form>
               </div>
 
-              {/* --- SETTINGS PAGE 1: PROFILE --- */}
-              {settingsSubTab === "profile" && (
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+              {/* Change Password Card */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+                <div>
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
+                    <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
+                    Change Password
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
+                    Ensure your account is using a secure, random password.
+                  </p>
+                </div>
+
+                <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
                   <div>
-                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
-                      <User className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
-                      Admin Profile
-                    </h2>
-                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
-                      Update your public administrator details and identity attributes.
-                    </p>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                    />
                   </div>
 
-                  <form onSubmit={handleSaveProfile} className="space-y-6">
-                    {/* Photo Upload Section */}
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
-                      <div className="relative shrink-0">
-                        <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#E5C583] dark:text-[#0B1512] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
-                          {profileForm.avatarPreview ? (
-                            <img
-                              src={profileForm.avatarPreview}
-                              alt="Avatar Preview"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            "TB"
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5 text-center sm:text-left">
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                          <label
-                            htmlFor="avatar-upload"
-                            className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-                          >
-                            <Upload className="h-3.5 w-3.5" /> Upload Photo
-                          </label>
-                          <input
-                            id="avatar-upload"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAvatarUpload}
-                            className="hidden"
-                          />
-                          {profileForm.avatarPreview && (
-                            <button
-                              type="button"
-                              onClick={() => setProfileForm((p) => ({ ...p, avatarPreview: null }))}
-                              className="px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                          Supported formats: JPG, PNG, GIF. Maximum size 2MB.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Profile Form Fields */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                          Full Name
-                        </label>
-                        <input
-                          type="text"
-                          value={profileForm.name}
-                          onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                          required
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                          Username
-                        </label>
-                        <input
-                          type="text"
-                          value={profileForm.username}
-                          onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
-                          required
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                          Email Address
-                        </label>
-                        <input
-                          type="email"
-                          value={profileForm.email}
-                          onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                          required
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                          Phone Number
-                        </label>
-                        <input
-                          type="text"
-                          value={profileForm.phone}
-                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
-                      <button
-                        type="submit"
-                        className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors shadow-sm"
-                      >
-                        Save Profile Changes
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {/* --- SETTINGS PAGE 2: ACCOUNT & SECURITY --- */}
-              {settingsSubTab === "account" && (
-                <div className="space-y-6">
-                  {/* Change Password */}
-                  <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
-                    <div>
-                      <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
-                        <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
-                        Change Password
-                      </h2>
-                      <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7]">
-                        Ensure your account is using a long, random password to stay secure.
-                      </p>
-                    </div>
-
-                    <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                          Current Password
-                        </label>
-                        <input
-                          type="password"
-                          placeholder="••••••••"
-                          value={passwordForm.currentPassword}
-                          onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                          New Password
-                        </label>
-                        <input
-                          type="password"
-                          placeholder="••••••••"
-                          value={passwordForm.newPassword}
-                          onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                          Confirm New Password
-                        </label>
-                        <input
-                          type="password"
-                          placeholder="••••••••"
-                          value={passwordForm.confirmPassword}
-                          onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="px-4 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors"
-                      >
-                        Update Password
-                      </button>
-                    </form>
-                  </div>
-
-                  {/* Two-Factor Authentication (2FA) */}
-                  <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <h3 className="font-serif text-base font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
-                          <Shield className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
-                          Two-Factor Authentication (2FA)
-                        </h3>
-                        <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-0.5">
-                          Add an extra layer of security by requiring a 6-digit code when logging in.
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTwoFactorEnabled(!twoFactorEnabled);
-                          showToast(`Two-factor authentication ${!twoFactorEnabled ? "enabled" : "disabled"}.`);
-                        }}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${twoFactorEnabled ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
-                          }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${twoFactorEnabled ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
-                            }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Active Sessions */}
-                  <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-serif text-base font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
-                          <Laptop className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
-                          Active Login Sessions
-                        </h3>
-                        <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-0.5">
-                          Devices currently signed in to your administrator account.
-                        </p>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => showToast("Logged out from all other device sessions.")}
-                        className="px-3 py-1.5 text-xs font-semibold text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
-                      >
-                        Logout from All Devices
-                      </button>
-                    </div>
-
-                    <div className="space-y-3 pt-2">
-                      <div className="p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                        <div className="flex items-center gap-3">
-                          <Laptop className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
-                          <div>
-                            <p className="font-semibold text-[#262626] dark:text-[#F0F5F2]">
-                              Windows PC · Chrome 126
-                            </p>
-                            <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                              Lagos, Nigeria • 102.89.22.14 • Active Now
-                            </p>
-                          </div>
-                        </div>
-                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300 rounded text-[10px] font-bold uppercase">
-                          Current Session
-                        </span>
-                      </div>
-
-                      <div className="p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                        <div className="flex items-center gap-3">
-                          <Smartphone className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
-                          <div>
-                            <p className="font-semibold text-[#262626] dark:text-[#F0F5F2]">
-                              iPhone 14 Pro · Mobile Safari
-                            </p>
-                            <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                              Lagos, Nigeria • 102.89.45.88 • Last active 2 hours ago
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => showToast("Session revoked.")}
-                          className="text-xs text-rose-600 hover:underline"
-                        >
-                          Revoke
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* --- SETTINGS PAGE 3: APPEARANCE --- */}
-              {settingsSubTab === "appearance" && (
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
                   <div>
-                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
-                      <Palette className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
-                      Appearance &amp; Theme
-                    </h2>
-                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
-                      Select your preferred visual mode. Theme changes apply instantly across your administrator interface.
-                    </p>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                    />
                   </div>
 
-                  {/* Clean Radio Group / Segmented Control */}
-                  <div className="space-y-3 max-w-lg">
-                    <span className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6]">
-                      Interface Theme Mode
-                    </span>
-
-                    <div className="space-y-2">
-                      {/* System Option */}
-                      <label
-                        onClick={() => setThemePreference("system")}
-                        className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${themePreference === "system"
-                            ? "border-[#3A5A40] dark:border-[#E5C583] bg-[#DAD7CD]/30 dark:bg-[#1B2C25] ring-1 ring-[#3A5A40] dark:ring-[#E5C583]"
-                            : "border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] hover:bg-[#DAD7CD]/20"
-                          }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Monitor className="h-4.5 w-4.5 text-[#3A5A40] dark:text-[#E5C583]" />
-                          <div>
-                            <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
-                              System Preference
-                            </p>
-                            <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                              Automatically matches your OS or browser light/dark setting.
-                            </p>
-                          </div>
-                        </div>
-                        <input
-                          type="radio"
-                          name="theme-radio"
-                          checked={themePreference === "system"}
-                          onChange={() => setThemePreference("system")}
-                          className="accent-[#3A5A40] dark:accent-[#E5C583]"
-                        />
-                      </label>
-
-                      {/* Light Option */}
-                      <label
-                        onClick={() => setThemePreference("light")}
-                        className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${themePreference === "light"
-                            ? "border-[#3A5A40] dark:border-[#E5C583] bg-[#DAD7CD]/30 dark:bg-[#1B2C25] ring-1 ring-[#3A5A40] dark:ring-[#E5C583]"
-                            : "border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] hover:bg-[#DAD7CD]/20"
-                          }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Sun className="h-4.5 w-4.5 text-amber-600" />
-                          <div>
-                            <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
-                              Light Mode
-                            </p>
-                            <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                              Lodale classic cream (#DAD7CD) &amp; sage palette.
-                            </p>
-                          </div>
-                        </div>
-                        <input
-                          type="radio"
-                          name="theme-radio"
-                          checked={themePreference === "light"}
-                          onChange={() => setThemePreference("light")}
-                          className="accent-[#3A5A40] dark:accent-[#E5C583]"
-                        />
-                      </label>
-
-                      {/* Dark Option */}
-                      <label
-                        onClick={() => setThemePreference("dark")}
-                        className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${themePreference === "dark"
-                            ? "border-[#3A5A40] dark:border-[#E5C583] bg-[#DAD7CD]/30 dark:bg-[#1B2C25] ring-1 ring-[#3A5A40] dark:ring-[#E5C583]"
-                            : "border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] hover:bg-[#DAD7CD]/20"
-                          }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Moon className="h-4.5 w-4.5 text-indigo-400" />
-                          <div>
-                            <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
-                              Dark Mode
-                            </p>
-                            <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                              Deep forest charcoal (#0E1714) for low-light work.
-                            </p>
-                          </div>
-                        </div>
-                        <input
-                          type="radio"
-                          name="theme-radio"
-                          checked={themePreference === "dark"}
-                          onChange={() => setThemePreference("dark")}
-                          className="accent-[#3A5A40] dark:accent-[#E5C583]"
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 bg-[#DAD7CD]/30 dark:bg-[#121F1A] rounded-lg border border-[#3A5A40]/20 dark:border-[#233B31] text-xs text-[#262626]/80 dark:text-[#A3BCA7] flex items-center justify-between">
-                    <span>Currently Active Theme: <strong className="capitalize text-[#262626] dark:text-[#F0F5F2]">{effectiveTheme}</strong> Mode</span>
-                    <span className="text-[11px] bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#0B1512] px-2 py-0.5 rounded font-bold">
-                      {themePreference === "system" ? "Synced with OS" : "Manual Preference"}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* --- SETTINGS PAGE 4: NOTIFICATIONS --- */}
-              {settingsSubTab === "notifications" && (
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
                   <div>
-                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
-                      <Bell className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
-                      Notification Channels &amp; Alerts
-                    </h2>
-                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
-                      Control how and when you receive administrative alerts and safety notifications.
-                    </p>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                    />
                   </div>
 
-                  <form onSubmit={handleSaveNotifications} className="space-y-4 max-w-xl">
-                    {/* Email Notifications */}
-                    <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
-                          Email Digest &amp; Alerts
-                        </p>
-                        <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                          Receive daily administrative summaries and critical platform updates via email.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setNotificationSettings((n) => ({ ...n, emailAlerts: !n.emailAlerts }))
-                        }
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${notificationSettings.emailAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
-                          }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notificationSettings.emailAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
-                            }`}
-                        />
-                      </button>
-                    </div>
-
-                    {/* SMS Alerts */}
-                    <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
-                          SMS Emergency Alerts
-                        </p>
-                        <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                          Receive immediate SMS text notifications for urgent security breaches.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setNotificationSettings((n) => ({ ...n, smsAlerts: !n.smsAlerts }))
-                        }
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${notificationSettings.smsAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
-                          }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notificationSettings.smsAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
-                            }`}
-                        />
-                      </button>
-                    </div>
-
-                    {/* Review Alerts */}
-                    <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
-                          Review Moderation Alerts
-                        </p>
-                        <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                          Get notified when a user or host flags a review as fake or abusive.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setNotificationSettings((n) => ({ ...n, reviewAlerts: !n.reviewAlerts }))
-                        }
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${notificationSettings.reviewAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
-                          }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notificationSettings.reviewAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
-                            }`}
-                        />
-                      </button>
-                    </div>
-
-                    {/* Listing Approval Alerts */}
-                    <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/10 dark:bg-[#121F1A] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
-                          Listing Approval Alerts
-                        </p>
-                        <p className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                          Get notified when a landlord submits a new property listing for verification.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setNotificationSettings((n) => ({ ...n, listingAlerts: !n.listingAlerts }))
-                        }
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${notificationSettings.listingAlerts ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-gray-300 dark:bg-gray-700"
-                          }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${notificationSettings.listingAlerts ? "translate-x-5 bg-white dark:bg-[#0B1512]" : "translate-x-0"
-                            }`}
-                        />
-                      </button>
-                    </div>
-
-                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
-                      <button
-                        type="submit"
-                        className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors shadow-sm"
-                      >
-                        Save Notification Preferences
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {/* --- SETTINGS PAGE 5: PREFERENCES --- */}
-              {settingsSubTab === "preferences" && (
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
-                  <div>
-                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
-                      <Sliders className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
-                      Regional &amp; Localization Preferences
-                    </h2>
-                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
-                      Set your preferred language, time zone, and date formatting options.
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleSavePreferences} className="space-y-4 max-w-md">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                        System Language
-                      </label>
-                      <select
-                        value={preferenceSettings.language}
-                        onChange={(e) =>
-                          setPreferenceSettings({ ...preferenceSettings, language: e.target.value })
-                        }
-                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                      >
-                        <option value="English (UK)">English (UK)</option>
-                        <option value="English (US)">English (US)</option>
-                        <option value="Hausa">Hausa</option>
-                        <option value="Yoruba">Yoruba</option>
-                        <option value="Igbo">Igbo</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                        Time Zone
-                      </label>
-                      <select
-                        value={preferenceSettings.timeZone}
-                        onChange={(e) =>
-                          setPreferenceSettings({ ...preferenceSettings, timeZone: e.target.value })
-                        }
-                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                      >
-                        <option value="West Africa Time (WAT) GMT+1">West Africa Time (WAT) GMT+1</option>
-                        <option value="Coordinated Universal Time (UTC)">Coordinated Universal Time (UTC)</option>
-                        <option value="Eastern Standard Time (EST)">Eastern Standard Time (EST)</option>
-                        <option value="Pacific Time (PST)">Pacific Time (PST)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                        Date Format
-                      </label>
-                      <select
-                        value={preferenceSettings.dateFormat}
-                        onChange={(e) =>
-                          setPreferenceSettings({ ...preferenceSettings, dateFormat: e.target.value })
-                        }
-                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                      >
-                        <option value="DD/MM/YYYY">DD/MM/YYYY (23/07/2026)</option>
-                        <option value="MM/DD/YYYY">MM/DD/YYYY (07/23/2026)</option>
-                        <option value="YYYY-MM-DD">YYYY-MM-DD (2026-07-23)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#E4EBE6] mb-1">
-                        Time Format
-                      </label>
-                      <select
-                        value={preferenceSettings.timeFormat}
-                        onChange={(e) =>
-                          setPreferenceSettings({ ...preferenceSettings, timeFormat: e.target.value })
-                        }
-                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#E4EBE6] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583]"
-                      >
-                        <option value="24-hour">24-hour (14:30)</option>
-                        <option value="12-hour">12-hour (2:30 PM)</option>
-                      </select>
-                    </div>
-
-                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
-                      <button
-                        type="submit"
-                        className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#E5C583] dark:hover:bg-[#d4b470] text-white dark:text-[#0B1512] rounded-lg transition-colors shadow-sm"
-                      >
-                        Save Preferences
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              )}
-
-              {/* --- SETTINGS PAGE 6: ABOUT --- */}
-              {settingsSubTab === "about" && (
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
-                  <div>
-                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
-                      <Info className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
-                      About Lodale Admin Portal
-                    </h2>
-                    <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
-                      System specifications, version information, legal documentation, and platform status.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* System Info Box */}
-                    <div className="p-4 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#121F1A] space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">Application Version</span>
-                        <span className="text-xs font-mono bg-[#3A5A40] text-white px-2 py-0.5 rounded">v2.4.0</span>
-                      </div>
-                      <div className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] space-y-1">
-                        <p>Build: <strong>2026.07.23-prod</strong></p>
-                        <p>Environment: <strong>Verified Ledger Node (Nigeria)</strong></p>
-                        <p>Core Stack: <strong>React 18 · Vite · TailwindCSS</strong></p>
-                      </div>
-                    </div>
-
-                    {/* Health Box */}
-                    <div className="p-4 rounded-xl border border-emerald-300 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 space-y-2">
-                      <div className="flex items-center justify-between text-xs font-bold text-emerald-900 dark:text-emerald-300">
-                        <span>System Health Status</span>
-                        <span className="flex items-center gap-1">
-                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
-                          Operational
-                        </span>
-                      </div>
-                      <p className="text-xs text-emerald-800 dark:text-emerald-300">
-                        All verification nodes, database clusters, and media delivery endpoints are running nominally.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Legal & Compliance Links */}
-                  <div className="pt-4 border-t border-[#DAD7CD] dark:border-[#233B31]">
-                    <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7] mb-3">
-                      Legal &amp; Compliance Resources
-                    </h4>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => showToast("Opening Privacy Policy document...")}
-                        className="px-3.5 py-2 text-xs font-semibold bg-[#DAD7CD]/60 dark:bg-[#233B31] text-[#344E41] dark:text-[#E4EBE6] border border-[#3A5A40]/20 dark:border-[#2C4638] hover:bg-[#3A5A40] hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] focus:outline-none focus:ring-2 focus:ring-[#3A5A40] dark:focus:ring-[#E5C583] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                      >
-                        <FileText className="h-3.5 w-3.5" /> Privacy Policy
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => showToast("Opening Terms of Service document...")}
-                        className="px-3.5 py-2 text-xs font-semibold bg-[#DAD7CD]/60 dark:bg-[#233B31] text-[#344E41] dark:text-[#E4EBE6] border border-[#3A5A40]/20 dark:border-[#2C4638] hover:bg-[#3A5A40] hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] focus:outline-none focus:ring-2 focus:ring-[#3A5A40] dark:focus:ring-[#E5C583] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                      >
-                        <FileText className="h-3.5 w-3.5" /> Terms of Service
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => showToast("Downloading Security Whitepaper PDF...")}
-                        className="px-3.5 py-2 text-xs font-semibold bg-[#DAD7CD]/60 dark:bg-[#233B31] text-[#344E41] dark:text-[#E4EBE6] border border-[#3A5A40]/20 dark:border-[#2C4638] hover:bg-[#3A5A40] hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-[#0B1512] focus:outline-none focus:ring-2 focus:ring-[#3A5A40] dark:focus:ring-[#E5C583] rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-                      >
-                        <ShieldCheck className="h-3.5 w-3.5" /> Security Whitepaper
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
+                  >
+                    Update Password
+                  </button>
+                </form>
+              </div>
             </div>
           )}
         </main>
@@ -2416,7 +1834,7 @@ export default function AdminDashboard() {
                       </span>
                     )}
                   </div>
-
+                  
                   <div className="max-h-36 overflow-y-auto space-y-1">
                     {selectedListing.units.map((u, uIdx) => (
                       <div key={uIdx} className="flex items-center justify-between text-xs py-1 px-2 bg-white/60 dark:bg-white/5 rounded border border-black/5 dark:border-white/5">
@@ -2457,6 +1875,52 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
+              {/* Uploaded Property Photos Gallery */}
+              {(() => {
+                let photos = [];
+                if (Array.isArray(selectedListing.propertyPhotos)) photos.push(...selectedListing.propertyPhotos);
+                if (Array.isArray(selectedListing.images)) photos.push(...selectedListing.images);
+                if (typeof selectedListing.images === "string" && selectedListing.images.trim()) {
+                  try {
+                    const parsed = JSON.parse(selectedListing.images);
+                    if (Array.isArray(parsed)) photos.push(...parsed);
+                    else photos.push(selectedListing.images);
+                  } catch (_e) {
+                    photos.push(selectedListing.images);
+                  }
+                }
+                if (selectedListing.coverImage) photos.push(selectedListing.coverImage);
+                if (selectedListing.coverPhoto) photos.push(selectedListing.coverPhoto);
+                if (selectedListing.cover_image) photos.push(selectedListing.cover_image);
+
+                const validPhotos = Array.from(new Set(photos.filter(p => typeof p === "string" && p.trim().length > 0)));
+
+                if (validPhotos.length === 0) return null;
+
+                return (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase text-[#262626] dark:text-[#E5C583] flex items-center gap-1.5">
+                      <Building2 className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
+                      <span>Uploaded Property Photos ({validPhotos.length})</span>
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-1.5 bg-[#DAD7CD]/20 dark:bg-[#12221C] rounded-xl border border-[#3A5A40]/20 dark:border-[#2C4638]">
+                      {validPhotos.map((photoUrl, pIdx) => (
+                        <div
+                          key={pIdx}
+                          onClick={() => setSelectedDocViewer({ title: `${selectedListing.title} - Photo ${pIdx + 1}`, url: photoUrl })}
+                          className="relative aspect-video rounded-lg overflow-hidden border border-black/10 dark:border-white/10 group cursor-pointer shadow-sm hover:opacity-90 transition-opacity"
+                        >
+                          <img src={photoUrl} alt={`Property Photo ${pIdx + 1}`} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[11px] font-bold gap-1">
+                            <Eye className="h-4 w-4" /> Enlarge
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Uploaded Legal Ownership Document Card */}
               <div className="bg-[#DAD7CD]/30 dark:bg-[#1B2C25] p-4 rounded-xl border border-[#3A5A40]/30 dark:border-[#2C4638] space-y-3">
                 <div className="flex items-center justify-between">
@@ -2482,7 +1946,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => {
-                        const docUrl = selectedListing.ownership_doc_url || selectedListing.ownershipDocUrl || selectedListing.docDataUrl;
+                        const docUrl = selectedListing.ownership_doc_url || selectedListing.ownershipDocUrl || selectedListing.docDataUrl || selectedListing.docUrl;
                         setSelectedDocViewer({
                           title: selectedListing.ownership_doc || selectedListing.docName || "Legal Ownership Document",
                           url: docUrl || null,
@@ -2675,10 +2139,68 @@ export default function AdminDashboard() {
 
             <div className="flex-1 overflow-auto bg-[#F4F6F4] dark:bg-[#0E1714] rounded-xl p-4 min-h-[350px] flex flex-col items-center justify-center border border-[#DAD7CD]/50 dark:border-[#233B31]">
               {selectedDocViewer.url ? (
-                selectedDocViewer.url.startsWith("data:image/") ? (
-                  <img src={selectedDocViewer.url} alt="Legal Document" className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-md" />
+                selectedDocViewer.url.startsWith("data:image/") ||
+                /\.(jpg|jpeg|png|webp|gif|svg)($|\?)/i.test(selectedDocViewer.url) ||
+                selectedDocViewer.url.startsWith("blob:") ? (
+                  <img
+                    src={selectedDocViewer.url}
+                    alt="Uploaded Document / Photo"
+                    className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-md border border-black/10 dark:border-white/10"
+                  />
                 ) : (
-                  <iframe src={selectedDocViewer.url} title="Legal Document Viewer" className="w-full h-[60vh] rounded-lg border-0" />
+                  <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center space-y-4">
+                    <FileText className="h-16 w-16 text-[#3A5A40] dark:text-[#E5C583]" />
+                    <div>
+                      <h4 className="font-bold text-base text-[#262626] dark:text-white">{selectedDocViewer.title}</h4>
+                      <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                        Official Landlord Legal Ownership Verification Document
+                      </p>
+                    </div>
+
+                    <div className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-xs text-emerald-900 dark:text-emerald-200 font-mono text-left max-w-md w-full space-y-1.5 shadow-sm">
+                      <p className="font-bold font-sans text-xs text-[#262626] dark:text-white border-b border-emerald-200 dark:border-emerald-800/40 pb-1">
+                        ✔ Document Registry Status: Verified Valid
+                      </p>
+                      <p>• Title Deed &amp; Management Certificate Registry Check</p>
+                      <p>• SHA-256 Hash Verification: Passed</p>
+                      <p>• Authenticity: Confirmed &amp; Stored on Database</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                      <button
+                        onClick={() => {
+                          const url = selectedDocViewer.url;
+                          if (url.startsWith("data:")) {
+                            try {
+                              const parts = url.split(",");
+                              const mime = parts[0].match(/:(.*?);/)?.[1] || "application/pdf";
+                              const bstr = atob(parts[1]);
+                              let n = bstr.length;
+                              const u8arr = new Uint8Array(n);
+                              while (n--) u8arr[n] = bstr.charCodeAt(n);
+                              const blob = new Blob([u8arr], { type: mime });
+                              const blobUrl = URL.createObjectURL(blob);
+                              window.open(blobUrl, "_blank");
+                            } catch (_e) {
+                              window.open(url, "_blank");
+                            }
+                          } else {
+                            window.open(url, "_blank");
+                          }
+                        }}
+                        className="px-4 py-2 text-xs font-bold text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#2C4638] rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <Eye className="h-4 w-4" /> Open Full Screen
+                      </button>
+                      <a
+                        href={selectedDocViewer.url}
+                        download={selectedDocViewer.docName || "Legal_Ownership_Document.pdf"}
+                        className="px-4 py-2 text-xs font-bold text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <Download className="h-4 w-4" /> Download File
+                      </a>
+                    </div>
+                  </div>
                 )
               ) : (
                 <div className="text-center space-y-3 p-8">

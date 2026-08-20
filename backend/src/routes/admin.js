@@ -12,5 +12,7 @@ router.use(requireAuth, requireRole('admin'));
 router.get('/properties/pending', adminController.getPendingProperties);
 router.post('/properties/:id/review', validate(reviewPropertySchema), adminController.reviewProperty);
 router.get('/users', adminController.getUsers);
+router.delete('/users/:id', adminController.deleteUser);
+router.post('/reset-database', adminController.resetDatabase);
 
 export default router;
