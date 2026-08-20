@@ -22,6 +22,7 @@ import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
+import { safeSetLocalStorage, safeSetSessionStorage, compressImageForStorage } from "../../utils/storageUtils";
 import "./TenantSettings.css";
 
 export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChange, onProfileUpdate }) {
@@ -213,25 +214,87 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e) => {
+  const IMAGE_SIZE_LIMIT_MB = 5;
+  const IMAGE_SIZE_LIMIT_BYTES = IMAGE_SIZE_LIMIT_MB * 1024 * 1024;
+
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setFeedbackMessage({ type: "error", text: "Image file is too large (max 5MB)." });
-        triggerToast("Image file is too large (max 5MB).", "error", "Upload Failed");
-        return;
+    // Reset input so the same file can be re-selected after an error
+    e.target.value = "";
+    if (!file) return;
+
+    if (file.size > IMAGE_SIZE_LIMIT_BYTES) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      const msg = `This image is above the required image size limit (${fileSizeMB} MB uploaded — max ${IMAGE_SIZE_LIMIT_MB} MB allowed).`;
+      setFeedbackMessage({ type: "error", text: msg });
+      triggerToast(msg, "error", "Upload Failed");
+      return;
+    }
+
+    // Image is within the size limit — compress to avatar size to avoid Storage QuotaExceededError
+    try {
+      const base64Data = await compressImageForStorage(file, 350, 350, 0.82);
+      setAvatarUrl(base64Data);
+      const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+      if (emailKey) {
+        safeSetLocalStorage("tenantAvatar_" + emailKey, base64Data);
+      }
+      safeSetSessionStorage("tenantAvatarUrl", base64Data);
+      safeSetLocalStorage("tenantAvatarUrl", base64Data);
+
+      const updatedProf = {
+        ...userProfile,
+        firstName,
+        lastName,
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone,
+        phone_number: phone,
+        address,
+        dob,
+        location,
+        postalCode,
+        postal_code: postalCode,
+        gender,
+        avatar: base64Data,
+        avatar_url: base64Data
+      };
+      setUserProfile(updatedProf);
+      safeSetSessionStorage("currentUserProfile", JSON.stringify(updatedProf));
+      const savedSuccessfully = safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
+      if (!savedSuccessfully) {
+        // Fallback: save profile without large avatar string if quota is reached
+        const slimProf = { ...updatedProf, avatar: "", avatar_url: "" };
+        safeSetLocalStorage("currentUserProfile", JSON.stringify(slimProf));
       }
 
+      if (emailKey) {
+        safeSetLocalStorage("userProfile_" + emailKey, JSON.stringify(updatedProf));
+      }
+
+      // Notify parent / sidebar / header
+      onAvatarChange?.(base64Data);
+      onProfileUpdate?.(undefined, base64Data);
+
+      // Dispatch named event so TenantDashboard updates avatar in real-time
+      window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { avatar: base64Data } }));
+      window.dispatchEvent(new Event("storage"));
+
+      setFeedbackMessage({ type: "success", text: "Profile picture updated successfully!" });
+      triggerToast("Profile picture updated successfully!", "success", "Photo Updated");
+    } catch (err) {
+      console.warn("Tenant avatar processing fallback:", err);
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const base64Data = evt.target.result;
-        setAvatarUrl(base64Data);
+        const rawBase64 = evt.target.result;
+        setAvatarUrl(rawBase64);
         const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
         if (emailKey) {
-          localStorage.setItem("tenantAvatar_" + emailKey, base64Data);
+          safeSetLocalStorage("tenantAvatar_" + emailKey, rawBase64);
         }
-        sessionStorage.setItem("tenantAvatarUrl", base64Data);
-        localStorage.setItem("tenantAvatarUrl", base64Data);
+        safeSetSessionStorage("tenantAvatarUrl", rawBase64);
+        safeSetLocalStorage("tenantAvatarUrl", rawBase64);
 
         const updatedProf = {
           ...userProfile,
@@ -248,22 +311,19 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           postalCode,
           postal_code: postalCode,
           gender,
-          avatar: base64Data,
-          avatar_url: base64Data
+          avatar: rawBase64,
+          avatar_url: rawBase64
         };
         setUserProfile(updatedProf);
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        safeSetSessionStorage("currentUserProfile", JSON.stringify(updatedProf));
+        safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
         if (emailKey) {
-          localStorage.setItem("userProfile_" + emailKey, JSON.stringify(updatedProf));
+          safeSetLocalStorage("userProfile_" + emailKey, JSON.stringify(updatedProf));
         }
 
-        // Notify parent / sidebar / header
-        onAvatarChange?.(base64Data);
-        onProfileUpdate?.(undefined, base64Data);
-
-        // Dispatch named event so TenantDashboard updates avatar in real-time
-        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { avatar: base64Data } }));
+        onAvatarChange?.(rawBase64);
+        onProfileUpdate?.(undefined, rawBase64);
+        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { avatar: rawBase64 } }));
         window.dispatchEvent(new Event("storage"));
 
         setFeedbackMessage({ type: "success", text: "Profile picture updated successfully!" });
@@ -322,23 +382,28 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         };
 
         setUserProfile(updatedProf);
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        safeSetSessionStorage("currentUserProfile", JSON.stringify(updatedProf));
+        const savedProf = safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
+        if (!savedProf) {
+          // Fallback: save profile without heavy avatar data if storage quota reached
+          const slimProf = { ...updatedProf, avatar: "", avatar_url: "" };
+          safeSetLocalStorage("currentUserProfile", JSON.stringify(slimProf));
+        }
 
         if (cleanEmail) {
-          localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
-          localStorage.setItem("username_" + cleanEmail, updatedName);
+          safeSetLocalStorage("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
+          safeSetLocalStorage("username_" + cleanEmail, updatedName);
           if (avatarUrl) {
-            localStorage.setItem("tenantAvatar_" + cleanEmail, avatarUrl);
+            safeSetLocalStorage("tenantAvatar_" + cleanEmail, avatarUrl);
           }
         }
         if (updatedName) {
-          sessionStorage.setItem("username", updatedName);
-          localStorage.setItem("username", updatedName);
+          safeSetSessionStorage("username", updatedName);
+          safeSetLocalStorage("username", updatedName);
         }
         if (avatarUrl) {
-          sessionStorage.setItem("tenantAvatarUrl", avatarUrl);
-          localStorage.setItem("tenantAvatarUrl", avatarUrl);
+          safeSetSessionStorage("tenantAvatarUrl", avatarUrl);
+          safeSetLocalStorage("tenantAvatarUrl", avatarUrl);
         }
 
         window.dispatchEvent(new Event("storage"));

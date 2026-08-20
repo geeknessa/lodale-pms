@@ -7,6 +7,7 @@ import { triggerToast } from "../../context/ToastContext";
 import { formatDate } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
 import { userService } from "../../services/userService";
+import { safeSetLocalStorage, safeSetSessionStorage, compressImageForStorage } from "../../utils/storageUtils";
 import "./Settings.css";
 
 export default function Settings() {
@@ -111,20 +112,59 @@ export default function Settings() {
   }, []);
   const fileInputRef = useRef(null);
 
-  const handleFileChange = (e) => {
+  const IMAGE_SIZE_LIMIT_MB = 5;
+  const IMAGE_SIZE_LIMIT_BYTES = IMAGE_SIZE_LIMIT_MB * 1024 * 1024;
+
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
+    // Reset input so the same file can be re-selected after an error
+    e.target.value = "";
+    if (!file) return;
+
+    if (file.size > IMAGE_SIZE_LIMIT_BYTES) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      const msg = `This image is above the required image size limit (${fileSizeMB} MB uploaded — max ${IMAGE_SIZE_LIMIT_MB} MB allowed).`;
+      setFeedbackMessage({ type: "error", text: msg });
+      triggerToast(msg, "error", "Upload Failed");
+      return;
+    }
+
+    // Image is within the size limit — compress to avatar size to avoid Storage QuotaExceededError
+    try {
+      const base64Data = await compressImageForStorage(file, 350, 350, 0.82);
+      setAvatarUrl(base64Data);
+      if (email) {
+        safeSetLocalStorage("landlordAvatar_" + email.toLowerCase(), base64Data);
+      }
+      const updatedProf = { ...userProfile, avatar: base64Data };
+      setUserProfile(updatedProf);
+      
+      const savedSuccessfully = safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
+      if (!savedSuccessfully) {
+        // Fallback: store profile without full heavy avatar in currentUserProfile if quota still tight
+        const trimmedProf = { ...updatedProf, avatar: "" };
+        safeSetLocalStorage("currentUserProfile", JSON.stringify(trimmedProf));
+      }
+
+      window.dispatchEvent(new Event("storage"));
+      setFeedbackMessage({ type: "success", text: "Profile picture updated successfully!" });
+      triggerToast("Profile picture updated successfully!", "success", "Photo Updated");
+    } catch (err) {
+      console.warn("Avatar processing fallback:", err);
+      // Direct FileReader fallback if canvas compression fails
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const base64Data = evt.target.result;
-        setAvatarUrl(base64Data);
+        const rawBase64 = evt.target.result;
+        setAvatarUrl(rawBase64);
         if (email) {
-          localStorage.setItem("landlordAvatar_" + email.toLowerCase(), base64Data);
+          safeSetLocalStorage("landlordAvatar_" + email.toLowerCase(), rawBase64);
         }
-        const updatedProf = { ...userProfile, avatar: base64Data };
+        const updatedProf = { ...userProfile, avatar: rawBase64 };
         setUserProfile(updatedProf);
-        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
         window.dispatchEvent(new Event("storage"));
+        setFeedbackMessage({ type: "success", text: "Profile picture updated successfully!" });
+        triggerToast("Profile picture updated successfully!", "success", "Photo Updated");
       };
       reader.readAsDataURL(file);
     }
@@ -137,6 +177,8 @@ export default function Settings() {
 
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  // Inline feedback banner for avatar upload and profile actions
+  const [feedbackMessage, setFeedbackMessage] = useState(null); // { type: "success" | "error", text: string }
 
   // Document Generator States
   const [properties, setProperties] = useState([]);
@@ -550,18 +592,24 @@ export default function Settings() {
       };
 
       setUserProfile(updatedProf);
-      sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-      localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+      safeSetSessionStorage("currentUserProfile", JSON.stringify(updatedProf));
+      const savedProf = safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
+      if (!savedProf) {
+        // Fallback: save profile without heavy avatar data if quota exceeded
+        const slimProf = { ...updatedProf, avatar: "" };
+        safeSetLocalStorage("currentUserProfile", JSON.stringify(slimProf));
+      }
+
       if (cleanEmail) {
-        localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
-        localStorage.setItem("username_" + cleanEmail, updatedName);
+        safeSetLocalStorage("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
+        safeSetLocalStorage("username_" + cleanEmail, updatedName);
       }
       if (updatedName) {
-        sessionStorage.setItem("username", updatedName);
-        localStorage.setItem("username", updatedName);
+        safeSetSessionStorage("username", updatedName);
+        safeSetLocalStorage("username", updatedName);
       }
       if (avatarUrl && cleanEmail) {
-        localStorage.setItem("landlordAvatar_" + cleanEmail, avatarUrl);
+        safeSetLocalStorage("landlordAvatar_" + cleanEmail, avatarUrl);
       }
 
       setSaveSuccess(true);
@@ -644,6 +692,27 @@ export default function Settings() {
                 style={{ display: "none" }}
               />
             </div>
+
+            {/* Avatar upload feedback banner */}
+            {feedbackMessage && (
+              <div
+                className={`mt-3 px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 text-[12px] font-medium transition-all ${
+                  feedbackMessage.type === "success"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    : "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                }`}
+              >
+                <span className="leading-snug">{feedbackMessage.text}</span>
+                <button
+                  type="button"
+                  onClick={() => setFeedbackMessage(null)}
+                  className="shrink-0 text-inherit hover:opacity-70 p-0.5 cursor-pointer bg-transparent border-none outline-none"
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             <h2 className="set-ref-profile-name">{fullName}</h2>
             <p className="set-ref-profile-role">Landlord</p>

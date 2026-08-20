@@ -246,62 +246,72 @@ export default function DashboardAddProperty() {
 
   // Landlord Profile & Avatar Modal State
   const [showLandlordProfileModal, setShowLandlordProfileModal] = useState(false);
-  const [username] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+  const [username, setUsername] = useState(() => {
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
     if (emailKey) {
-      const savedName = localStorage.getItem("landlordName_" + emailKey.toLowerCase());
+      // Settings.jsx saves username under username_<email>
+      const savedName = localStorage.getItem("username_" + emailKey);
       if (savedName) return savedName;
     }
+    const sessName = sessionStorage.getItem("username");
+    if (sessName) return sessName;
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.name || parsed.displayName) return parsed.name || parsed.displayName;
+      const scopedRaw = emailKey ? localStorage.getItem("userProfile_" + emailKey) : null;
+      if (scopedRaw) {
+        const p = JSON.parse(scopedRaw);
+        if (p.role === "landlord") {
+          const full = `${p.firstName || p.first_name || ""} ${p.lastName || p.last_name || ""}`.trim();
+          if (full) return full;
+        }
       }
     } catch (e) { }
-    return "Landlord Account";
+    return localStorage.getItem("username") || "Landlord Account";
   });
 
-  const [landlordAvatar, setLandlordAvatar] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+  // Reads from landlord-scoped key to avoid contamination from tenant profile saves
+  const getDashboardLandlordAvatar = () => {
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
     if (emailKey) {
-      const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
-      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
+      const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey);
+      if (savedUserAvatar) return savedUserAvatar;
     }
-    const globalSaved = sessionStorage.getItem("landlordAvatarUrl") || localStorage.getItem("landlordAvatarUrl");
-    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
+    // Fallback: read from landlord-scoped profile only (role guard)
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
+      const scopedRaw = emailKey ? localStorage.getItem("userProfile_" + emailKey) : null;
+      if (scopedRaw) {
+        const parsed = JSON.parse(scopedRaw);
+        if (parsed.role === "landlord" && parsed.avatar) return parsed.avatar;
       }
     } catch (e) { }
     return "";
-  });
+  };
+
+  const [landlordAvatar, setLandlordAvatar] = useState(() => getDashboardLandlordAvatar());
 
   useEffect(() => {
     const handleAvatarUpdate = () => {
-      const emailKey = localStorage.getItem("lastLoggedInEmail");
+      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
       let updated = null;
       if (emailKey) {
-        updated = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
+        updated = localStorage.getItem("landlordAvatar_" + emailKey);
       }
       if (!updated) {
-        updated = localStorage.getItem("landlordAvatarUrl");
-      }
-      if (!updated) {
+        // Only fall back to scoped profile with role guard
         try {
-          const raw = localStorage.getItem("currentUserProfile");
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed.avatar) updated = parsed.avatar;
+          const scopedRaw = emailKey ? localStorage.getItem("userProfile_" + emailKey) : null;
+          if (scopedRaw) {
+            const parsed = JSON.parse(scopedRaw);
+            if (parsed.role === "landlord" && parsed.avatar) updated = parsed.avatar;
           }
         } catch (e) { }
       }
-      if (updated && !updated.includes("unsplash.com")) {
+      if (updated) {
         setLandlordAvatar(updated);
       }
+      // Sync username from Settings-saved keys
+      const savedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
+      const newName = savedName || sessionStorage.getItem("username") || localStorage.getItem("username");
+      if (newName) setUsername(newName);
     };
     handleAvatarUpdate();
     window.addEventListener("storage", handleAvatarUpdate);
@@ -2138,7 +2148,35 @@ export default function DashboardAddProperty() {
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-slate-400 dark:text-slate-400 font-medium">Email Address</span>
                 <span className="text-slate-900 dark:text-white font-semibold">
-                  {localStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
+                  {(() => {
+                    try {
+                      // Prefer session-scoped email (not shared across tabs)
+                      const sessEmail = sessionStorage.getItem("lastLoggedInEmail");
+                      if (sessEmail) {
+                        const scopedRaw = localStorage.getItem("userProfile_" + sessEmail.toLowerCase());
+                        if (scopedRaw) {
+                          const p = JSON.parse(scopedRaw);
+                          if (p.role === "landlord") return p.email || sessEmail;
+                        }
+                        return sessEmail;
+                      }
+                      // Fallback: read from landlord-scoped profile
+                      const lsEmail = localStorage.getItem("lastLoggedInEmail");
+                      if (lsEmail) {
+                        const scopedRaw = localStorage.getItem("userProfile_" + lsEmail.toLowerCase());
+                        if (scopedRaw) {
+                          const p = JSON.parse(scopedRaw);
+                          if (p.role === "landlord") return p.email || lsEmail;
+                        }
+                      }
+                      // Last resort: currentUserProfile only if landlord
+                      const current = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      if (current.role === "landlord") return current.email || lsEmail || "Not provided";
+                      return lsEmail || "Not provided";
+                    } catch (e) {
+                      return "Not provided";
+                    }
+                  })()}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
@@ -2146,10 +2184,18 @@ export default function DashboardAddProperty() {
                 <span className="text-slate-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      const p = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
-                      return p.phone || "+234 803 123 4567";
+                      // Read from landlord-scoped profile to avoid tenant bleed-over
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+                      const scopedRaw = emailKey ? localStorage.getItem("userProfile_" + emailKey) : null;
+                      if (scopedRaw) {
+                        const p = JSON.parse(scopedRaw);
+                        if (p.role === "landlord") return p.phone || p.phone_number || "Not provided";
+                      }
+                      const current = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      if (current.role === "landlord") return current.phone || current.phone_number || "Not provided";
+                      return "Not provided";
                     } catch (e) {
-                      return "+234 803 123 4567";
+                      return "Not provided";
                     }
                   })()}
                 </span>
@@ -2157,8 +2203,28 @@ export default function DashboardAddProperty() {
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-slate-400 dark:text-slate-400 font-medium">Account Rating</span>
                 <span className="text-slate-900 dark:text-white font-semibold flex items-center gap-1">
-                  <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> 5.0{" "}
-                  <span className="text-[11px] text-slate-400 font-normal">(1 review)</span>
+                  {(() => {
+                    try {
+                      // Only show rating when tenant accounts have actually submitted reviews
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+                      const reviewKey = emailKey ? "landlordReviews_" + emailKey : "landlordReviews";
+                      const savedReviews = localStorage.getItem(reviewKey) || localStorage.getItem("landlordReviews");
+                      if (savedReviews) {
+                        const rList = JSON.parse(savedReviews);
+                        if (Array.isArray(rList) && rList.length > 0) {
+                          const score = (rList.reduce((sum, r) => sum + Number(r.rating || 5), 0) / rList.length).toFixed(1);
+                          const count = rList.length;
+                          return (
+                            <>
+                              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> {score}{" "}
+                              <span className="text-[11px] text-slate-400 font-normal">({count} {count === 1 ? "review" : "reviews"})</span>
+                            </>
+                          );
+                        }
+                      }
+                    } catch (e) { }
+                    return <span className="text-slate-400 font-normal italic">No Rating</span>;
+                  })()}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
