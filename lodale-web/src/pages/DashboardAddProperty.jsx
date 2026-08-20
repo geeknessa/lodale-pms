@@ -685,6 +685,30 @@ export default function DashboardAddProperty() {
     );
   };
 
+  const isStepValid = (stepNum) => {
+    if (stepNum === 1) {
+      return !!(displayName?.trim() && address?.trim() && stateName && cityName);
+    }
+    if (stepNum === 2) {
+      if (isMultiUnit) {
+        return !!(unitsList && unitsList.length > 0);
+      } else {
+        const numericRent = Number(rent?.replace(/[^0-9]/g, ""));
+        return !!(rent && !isNaN(numericRent) && numericRent > 0);
+      }
+    }
+    if (stepNum === 3) {
+      return true;
+    }
+    if (stepNum === 4) {
+      return !!(docName?.trim() && propertyPhotos && propertyPhotos.length > 0);
+    }
+    if (stepNum === 5) {
+      return occupied !== null;
+    }
+    return false;
+  };
+
   const handleNextStep = () => {
     setFormError("");
     if (currentStep === 1) {
@@ -1086,7 +1110,7 @@ export default function DashboardAddProperty() {
               <div className="dap-panel-section-title">PORTFOLIO ONBOARDING</div>
               {stepsInfo.map((sObj) => {
                 const isActive = currentStep === sObj.step;
-                const isCompleted = currentStep > sObj.step;
+                const isCompleted = isStepValid(sObj.step);
                 const StepIcon = sObj.icon;
                 return (
                   <button
