@@ -39,6 +39,16 @@ export const adminService = {
   },
 
   /**
+   * Update registered user account status (active, suspended)
+   */
+  async updateUserStatus(userId, status) {
+    return await apiClient(`/admin/users/${userId}/status`, {
+      method: 'PATCH',
+      body: { status },
+    });
+  },
+
+  /**
    * Delete a registered user account
    */
   async deleteUser(userId) {

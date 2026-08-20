@@ -77,6 +77,7 @@ export async function initDb() {
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 7);
       ALTER TABLE properties ALTER COLUMN property_type TYPE TEXT USING property_type::text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status VARCHAR(50) DEFAULT 'active';
     `);
 
     // Ensure listing_approval_queue table exists for admin workflow
