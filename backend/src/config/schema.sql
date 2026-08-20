@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS properties (
     state VARCHAR(100) NOT NULL,
     bedrooms INTEGER DEFAULT 0,
     bathrooms INTEGER DEFAULT 0,
-    rent_amount DECIMAL(15, 2) NOT NULL,
+    rent_amount NUMERIC(20, 2) NOT NULL DEFAULT 0.00,
     rent_period VARCHAR(20) DEFAULT 'annually',
     status VARCHAR(50) DEFAULT 'pending_review',
     cover_image TEXT,

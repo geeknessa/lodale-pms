@@ -80,6 +80,16 @@ export async function initDb() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status VARCHAR(50) DEFAULT 'active';
     `);
 
+    // Widen numeric columns to prevent overflow with large Nigerian property values
+    try {
+      await client.query(`
+        ALTER TABLE properties ALTER COLUMN rent_amount TYPE NUMERIC(20, 2);
+        ALTER TABLE property_units ALTER COLUMN rent_amount TYPE NUMERIC(20, 2);
+      `);
+    } catch (e) {
+      // Columns may already be at correct size — safe to ignore
+    }
+
     // Ensure listing_approval_queue table exists for admin workflow
     await client.query(`
       CREATE TABLE IF NOT EXISTS listing_approval_queue (
@@ -107,7 +117,7 @@ export async function initDb() {
         unit_name VARCHAR(100) NOT NULL,
         bedrooms SMALLINT NOT NULL DEFAULT 1,
         bathrooms SMALLINT NOT NULL DEFAULT 1,
-        rent_amount NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
+        rent_amount NUMERIC(20, 2) NOT NULL DEFAULT 0.00,
         rent_period VARCHAR(20) NOT NULL DEFAULT 'annually',
         status VARCHAR(30) NOT NULL DEFAULT 'vacant',
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
