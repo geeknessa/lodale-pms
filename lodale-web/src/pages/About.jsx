@@ -124,7 +124,7 @@ export default function About() {
 
   const handleAuthRedirect = (path) => {
     const isAuth =
-      localStorage.getItem("isAuthenticated") === "true" ||
+      sessionStorage.getItem("isAuthenticated") === "true" ||
       !!localStorage.getItem("authToken");
     navigate(isAuth ? path : "/signup");
   };

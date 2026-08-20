@@ -57,8 +57,7 @@ export default function LandlordChat() {
         } else if (parsed.length > 0 && !activeChatId) {
           setActiveChatId(parsed[0].id);
         }
-      }
-    };
+      };
 
     loadChats();
     window.addEventListener("storage", loadChats);
@@ -137,7 +136,7 @@ export default function LandlordChat() {
     localStorage.setItem("landlordChats", JSON.stringify(updatedChats.filter(c => c.id !== "lodale-support")));
 
     // Sync to tenantChats
-    const landlordName = localStorage.getItem("username") || "Emeka Obi"; // fallback mock
+    const landlordName = sessionStorage.getItem("username") || "Emeka Obi"; // fallback mock
     const savedTenantChats = localStorage.getItem("tenantChats");
     let tChats = savedTenantChats ? JSON.parse(savedTenantChats) : [];
     

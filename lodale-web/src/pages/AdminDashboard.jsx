@@ -94,11 +94,11 @@ export default function AdminDashboard() {
 
   const handleAdminSignOut = () => {
     sessionStorage.clear();
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("adminAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("lodale_token");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("adminAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("lodale_token");
     localStorage.setItem("explicitAdminSignOut", "true");
     navigate("/admin/login", { replace: true });
   };
@@ -359,8 +359,8 @@ export default function AdminDashboard() {
         if (target?.email) {
           const lowerEmail = target.email.toLowerCase();
           localStorage.removeItem(`registeredUser_${lowerEmail}`);
-          localStorage.removeItem(`userProfile_${lowerEmail}`);
-          localStorage.removeItem(`username_${lowerEmail}`);
+          sessionStorage.removeItem(`userProfile_${lowerEmail}`);
+          sessionStorage.removeItem(`username_${lowerEmail}`);
         }
       } catch (err) {
         console.error("Failed to delete user:", err);

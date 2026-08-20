@@ -46,10 +46,10 @@ function TenantSidebarStrip() {
     sessionStorage.removeItem("db_user_id");
     sessionStorage.removeItem("tenantCurrentProfile");
     sessionStorage.removeItem("lodale_token");
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("userRole");
     navigate("/login", { replace: true });
   };
 
@@ -215,7 +215,7 @@ export default function ListingDetail() {
   };
 
   const handleOpenChat = () => {
-    const isAuth = localStorage.getItem("isAuthenticated") === "true" || sessionStorage.getItem("isAuthenticated") === "true";
+    const isAuth = sessionStorage.getItem("isAuthenticated") === "true" || sessionStorage.getItem("isAuthenticated") === "true";
     if (!isAuth) {
       navigate("/login", { state: { from: `/listing/${id}` } });
       return;

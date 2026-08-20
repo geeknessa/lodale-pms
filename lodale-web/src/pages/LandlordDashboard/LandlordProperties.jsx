@@ -95,7 +95,7 @@ export default function LandlordProperties() {
   const [selectedTenantForDetails, setSelectedTenantForDetails] = useState(null);
 
   const [username] = useState(() => {
-    return localStorage.getItem("username") || "Ada";
+    return sessionStorage.getItem("username") || "Ada";
   });
 
   const [tenantsMap, setTenantsMap] = useState({});
@@ -120,7 +120,7 @@ export default function LandlordProperties() {
 
   useEffect(() => {
     async function loadProperties() {
-      const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
       let apiProps = [];
       try {
         apiProps = await propertyService.getLandlordProperties(currentUserId);

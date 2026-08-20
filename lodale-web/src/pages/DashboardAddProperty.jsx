@@ -247,13 +247,13 @@ export default function DashboardAddProperty() {
   // Landlord Profile & Avatar Modal State
   const [showLandlordProfileModal, setShowLandlordProfileModal] = useState(false);
   const [username] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedName = localStorage.getItem("landlordName_" + emailKey.toLowerCase());
       if (savedName) return savedName;
     }
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.name || parsed.displayName) return parsed.name || parsed.displayName;
@@ -263,7 +263,7 @@ export default function DashboardAddProperty() {
   });
 
   const [landlordAvatar, setLandlordAvatar] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
@@ -271,7 +271,7 @@ export default function DashboardAddProperty() {
     const globalSaved = sessionStorage.getItem("landlordAvatarUrl") || localStorage.getItem("landlordAvatarUrl");
     if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
@@ -282,7 +282,7 @@ export default function DashboardAddProperty() {
 
   useEffect(() => {
     const handleAvatarUpdate = () => {
-      const emailKey = localStorage.getItem("lastLoggedInEmail");
+      const emailKey = sessionStorage.getItem("lastLoggedInEmail");
       let updated = null;
       if (emailKey) {
         updated = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
@@ -292,7 +292,7 @@ export default function DashboardAddProperty() {
       }
       if (!updated) {
         try {
-          const raw = localStorage.getItem("currentUserProfile");
+          const raw = sessionStorage.getItem("currentUserProfile");
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed.avatar) updated = parsed.avatar;
@@ -2035,7 +2035,7 @@ export default function DashboardAddProperty() {
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-slate-400 dark:text-slate-400 font-medium">Email Address</span>
                 <span className="text-slate-900 dark:text-white font-semibold">
-                  {localStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
+                  {sessionStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
@@ -2043,7 +2043,7 @@ export default function DashboardAddProperty() {
                 <span className="text-slate-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      const p = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      const p = JSON.parse(sessionStorage.getItem("currentUserProfile") || "{}");
                       return p.phone || "+234 803 123 4567";
                     } catch (e) {
                       return "+234 803 123 4567";

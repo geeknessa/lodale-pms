@@ -13,14 +13,14 @@ export default function NavBar({ transparentMode = false }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const sessAuth = sessionStorage.getItem("isAuthenticated");
     if (sessAuth !== null) return sessAuth === "true";
-    return localStorage.getItem("isAuthenticated") === "true";
+    return sessionStorage.getItem("isAuthenticated") === "true";
   });
   const [userRole, setUserRole] = useState(() => {
-    return (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+    return (sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") || "").toLowerCase();
   });
   const [isAdmin, setIsAdmin] = useState(() => {
-    const r = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-    const email = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "";
+    const r = (sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") || "").toLowerCase();
+    const email = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "";
     return r === "admin" || email === "admin@lodale.com" || sessionStorage.getItem("adminAuthenticated") === "true";
   });
   const [activeSection, setActiveSection] = useState("");
@@ -30,9 +30,9 @@ export default function NavBar({ transparentMode = false }) {
     const handleAuth = () => {
       const sessAuth = sessionStorage.getItem("isAuthenticated");
       const hasTabSession = sessAuth !== null;
-      const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
-      const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
-      const email = sessionStorage.getItem("lastLoggedInEmail") || (!hasTabSession ? localStorage.getItem("lastLoggedInEmail") : "") || "";
+      const auth = hasTabSession ? sessAuth === "true" : sessionStorage.getItem("isAuthenticated") === "true";
+      const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? sessionStorage.getItem("userRole") : "") || "").toLowerCase();
+      const email = sessionStorage.getItem("lastLoggedInEmail") || (!hasTabSession ? sessionStorage.getItem("lastLoggedInEmail") : "") || "";
 
       setIsAuthenticated(auth);
       setUserRole(role);
@@ -176,9 +176,9 @@ export default function NavBar({ transparentMode = false }) {
     sessionStorage.removeItem("lodale_token");
     sessionStorage.removeItem("lodale_user");
 
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("userRole");
     
     setIsAuthenticated(false);
     setIsOpen(false);
@@ -187,7 +187,7 @@ export default function NavBar({ transparentMode = false }) {
 
   function handleDashboardNavigate() {
     setIsOpen(false);
-    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || userRole || "tenant").toLowerCase().trim();
+    const role = (sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") || userRole || "tenant").toLowerCase().trim();
     if (role === "admin") {
       navigate("/admin/dashboard");
     } else if (role === "landlord") {

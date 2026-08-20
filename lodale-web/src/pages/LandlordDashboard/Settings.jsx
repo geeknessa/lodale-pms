@@ -34,7 +34,7 @@ export default function Settings() {
   
   // Scoped helper to define landlord fullName cleanly
   const getFullName = () => {
-    return `${firstName} ${lastName}`.trim() || localStorage.getItem("username") || "Landlord User";
+    return `${firstName} ${lastName}`.trim() || sessionStorage.getItem("username") || "Landlord User";
   };
   const fullName = getFullName();
   const [email, setEmail] = useState("");
@@ -46,14 +46,14 @@ export default function Settings() {
   const [avatarUrl, setAvatarUrl] = useState("");
 
   const loadStoredProfile = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
     let localProf = null;
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || (emailKey ? localStorage.getItem("userProfile_" + emailKey) : null);
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile") || (emailKey ? sessionStorage.getItem("userProfile_" + emailKey) : null);
       if (raw) localProf = JSON.parse(raw);
     } catch (e) { }
 
-    const storedUsername = sessionStorage.getItem("username") || (emailKey ? localStorage.getItem("username_" + emailKey) : null) || localStorage.getItem("username") || "";
+    const storedUsername = sessionStorage.getItem("username") || (emailKey ? sessionStorage.getItem("username_" + emailKey) : null) || sessionStorage.getItem("username") || "";
     
     let fname = localProf?.firstName || localProf?.first_name || "";
     let lname = localProf?.lastName || localProf?.last_name || "";
@@ -123,7 +123,7 @@ export default function Settings() {
         }
         const updatedProf = { ...userProfile, avatar: base64Data };
         setUserProfile(updatedProf);
-        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
         window.dispatchEvent(new Event("storage"));
       };
       reader.readAsDataURL(file);
@@ -172,7 +172,7 @@ export default function Settings() {
   useEffect(() => {
     async function fetchProperties() {
       try {
-        const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+        const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
         const props = await propertyService.getLandlordProperties(currentUserId);
         setProperties(props);
         if (props.length > 0) {
@@ -522,7 +522,7 @@ export default function Settings() {
     e.preventDefault();
     try {
       const updatedName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+      const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
 
       try {
         await userService.updateProfile({
@@ -551,14 +551,14 @@ export default function Settings() {
 
       setUserProfile(updatedProf);
       sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-      localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+      sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
       if (cleanEmail) {
-        localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
-        localStorage.setItem("username_" + cleanEmail, updatedName);
+        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
+        sessionStorage.setItem("username_" + cleanEmail, updatedName);
       }
       if (updatedName) {
         sessionStorage.setItem("username", updatedName);
-        localStorage.setItem("username", updatedName);
+        sessionStorage.setItem("username", updatedName);
       }
       if (avatarUrl && cleanEmail) {
         localStorage.setItem("landlordAvatar_" + cleanEmail, avatarUrl);
@@ -598,10 +598,10 @@ export default function Settings() {
 
   const handleSignOut = () => {
     if (window.confirm("Are you sure you want to log out?")) {
-      localStorage.removeItem("isAuthenticated");
-      localStorage.removeItem("sessionExpiresAt");
-      localStorage.removeItem("username");
-      localStorage.removeItem("userRole");
+      sessionStorage.removeItem("isAuthenticated");
+      sessionStorage.removeItem("sessionExpiresAt");
+      sessionStorage.removeItem("username");
+      sessionStorage.removeItem("userRole");
       sessionStorage.removeItem("isAuthenticated");
       sessionStorage.removeItem("sessionExpiresAt");
       sessionStorage.removeItem("username");

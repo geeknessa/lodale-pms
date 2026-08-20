@@ -36,7 +36,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     // Load properties
     let propertyList = [];
     try {
-      const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
       propertyList = await propertyService.getLandlordProperties(currentUserId);
     } catch (e) {
       console.warn("Could not load properties:", e);

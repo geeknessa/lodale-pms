@@ -9,13 +9,13 @@ export function ToastProvider({ children }) {
   // Helper to retrieve current logged in user name
   const getUserName = () => {
     try {
-      const raw = localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.firstName) return parsed.firstName;
       }
     } catch (e) {}
-    const full = localStorage.getItem("username");
+    const full = sessionStorage.getItem("username");
     if (full) return full.split(" ")[0];
     return "User";
   };

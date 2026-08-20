@@ -110,7 +110,7 @@ export async function handlePropertySubmit({
   }
 
   const ownershipDocString = `${docType} (${docName})`;
-  const dbUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id");
+  const dbUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id");
 
   const amenitiesList = selectedAmenities.length > 0 ? selectedAmenities : [];
   const sanitizedType = rawType.toLowerCase().replace(/\s+/g, "_");

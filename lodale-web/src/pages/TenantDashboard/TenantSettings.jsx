@@ -30,7 +30,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
   // Helper to read initial local tenant profile
   const getInitialProfile = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
     try {
       const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null);
       if (raw) return JSON.parse(raw);
@@ -39,18 +39,18 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   };
 
   const initialProf = getInitialProfile();
-  const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+  const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
 
   const initialUsername =
     sessionStorage.getItem("tenantUsername") ||
     (emailKey ? localStorage.getItem("tenantUsername_" + emailKey) : null) ||
     sessionStorage.getItem("username") ||
-    localStorage.getItem("username") ||
+    sessionStorage.getItem("username") ||
     "Tunde";
   const nameParts = initialUsername.split(" ");
   const initialFirst = initialProf?.first_name || initialProf?.firstName || nameParts[0] || "";
   const initialLast = initialProf?.last_name || initialProf?.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
-  const initialEmail = initialProf?.email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "";
+  const initialEmail = initialProf?.email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "";
   const initialPhone = initialProf?.phone_number || initialProf?.phone || "";
   const initialAddress = initialProf?.address || "";
   const initialDob = initialProf?.dob || "";
@@ -183,7 +183,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         const base64Data = evt.target.result;
         setAvatarUrl(base64Data);
 
-        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
         if (emailKey) {
           // Tenant-scoped avatar key — does not overwrite landlord avatar
           localStorage.setItem("tenantAvatar_" + emailKey, base64Data);
@@ -270,7 +270,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         window.dispatchEvent(new Event("storage"));
 
         // Step 2: Try to sync with backend — fail gracefully if session has expired
-        const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
+        const token = sessionStorage.getItem("lodale_token") || sessionStorage.getItem("lodale_token");
         if (token) {
           try {
             // Only send avatar_url to the backend if it's a real URL (not a >1MB base64 blob)
@@ -335,12 +335,12 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const handleDiscardChanges = () => {
     setFeedbackMessage(null);
     if (activeTab === "personal") {
-      const curEmail = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+      const curEmail = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
       const name =
         sessionStorage.getItem("tenantUsername") ||
         (curEmail ? localStorage.getItem("tenantUsername_" + curEmail) : null) ||
         sessionStorage.getItem("username") ||
-        localStorage.getItem("username");
+        sessionStorage.getItem("username");
       if (name) {
         const parts = name.split(" ");
         setFirstName(parts[0]);
@@ -349,7 +349,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         setFirstName("Roland");
         setLastName("Donald");
       }
-      setEmail(sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "rolandDonald@mail.com");
+      setEmail(sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "rolandDonald@mail.com");
       setGender("Male");
       setAddress("");
       setPhone("");
@@ -401,7 +401,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     try {
       const savedLandlordDocs = localStorage.getItem("landlordDocuments");
       const landlordDocs = savedLandlordDocs ? JSON.parse(savedLandlordDocs) : [];
-      const tenantName = (sessionStorage.getItem("username") || localStorage.getItem("username") || `${firstName} ${lastName}`).trim();
+      const tenantName = (sessionStorage.getItem("username") || sessionStorage.getItem("username") || `${firstName} ${lastName}`).trim();
       const updatedLandlord = [
         ...landlordDocs.filter(d => d.id !== selectedDocToSign.id),
         {

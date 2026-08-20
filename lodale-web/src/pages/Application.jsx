@@ -31,8 +31,8 @@ export default function Application() {
   }, [listingId]);
 
   const handleSubmit = () => {
-    const username = localStorage.getItem("username") || "Tenant User";
-    const userEmail = localStorage.getItem("lastLoggedInEmail") || "tenant@example.com";
+    const username = sessionStorage.getItem("username") || "Tenant User";
+    const userEmail = sessionStorage.getItem("lastLoggedInEmail") || "tenant@example.com";
     const saved = localStorage.getItem("propertyApplications");
     const currentApps = saved ? JSON.parse(saved) : [];
     

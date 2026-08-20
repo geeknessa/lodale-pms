@@ -97,12 +97,12 @@ function ScrollToTop() {
 
 function ProtectedRoute({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const auth = localStorage.getItem("isAuthenticated") === "true";
-    const expires = localStorage.getItem("sessionExpiresAt");
+    const auth = sessionStorage.getItem("isAuthenticated") === "true";
+    const expires = sessionStorage.getItem("sessionExpiresAt");
     if (auth && expires && Date.now() > Number(expires)) {
       // Session expired
-      localStorage.removeItem("isAuthenticated");
-      localStorage.removeItem("sessionExpiresAt");
+      sessionStorage.removeItem("isAuthenticated");
+      sessionStorage.removeItem("sessionExpiresAt");
       return false;
     }
     return auth;
@@ -112,11 +112,11 @@ function ProtectedRoute({ children }) {
 
   useEffect(() => {
     const checkAuth = () => {
-      const auth = localStorage.getItem("isAuthenticated") === "true";
-      const expires = localStorage.getItem("sessionExpiresAt");
+      const auth = sessionStorage.getItem("isAuthenticated") === "true";
+      const expires = sessionStorage.getItem("sessionExpiresAt");
       if (auth && expires && Date.now() > Number(expires)) {
-        localStorage.removeItem("isAuthenticated");
-        localStorage.removeItem("sessionExpiresAt");
+        sessionStorage.removeItem("isAuthenticated");
+        sessionStorage.removeItem("sessionExpiresAt");
         setIsAuthenticated(false);
       } else {
         setIsAuthenticated(auth);
@@ -131,12 +131,12 @@ function ProtectedRoute({ children }) {
   }, [location]);
 
   if (!isAuthenticated) {
-    const expires = localStorage.getItem("sessionExpiresAt");
+    const expires = sessionStorage.getItem("sessionExpiresAt");
     const wasSessionExpired = expires && Date.now() > Number(expires);
 
     // Clear storage just in case
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
 
     return (
       <Navigate
@@ -156,12 +156,12 @@ function ProtectedRoute({ children }) {
 function AdminProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
     const sessAuth = sessionStorage.getItem("isAuthenticated");
-    const localAuth = localStorage.getItem("isAuthenticated");
+    const localAuth = sessionStorage.getItem("isAuthenticated");
     const auth = sessAuth === "true" || localAuth === "true";
 
-    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true" || localStorage.getItem("adminAuthenticated") === "true";
-    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+    const role = (sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") || "").toLowerCase();
+    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true" || sessionStorage.getItem("adminAuthenticated") === "true";
+    const expires = sessionStorage.getItem("sessionExpiresAt") || sessionStorage.getItem("sessionExpiresAt");
 
     if (!auth || role !== "admin" || !adminAuth || (expires && Date.now() > Number(expires))) {
       return false;
@@ -193,9 +193,9 @@ function LandlordProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
     const sessAuth = sessionStorage.getItem("isAuthenticated");
     const hasTabSession = sessAuth !== null;
-    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
-    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+    const auth = hasTabSession ? sessAuth === "true" : sessionStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? sessionStorage.getItem("userRole") : "") || "").toLowerCase();
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? sessionStorage.getItem("sessionExpiresAt") : null);
     if (!auth || role !== "landlord" || (expires && Date.now() > Number(expires))) {
       return false;
     }
@@ -218,12 +218,12 @@ function LandlordProtectedRoute({ children }) {
   if (!isAuthenticated) {
     const sessAuth = sessionStorage.getItem("isAuthenticated");
     const hasTabSession = sessAuth !== null;
-    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const auth = hasTabSession ? sessAuth === "true" : sessionStorage.getItem("isAuthenticated") === "true";
     if (auth) {
       // Authenticated but wrong role
       return <Navigate to="/access-denied" replace />;
     }
-    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? sessionStorage.getItem("sessionExpiresAt") : null);
     const wasSessionExpired = expires && Date.now() > Number(expires);
 
     return (
@@ -245,9 +245,9 @@ function TenantProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
     const sessAuth = sessionStorage.getItem("isAuthenticated");
     const hasTabSession = sessAuth !== null;
-    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? localStorage.getItem("userRole") : "") || "").toLowerCase();
-    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+    const auth = hasTabSession ? sessAuth === "true" : sessionStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? sessionStorage.getItem("userRole") : "") || "").toLowerCase();
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? sessionStorage.getItem("sessionExpiresAt") : null);
     if (!auth || role !== "tenant" || (expires && Date.now() > Number(expires))) {
       return false;
     }
@@ -270,12 +270,12 @@ function TenantProtectedRoute({ children }) {
   if (!isAuthenticated) {
     const sessAuth = sessionStorage.getItem("isAuthenticated");
     const hasTabSession = sessAuth !== null;
-    const auth = hasTabSession ? sessAuth === "true" : localStorage.getItem("isAuthenticated") === "true";
+    const auth = hasTabSession ? sessAuth === "true" : sessionStorage.getItem("isAuthenticated") === "true";
     if (auth) {
       // Authenticated but wrong role
       return <Navigate to="/access-denied" replace />;
     }
-    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? localStorage.getItem("sessionExpiresAt") : null);
+    const expires = sessionStorage.getItem("sessionExpiresAt") || (!hasTabSession ? sessionStorage.getItem("sessionExpiresAt") : null);
     const wasSessionExpired = expires && Date.now() > Number(expires);
 
     return (

@@ -219,8 +219,8 @@ export default function SignUp() {
         sessionStorage.setItem("userRole", role);
         sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
 
-        localStorage.setItem("lastLoggedInEmail", cleanEmail);
-        localStorage.setItem("username_" + cleanEmail, cleanName);
+        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
+        sessionStorage.setItem("username_" + cleanEmail, cleanName);
         localStorage.setItem("isNewSignUp", "true");
 
         const profileObj = {
@@ -236,7 +236,7 @@ export default function SignUp() {
           nin: nin || ""
         };
         sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-        localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
+        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
 
         // Persist user to PostgreSQL Database via authService
         try {

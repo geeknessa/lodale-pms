@@ -23,7 +23,7 @@ export default function Login() {
     if (location.pathname === "/admin/login" || location.search.includes("role=admin")) {
       return "";
     }
-    return localStorage.getItem("lastLoggedInEmail") || "";
+    return sessionStorage.getItem("lastLoggedInEmail") || "";
   });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -56,12 +56,12 @@ export default function Login() {
 
   useEffect(() => {
     // If email is pre-filled, focus on the password field automatically
-    if (localStorage.getItem("lastLoggedInEmail") || location.pathname === "/admin/login" || location.search.includes("role=admin")) {
+    if (sessionStorage.getItem("lastLoggedInEmail") || location.pathname === "/admin/login" || location.search.includes("role=admin")) {
       passwordRef.current?.focus();
     }
 
     // Redirect already authenticated admin to /admin/dashboard
-    const isAlreadyAdmin = localStorage.getItem("isAuthenticated") === "true" && localStorage.getItem("userRole") === "admin";
+    const isAlreadyAdmin = sessionStorage.getItem("isAuthenticated") === "true" && sessionStorage.getItem("userRole") === "admin";
     if (isAlreadyAdmin && (location.pathname === "/admin/login" || location.pathname === "/login")) {
       navigate("/admin/dashboard");
     }
@@ -117,12 +117,12 @@ export default function Login() {
           sessionStorage.setItem("db_user_id", res.user.id);
           if (res.token) sessionStorage.setItem("lodale_token", res.token);
 
-          localStorage.setItem("isAuthenticated", "true");
-          localStorage.setItem("userRole", "admin");
-          localStorage.setItem("adminAuthenticated", "true");
-          localStorage.setItem("lastLoggedInEmail", cleanUsername);
-          localStorage.setItem("sessionExpiresAt", expiresAt);
-          if (res.token) localStorage.setItem("lodale_token", res.token);
+          sessionStorage.setItem("isAuthenticated", "true");
+          sessionStorage.setItem("userRole", "admin");
+          sessionStorage.setItem("adminAuthenticated", "true");
+          sessionStorage.setItem("lastLoggedInEmail", cleanUsername);
+          sessionStorage.setItem("sessionExpiresAt", expiresAt);
+          if (res.token) sessionStorage.setItem("lodale_token", res.token);
           localStorage.removeItem("explicitAdminSignOut");
 
           navigate("/admin/dashboard");
@@ -159,21 +159,21 @@ export default function Login() {
 
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userRole", userRole);
-        localStorage.setItem("lastLoggedInEmail", cleanEmail);
-        localStorage.setItem("sessionExpiresAt", expiresAt);
-        localStorage.setItem("username_" + cleanEmail, userFullName);
+        sessionStorage.setItem("isAuthenticated", "true");
+        sessionStorage.setItem("userRole", userRole);
+        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
+        sessionStorage.setItem("sessionExpiresAt", expiresAt);
+        sessionStorage.setItem("username_" + cleanEmail, userFullName);
 
         if (userRole === "admin") {
           sessionStorage.setItem("adminAuthenticated", "true");
-          localStorage.setItem("adminAuthenticated", "true");
+          sessionStorage.setItem("adminAuthenticated", "true");
           localStorage.removeItem("explicitAdminSignOut");
         }
 
         let savedProfile = {};
         try {
-          const rawSaved = localStorage.getItem("userProfile_" + cleanEmail);
+          const rawSaved = sessionStorage.getItem("userProfile_" + cleanEmail);
           if (rawSaved) savedProfile = JSON.parse(rawSaved);
         } catch (e) { }
 
@@ -196,9 +196,9 @@ export default function Login() {
           avatar_url: res.user.avatar_url || savedProfile.avatar_url || savedProfile.avatar || ""
         };
         sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-        localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
         sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
-        localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
+        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
 
         navigate(userRole === "admin" ? "/admin/dashboard" : `/dashboard/${userRole}`);
         return;

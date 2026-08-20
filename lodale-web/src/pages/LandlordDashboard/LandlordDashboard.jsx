@@ -170,9 +170,9 @@ export default function LandlordDashboard() {
   const [username, setUsername] = useState(() => {
     const sessName = sessionStorage.getItem("username");
     if (sessName) return sessName;
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    return storedName || localStorage.getItem("username") || "Ada";
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+    const storedName = emailKey ? sessionStorage.getItem("username_" + emailKey) : null;
+    return storedName || sessionStorage.getItem("username") || "Ada";
   });
 
   const getActiveTenantsList = () => {
@@ -256,7 +256,7 @@ export default function LandlordDashboard() {
 
   // Landlord profile avatar state (persisted across uploads)
   const [landlordAvatar, setLandlordAvatar] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
@@ -264,7 +264,7 @@ export default function LandlordDashboard() {
     const globalSaved = sessionStorage.getItem("landlordAvatarUrl") || localStorage.getItem("landlordAvatarUrl");
     if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
@@ -275,7 +275,7 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     const handleAvatarUpdate = () => {
-      const emailKey = localStorage.getItem("lastLoggedInEmail");
+      const emailKey = sessionStorage.getItem("lastLoggedInEmail");
       let updated = null;
       if (emailKey) {
         updated = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
@@ -285,7 +285,7 @@ export default function LandlordDashboard() {
       }
       if (!updated) {
         try {
-          const raw = localStorage.getItem("currentUserProfile");
+          const raw = sessionStorage.getItem("currentUserProfile");
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed.avatar) updated = parsed.avatar;
@@ -333,9 +333,9 @@ export default function LandlordDashboard() {
   // Sync username, applications & notifications if changed in storage
   useEffect(() => {
     const handleStorageChange = () => {
-      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-      const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-      setUsername(sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "Landlord User");
+      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+      const storedName = emailKey ? sessionStorage.getItem("username_" + emailKey) : null;
+      setUsername(sessionStorage.getItem("username") || storedName || sessionStorage.getItem("username") || "Landlord User");
       const savedApps = localStorage.getItem("propertyApplications");
       if (savedApps) {
         try {
@@ -701,10 +701,10 @@ export default function LandlordDashboard() {
     sessionStorage.removeItem("currentUserProfile");
     sessionStorage.removeItem("lodale_token");
     sessionStorage.removeItem("lodale_user");
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("userRole");
     navigate("/login", { replace: true });
   }
 
@@ -723,7 +723,7 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     async function loadProperties() {
-      const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
       let apiProps = [];
       try {
         apiProps = await propertyService.getLandlordProperties(currentUserId);
@@ -1861,7 +1861,7 @@ export default function LandlordDashboard() {
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Email Address</span>
                 <span className="text-ink-900 dark:text-white font-semibold">
-                  {localStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
+                  {sessionStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
@@ -1869,7 +1869,7 @@ export default function LandlordDashboard() {
                 <span className="text-ink-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      const p = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      const p = JSON.parse(sessionStorage.getItem("currentUserProfile") || "{}");
                       return p.phone || "Not provided";
                     } catch (e) {
                       return "Not provided";
@@ -1907,7 +1907,7 @@ export default function LandlordDashboard() {
                 <span className="text-ink-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      const email = localStorage.getItem("lastLoggedInEmail");
+                      const email = sessionStorage.getItem("lastLoggedInEmail");
                       if (email) {
                         const reg = localStorage.getItem("registeredUser_" + email);
                         if (reg) {

@@ -347,7 +347,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
 
   const userLocationStr = (() => {
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const prof = JSON.parse(raw);
         return prof.location || "";

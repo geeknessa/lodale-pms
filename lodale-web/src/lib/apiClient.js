@@ -4,7 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
  * Custom REST API Client for communicating with the local Express Backend
  */
 export async function apiClient(endpoint, options = {}) {
-  const token = sessionStorage.getItem('lodale_token') || localStorage.getItem('lodale_token');
+  const token = sessionStorage.getItem('lodale_token') || sessionStorage.getItem('lodale_token');
 
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 

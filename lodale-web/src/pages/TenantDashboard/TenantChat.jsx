@@ -168,7 +168,7 @@ export default function TenantChat() {
     localStorage.setItem("tenantChats", JSON.stringify(updatedChats.filter(c => c.id !== "lodale-support")));
 
     // Sync to landlordChats
-    const tenantName = localStorage.getItem("username") || sessionStorage.getItem("tenantUsername") || "Tunde";
+    const tenantName = sessionStorage.getItem("username") || sessionStorage.getItem("tenantUsername") || "Tunde";
     const savedLandlordChats = localStorage.getItem("landlordChats");
     let lChats = savedLandlordChats ? JSON.parse(savedLandlordChats) : [];
     

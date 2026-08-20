@@ -190,9 +190,9 @@ export default function TenantDashboard() {
   const [username, setUsername] = useState(() => {
     const sessName = sessionStorage.getItem("tenantUsername") || sessionStorage.getItem("username");
     if (sessName) return sessName;
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? (localStorage.getItem("tenantUsername_" + emailKey) || localStorage.getItem("username_" + emailKey)) : null;
-    return storedName || localStorage.getItem("tenantUsername") || localStorage.getItem("username") || "Tunde";
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+    const storedName = emailKey ? (localStorage.getItem("tenantUsername_" + emailKey) || sessionStorage.getItem("username_" + emailKey)) : null;
+    return storedName || localStorage.getItem("tenantUsername") || sessionStorage.getItem("username") || "Tunde";
   });
   const firstName = username.split(" ")[0];
 
@@ -209,7 +209,7 @@ export default function TenantDashboard() {
 
   // Tenant avatar state — reads tenant-scoped keys so it never picks up a landlord avatar
   const [tenantAvatar, setTenantAvatar] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
@@ -227,13 +227,13 @@ export default function TenantDashboard() {
       if (sessEmail && e?.key === "lastLoggedInEmail" && e?.newValue?.toLowerCase() !== sessEmail) {
         return;
       }
-      const emailKey = sessEmail || localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+      const emailKey = sessEmail || sessionStorage.getItem("lastLoggedInEmail")?.toLowerCase();
       // Read tenant-scoped username first to prevent landlord name overwriting tenant display
       const storedName =
         sessionStorage.getItem("tenantUsername") ||
         (emailKey ? localStorage.getItem("tenantUsername_" + emailKey) : null) ||
         sessionStorage.getItem("username") ||
-        (emailKey ? localStorage.getItem("username_" + emailKey) : null);
+        (emailKey ? sessionStorage.getItem("username_" + emailKey) : null);
       if (storedName) {
         setUsername(storedName);
       }
@@ -309,7 +309,7 @@ export default function TenantDashboard() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const currentName = (localStorage.getItem("username") || "Tunde").toLowerCase();
+        const currentName = (sessionStorage.getItem("username") || "Tunde").toLowerCase();
         return parsed.filter(r => {
           if (!r) return false;
           const reqUser = (r.tenantName || r.name || "").toLowerCase();
@@ -369,7 +369,7 @@ export default function TenantDashboard() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const currentName = (localStorage.getItem("username") || "Tunde").toLowerCase();
+        const currentName = (sessionStorage.getItem("username") || "Tunde").toLowerCase();
         const filtered = parsed.filter(r => {
           if (!r) return false;
           const reqUser = (r.tenantName || r.name || "").toLowerCase();
@@ -648,10 +648,10 @@ export default function TenantDashboard() {
     sessionStorage.removeItem("currentUserProfile");
     sessionStorage.removeItem("lodale_token");
     sessionStorage.removeItem("lodale_user");
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("userRole");
     navigate("/login", { replace: true });
   };
 
@@ -911,19 +911,19 @@ export default function TenantDashboard() {
             <div className="flex flex-col gap-3 mt-2 border-t border-neutral-100 dark:border-neutral-800/60 pt-4">
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Email Address</span>
-                <span className="text-[13px] font-bold">{sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
+                <span className="text-[13px] font-bold">{sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Phone Number</span>
                 <span className="text-[13px] font-bold">
                   {(() => {
                     try {
-                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
                       const raw =
                         sessionStorage.getItem("tenantCurrentProfile") ||
                         (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) ||
                         sessionStorage.getItem("currentUserProfile") ||
-                        localStorage.getItem("currentUserProfile") ||
+                        sessionStorage.getItem("currentUserProfile") ||
                         "{}";
                       const prof = JSON.parse(raw);
                       return prof.phone || prof.phone_number || "Not provided";
