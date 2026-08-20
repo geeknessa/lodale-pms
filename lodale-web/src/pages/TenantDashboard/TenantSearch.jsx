@@ -229,7 +229,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
   const [lastVisitedListings, setLastVisitedListings] = useState(() => {
     try {
       const saved = localStorage.getItem("lastVisitedListings");
-      return saved ? JSON.parse(saved) : [];
+      return saved ? JSON.parse(saved).slice(0, 5) : [];
     } catch (e) {
       return [];
     }
@@ -242,7 +242,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
     // Dynamic Last Visited update on tap
     setLastVisitedListings(prev => {
       const filtered = prev.filter(p => p && p.id !== property.id);
-      const updated = [property, ...filtered].slice(0, 10);
+      const updated = [property, ...filtered].slice(0, 5);
       try {
         localStorage.setItem("lastVisitedListings", JSON.stringify(updated));
       } catch (e) { }
@@ -427,8 +427,11 @@ export default function TenantSearch({ setShowProfileModal, onStartChat, tenantA
     return suggestions.slice(0, 6);
   })();
 
-  const lastVisitedProperties = lastVisitedListings;
-  const lastVisitedIds = new Set(lastVisitedProperties.map(p => p && p.id).filter(Boolean));
+  const availablePropertyIds = new Set(allAvailableProperties.map(p => p.id));
+  const lastVisitedProperties = lastVisitedListings
+    .filter(p => p && availablePropertyIds.has(p.id))
+    .slice(0, 5);
+  const lastVisitedIds = new Set(lastVisitedProperties.map(p => p.id));
 
   const closeToYouProperties = (() => {
     const locLower = userLocationStr.toLowerCase().trim();
