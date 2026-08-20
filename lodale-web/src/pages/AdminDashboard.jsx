@@ -38,13 +38,31 @@ import {
   User,
   KeyRound,
   Upload,
-  Menu
+  Menu,
+  Settings,
+  Palette,
+  Bell,
+  Sliders,
+  Info,
+  Shield,
+  Laptop,
+  Smartphone,
+  Monitor
 } from "lucide-react";
 
 // --- INITIAL DATA ---
 const INITIAL_USERS = [];
 const INITIAL_LISTINGS = [];
 const INITIAL_REVIEWS = [];
+
+const SETTINGS_PAGES = [
+  { id: "profile", label: "My Profile", icon: User },
+  { id: "account", label: "Account & Security", icon: KeyRound },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "preferences", label: "Preferences", icon: Sliders },
+  { id: "about", label: "System Info", icon: Info }
+];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -53,8 +71,9 @@ export default function AdminDashboard() {
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings'
+  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings' | 'profile'
   const [activeTab, setActiveTab] = useState("overview");
+  const [settingsSubTab, setSettingsSubTab] = useState("profile");
 
   // Handle Escape key to close mobile sidebar drawer
   useEffect(() => {
@@ -96,7 +115,7 @@ export default function AdminDashboard() {
         localStorage.removeItem("landlordProperties");
         localStorage.removeItem("userProperties");
         localStorage.removeItem("pendingProperties");
-      } catch (_e) {}
+      } catch (_e) { }
 
       // 1. Load Property Listings from Backend API
       let apiPending = [];
@@ -187,21 +206,11 @@ export default function AdminDashboard() {
                 });
               }
             }
-          } catch (_e) {}
+          } catch (_e) { }
         });
 
         return Array.from(map.values());
       });
-
-      // 2. Load Registered Users from Backend API (DB Source of Truth)
-      try {
-        const apiUsers = await adminService.getUsers();
-        if (Array.isArray(apiUsers) && apiUsers.length > 0) {
-          setUsers(apiUsers);
-        }
-      } catch (err) {
-        console.warn("Backend API users fallback:", err);
-      }
     }
 
     loadAdminData();
@@ -394,7 +403,7 @@ export default function AdminDashboard() {
             localStorage.setItem(key, JSON.stringify(updated));
           }
         }
-      } catch (_err) {}
+      } catch (_err) { }
     });
 
     // Send notification to landlord
@@ -410,7 +419,7 @@ export default function AdminDashboard() {
         read: false
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
-    } catch (_err) {}
+    } catch (_err) { }
 
     showToast(`Listing "${propertyTitle}" approved and is now live!`);
     if (selectedListing?.id === listingId) {
@@ -445,7 +454,7 @@ export default function AdminDashboard() {
         );
         localStorage.setItem("properties", JSON.stringify(updated));
       }
-    } catch (_err) {}
+    } catch (_err) { }
 
     // Send notification to landlord
     try {
@@ -461,7 +470,7 @@ export default function AdminDashboard() {
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
       window.dispatchEvent(new Event("storage"));
-    } catch (_err) {}
+    } catch (_err) { }
 
     showToast(`Listing "${propertyTitle}" rejected.`);
     setIsRejectingModalOpen(false);
@@ -500,7 +509,7 @@ export default function AdminDashboard() {
         );
         localStorage.setItem("properties", JSON.stringify(updated));
       }
-    } catch (_err) {}
+    } catch (_err) { }
 
     // Send notification to landlord
     try {
@@ -516,7 +525,7 @@ export default function AdminDashboard() {
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
       window.dispatchEvent(new Event("storage"));
-    } catch (_err) {}
+    } catch (_err) { }
 
     showToast(`Requested more info for "${propertyTitle}".`);
     if (selectedListing?.id === listingId) {
@@ -740,7 +749,7 @@ export default function AdminDashboard() {
                 Safety &amp; Management
               </div>
 
-              {/* 1. User Management */}
+              {/* User Management */}
               <button
                 onClick={() => {
                   setActiveTab("users");
@@ -753,14 +762,14 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Users className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-                  <span className="truncate">1. User Management</span>
+                  <span className="truncate">User Management</span>
                 </div>
                 <span className="text-[11px] bg-[#262626]/40 dark:bg-black/40 px-1.5 py-0.5 rounded-full text-[#DAD7CD] ml-1 shrink-0">
                   {users.length}
                 </span>
               </button>
 
-              {/* 2. Listing Oversight */}
+              {/* Listing Oversight */}
               <button
                 onClick={() => {
                   setActiveTab("listings");
@@ -782,7 +791,7 @@ export default function AdminDashboard() {
                 )}
               </button>
 
-              {/* 3. Review & Rating Moderation */}
+              {/* Review & Rating Moderation */}
               <button
                 onClick={() => {
                   setActiveTab("reviews");
@@ -795,7 +804,7 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <MessageSquareWarning className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-                  <span className="truncate">3. Review Moderation</span>
+                  <span className="truncate">Review Moderation</span>
                 </div>
                 {flaggedReviewsCount > 0 && (
                   <span className="text-[11px] bg-rose-700 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
@@ -808,9 +817,10 @@ export default function AdminDashboard() {
               <button
                 onClick={() => {
                   setActiveTab("profile");
+                  setSettingsSubTab("profile");
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "profile"
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "profile" || activeTab === "settings"
                   ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
                   : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
@@ -1492,8 +1502,8 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* --- TAB 4: MY PROFILE (SIMPLIFIED & SINGLE PAGE) --- */}
-          {activeTab === "profile" && (
+          {/* --- TAB 4: MY PROFILE --- */}
+          {(activeTab === "profile" || activeTab === "settings") && (
             <div className="space-y-6 animate-fade-in">
               {/* Main Header */}
               <div>
@@ -1639,7 +1649,7 @@ export default function AdminDashboard() {
                 </form>
               </div>
 
-              {/* Change Password Card */}
+              {/* Change Password Card directly underneath Profile Details */}
               <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
                 <div>
                   <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
@@ -1845,7 +1855,7 @@ export default function AdminDashboard() {
                       </span>
                     )}
                   </div>
-                  
+
                   <div className="max-h-36 overflow-y-auto space-y-1">
                     {selectedListing.units.map((u, uIdx) => (
                       <div key={uIdx} className="flex items-center justify-between text-xs py-1 px-2 bg-white/60 dark:bg-white/5 rounded border border-black/5 dark:border-white/5">
@@ -2151,8 +2161,8 @@ export default function AdminDashboard() {
             <div className="flex-1 overflow-auto bg-[#F4F6F4] dark:bg-[#0E1714] rounded-xl p-4 min-h-[350px] flex flex-col items-center justify-center border border-[#DAD7CD]/50 dark:border-[#233B31]">
               {selectedDocViewer.url ? (
                 selectedDocViewer.url.startsWith("data:image/") ||
-                /\.(jpg|jpeg|png|webp|gif|svg)($|\?)/i.test(selectedDocViewer.url) ||
-                selectedDocViewer.url.startsWith("blob:") ? (
+                  /\.(jpg|jpeg|png|webp|gif|svg)($|\?)/i.test(selectedDocViewer.url) ||
+                  selectedDocViewer.url.startsWith("blob:") ? (
                   <img
                     src={selectedDocViewer.url}
                     alt="Uploaded Document / Photo"

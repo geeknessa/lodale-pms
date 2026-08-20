@@ -120,6 +120,48 @@ export async function initDb() {
       ON CONFLICT (email) DO NOTHING;
     `);
 
+    // --- Migration: Role-Specific Profile Tables ---
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS landlord_profiles (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        business_name VARCHAR(255),
+        business_type VARCHAR(100),
+        tax_id VARCHAR(100),
+        bank_name VARCHAR(150),
+        bank_account_number VARCHAR(50),
+        bank_account_name VARCHAR(150),
+        total_properties_managed INTEGER DEFAULT 0,
+        years_in_business INTEGER,
+        professional_license VARCHAR(100),
+        website_url TEXT,
+        bio TEXT,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS tenant_profiles (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        date_of_birth DATE,
+        nationality VARCHAR(100),
+        occupation VARCHAR(150),
+        employer_name VARCHAR(255),
+        employment_status VARCHAR(50),
+        monthly_income NUMERIC(15, 2),
+        marital_status VARCHAR(50),
+        number_of_dependants SMALLINT DEFAULT 0,
+        guarantor_name VARCHAR(255),
+        guarantor_phone VARCHAR(50),
+        guarantor_email VARCHAR(255),
+        guarantor_relationship VARCHAR(100),
+        emergency_contact_name VARCHAR(255),
+        emergency_contact_phone VARCHAR(50),
+        emergency_contact_relationship VARCHAR(100),
+        preferred_move_in_date DATE,
+        max_budget NUMERIC(15, 2),
+        bio TEXT,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     client.release();
   } catch (error) {
     console.error('[PostgreSQL Connection Error]:', error.message);
