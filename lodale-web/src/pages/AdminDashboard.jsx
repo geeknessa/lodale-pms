@@ -4,12 +4,14 @@ import { Logo } from "../components/Logo";
 import { useTheme } from "../context/ThemeContext";
 import { adminService } from "../services/adminService";
 import { propertyService } from "../services/propertyService";
+import AdminSupportChat from "./AdminDashboard/AdminSupportChat";
 import { formatCurrency, formatDate } from "../utils/formatters";
 import {
   LayoutDashboard,
   Users,
   Building2,
   MessageSquareWarning,
+  MessageSquare,
   Search,
   Filter,
   CheckCircle2,
@@ -71,7 +73,7 @@ export default function AdminDashboard() {
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings' | 'profile'
+  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings' | 'profile' | 'support'
   const [activeTab, setActiveTab] = useState("overview");
   const [settingsSubTab, setSettingsSubTab] = useState("profile");
 
@@ -813,6 +815,23 @@ export default function AdminDashboard() {
                 )}
               </button>
 
+              {/* Support Messages */}
+              <button
+                onClick={() => {
+                  setActiveTab("support");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "support"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <MessageSquare className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">Support Messages</span>
+                </div>
+              </button>
+
               {/* My Profile */}
               <button
                 onClick={() => {
@@ -1503,6 +1522,13 @@ export default function AdminDashboard() {
           )}
 
           {/* --- TAB 4: MY PROFILE --- */}
+          {activeTab === "support" && (
+            <div className="h-full">
+              <AdminSupportChat />
+            </div>
+          )}
+
+          {/* Settings Tab / Sub-Tabs */}
           {(activeTab === "profile" || activeTab === "settings") && (
             <div className="space-y-6 animate-fade-in">
               {/* Main Header */}

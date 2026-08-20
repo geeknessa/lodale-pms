@@ -9,6 +9,7 @@ import propertyRoutes from './routes/properties.js';
 import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/users.js';
 import profileRoutes from './routes/profile.js';
+import supportRoutes from './routes/support.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
@@ -45,6 +46,7 @@ app.use('/api/properties', propertyRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/support', supportRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -4,6 +4,7 @@ import {
   Mic, Play, Pause, ChevronRight, Building2
 } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
+import { supportService } from "../../../services/supportService";
 import gsap from "gsap";
 import "./Landllordchat.css";
 
@@ -13,6 +14,7 @@ export default function LandlordChat() {
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [supportMessages, setSupportMessages] = useState([]);
 
   const messagesEndRef = useRef(null);
   const chatListRef = useRef(null);
@@ -22,12 +24,30 @@ export default function LandlordChat() {
   useEffect(() => {
     const loadChats = () => {
       const saved = localStorage.getItem("landlordChats");
+      let parsed = [];
       if (saved) {
-        const parsed = JSON.parse(saved);
-        setChats(parsed);
-        
-        // Auto-select chat from activeChatTenantName if set from Tenants tab
-        const redirectTenantName = localStorage.getItem("activeChatTenantName");
+        parsed = JSON.parse(saved);
+      }
+      
+      // Inject Lodale Support Thread
+      const supportThread = {
+        id: "lodale-support",
+        name: "Lodale Admin",
+        avatar: "/logo_black.svg", // Lodale logo
+        lastMessage: supportMessages.length > 0 ? supportMessages[supportMessages.length - 1].message : "Lodale Official Support Team",
+        time: supportMessages.length > 0 ? new Date(supportMessages[supportMessages.length - 1].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Always online",
+        messages: supportMessages.map(m => ({
+          id: m.id,
+          sender: m.sender_role === 'landlord' ? 'landlord' : 'tenant', // Mapping for CSS
+          text: m.message,
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }))
+      };
+      
+      setChats([supportThread, ...parsed]);
+
+      // Auto-select chat from activeChatTenantName if set from Tenants tab
+      const redirectTenantName = localStorage.getItem("activeChatTenantName");
         if (redirectTenantName) {
           const thread = parsed.find(c => c.name.toLowerCase() === redirectTenantName.toLowerCase());
           if (thread) {
@@ -43,7 +63,18 @@ export default function LandlordChat() {
     loadChats();
     window.addEventListener("storage", loadChats);
     return () => window.removeEventListener("storage", loadChats);
-  }, [activeChatId]);
+  }, [activeChatId, supportMessages]);
+
+  // Fetch support messages
+  useEffect(() => {
+    const fetchSupport = async () => {
+      const msgs = await supportService.getUserMessages();
+      setSupportMessages(msgs || []);
+    };
+    fetchSupport();
+    const interval = setInterval(fetchSupport, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Scroll to bottom of message thread
   useEffect(() => {
@@ -68,9 +99,21 @@ export default function LandlordChat() {
     c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSendMessage = (e) => {
+  const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
     if (!newMessage.trim() || !activeChatId) return;
+
+    if (activeChatId === "lodale-support") {
+      try {
+        const sent = await supportService.sendMessage(newMessage);
+        setSupportMessages(prev => [...prev, sent]);
+        setNewMessage("");
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      } catch (err) {
+        triggerToast("Failed to send message to Lodale Admin", "error");
+      }
+      return;
+    }
 
     const updatedChats = chats.map(c => {
       if (c.id === activeChatId) {
@@ -91,7 +134,37 @@ export default function LandlordChat() {
     });
 
     setChats(updatedChats);
-    localStorage.setItem("landlordChats", JSON.stringify(updatedChats));
+    localStorage.setItem("landlordChats", JSON.stringify(updatedChats.filter(c => c.id !== "lodale-support")));
+
+    // Sync to tenantChats
+    const landlordName = localStorage.getItem("username") || "Emeka Obi"; // fallback mock
+    const savedTenantChats = localStorage.getItem("tenantChats");
+    let tChats = savedTenantChats ? JSON.parse(savedTenantChats) : [];
+    
+    let tThread = tChats.find(c => c.name.toLowerCase() === landlordName.toLowerCase());
+    const newSyncMsg = {
+      id: Date.now(),
+      sender: "landlord", // incoming for tenant
+      text: newMessage,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    
+    if (tThread) {
+      tThread.messages.push(newSyncMsg);
+      tThread.lastMessage = newMessage;
+      tThread.time = "Just now";
+    } else {
+      tChats.push({
+        id: landlordName.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
+        name: landlordName,
+        avatar: "", 
+        lastMessage: newMessage,
+        time: "Just now",
+        messages: [newSyncMsg]
+      });
+    }
+    localStorage.setItem("tenantChats", JSON.stringify(tChats.filter(c => c.id !== "lodale-support")));
+
     setNewMessage("");
     window.dispatchEvent(new Event("storage"));
   };
@@ -176,12 +249,6 @@ export default function LandlordChat() {
             </div>
 
             <div className="lc-header-actions">
-              <button className="lc-header-btn" title="Phone Call" onClick={() => triggerToast(`Initiating direct call with ${activeChat.name}...`, "info", "Voice Call")}>
-                <Phone className="h-4.5 w-4.5" />
-              </button>
-              <button className="lc-header-btn" title="Video Call" onClick={() => triggerToast(`Starting video meeting with ${activeChat.name}...`, "info", "Video Call")}>
-                <Video className="h-4.5 w-4.5" />
-              </button>
               <button className="lc-header-btn" title="More Options">
                 <MoreHorizontal className="h-4.5 w-4.5" />
               </button>
@@ -190,6 +257,16 @@ export default function LandlordChat() {
 
           {/* Scrollable messages area */}
           <div className="lc-messages-container" ref={messageThreadRef}>
+            {activeChatId === "lodale-support" && (
+              <div className="p-3 mb-4 mx-4 rounded-xl bg-emerald-50 dark:bg-[#1A2E22] border border-emerald-200 dark:border-[#2A4B36] text-center shadow-sm">
+                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                  Lodale Official Support
+                </p>
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 leading-tight">
+                  Send a message here if you have any problems or complaints. Our team will respond shortly.
+                </p>
+              </div>
+            )}
             <div className="lc-date-divider">
               <span>Today</span>
             </div>
@@ -217,28 +294,6 @@ export default function LandlordChat() {
                   );
                 })}
 
-                {/* Audio Waveform mock message bubble */}
-                <div className="lc-bubble-wrapper incoming">
-                  <img src={activeChat.avatar} alt={activeChat.name} className="lc-bubble-avatar" />
-                  <div className="lc-bubble-content">
-                    <div className="lc-audio-bubble">
-                      <button className="lc-audio-play-btn" onClick={() => setAudioPlaying(!audioPlaying)}>
-                        {audioPlaying ? <Pause className="h-4 w-4 fill-white text-white" /> : <Play className="h-4 w-4 fill-white text-white ml-0.5" />}
-                      </button>
-                      <div className="lc-waveform">
-                        {[12, 18, 14, 25, 30, 20, 16, 22, 28, 12, 14, 20, 26, 32, 15, 10, 18, 22, 14, 20, 12, 16, 24, 18, 14, 10, 12, 16, 14, 12, 10].map((h, i) => (
-                          <span 
-                            key={i} 
-                            className={`lc-waveform-bar ${audioPlaying ? "playing" : ""}`} 
-                            style={{ height: `${h}px`, animationDelay: `${i * 0.05}s` }} 
-                          />
-                        ))}
-                      </div>
-                      <span className="lc-audio-duration">01:24</span>
-                    </div>
-                    <span className="lc-bubble-time">Today 11:45 AM</span>
-                  </div>
-                </div>
               </>
             )}
 
@@ -280,9 +335,6 @@ export default function LandlordChat() {
               className="lc-input-field text-[13.5px]"
             />
 
-            <button type="button" className="lc-input-btn" title="Record Audio" onClick={() => triggerToast("Recording voice note. Release to send.", "info", "Voice Note")}>
-              <Mic className="h-5 w-5" />
-            </button>
             <button type="submit" className="lc-send-btn" title="Send Message">
               <Send className="h-4.5 w-4.5 text-white" />
             </button>

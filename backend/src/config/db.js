@@ -113,12 +113,17 @@ export async function initDb() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
-      -- Ensure core System Admin account exists in database
-      INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number)
-      VALUES 
-        ('System', 'Admin', 'admin@lodale.com', '$2a$10$oGLTVt6pnp30pVGSiVmAmu8FgTjGo/2IYOD/gZhzhaaY/obTdBdlK', 'admin', 'verified', '+234 801 000 0000')
-      ON CONFLICT (email) DO NOTHING;
+      -- Avoid ON CONFLICT which fails without a unique constraint
     `);
+
+    const adminCheck = await client.query("SELECT id FROM users WHERE email IN ('admin', 'admin@lodale.com')");
+    if (adminCheck.rowCount === 0) {
+      await client.query(`
+        INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number)
+        VALUES 
+          ('System', 'Admin', 'admin', '$2a$10$oGLTVt6pnp30pVGSiVmAmu8FgTjGo/2IYOD/gZhzhaaY/obTdBdlK', 'admin', 'verified', '+234 801 000 0000')
+      `);
+    }
 
     // --- Migration: Role-Specific Profile Tables ---
     await client.query(`
@@ -159,6 +164,15 @@ export async function initDb() {
         max_budget NUMERIC(15, 2),
         bio TEXT,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS support_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sender_role VARCHAR(50) NOT NULL,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
 
