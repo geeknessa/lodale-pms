@@ -46,7 +46,13 @@ export async function handlePropertySubmit({
   unitsList = [],
   isMultiUnit = false,
   setFormError,
-  setIsSubmitted
+  setIsSubmitted,
+  editId = null,
+  occupied = false,
+  tenantName = "",
+  tenantContact = "",
+  leaseStartDate = "",
+  availableFrom = ""
 }) {
   e.preventDefault();
   setFormError("");
@@ -146,6 +152,11 @@ export async function handlePropertySubmit({
     ownership_doc_type: docType,
     cover_image: coverPhoto || (propertyPhotos.length > 0 ? propertyPhotos[0] : propertyPhoto) || PRESET_PHOTOS[0].url,
     images: propertyPhotos.length > 0 ? propertyPhotos : (propertyPhoto ? [propertyPhoto] : [PRESET_PHOTOS[0].url]),
+    is_occupied: occupied,
+    tenant_name: tenantName,
+    tenant_contact: tenantContact,
+    lease_start_date: leaseStartDate,
+    available_from: availableFrom,
     blocks: blocksList,
     units: unitsList.length > 0 ? unitsList : [
       {
@@ -202,11 +213,25 @@ export async function handlePropertySubmit({
   try {
     const saved = localStorage.getItem("properties");
     const existing = saved ? JSON.parse(saved) : [];
-    localStorage.setItem("properties", JSON.stringify([newPropertyObj, ...existing]));
+    
+    if (editId) {
+      const idx = existing.findIndex(p => p.id === editId);
+      if (idx !== -1) existing[idx] = { ...existing[idx], ...newPropertyObj, id: editId };
+    } else {
+      existing.unshift(newPropertyObj);
+    }
+    localStorage.setItem("properties", JSON.stringify(existing));
 
     const savedLandlord = localStorage.getItem("landlordProperties");
     const existingLandlord = savedLandlord ? JSON.parse(savedLandlord) : [];
-    localStorage.setItem("landlordProperties", JSON.stringify([newPropertyObj, ...existingLandlord]));
+    
+    if (editId) {
+      const lIdx = existingLandlord.findIndex(p => p.id === editId);
+      if (lIdx !== -1) existingLandlord[lIdx] = { ...existingLandlord[lIdx], ...newPropertyObj, id: editId };
+    } else {
+      existingLandlord.unshift(newPropertyObj);
+    }
+    localStorage.setItem("landlordProperties", JSON.stringify(existingLandlord));
 
     window.dispatchEvent(new Event("storage"));
   } catch (localErr) {
@@ -214,7 +239,11 @@ export async function handlePropertySubmit({
   }
 
   try {
-    await propertyService.createProperty(propertyPayload);
+    if (editId) {
+      await propertyService.updateProperty(editId, propertyPayload);
+    } else {
+      await propertyService.createProperty(propertyPayload);
+    }
   } catch (err) {
     console.warn("Backend API property create warning (using local storage fallback):", err);
   }
