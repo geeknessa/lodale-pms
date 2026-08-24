@@ -213,6 +213,16 @@ export default function AdminDashboard() {
 
         return Array.from(map.values());
       });
+
+      // 2. Load Registered Users from Backend API (Database Source of Truth)
+      try {
+        const apiUsers = await adminService.getUsers();
+        if (Array.isArray(apiUsers)) {
+          setUsers(apiUsers);
+        }
+      } catch (err) {
+        console.warn("[AdminDashboard] Failed to fetch users from backend:", err);
+      }
     }
 
     loadAdminData();
