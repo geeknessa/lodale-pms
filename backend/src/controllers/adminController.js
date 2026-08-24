@@ -26,8 +26,9 @@ export const adminController = {
       return {
         id: p.id,
         title: p.title,
-        location: `${p.address_line1}, ${p.city}`,
-        price: `₦${Number(p.rent_amount).toLocaleString()}/yr`,
+        rent_amount: p.rent_amount || p.rent || 0,
+        rent_period: p.rent_period || 'per annum',
+        price: `₦${Number(p.rent_amount || p.rent || 0).toLocaleString()}${String(p.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
         type: p.property_type,
         status: statusLabel,
         rawStatus: p.status,
