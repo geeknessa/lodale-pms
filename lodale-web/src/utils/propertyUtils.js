@@ -210,6 +210,21 @@ export async function handlePropertySubmit({
     createdAt: new Date().toISOString()
   };
 
+  let backendProp = null;
+  try {
+    if (editId) {
+      backendProp = await propertyService.updateProperty(editId, propertyPayload);
+    } else {
+      backendProp = await propertyService.createProperty(propertyPayload);
+    }
+    
+    if (backendProp && backendProp.id) {
+      newPropertyObj.id = backendProp.id;
+    }
+  } catch (err) {
+    console.warn("Backend API property create warning (using local storage fallback):", err);
+  }
+
   try {
     const saved = localStorage.getItem("properties");
     const existing = saved ? JSON.parse(saved) : [];
@@ -236,16 +251,6 @@ export async function handlePropertySubmit({
     window.dispatchEvent(new Event("storage"));
   } catch (localErr) {
     console.warn("Failed to persist property locally:", localErr);
-  }
-
-  try {
-    if (editId) {
-      await propertyService.updateProperty(editId, propertyPayload);
-    } else {
-      await propertyService.createProperty(propertyPayload);
-    }
-  } catch (err) {
-    console.warn("Backend API property create warning (using local storage fallback):", err);
   }
 
   setIsSubmitted(true);
