@@ -3,6 +3,7 @@ import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, Shi
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
+import Avatar from "../../components/Avatar";
 import "./Tenants.css";
 
 export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
@@ -421,15 +422,13 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
               {/* Card Header */}
               <div className="tenant-card-header">
                 <div className="tenant-card-profile">
-                  <img
-                    src={tenant.avatar}
-                    alt={tenant.name}
-                    className="tenant-card-avatar cursor-pointer"
-                    onClick={() => setSelectedTenantForDetails(tenant)}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
+                  <div onClick={() => setSelectedTenantForDetails(tenant)} className="cursor-pointer">
+                    <Avatar 
+                      src={tenant.avatar} 
+                      name={tenant.name} 
+                      className="tenant-card-avatar rounded-full" 
+                    />
+                  </div>
                   <div className="tenant-card-meta">
                     <h4 className="tenant-card-name">{tenant.name}</h4>
                     <span className="tenant-card-lease-status">{tenant.leaseStatus || "Tenant"}</span>

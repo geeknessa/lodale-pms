@@ -4,12 +4,16 @@ export const applicationService = {
   /**
    * Submit a new application for a property.
    * @param {string} propertyId - The UUID of the property.
-   * @param {string} [notes] - Optional message from tenant to landlord.
+   * @param {string|object} [notesOrData] - Optional message or full application payload.
    */
-  async apply(propertyId, notes = '') {
+  async apply(propertyId, notesOrData = '') {
+    const payload = typeof notesOrData === 'object'
+      ? { propertyId, ...notesOrData }
+      : { propertyId, notes: notesOrData };
+
     return await apiClient('/applications', {
       method: 'POST',
-      body: { propertyId, notes },
+      body: payload,
     });
   },
 
@@ -33,5 +37,24 @@ export const applicationService = {
     } catch {
       return null;
     }
+  },
+
+  /**
+   * Get all applications for the logged-in landlord.
+   */
+  async getLandlordApplications() {
+    const data = await apiClient('/applications/landlord');
+    return data.applications || [];
+  },
+
+  /**
+   * Update the status of an application (Landlord only).
+   */
+  async updateStatus(applicationId, status, rejectionReason = '') {
+    const data = await apiClient(`/applications/${applicationId}/status`, {
+      method: 'PATCH',
+      body: { status, rejectionReason },
+    });
+    return data.application;
   },
 };

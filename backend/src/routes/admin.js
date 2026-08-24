@@ -1,5 +1,6 @@
 import express from 'express';
 import { adminController } from '../controllers/adminController.js';
+import { propertyController } from '../controllers/propertyController.js';
 import { requireAuth, requireRole } from '../middlewares/authMiddleware.js';
 import { validate } from '../middlewares/validateMiddleware.js';
 import { reviewPropertySchema } from '../utils/validationSchemas.js';
@@ -10,7 +11,12 @@ const router = express.Router();
 router.use(requireAuth, requireRole('admin'));
 
 router.get('/properties/pending', adminController.getPendingProperties);
+router.get('/properties/requests', propertyController.getPendingRequests);
 router.post('/properties/:id/review', validate(reviewPropertySchema), adminController.reviewProperty);
+router.post('/properties/:id/approve-deletion', propertyController.approvePropertyDeletion);
+router.post('/properties/:id/reject-deletion', propertyController.rejectPropertyDeletion);
+router.post('/properties/:id/approve-suspension', propertyController.approvePropertySuspension);
+router.post('/properties/:id/reject-suspension', propertyController.rejectPropertySuspension);
 router.get('/users', adminController.getUsers);
 router.patch('/users/:id/status', adminController.updateUserStatus);
 router.delete('/users/:id', adminController.deleteUser);

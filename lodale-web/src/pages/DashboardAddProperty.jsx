@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -40,9 +40,12 @@ import SearchableDropdown from "../components/SearchableDropdown";
 import DropdownWithOther from "../components/DropdownWithOther";
 import { ALL_NIGERIAN_STATES, NIGERIAN_STATES_CITIES } from "../utils/nigerianStatesCities";
 import { handlePropertySubmit, PRESET_PHOTOS, COMMON_AMENITIES } from "../utils/propertyUtils";
+import { propertyService } from "../services/propertyService";
 import "./DashboardAddProperty.css";
 
 export default function DashboardAddProperty() {
+  const { id } = useParams();
+  const isEditing = Boolean(id);
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [occupied, setOccupied] = useState(null); // null | true | false
@@ -460,6 +463,72 @@ export default function DashboardAddProperty() {
   const [leaseStartDate, setLeaseStartDate] = useState("");
   const [availableFrom, setAvailableFrom] = useState("");
 
+  // ============================================
+  // EDIT MODE: Fetch and Populate State
+  // ============================================
+  const [isFetchingEdit, setIsFetchingEdit] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    
+    const loadEditData = async () => {
+      setIsFetchingEdit(true);
+      try {
+        const item = await propertyService.getPropertyById(id);
+        if (item) {
+          setDisplayName(item.title || "");
+          setAddress(item.address_line1 || item.location || "");
+          setCityName(item.city || "");
+          setStateName(item.state || "Lagos");
+          
+          if (item.property_type) setPropertyType(item.property_type);
+          if (item.houseSubtype || item.house_subtype) setHouseSubtype(item.houseSubtype || item.house_subtype);
+          setIsMultiUnit(Boolean(item.isMultiUnit || (item.units && item.units.length > 1)));
+          
+          if (item.rent_amount || item.price) {
+            const rawRent = String(item.rent_amount || item.price).replace(/[^0-9]/g, "");
+            setRent(rawRent);
+          }
+          if (item.rentCycle || item.rent_cycle) setRentCycle(item.rentCycle || item.rent_cycle);
+          if (item.bedrooms || item.beds) setBedrooms(String(item.bedrooms || item.beds));
+          if (item.bathrooms || item.baths) setBathrooms(String(item.bathrooms || item.baths));
+          
+          if (item.latitude) setLatitude(String(item.latitude));
+          if (item.longitude) setLongitude(String(item.longitude));
+          
+          if (item.description) setDescription(item.description);
+          if (item.rules) setRules(item.rules);
+          
+          if (item.amenities && Array.isArray(item.amenities)) {
+            setSelectedAmenities(item.amenities);
+          }
+          
+          if (item.blocks && Array.isArray(item.blocks)) setBlocksList(item.blocks);
+          if (item.units && Array.isArray(item.units)) setUnitsList(item.units);
+          
+          const rawCover = item.cover_image || item.image || (item.images && item.images.length > 0 ? item.images[0] : "");
+          let photos = item.images && Array.isArray(item.images) ? [...item.images] : (rawCover ? [rawCover] : []);
+          
+          if (photos.length > 0) {
+            setPropertyPhotos(photos);
+            const coverIdx = photos.findIndex(p => p === rawCover);
+            if (coverIdx !== -1) setCoverPhotoIndex(coverIdx);
+          }
+          
+          if (item.ownership_doc_type || item.docType) setDocType(item.ownership_doc_type || item.docType);
+          if (item.ownership_doc) setDocName(item.ownership_doc);
+          if (item.ownership_doc_url) setDocDataUrl(item.ownership_doc_url);
+        }
+      } catch (err) {
+        showToast("Failed to load property data for editing.", "error");
+      } finally {
+        setIsFetchingEdit(false);
+      }
+    };
+    
+    loadEditData();
+  }, [id, isEditing]);
+
   const fileInputRef = useRef(null);
   const docInputRef = useRef(null);
   const cardRef = useRef(null);
@@ -852,7 +921,13 @@ export default function DashboardAddProperty() {
       unitsList,
       isMultiUnit,
       setFormError,
-      setIsSubmitted
+      setIsSubmitted,
+      editId: id,
+      occupied,
+      tenantName,
+      tenantContact,
+      leaseStartDate,
+      availableFrom
     });
   };
 
@@ -891,7 +966,7 @@ export default function DashboardAddProperty() {
           </div>
 
           <div ref={textContainerRef} className="dap-success-texts">
-            <h2 className="dap-success-heading">Property Portfolio Registered!</h2>
+            <h2 className="dap-success-heading">{isEditing ? "Property Updated!" : "Property Portfolio Registered!"}</h2>
             <p className="dap-success-body">
               Your property listing and proof of ownership legal documents have been queued for administrative review. An administrator will verify your submitted documents shortly.
             </p>
@@ -1107,7 +1182,7 @@ export default function DashboardAddProperty() {
         <aside className="dap-left-panel">
           <div>
             <div className="mb-6">
-              <div className="dap-panel-section-title">PORTFOLIO ONBOARDING</div>
+              <div className="dap-panel-section-title">{isEditing ? "EDIT PROPERTY" : "PORTFOLIO ONBOARDING"}</div>
               {stepsInfo.map((sObj) => {
                 const isActive = currentStep === sObj.step;
                 const isCompleted = isStepValid(sObj.step);
@@ -1897,7 +1972,7 @@ export default function DashboardAddProperty() {
                   )}
 
                   <Button type="submit" variant="primary" className="w-full py-3 text-xs font-bold cursor-pointer mt-4">
-                    Complete Property Submission
+                    {isEditing ? "Save Property Changes" : "Complete Property Submission"}
                   </Button>
                 </div>
               )}

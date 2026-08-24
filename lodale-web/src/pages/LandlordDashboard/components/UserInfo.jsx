@@ -3,6 +3,7 @@ import {
   X, Mail, Phone, Briefcase, Wallet, Star, CheckCircle2, 
   Clock, CheckCircle, Award, ThumbsUp, ThumbsDown, Calendar
 } from "lucide-react";
+import Avatar from "../../../components/Avatar";
 
 // Helper to get detailed reliability score breakdown based on actual tenant data
 const getReliabilityDetails = (tenant) => {
@@ -49,7 +50,7 @@ export default function UserInfo({ tenant, onClose }) {
         {/* Profile Header */}
         <div className="ui-profile-header">
           <div className="ui-avatar-wrapper">
-            <img src={tenant.avatar} alt={tenant.name} className="ui-profile-avatar" />
+            <Avatar src={tenant.avatar} name={tenant.name || tenant.tenantName} className="ui-profile-avatar rounded-full" />
             <span className="ui-verified-badge" title="Verified NIN">
               <CheckCircle2 className="h-4 w-4 fill-white text-[#2C4633]" />
             </span>

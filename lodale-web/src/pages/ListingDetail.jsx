@@ -134,12 +134,28 @@ export default function ListingDetail() {
       setIsLoading(true);
       try {
         const item = await propertyService.getPropertyById(id);
-        setListing(item || null);
-        
         if (item) {
+          setListing(item);
           const savedStr = localStorage.getItem("savedProperties");
           const savedArr = savedStr ? JSON.parse(savedStr) : [];
-          setIsSaved(savedArr.some(p => p.id === item.id));
+          const isItemSaved = savedArr.some(p => String(p.id) === String(item.id));
+          setIsSaved(isItemSaved);
+
+          if (isItemSaved) {
+            const updatedSaved = savedArr.map(p => {
+              if (String(p.id) === String(item.id)) {
+                return {
+                  ...p,
+                  ...item,
+                  price: `₦${Number(item.rent_amount || item.price || 0).toLocaleString()}${String(item.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
+                  location: `${item.address_line1 || item.address || ''}, ${item.city || ''}`
+                };
+              }
+              return p;
+            });
+            localStorage.setItem("savedProperties", JSON.stringify(updatedSaved));
+            window.dispatchEvent(new Event("propertySavedChanged"));
+          }
         }
       } catch (err) {
         setListing(null);
@@ -320,10 +336,9 @@ export default function ListingDetail() {
   };
 
   // Price formatting
-  const rawPrice = listing.rent_amount || listing.price || 15000000;
-  const formattedPrice = typeof rawPrice === "number"
-    ? `₦${rawPrice.toLocaleString()}`
-    : String(rawPrice).startsWith("₦") ? rawPrice : `₦${rawPrice}`;
+  const rentAmount = Number(listing.rent_amount) || 0;
+  const rentPeriodStr = String(listing.rent_period || '').toLowerCase().includes('month') ? '/month' : '/year';
+  const formattedPrice = `₦${rentAmount.toLocaleString()}`;
 
   const propertyTypeDisplay = listing.property_type
     ? listing.property_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
@@ -338,7 +353,7 @@ export default function ListingDetail() {
     ? listing.amenities
     : typeof listing.amenities === "string" && listing.amenities
       ? listing.amenities.split(",").map((a) => a.trim()).filter(Boolean)
-      : ["Swimming Pool", "Boys Quarter", "Security", "Parking", "Gated Estate", "Prepaid Meter", "Gym", "Elevator", "Water Supply", "Electricity", "Generator", "Air Conditioning", "CCTV", "Serviced", "Furnished", "Internet"];
+      : [];
 
   const landlordName = listing.landlord?.name || listing.landlord_name || "Skyline Properties Ltd";
 
@@ -530,24 +545,26 @@ export default function ListingDetail() {
               </p>
 
               {/* Map Box Preview */}
-              <div className="relative rounded-2xl overflow-hidden border border-ink-200 dark:border-white/10 h-64 bg-cream-200 dark:bg-[#16241F] shadow-xs flex items-center justify-center">
-                <iframe
-                  title="Property Location Map"
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  scrolling="no"
-                  marginHeight="0"
-                  marginWidth="0"
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(locationDisplay)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
-                  className="w-full h-full opacity-90 dark:opacity-80"
-                />
+              <div className="mt-4">
+                <a href={`https://maps.google.com/maps?q=${encodeURIComponent(locationDisplay)}`} target="_blank" rel="noopener noreferrer" className="relative rounded-2xl overflow-hidden border border-ink-200 dark:border-white/10 h-64 bg-[#EAF0E8] dark:bg-[#16241F] shadow-xs flex flex-col items-center justify-center group hover:border-moss-400 transition-colors block">
+                  
+                  {/* Decorative Map Grid Background */}
+                  <div className="absolute inset-0 opacity-10 dark:opacity-5" style={{ backgroundImage: 'linear-gradient(#2C4633 1px, transparent 1px), linear-gradient(90deg, #2C4633 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                  
+                  <div className="relative z-10 flex flex-col items-center">
+                     <div className="h-14 w-14 rounded-full bg-white dark:bg-[#0A1612] shadow-md flex items-center justify-center mb-3 group-hover:-translate-y-1 transition-transform">
+                       <MapPin className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" />
+                     </div>
+                     <span className="text-sm font-bold text-ink-900 dark:text-white mb-1">View Full Map</span>
+                     <span className="text-[10px] uppercase tracking-wider text-ink-500 font-bold">Opens in new tab</span>
+                  </div>
 
-                {/* Price Marker Overlay Pill */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#12221C] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-white/20 flex items-center gap-1.5 z-10">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{formattedPrice}</span>
-                </div>
+                  {/* Price Marker Overlay Pill */}
+                  <div className="absolute bottom-4 right-4 bg-[#12221C] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-white/20 flex items-center gap-1.5 z-10">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>{formattedPrice}</span>
+                  </div>
+                </a>
               </div>
             </div>
 
@@ -586,11 +603,11 @@ export default function ListingDetail() {
           </div>
 
           {/* RIGHT STICKY SIDEBAR */}
-          <div className="sticky top-24 space-y-4">
+          <div className="sticky top-32 space-y-4">
             <div className="p-6 rounded-2xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#16241F] shadow-sm">
               <div className="text-2xl font-bold text-moss-800 dark:text-[#E5C583] mb-4">
                 {formattedPrice}
-                <span className="text-xs font-normal text-ink-500 dark:text-cream-100/60 ml-1">/year</span>
+                <span className="text-xs font-normal text-ink-500 dark:text-cream-100/60 ml-1">{rentPeriodStr}</span>
               </div>
 
               {/* Primary Contact Landlord Button (In-App Chat) */}

@@ -36,6 +36,12 @@ CREATE TABLE IF NOT EXISTS properties (
     ownership_doc_url TEXT,
     rules TEXT,
     images TEXT,
+    is_occupied BOOLEAN DEFAULT false,
+    tenant_name VARCHAR(255),
+    tenant_contact VARCHAR(255),
+    lease_start_date DATE,
+    available_from DATE,
+    deletion_reason TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -106,7 +112,11 @@ CREATE TABLE IF NOT EXISTS property_applications (
     tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status VARCHAR(50) DEFAULT 'pending',
     notes TEXT,
+    rejection_reason TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(property_id, tenant_id)
 );
+
+
+
