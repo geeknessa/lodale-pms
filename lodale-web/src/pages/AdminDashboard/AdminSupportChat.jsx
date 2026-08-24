@@ -87,8 +87,12 @@ export default function AdminSupportChat() {
                 className={`p-4 border-b border-neutral-200 dark:border-white/10 cursor-pointer transition-colors ${activeUserId === thread.user_id ? "bg-[#3A5A40]/10 dark:bg-[#3A5A40]/30" : "hover:bg-neutral-100 dark:hover:bg-white/5"}`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-[#3A5A40] text-white flex items-center justify-center font-bold text-lg shrink-0">
-                    {thread.user_name ? thread.user_name.charAt(0).toUpperCase() : "U"}
+                  <div className="h-10 w-10 rounded-full bg-[#3A5A40] text-white flex items-center justify-center font-bold text-lg shrink-0 overflow-hidden">
+                    {thread.avatar_url ? (
+                      <img src={thread.avatar_url} alt={thread.user_name} className="h-full w-full object-cover" />
+                    ) : (
+                      thread.user_name ? thread.user_name.charAt(0).toUpperCase() : "U"
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex justify-between items-baseline mb-0.5">
@@ -120,8 +124,12 @@ export default function AdminSupportChat() {
           <>
             {/* Header */}
             <div className="p-4 border-b border-neutral-200 dark:border-white/10 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-[#3A5A40] text-white flex items-center justify-center font-bold text-lg">
-                {activeThread.user_name ? activeThread.user_name.charAt(0).toUpperCase() : "U"}
+              <div className="h-10 w-10 rounded-full bg-[#3A5A40] text-white flex items-center justify-center font-bold text-lg overflow-hidden">
+                {activeThread.avatar_url ? (
+                  <img src={activeThread.avatar_url} alt={activeThread.user_name} className="h-full w-full object-cover" />
+                ) : (
+                  activeThread.user_name ? activeThread.user_name.charAt(0).toUpperCase() : "U"
+                )}
               </div>
               <div>
                 <h3 className="font-bold text-slate-900 dark:text-white">{activeThread.user_name}</h3>

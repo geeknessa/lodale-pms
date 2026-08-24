@@ -5,98 +5,61 @@ import {
 } from "lucide-react";
 import { triggerToast } from "../../context/ToastContext";
 import { supportService } from "../../services/supportService";
+import { chatService } from "../../services/chatService";
+import Avatar from "../../components/Avatar";
 import gsap from "gsap";
 import "./TenantChat.css";
 
-
-const LANDLORD_AVATARS = {
-  "Ada K.": "",
-  "Chidi O.": "",
-  "Funke A.": "",
-  "Emeka Obi": "",
-  "Maren Maureen": "",
-  "Ryan Herwinds": ""
-};
-
 export default function TenantChat() {
   const [chats, setChats] = useState([]);
-  const [activeChatId, setActiveChatId] = useState(null);
+  const [activeChatId, setActiveChatId] = useState(() => sessionStorage.getItem("activeChatPartnerId") || null);
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
-  const [audioPlaying, setAudioPlaying] = useState(false);
   const [mobileShowSidebar, setMobileShowSidebar] = useState(true);
+  
   const [supportMessages, setSupportMessages] = useState([]);
+  const [threadMessages, setThreadMessages] = useState([]);
 
   const messagesEndRef = useRef(null);
   const chatListRef = useRef(null);
   const messageThreadRef = useRef(null);
-  const redirectHandled = useRef(false);
 
-  // Load chats from localStorage or fallback to empty array
   useEffect(() => {
-    const loadChats = () => {
-      let currentChats = [];
-      const saved = localStorage.getItem("tenantChats");
-      if (saved) {
-        currentChats = JSON.parse(saved);
-      } else {
-        currentChats = [];
-        localStorage.setItem("tenantChats", JSON.stringify([]));
-      }
+    const pendingPartnerId = sessionStorage.getItem("activeChatPartnerId");
+    if (pendingPartnerId) {
+      setActiveChatId(pendingPartnerId);
+      setMobileShowSidebar(false);
+      sessionStorage.removeItem("activeChatPartnerId");
+    }
+  }, []);
 
-      // Inject Lodale Support Thread
+  // Initial Data Fetching
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch Chat Conversations
+      const convos = await chatService.getConversations();
+      
+      // Inject Support Thread at top
       const supportThread = {
-        id: "lodale-support",
-        name: "Lodale Admin",
-        avatar: "/logo_black.svg", // Lodale logo
-        lastMessage: supportMessages.length > 0 ? supportMessages[supportMessages.length - 1].message : "Lodale Official Support Team",
-        time: supportMessages.length > 0 ? new Date(supportMessages[supportMessages.length - 1].created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Always online",
-        messages: supportMessages.map(m => ({
-          id: m.id,
-          sender: m.sender_role === 'tenant' ? 'tenant' : 'landlord', // map to CSS classes (tenant=outgoing, landlord=incoming)
-          text: m.message,
-          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }))
+        partner_id: "lodale-support",
+        first_name: "Lodale",
+        last_name: "Admin",
+        avatar_url: "/logo_black.svg",
+        last_message: supportMessages.length > 0 ? supportMessages[supportMessages.length - 1].message : "Lodale Official Support Team",
+        last_message_time: supportMessages.length > 0 ? supportMessages[supportMessages.length - 1].created_at : new Date(),
+        isSupport: true
       };
       
-      setChats([supportThread, ...currentChats]);
-
-      const redirectLandlordName = localStorage.getItem("activeChatLandlordName");
-      if (redirectLandlordName && !redirectHandled.current) {
-        let thread = currentChats.find(c => c.name.toLowerCase() === redirectLandlordName.toLowerCase());
-        if (!thread) {
-          const avatar = LANDLORD_AVATARS[redirectLandlordName] || "";
-          const newChat = {
-            id: redirectLandlordName.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
-            name: redirectLandlordName,
-            avatar: avatar,
-            lastMessage: "Chat started.",
-            time: "Just now",
-            messages: []
-          };
-          const updated = [...currentChats, newChat];
-          localStorage.setItem("tenantChats", JSON.stringify(updated));
-          setChats(updated);
-          setActiveChatId(newChat.id);
-        } else {
-          setActiveChatId(thread.id);
-        }
-        setMobileShowSidebar(false);
-        redirectHandled.current = true;
-        localStorage.removeItem("activeChatLandlordName");
-      } else if (!redirectHandled.current) {
-        if (currentChats.length > 0 && !activeChatId) {
-          setActiveChatId(currentChats[0].id);
-        }
-      }
+      setChats([supportThread, ...convos]);
     };
+    
+    fetchData();
+    // Simple polling for conversations every 15s
+    const interval = setInterval(fetchData, 15000);
+    return () => clearInterval(interval);
+  }, [supportMessages]);
 
-    loadChats();
-    window.addEventListener("storage", loadChats);
-    return () => window.removeEventListener("storage", loadChats);
-  }, [activeChatId, supportMessages]);
-
-  // Fetch support messages
+  // Fetch support messages separately
   useEffect(() => {
     const fetchSupport = async () => {
       const msgs = await supportService.getUserMessages();
@@ -107,10 +70,39 @@ export default function TenantChat() {
     return () => clearInterval(interval);
   }, []);
 
+  // Fetch individual thread messages when active chat changes
+  useEffect(() => {
+    if (!activeChatId) return;
+
+    if (activeChatId === "lodale-support") {
+      setThreadMessages(supportMessages.map(m => ({
+        id: m.id,
+        isMine: m.sender_role === 'tenant',
+        text: m.message,
+        time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      })));
+      return;
+    }
+
+    const fetchThread = async () => {
+      const msgs = await chatService.getMessages(activeChatId);
+      setThreadMessages(msgs.map(m => ({
+        id: m.id,
+        isMine: m.sender_id !== activeChatId,
+        text: m.message,
+        time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      })));
+    };
+
+    fetchThread();
+    const interval = setInterval(fetchThread, 5000);
+    return () => clearInterval(interval);
+  }, [activeChatId, supportMessages]);
+
   // Scroll to bottom of message thread
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeChatId, chats]);
+  }, [threadMessages]);
 
   // GSAP animations on active chat change
   useEffect(() => {
@@ -123,12 +115,13 @@ export default function TenantChat() {
     }
   }, [activeChatId]);
 
-  const activeChat = chats.find(c => c.id === activeChatId);
+  const activeChat = chats.find(c => c.partner_id === activeChatId);
 
-  const filteredChats = chats.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredChats = chats.filter(c => {
+    const name = c.isSupport ? "Lodale Admin" : `${c.first_name} ${c.last_name}`;
+    return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           (c.last_message || "").toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
@@ -146,81 +139,117 @@ export default function TenantChat() {
       return;
     }
 
-    const updatedChats = chats.map(c => {
-      if (c.id === activeChatId) {
-        const newMsgObj = {
-          id: Date.now(),
-          sender: "tenant",
-          text: newMessage,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        return {
-          ...c,
-          lastMessage: newMessage,
-          time: "Just now",
-          messages: [...c.messages, newMsgObj]
-        };
-      }
-      return c;
-    });
-
-    setChats(updatedChats);
-    localStorage.setItem("tenantChats", JSON.stringify(updatedChats.filter(c => c.id !== "lodale-support")));
-
-    // Sync to landlordChats
-    const tenantName = sessionStorage.getItem("username") || sessionStorage.getItem("tenantUsername") || "Tunde";
-    const savedLandlordChats = localStorage.getItem("landlordChats");
-    let lChats = savedLandlordChats ? JSON.parse(savedLandlordChats) : [];
-    
-    let lThread = lChats.find(c => c.name.toLowerCase() === tenantName.toLowerCase());
-    const newSyncMsg = {
-      id: Date.now(),
-      sender: "tenant", // incoming for landlord
-      text: newMessage,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    
-    if (lThread) {
-      lThread.messages.push(newSyncMsg);
-      lThread.lastMessage = newMessage;
-      lThread.time = "Just now";
-    } else {
-      lChats.push({
-        id: tenantName.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
-        name: tenantName,
-        avatar: "", 
-        lastMessage: newMessage,
-        time: "Just now",
-        messages: [newSyncMsg]
-      });
+    try {
+      await chatService.sendMessage(activeChatId, newMessage);
+      setNewMessage("");
+      // Optimistically fetch thread to show message immediately
+      const msgs = await chatService.getMessages(activeChatId);
+      setThreadMessages(msgs.map(m => ({
+        id: m.id,
+        isMine: m.sender_id !== activeChatId,
+        text: m.message,
+        time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      })));
+    } catch (err) {
+      triggerToast("Failed to send message", "error");
     }
-    localStorage.setItem("landlordChats", JSON.stringify(lChats.filter(c => c.id !== "lodale-support")));
+  };
 
-    setNewMessage("");
-    window.dispatchEvent(new Event("storage"));
+  const chatFileInputRef = useRef(null);
+
+  const handlePaperclipFile = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        triggerToast("File size exceeds 5MB limit.", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target.result;
+        const msg = `[DOCUMENT UPLOADED]\nDocument Type: Chat Attachment\nFile Name: ${file.name}\nData: ${dataUrl}`;
+        if (activeChatId) {
+          try {
+            await chatService.sendMessage(activeChatId, msg);
+            triggerToast(`Sent attachment "${file.name}"`, "success");
+            const msgs = await chatService.getMessages(activeChatId);
+            setThreadMessages(msgs.map(m => ({
+              id: m.id,
+              isMine: m.sender_id !== activeChatId,
+              text: m.message,
+              time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            })));
+          } catch (err) {
+            triggerToast("Failed to send attachment", "error");
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const renderMessageText = (text) => {
+    if (!text) return "";
+    if (text.startsWith("[DOCUMENT UPLOADED]")) {
+      const typeMatch = text.match(/Document Type:\s*(.+)/);
+      const nameMatch = text.match(/File Name:\s*(.+)/);
+      const dataMatch = text.match(/Data:\s*(.+)/);
+
+      const docType = typeMatch ? typeMatch[1].trim() : "Attached Document";
+      const fileName = nameMatch ? nameMatch[1].trim() : "Document File";
+      const dataUrl = dataMatch ? dataMatch[1].trim() : null;
+
+      return (
+        <div className="p-3 bg-white/10 rounded-xl border border-white/20 my-1 space-y-2 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📄</span>
+            <div>
+              <p className="font-bold text-xs">{docType}</p>
+              <p className="text-[11px] opacity-80">{fileName}</p>
+            </div>
+          </div>
+          {dataUrl && (
+            <a
+              href={dataUrl}
+              download={fileName}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-moss-900 dark:bg-moss-800 dark:text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+            >
+              📥 Download / View Document
+            </a>
+          )}
+        </div>
+      );
+    }
+    return text;
   };
 
   return (
     <div className={`lc-container ${mobileShowSidebar ? "mobile-sidebar-active" : "mobile-thread-active"}`}>
+      <input
+        type="file"
+        ref={chatFileInputRef}
+        onChange={handlePaperclipFile}
+        accept="image/*,application/pdf,.doc,.docx"
+        className="hidden"
+      />
+      
       {/* 1. LEFT COLUMN: Chat List */}
       <div className="lc-sidebar">
-        {/* Chat Room header */}
+
+        {/* Header */}
         <div className="lc-sidebar-header" style={{ padding: "24px 20px 16px 20px", textAlign: "left" }}>
-          <h3 style={{ fontSize: "20px", fontWeight: "850", color: "var(--tenant-text-main)", margin: 0, letterSpacing: "-0.02em" }}>Chat Room</h3>
+          <h2 className="lc-sidebar-title" style={{ fontSize: "20px", fontWeight: "850", color: "var(--tenant-text-main)", margin: 0, letterSpacing: "-0.02em" }}>Messages</h2>
         </div>
 
         {/* Sort & Search */}
         <div className="lc-search-bar-row">
-          <div className="lc-sort-dropdown">
-            <span>Latest First</span>
-            <ChevronRight className="h-3.5 w-3.5 rotate-90 text-moss-600 dark:text-[#E5C583]" />
-          </div>
-          
-          <div className="lc-search-wrapper">
+          <div className="lc-search-wrapper" style={{ width: '100%' }}>
             <Search className="lc-search-icon" />
-            <input 
-              type="text" 
-              placeholder="Search chats..." 
+            <input
+              type="text"
+              placeholder="Search chats..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="lc-search-input"
@@ -232,27 +261,37 @@ export default function TenantChat() {
         <div className="lc-list-stack" ref={chatListRef}>
           {filteredChats.length > 0 ? (
             filteredChats.map((chat) => {
-              const isActive = chat.id === activeChatId;
+              const isActive = chat.partner_id === activeChatId;
+              const name = chat.isSupport ? "Lodale Admin" : `${chat.first_name} ${chat.last_name}`;
+
+              let timeStr = "Just now";
+              if (chat.last_message_time) {
+                const d = new Date(chat.last_message_time);
+                if (!isNaN(d.getTime())) {
+                  timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+              }
+
               return (
-                <div 
-                  key={chat.id} 
+                <div
+                  key={chat.partner_id}
                   className={`lc-chat-card ${isActive ? "active" : ""}`}
                   onClick={() => {
-                    setActiveChatId(chat.id);
+                    setActiveChatId(chat.partner_id);
                     setMobileShowSidebar(false);
                   }}
                 >
                   <div className="lc-card-avatar-wrapper">
-                    <img src={chat.avatar} alt={chat.name} className="lc-card-avatar" />
+                    <Avatar src={chat.avatar_url} name={name} className="lc-card-avatar rounded-full" />
                     <span className="lc-online-badge" />
                   </div>
 
                   <div className="lc-card-info">
                     <div className="lc-card-header-row">
-                      <span className="lc-card-name">{chat.name}</span>
-                      <span className="lc-card-time">{chat.time}</span>
+                      <span className="lc-card-name">{name}</span>
+                      <span className="lc-card-time">{timeStr}</span>
                     </div>
-                    <p className="lc-card-snippet">{chat.lastMessage}</p>
+                    <p className="lc-card-snippet">{chat.last_message || "Start a conversation"}</p>
                   </div>
                   
                   {isActive && <div className="lc-active-indicator" />}
@@ -262,7 +301,6 @@ export default function TenantChat() {
           ) : (
             <div className="lc-empty-chats">
               <p>No active conversations yet.</p>
-              <span className="text-[11px] text-moss-400">Search and view landlord listings to start chatting.</span>
             </div>
           )}
         </div>
@@ -273,22 +311,35 @@ export default function TenantChat() {
         <div className="lc-thread-wrapper">
           {/* Header */}
           <div className="lc-thread-header">
+            {/* Mobile Back Button */}
+            <button
+              className="lc-mobile-back-btn p-2 mr-2 text-ink-500 hover:bg-ink-100 rounded-lg lg:hidden"
+              onClick={() => setMobileShowSidebar(true)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+
             <div className="lc-header-tenant-info">
-              <button 
-                className="lc-mobile-back-btn"
-                onClick={() => setMobileShowSidebar(true)}
-                title="Back to conversations"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <img src={activeChat.avatar} alt={activeChat.name} className="lc-header-avatar" />
+              <Avatar
+                src={activeChat.avatar_url}
+                name={activeChat.isSupport ? "Lodale Admin" : `${activeChat.first_name} ${activeChat.last_name}`}
+                className="lc-header-avatar rounded-full"
+              />
               <div>
-                <h3 className="lc-header-name">{activeChat.name}</h3>
-                <span className="lc-header-status">Online</span>
+                <h3 className="lc-header-name">
+                  {activeChat.isSupport ? "Lodale Official Support" : `${activeChat.first_name} ${activeChat.last_name}`}
+                </h3>
+                <span className="lc-header-status text-moss-600 dark:text-moss-400">Online</span>
               </div>
             </div>
 
             <div className="lc-header-actions">
+              <button className="lc-header-btn" title="Voice Call">
+                <Phone className="h-4.5 w-4.5" />
+              </button>
+              <button className="lc-header-btn" title="Video Call">
+                <Video className="h-4.5 w-4.5" />
+              </button>
               <button className="lc-header-btn" title="More Options">
                 <MoreHorizontal className="h-4.5 w-4.5" />
               </button>
@@ -307,45 +358,51 @@ export default function TenantChat() {
                 </p>
               </div>
             )}
+
             <div className="lc-date-divider">
               <span>Today</span>
             </div>
 
-            {activeChat.messages.length === 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", color: "var(--tenant-text-sec)", textAlign: "center" }}>
+            {threadMessages.length === 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", color: "var(--text-muted)", textAlign: "center" }}>
                 <span style={{ fontSize: "28px" }}>💬</span>
-                <p style={{ fontSize: "13px", fontWeight: "700", color: "var(--tenant-text-main)", margin: "12px 0 4px 0" }}>No Messages Yet</p>
-                <p style={{ fontSize: "11.5px", margin: 0, maxWidth: "200px", lineHeight: "1.4" }}>Send a message to start the conversation with {activeChat.name}.</p>
+                <p style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-primary)", margin: "12px 0 4px 0" }}>No Messages Yet</p>
+                <p style={{ fontSize: "11.5px", margin: 0, maxWidth: "200px", lineHeight: "1.4" }}>Send a message to start the conversation.</p>
               </div>
             ) : (
-              <>
-                {activeChat.messages.map((msg, index) => {
-                  const isTenant = msg.sender === "tenant";
-                  return (
-                    <div key={msg.id || index} className={`lc-bubble-wrapper ${isTenant ? "outgoing" : "incoming"}`}>
-                      {!isTenant && (
-                        <img src={activeChat.avatar} alt={activeChat.name} className="lc-bubble-avatar" />
-                      )}
-                      <div className="lc-bubble-content">
-                        <div className="lc-bubble text-[13px]">{msg.text}</div>
-                        <span className="lc-bubble-time">{msg.time}</span>
-                      </div>
+              threadMessages.map((msg, index) => {
+                const isMine = msg.isMine;
+                return (
+                  <div key={msg.id || index} className={`lc-bubble-wrapper ${isMine ? "outgoing" : "incoming"}`}>
+                    {!isMine && (
+                      <Avatar
+                        src={activeChat.avatar_url}
+                        name={activeChat.isSupport ? "Lodale Admin" : `${activeChat.first_name} ${activeChat.last_name}`}
+                        className="lc-bubble-avatar rounded-full"
+                      />
+                    )}
+                    <div className="lc-bubble-content">
+                      <div className="lc-bubble text-[13px]">{renderMessageText(msg.text)}</div>
+                      <span className="lc-bubble-time">{msg.time}</span>
                     </div>
-                  );
-                })}
-
-              </>
+                  </div>
+                );
+              })
             )}
-
             <div ref={messagesEndRef} />
           </div>
 
           {/* Form input */}
           <form className="lc-input-form" onSubmit={handleSendMessage}>
-            <button type="button" className="lc-input-btn" title="Add Attachment" onClick={() => triggerToast("Select an image or PDF document to attach.", "info", "Attachment")}>
+            <button
+              type="button"
+              className="lc-input-btn"
+              title="Attach Document or Image"
+              onClick={() => chatFileInputRef.current?.click()}
+            >
               <Paperclip className="h-5 w-5" />
             </button>
-            
+
             <input 
               type="text" 
               placeholder="Type your message..." 
@@ -360,10 +417,10 @@ export default function TenantChat() {
           </form>
         </div>
       ) : (
-        <div className="lc-thread-wrapper lc-no-active">
-          <Building2 className="h-14 w-14 text-moss-400 mb-2 animate-bounce" />
+        <div className="lc-thread-wrapper lc-no-active hidden lg:flex">
+          <Building2 className="h-14 w-14 text-ink-200 mb-2 animate-bounce" />
           <h3>Select a conversation</h3>
-          <p>Choose a landlord from the list on the left to view messages and details.</p>
+          <p>Choose a chat from the list on the left to view messages.</p>
         </div>
       )}
     </div>
