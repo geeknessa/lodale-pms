@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 /**
  * Avatar component that renders a profile image if available,
@@ -11,8 +11,11 @@ import React from 'react';
  * @param {Object} props.style - Inline styles.
  */
 export default function Avatar({ src, name, className = "", style = {} }) {
+  const [imgFailed, setImgFailed] = useState(false);
+
   // Check if src is provided and is not empty or a default placeholder that we want to override
   const isValidSrc = src && src.trim() !== "" && src !== "/default-avatar.png";
+  const showImage = isValidSrc && !imgFailed;
 
   const getInitial = () => {
     if (!name || name.trim() === "") return "U";
@@ -23,24 +26,18 @@ export default function Avatar({ src, name, className = "", style = {} }) {
     <div 
       className={`overflow-hidden flex items-center justify-center shrink-0 ${className}`} 
       style={{
-        backgroundColor: !isValidSrc ? '#3A5A40' : 'transparent',
-        color: !isValidSrc ? 'white' : 'inherit',
+        backgroundColor: !showImage ? '#3A5A40' : 'transparent',
+        color: !showImage ? 'white' : 'inherit',
         fontWeight: 'bold',
         ...style
       }}
     >
-      {isValidSrc ? (
+      {showImage ? (
         <img 
           src={src} 
           alt={name || "User Avatar"} 
           className="h-full w-full object-cover" 
-          onError={(e) => {
-            // Fallback if image fails to load
-            e.target.style.display = 'none';
-            e.target.parentNode.style.backgroundColor = '#3A5A40';
-            e.target.parentNode.style.color = 'white';
-            e.target.parentNode.innerHTML = getInitial();
-          }}
+          onError={() => setImgFailed(true)}
         />
       ) : (
         <span style={{ fontSize: 'inherit' }}>{getInitial()}</span>
@@ -48,3 +45,4 @@ export default function Avatar({ src, name, className = "", style = {} }) {
     </div>
   );
 }
+
