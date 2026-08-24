@@ -159,7 +159,7 @@ export default function LandlordProperties() {
         const pLandlordName = (p.landlord?.name || p.landlord || "").toLowerCase();
         const isMatch = !p.landlord || pLandlordName.includes(currentName) || currentName.includes(pLandlordName) || p.landlordId === currentUserId;
 
-        if (isMatch || !propMap.has(p.id)) {
+        if (isMatch && !propMap.has(p.id)) {
           // Sync status from general properties if approved in admin
           const generalPropsStr = localStorage.getItem("properties");
           if (generalPropsStr) {
