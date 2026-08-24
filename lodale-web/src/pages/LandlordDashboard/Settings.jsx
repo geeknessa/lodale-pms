@@ -7,6 +7,7 @@ import { triggerToast } from "../../context/ToastContext";
 import { formatDate } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
 import { userService } from "../../services/userService";
+import { safeSetLocalStorage, safeSetSessionStorage, compressImageForStorage } from "../../utils/storageUtils";
 import "./Settings.css";
 
 export default function Settings() {
@@ -31,7 +32,7 @@ export default function Settings() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  
+
   // Scoped helper to define landlord fullName cleanly
   const getFullName = () => {
     return `${firstName} ${lastName}`.trim() || sessionStorage.getItem("username") || "Landlord User";
@@ -54,7 +55,7 @@ export default function Settings() {
     } catch (e) { }
 
     const storedUsername = sessionStorage.getItem("username") || (emailKey ? sessionStorage.getItem("username_" + emailKey) : null) || sessionStorage.getItem("username") || "";
-    
+
     let fname = localProf?.firstName || localProf?.first_name || "";
     let lname = localProf?.lastName || localProf?.last_name || "";
     if (!fname && storedUsername) {
@@ -111,7 +112,10 @@ export default function Settings() {
   }, []);
   const fileInputRef = useRef(null);
 
-  const handleFileChange = (e) => {
+  const IMAGE_SIZE_LIMIT_MB = 5;
+  const IMAGE_SIZE_LIMIT_BYTES = IMAGE_SIZE_LIMIT_MB * 1024 * 1024;
+
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -137,6 +141,8 @@ export default function Settings() {
 
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  // Inline feedback banner for avatar upload and profile actions
+  const [feedbackMessage, setFeedbackMessage] = useState(null); // { type: "success" | "error", text: string }
 
   // Document Generator States
   const [properties, setProperties] = useState([]);
@@ -561,7 +567,7 @@ export default function Settings() {
         sessionStorage.setItem("username", updatedName);
       }
       if (avatarUrl && cleanEmail) {
-        localStorage.setItem("landlordAvatar_" + cleanEmail, avatarUrl);
+        safeSetLocalStorage("landlordAvatar_" + cleanEmail, avatarUrl);
       }
 
       setSaveSuccess(true);
@@ -644,6 +650,26 @@ export default function Settings() {
                 style={{ display: "none" }}
               />
             </div>
+
+            {/* Avatar upload feedback banner */}
+            {feedbackMessage && (
+              <div
+                className={`mt-3 px-3.5 py-2.5 rounded-xl border flex items-center justify-between gap-2 text-[12px] font-medium transition-all ${feedbackMessage.type === "success"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    : "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                  }`}
+              >
+                <span className="leading-snug">{feedbackMessage.text}</span>
+                <button
+                  type="button"
+                  onClick={() => setFeedbackMessage(null)}
+                  className="shrink-0 text-inherit hover:opacity-70 p-0.5 cursor-pointer bg-transparent border-none outline-none"
+                  aria-label="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             <h2 className="set-ref-profile-name">{fullName}</h2>
             <p className="set-ref-profile-role">Landlord</p>
@@ -1043,7 +1069,7 @@ export default function Settings() {
 
                   <div className="doc-gen-clauses space-y-2 mt-4">
                     <label className="set-ref-lbl font-extrabold mb-1 block">Lease Policies</label>
-                    
+
                     <label className="flex items-center gap-2 text-xs font-semibold text-ink-700 dark:text-cream-100/80 cursor-pointer">
                       <input
                         type="checkbox"
@@ -1089,7 +1115,7 @@ export default function Settings() {
                 {/* Live Preview Paper */}
                 <div className="doc-preview-card">
                   <div className="doc-paper shadow-xl bg-white dark:bg-[#16241F] border border-[#E4EAE1] dark:border-white/10 rounded-2xl p-6 md:p-8 overflow-y-auto max-h-[500px] text-left relative">
-                    
+
                     {/* Stylized Document Watermark / Seal background */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none" style={{ opacity: 0.03 }}>
                       <span className="font-serif text-[100px] font-extrabold text-[#2C4633] tracking-widest leading-none">LODALE</span>
@@ -1108,7 +1134,7 @@ export default function Settings() {
                     {/* Document body text */}
                     <div className="space-y-4 text-xs font-serif text-ink-800 dark:text-cream-100/90 leading-relaxed">
                       <p><strong>THIS AGREEMENT</strong> is made this <strong>{formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" })}</strong>,</p>
-                      
+
                       <p className="font-bold border-b pb-1 border-ink-100 dark:border-white/5 text-[11px] text-[#2C4633] dark:text-[#E5C583] uppercase tracking-wider">The Parties</p>
                       <div className="grid grid-cols-2 gap-4 bg-ink-50/50 dark:bg-white/2 p-3 rounded-xl">
                         <div>

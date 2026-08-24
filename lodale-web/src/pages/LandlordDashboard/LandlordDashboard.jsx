@@ -261,11 +261,10 @@ export default function LandlordDashboard() {
   const [landlordAvatar, setLandlordAvatar] = useState(() => {
     const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
-      const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
-      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
+      const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey);
+      if (savedUserAvatar) return savedUserAvatar;
     }
-    const globalSaved = sessionStorage.getItem("landlordAvatarUrl") || localStorage.getItem("landlordAvatarUrl");
-    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
+    // Fallback: read from landlord-scoped profile only (role guard)
     try {
       const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
       if (raw) {
@@ -274,19 +273,19 @@ export default function LandlordDashboard() {
       }
     } catch (e) { }
     return "";
-  });
+  };
+
+  const [landlordAvatar, setLandlordAvatar] = useState(() => getLandlordAvatar());
 
   useEffect(() => {
     const handleAvatarUpdate = () => {
       const emailKey = sessionStorage.getItem("lastLoggedInEmail");
       let updated = null;
       if (emailKey) {
-        updated = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
+        updated = localStorage.getItem("landlordAvatar_" + emailKey);
       }
       if (!updated) {
-        updated = localStorage.getItem("landlordAvatarUrl");
-      }
-      if (!updated) {
+        // Only fall back to scoped profile with role guard
         try {
           const raw = sessionStorage.getItem("currentUserProfile");
           if (raw) {
@@ -295,7 +294,7 @@ export default function LandlordDashboard() {
           }
         } catch (e) { }
       }
-      if (updated && !updated.includes("unsplash.com")) {
+      if (updated) {
         setLandlordAvatar(updated);
       }
     };
@@ -1817,24 +1816,27 @@ export default function LandlordDashboard() {
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Account Rating</span>
                 <span className="text-ink-900 dark:text-white font-semibold flex items-center gap-1">
                   {(() => {
-                    let score = "5.0";
-                    let count = 1;
                     try {
-                      const savedReviews = localStorage.getItem("landlordReviews");
+                      // Only show rating when tenant accounts have actually submitted reviews
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+                      const reviewKey = emailKey ? "landlordReviews_" + emailKey : "landlordReviews";
+                      const savedReviews = localStorage.getItem(reviewKey) || localStorage.getItem("landlordReviews");
                       if (savedReviews) {
                         const rList = JSON.parse(savedReviews);
                         if (Array.isArray(rList) && rList.length > 0) {
-                          score = (rList.reduce((sum, r) => sum + Number(r.rating || 5), 0) / rList.length).toFixed(1);
-                          count = rList.length;
+                          const score = (rList.reduce((sum, r) => sum + Number(r.rating || 5), 0) / rList.length).toFixed(1);
+                          const count = rList.length;
+                          return (
+                            <>
+                              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> {score}{" "}
+                              <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">({count} {count === 1 ? "review" : "reviews"})</span>
+                            </>
+                          );
                         }
                       }
                     } catch (e) { }
-                    return (
-                      <>
-                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> {score}{" "}
-                        <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">({count} {count === 1 ? "review" : "reviews"})</span>
-                      </>
-                    );
+                    // No tenant reviews yet
+                    return <span className="text-ink-400 dark:text-cream-100/50 font-normal italic">No Rating</span>;
                   })()}
                 </span>
               </div>

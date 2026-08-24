@@ -22,6 +22,7 @@ import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
+import { safeSetLocalStorage, safeSetSessionStorage, compressImageForStorage } from "../../utils/storageUtils";
 import "./TenantSettings.css";
 
 export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChange, onProfileUpdate }) {
@@ -173,43 +174,96 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e) => {
+  const IMAGE_SIZE_LIMIT_MB = 5;
+  const IMAGE_SIZE_LIMIT_BYTES = IMAGE_SIZE_LIMIT_MB * 1024 * 1024;
+
+  const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setFeedbackMessage({ type: "error", text: "Image file is too large (max 5MB)." });
-        triggerToast("Image file is too large (max 5MB).", "error", "Upload Failed");
-        return;
+    // Reset input so the same file can be re-selected after an error
+    e.target.value = "";
+    if (!file) return;
+
+    if (file.size > IMAGE_SIZE_LIMIT_BYTES) {
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      const msg = `This image is above the required image size limit (${fileSizeMB} MB uploaded — max ${IMAGE_SIZE_LIMIT_MB} MB allowed).`;
+      setFeedbackMessage({ type: "error", text: msg });
+      triggerToast(msg, "error", "Upload Failed");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const base64Data = evt.target.result;
+      setAvatarUrl(base64Data);
+
+      const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+      if (emailKey) {
+        // Tenant-scoped avatar key — does not overwrite landlord avatar
+        localStorage.setItem("tenantAvatar_" + emailKey, base64Data);
+      }
+      // Session-level quick sync keys
+      sessionStorage.setItem("tenantAvatarUrl", base64Data);
+      localStorage.setItem("tenantAvatarUrl", base64Data);
+
+      const updatedProf = { ...userProfile, avatar: base64Data, avatar_url: base64Data };
+      setUserProfile(updatedProf);
+      // Tenant-scoped profile session key
+      sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(updatedProf));
+      if (emailKey) {
+        localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(updatedProf));
       }
 
+      // Notify parent / sidebar / header
+      onAvatarChange?.(base64Data);
+      onProfileUpdate?.(undefined, base64Data);
+
+      // Dispatch named event so TenantDashboard updates avatar in real-time
+      window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { avatar: base64Data } }));
+      window.dispatchEvent(new Event("storage"));
+
+      setFeedbackMessage({ type: "success", text: "Profile picture updated successfully!" });
+      triggerToast("Profile picture updated successfully!", "success", "Photo Updated");
+    } catch (err) {
+      console.warn("Tenant avatar processing fallback:", err);
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const base64Data = evt.target.result;
-        setAvatarUrl(base64Data);
-
-        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+        const rawBase64 = evt.target.result;
+        setAvatarUrl(rawBase64);
+        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
         if (emailKey) {
-          // Tenant-scoped avatar key — does not overwrite landlord avatar
-          localStorage.setItem("tenantAvatar_" + emailKey, base64Data);
+          safeSetLocalStorage("tenantAvatar_" + emailKey, rawBase64);
         }
-        // Session-level quick sync keys
-        sessionStorage.setItem("tenantAvatarUrl", base64Data);
-        localStorage.setItem("tenantAvatarUrl", base64Data);
+        safeSetSessionStorage("tenantAvatarUrl", rawBase64);
+        safeSetLocalStorage("tenantAvatarUrl", rawBase64);
 
-        const updatedProf = { ...userProfile, avatar: base64Data, avatar_url: base64Data };
+        const updatedProf = {
+          ...userProfile,
+          firstName,
+          lastName,
+          first_name: firstName,
+          last_name: lastName,
+          email,
+          phone,
+          phone_number: phone,
+          address,
+          dob,
+          location,
+          postalCode,
+          postal_code: postalCode,
+          gender,
+          avatar: rawBase64,
+          avatar_url: rawBase64
+        };
         setUserProfile(updatedProf);
-        // Tenant-scoped profile session key
-        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(updatedProf));
+        safeSetSessionStorage("currentUserProfile", JSON.stringify(updatedProf));
+        safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
         if (emailKey) {
-          localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(updatedProf));
+          safeSetLocalStorage("userProfile_" + emailKey, JSON.stringify(updatedProf));
         }
 
-        // Notify parent / sidebar / header
-        onAvatarChange?.(base64Data);
-        onProfileUpdate?.(undefined, base64Data);
-
-        // Dispatch named event so TenantDashboard updates avatar in real-time
-        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { avatar: base64Data } }));
+        onAvatarChange?.(rawBase64);
+        onProfileUpdate?.(undefined, rawBase64);
+        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { avatar: rawBase64 } }));
         window.dispatchEvent(new Event("storage"));
 
         setFeedbackMessage({ type: "success", text: "Profile picture updated successfully!" });
@@ -823,13 +877,12 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             {/* Inline Feedback Banner */}
             {feedbackMessage && (
               <div
-                className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${
-                  feedbackMessage.type === "success"
+                className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${feedbackMessage.type === "success"
                     ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : feedbackMessage.type === "error"
-                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                    : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
-                }`}
+                      ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                      : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                  }`}
               >
                 <div className="flex items-center gap-2.5">
                   {feedbackMessage.type === "success" ? (
@@ -1024,9 +1077,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               <Button
                 type="submit"
                 disabled={isSaving}
-                className={`settings-btn settings-btn-save flex items-center justify-center gap-2 transition-all ${
-                  saveSuccess ? "!bg-emerald-600 !text-white" : ""
-                }`}
+                className={`settings-btn settings-btn-save flex items-center justify-center gap-2 transition-all ${saveSuccess ? "!bg-emerald-600 !text-white" : ""
+                  }`}
               >
                 {isSaving ? (
                   <>
@@ -1054,13 +1106,12 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             {/* Inline Feedback Banner for Security */}
             {feedbackMessage && (
               <div
-                className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${
-                  feedbackMessage.type === "success"
+                className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${feedbackMessage.type === "success"
                     ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : feedbackMessage.type === "error"
-                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                    : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
-                }`}
+                      ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                      : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                  }`}
               >
                 <div className="flex items-center gap-2.5">
                   {feedbackMessage.type === "success" ? (
@@ -1157,8 +1208,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 type="button"
                 onClick={() => setDocSubTab("pending")}
                 className={`px-4 py-2 rounded-xl text-[13px] font-extrabold transition-all cursor-pointer flex items-center gap-2 ${docSubTab === "pending"
-                    ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
-                    : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
+                  ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
+                  : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
                   }`}
               >
                 <PenTool className="h-4 w-4" />
@@ -1174,8 +1225,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 type="button"
                 onClick={() => setDocSubTab("signed")}
                 className={`px-4 py-2 rounded-xl text-[13px] font-extrabold transition-all cursor-pointer flex items-center gap-2 ${docSubTab === "signed"
-                    ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
-                    : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
+                  ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
+                  : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
                   }`}
               >
                 <CheckCircle2 className="h-4 w-4" />
