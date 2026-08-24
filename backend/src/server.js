@@ -11,6 +11,7 @@ import userRoutes from './routes/users.js';
 import profileRoutes from './routes/profile.js';
 import supportRoutes from './routes/support.js';
 import applicationRoutes from './routes/applications.js';
+import chatRoutes from './routes/chat.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
@@ -49,6 +50,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
