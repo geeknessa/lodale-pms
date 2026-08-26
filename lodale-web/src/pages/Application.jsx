@@ -224,22 +224,23 @@ export default function Application() {
                 </div>
               </div>
 
-              {/* Section 4: Guarantor Info (Optional) */}
+              {/* Section 4: Guarantor Info */}
               <div className="space-y-4 pt-4 border-t border-ink-100 dark:border-white/10">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-cream-100 flex items-center gap-1.5">
                     <Phone className="h-3.5 w-3.5 text-moss-600" /> Guarantor Information
                   </h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-ink-400 bg-ink-100 dark:bg-white/10 px-2 py-0.5 rounded">
-                    Optional
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded">
+                    Required for Application
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs text-ink-600 dark:text-cream-100/70 mb-1">Guarantor Name</label>
+                    <label className="block text-xs text-ink-600 dark:text-cream-100/70 mb-1">Guarantor Full Name *</label>
                     <input
                       type="text"
+                      required
                       placeholder="e.g. Dr. John Doe"
                       value={formData.guarantorName}
                       onChange={(e) => setFormData({ ...formData, guarantorName: e.target.value })}
@@ -248,9 +249,10 @@ export default function Application() {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-ink-600 dark:text-cream-100/70 mb-1">Guarantor Phone Number</label>
+                    <label className="block text-xs text-ink-600 dark:text-cream-100/70 mb-1">Guarantor Phone Number *</label>
                     <input
                       type="tel"
+                      required
                       placeholder="e.g. +234 801 234 5678"
                       value={formData.guarantorPhone}
                       onChange={(e) => setFormData({ ...formData, guarantorPhone: e.target.value })}
@@ -259,9 +261,10 @@ export default function Application() {
                   </div>
 
                   <div>
-                    <label className="block text-xs text-ink-600 dark:text-cream-100/70 mb-1">Guarantor Relationship</label>
+                    <label className="block text-xs text-ink-600 dark:text-cream-100/70 mb-1">Guarantor Relationship *</label>
                     <input
                       type="text"
+                      required
                       placeholder="e.g. Parent, Employer, Relative"
                       value={formData.guarantorRelationship}
                       onChange={(e) => setFormData({ ...formData, guarantorRelationship: e.target.value })}

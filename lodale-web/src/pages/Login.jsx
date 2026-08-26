@@ -156,6 +156,7 @@ export default function Login() {
         sessionStorage.setItem("username", userFullName);
         sessionStorage.setItem("db_user_id", res.user.id);
         sessionStorage.setItem("sessionExpiresAt", expiresAt);
+        if (res.token) sessionStorage.setItem("lodale_token", res.token);
 
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");

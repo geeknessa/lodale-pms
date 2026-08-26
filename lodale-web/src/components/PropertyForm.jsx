@@ -16,7 +16,7 @@ import {
   AlertTriangle,
   Info,
   Layers,
-  Sparkles,
+  SlidersHorizontal,
   ShieldCheck,
   MapPin,
   Bell,
@@ -41,12 +41,13 @@ import DropdownWithOther from "../components/DropdownWithOther";
 import { ALL_NIGERIAN_STATES, NIGERIAN_STATES_CITIES } from "../utils/nigerianStatesCities";
 import { handlePropertySubmit, PRESET_PHOTOS, COMMON_AMENITIES } from "../utils/propertyUtils";
 import { propertyService } from "../services/propertyService";
-import "./DashboardAddProperty.css";
+import "../pages/DashboardAddProperty.css";
 
-export default function DashboardAddProperty() {
-  const { id } = useParams();
-  const isEditing = Boolean(id);
+export default function PropertyForm({ isStandalone = false, initialEditId = null }) {
+  const params = useParams();
   const navigate = useNavigate();
+  const [id, setId] = useState(initialEditId || params.id);
+  const [isEditing, setIsEditing] = useState(!!(initialEditId || params.id));
   const [currentStep, setCurrentStep] = useState(1);
   const [occupied, setOccupied] = useState(null); // null | true | false
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -470,7 +471,7 @@ export default function DashboardAddProperty() {
 
   useEffect(() => {
     if (!isEditing) return;
-    
+
     const loadEditData = async () => {
       setIsFetchingEdit(true);
       try {
@@ -480,11 +481,11 @@ export default function DashboardAddProperty() {
           setAddress(item.address_line1 || item.location || "");
           setCityName(item.city || "");
           setStateName(item.state || "Lagos");
-          
+
           if (item.property_type) setPropertyType(item.property_type);
           if (item.houseSubtype || item.house_subtype) setHouseSubtype(item.houseSubtype || item.house_subtype);
           setIsMultiUnit(Boolean(item.isMultiUnit || (item.units && item.units.length > 1)));
-          
+
           if (item.rent_amount || item.price) {
             const rawRent = String(item.rent_amount || item.price).replace(/[^0-9]/g, "");
             setRent(rawRent);
@@ -492,29 +493,29 @@ export default function DashboardAddProperty() {
           if (item.rentCycle || item.rent_cycle) setRentCycle(item.rentCycle || item.rent_cycle);
           if (item.bedrooms || item.beds) setBedrooms(String(item.bedrooms || item.beds));
           if (item.bathrooms || item.baths) setBathrooms(String(item.bathrooms || item.baths));
-          
+
           if (item.latitude) setLatitude(String(item.latitude));
           if (item.longitude) setLongitude(String(item.longitude));
-          
+
           if (item.description) setDescription(item.description);
           if (item.rules) setRules(item.rules);
-          
+
           if (item.amenities && Array.isArray(item.amenities)) {
             setSelectedAmenities(item.amenities);
           }
-          
+
           if (item.blocks && Array.isArray(item.blocks)) setBlocksList(item.blocks);
           if (item.units && Array.isArray(item.units)) setUnitsList(item.units);
-          
+
           const rawCover = item.cover_image || item.image || (item.images && item.images.length > 0 ? item.images[0] : "");
           let photos = item.images && Array.isArray(item.images) ? [...item.images] : (rawCover ? [rawCover] : []);
-          
+
           if (photos.length > 0) {
             setPropertyPhotos(photos);
             const coverIdx = photos.findIndex(p => p === rawCover);
             if (coverIdx !== -1) setCoverPhotoIndex(coverIdx);
           }
-          
+
           if (item.ownership_doc_type || item.docType) setDocType(item.ownership_doc_type || item.docType);
           if (item.ownership_doc) setDocName(item.ownership_doc);
           if (item.ownership_doc_url) setDocDataUrl(item.ownership_doc_url);
@@ -525,7 +526,7 @@ export default function DashboardAddProperty() {
         setIsFetchingEdit(false);
       }
     };
-    
+
     loadEditData();
   }, [id, isEditing]);
 
@@ -900,7 +901,7 @@ export default function DashboardAddProperty() {
       : propertyPhotos[coverPhotoIndex];
 
     await handlePropertySubmit({
-      e: { preventDefault: () => {}, target: syntheticForm.target },
+      e: { preventDefault: () => { }, target: syntheticForm.target },
       displayName,
       stateName,
       cityName,
@@ -961,7 +962,7 @@ export default function DashboardAddProperty() {
           <div className="dap-success-icon-ring">
             <CheckCircle2 className="check" ref={checkIconRef} />
             <div className="dap-success-sparkle">
-              <Sparkles />
+              <SlidersHorizontal />
             </div>
           </div>
 
@@ -992,7 +993,7 @@ export default function DashboardAddProperty() {
   const stepsInfo = [
     { step: 1, label: "Type & Location", icon: Building2, desc: "Establish building identity & street address" },
     { step: 2, label: "Units & Specifications", icon: Layers, desc: "Setup unit layout & rental pricing" },
-    { step: 3, label: "Amenities & Guidelines", icon: Sparkles, desc: "Select utilities & property rules" },
+    { step: 3, label: "Amenities & Guidelines", icon: SlidersHorizontal, desc: "Select utilities & property rules" },
     { step: 4, label: "Legal Proof & Photos", icon: ShieldCheck, desc: "Attach legal document & picture gallery" },
     { step: 5, label: "Occupancy & Submit", icon: CheckCircle2, desc: "Configure current occupancy status" }
   ];
@@ -1044,7 +1045,7 @@ export default function DashboardAddProperty() {
         <div className="dap-nav-brand">
           <button
             type="button"
-            onClick={() => navigate("/dashboard/landlord")}
+            onClick={() => navigate(isStandalone ? "/" : "/dashboard/landlord")}
             className="dap-nav-logo-btn"
           >
             <Logo variant="white" />
@@ -1054,10 +1055,10 @@ export default function DashboardAddProperty() {
         <div className="dap-nav-actions relative">
           <button
             type="button"
-            onClick={() => navigate("/dashboard/landlord")}
+            onClick={() => navigate(isStandalone ? "/" : "/dashboard/landlord")}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-all border-none cursor-pointer"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
+            <ArrowLeft className="h-3.5 w-3.5" /> {isStandalone ? "Home" : "Dashboard"}
           </button>
 
           {/* NOTIFICATIONS BUTTON WITH BADGE & DROPDOWN */}
@@ -1179,44 +1180,46 @@ export default function DashboardAddProperty() {
          ───────────────────────────────────────────────────────────── */}
       <div className="dap-workspace-layout">
         {/* STICKY LEFT SIDEBAR NAVIGATION PANEL */}
-        <aside className="dap-left-panel">
-          <div>
-            <div className="mb-6">
-              <div className="dap-panel-section-title">{isEditing ? "EDIT PROPERTY" : "PORTFOLIO ONBOARDING"}</div>
-              {stepsInfo.map((sObj) => {
-                const isActive = currentStep === sObj.step;
-                const isCompleted = isStepValid(sObj.step);
-                const StepIcon = sObj.icon;
-                return (
-                  <button
-                    key={sObj.step}
-                    type="button"
-                    onClick={() => {
-                      setFormError("");
-                      setCurrentStep(sObj.step);
-                    }}
-                    className={`dap-step-nav-btn tour-step-nav-${sObj.step} ${isActive ? "active" : ""} ${isCompleted ? "completed" : ""}`}
-                  >
-                    <StepIcon className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{sObj.label}</span>
-                    <span className="dap-step-nav-badge">
-                      {isCompleted ? "✓" : sObj.step}
-                    </span>
-                  </button>
-                );
-              })}
+        {!isStandalone && (
+          <aside className="dap-left-panel">
+            <div>
+              <div className="mb-6">
+                <div className="dap-panel-section-title">{isEditing ? "EDIT PROPERTY" : "PORTFOLIO ONBOARDING"}</div>
+                {stepsInfo.map((sObj) => {
+                  const isActive = currentStep === sObj.step;
+                  const isCompleted = isStepValid(sObj.step);
+                  const StepIcon = sObj.icon;
+                  return (
+                    <button
+                      key={sObj.step}
+                      type="button"
+                      onClick={() => {
+                        setFormError("");
+                        setCurrentStep(sObj.step);
+                      }}
+                      className={`dap-step-nav-btn tour-step-nav-${sObj.step} ${isActive ? "active" : ""} ${isCompleted ? "completed" : ""}`}
+                    >
+                      <StepIcon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{sObj.label}</span>
+                      <span className="dap-step-nav-badge">
+                        {isCompleted ? "✓" : sObj.step}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard/landlord")}
-            className="dap-sidebar-exit-btn"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Exit Wizard</span>
-          </button>
-        </aside>
+            <button
+              type="button"
+              onClick={() => navigate(isStandalone ? "/" : "/dashboard/landlord")}
+              className="dap-sidebar-exit-btn"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Exit Wizard</span>
+            </button>
+          </aside>
+        )}
 
         {/* INDEPENDENTLY SCROLLABLE CENTER WORKSPACE CONTAINER */}
         <main className="dap-center-content">
@@ -1227,7 +1230,7 @@ export default function DashboardAddProperty() {
                 <div className="dap-card-icon-box">
                   {currentStep === 1 && <Building2 className="h-6 w-6" />}
                   {currentStep === 2 && <Layers className="h-6 w-6" />}
-                  {currentStep === 3 && <Sparkles className="h-6 w-6" />}
+                  {currentStep === 3 && <SlidersHorizontal className="h-6 w-6" />}
                   {currentStep === 4 && <ShieldCheck className="h-6 w-6" />}
                   {currentStep === 5 && <CheckCircle2 className="h-6 w-6" />}
                 </div>
@@ -1314,11 +1317,10 @@ export default function DashboardAddProperty() {
                               key={sub.id}
                               type="button"
                               onClick={() => setHouseSubtype(sub.id)}
-                              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer outline-none ${
-                                houseSubtype === sub.id
+                              className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer outline-none ${houseSubtype === sub.id
                                   ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
                                   : "bg-white dark:bg-[#16241F] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15"
-                              }`}
+                                }`}
                             >
                               {sub.label}
                             </button>
@@ -1341,6 +1343,8 @@ export default function DashboardAddProperty() {
                         onChange={(e) => setDisplayName(e.target.value)}
                         placeholder="e.g. Green Valley Estate or Sunshine Apartments"
                         maxLength={500}
+                        multiline={true}
+                        rows={2}
                         required
                       />
                       <div className="text-[10px] text-right font-medium text-slate-400 dark:text-slate-500 mt-1">
@@ -1356,6 +1360,8 @@ export default function DashboardAddProperty() {
                         onChange={(e) => setAddress(e.target.value)}
                         placeholder="e.g. Plot 14, Admiralty Way, Lekki Phase 1"
                         maxLength={500}
+                        multiline={true}
+                        rows={2}
                         light={false}
                         required
                       />
@@ -1445,11 +1451,10 @@ export default function DashboardAddProperty() {
                           <button
                             type="button"
                             onClick={() => setIsMultiUnit(false)}
-                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${
-                              !isMultiUnit
+                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${!isMultiUnit
                                 ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
                                 : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
-                            }`}
+                              }`}
                           >
                             <div className="font-bold text-sm">1</div>
                             <div>
@@ -1461,11 +1466,10 @@ export default function DashboardAddProperty() {
                           <button
                             type="button"
                             onClick={() => setIsMultiUnit(true)}
-                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${
-                              isMultiUnit
+                            className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${isMultiUnit
                                 ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
                                 : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
-                            }`}
+                              }`}
                           >
                             <div className="font-bold text-sm">2+</div>
                             <div>
@@ -1534,27 +1538,24 @@ export default function DashboardAddProperty() {
                               <button
                                 type="button"
                                 onClick={() => setUnitAddTab("manual")}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
-                                  unitAddTab === "manual" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
-                                }`}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "manual" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                                  }`}
                               >
                                 Single Unit
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setUnitAddTab("generator")}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
-                                  unitAddTab === "generator" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
-                                }`}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "generator" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                                  }`}
                               >
                                 Bulk Generator
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setUnitAddTab("csv")}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${
-                                  unitAddTab === "csv" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
-                                }`}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "csv" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                                  }`}
                               >
                                 CSV Upload
                               </button>
@@ -1743,11 +1744,10 @@ export default function DashboardAddProperty() {
                                 key={amenity}
                                 type="button"
                                 onClick={() => toggleAmenity(amenity)}
-                                className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
-                                  isSelected
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${isSelected
                                     ? "bg-[#2C4633] text-white border-transparent dark:bg-[#E5C583] dark:text-[#263b33]"
                                     : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
-                                }`}
+                                  }`}
                               >
                                 {isSelected ? "✓ " : "+ "}{amenity}
                               </button>
@@ -1818,15 +1818,31 @@ export default function DashboardAddProperty() {
 
                   <div>
                     <div className="flex justify-between items-center mb-1">
+                      <label className="block text-xs font-bold text-slate-900 dark:text-white">Property Description / Overview (Optional)</label>
+                      <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{description.length}/1000</span>
+                    </div>
+                    <textarea
+                      rows={4}
+                      maxLength={1000}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Describe key highlights, floor layout, security details, and neighborhood amenities..."
+                      className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none resize-none leading-relaxed break-words"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
                       <label className="block text-xs font-bold text-slate-900 dark:text-white">Property Rules (Optional)</label>
                       <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">{rules.length}/500</span>
                     </div>
                     <textarea
+                      rows={3}
                       maxLength={500}
                       value={rules}
                       onChange={(e) => setRules(e.target.value)}
                       placeholder="e.g. No smoking, Quiet hours after 10 PM (max 500 chars)..."
-                      className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none"
+                      className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none resize-none leading-relaxed break-words"
                     />
                   </div>
                 </div>
@@ -1878,11 +1894,10 @@ export default function DashboardAddProperty() {
                           return (
                             <div
                               key={idx}
-                              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                                isCover
+                              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isCover
                                   ? "bg-[#2C4633]/10 dark:bg-[#E5C583]/10 border-[#2C4633] dark:border-[#E5C583]"
                                   : "bg-white dark:bg-[#16241F] border-slate-200 dark:border-white/10"
-                              }`}
+                                }`}
                             >
                               <div className="flex items-center gap-3 min-w-0 pr-2">
                                 <Camera className="h-4 w-4 text-[#2C4633] dark:text-[#E5C583] shrink-0" />
@@ -1934,18 +1949,16 @@ export default function DashboardAddProperty() {
                     <button
                       type="button"
                       onClick={() => setOccupied(true)}
-                      className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${
-                        occupied === true ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent" : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
-                      }`}
+                      className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${occupied === true ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent" : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                        }`}
                     >
                       Occupied (Invite Current Tenant)
                     </button>
                     <button
                       type="button"
                       onClick={() => setOccupied(false)}
-                      className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${
-                        occupied === false ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent" : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
-                      }`}
+                      className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${occupied === false ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent" : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                        }`}
                     >
                       Vacant (Public Listing)
                     </button>

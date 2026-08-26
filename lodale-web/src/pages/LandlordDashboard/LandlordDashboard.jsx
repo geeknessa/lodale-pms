@@ -20,7 +20,7 @@ import {
   LogOut,
   ArrowUpRight,
   Star,
-  Sparkles,
+  ListChecks,
   User,
   Clock,
   CheckCircle2,
@@ -42,6 +42,9 @@ import LandlordChat from "./components/Landllordchat";
 import LandlordApplications from "./components/LandlordApplications";
 import SettingsTab from "./Settings";
 import Tenants from "./Tenants";
+import { leaseService } from "../../services/leaseService";
+import { rentService } from "../../services/rentService";
+import { maintenanceService } from "../../services/maintenanceService";
 import "./LandlordDashboard.css";
 
 const TOUR_STEPS = [
@@ -178,15 +181,21 @@ export default function LandlordDashboard() {
     return storedName || sessionStorage.getItem("username") || "Ada";
   });
 
+  const [leases, setLeases] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+
   const getActiveTenantsList = () => {
-    try {
-      const saved = localStorage.getItem("propertyTenants");
-      if (!saved) return [];
-      const parsed = JSON.parse(saved);
-      return Object.values(parsed).flat().filter(t => t && t.status !== "past" && t.status !== "inactive");
-    } catch (e) {
-      return [];
-    }
+    return leases
+      .filter(l => l.status === 'active')
+      .map(l => ({
+        id: l.id,
+        name: l.tenant_name || "Unknown Tenant",
+        email: l.tenant_email,
+        rentAmount: l.rent_amount,
+        propertyTitle: l.property_title,
+        paymentStatus: invoices.find(i => i.lease_id === l.id && i.status === 'unpaid') ? 'Overdue' : 'Paid'
+      }));
   };
 
   const getActiveTenantsCount = () => {
@@ -825,96 +834,62 @@ export default function LandlordDashboard() {
   const outstandingAmount = overdueTenants.reduce((sum, t) => sum + parseTenantRent(t), 0);
   const availablePayoutBalance = activeTenantsCount === 0 ? 0 : collectedAmount;
 
-  const handleUpdateRequestStatus = (requestId, newStatus) => {
-    setTenantRequests((prevRequests) => {
-      const updated = prevRequests.map((req) =>
-        req.id === requestId ? { ...req, status: newStatus } : req
-      );
-
-      // Persist requests to localStorage
-      localStorage.setItem("tenantRequests", JSON.stringify(updated));
-
-      const req = prevRequests.find((r) => r.id === requestId);
-      if (req && (newStatus === "In Progress" || newStatus === "Completed")) {
-        const saved = localStorage.getItem("landlordChats");
-        const chatsList = saved ? JSON.parse(saved) : [];
-
-        const exists = chatsList.some((c) => c.name === req.tenantName);
-        if (!exists) {
-          const newChat = {
-            id: req.tenantName.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
-            name: req.tenantName,
-            avatar: req.avatar,
-            email: req.email || `${req.tenantName.toLowerCase().replace(/\s+/g, ".")}@domain.com`,
-            phone: req.phone || "+234 800 000 0000",
-            reliabilityScore: req.reliabilityScore || "4.7",
-            occupation: req.occupation || "Tenant",
-            income: req.income || "₦500,000/mo",
-            notes: req.notes || "No notes available.",
-            leaseStatus: req.leaseStatus || "Active Tenant",
-            lastMessage: `Maintenance request set to ${newStatus}: ${req.details}`,
-            time: req.date || "Just now",
-            type: "tenant",
-            messages: [
-              {
-                id: 1,
-                sender: "tenant",
-                text: `Hello, I submitted a maintenance request: ${req.details}`,
-                time: req.date || "Just now"
-              },
-              {
-                id: 2,
-                sender: "landlord",
-                text: `I've approved your request and updated its status to ${newStatus}. We are on it!`,
-                time: "Just now"
-              }
-            ]
-          };
-          chatsList.push(newChat);
-          localStorage.setItem("landlordChats", JSON.stringify(chatsList));
-          window.dispatchEvent(new Event("storage"));
-        }
-      }
-      return updated;
-    });
+  const handleUpdateRequestStatus = async (requestId, newStatus) => {
+    try {
+      await maintenanceService.updateRequestStatus(requestId, { status: newStatus.toLowerCase().replace(" ", "_") });
+      triggerToast(`Request status updated to ${newStatus}`, "success");
+      await fetchAllData();
+    } catch (e) {
+      console.error(e);
+      triggerToast("Failed to update status", "error");
+    }
   };
 
   // Tenant Maintenance/Upgrade Requests list
   const [showAllRequests, setShowAllRequests] = useState(false);
   const [tenantRequests, setTenantRequests] = useState([]);
 
-  const loadRequests = () => {
-    if (getActiveTenantsCount() === 0) {
-      setTenantRequests([]);
-      return;
-    }
-    const saved = localStorage.getItem("tenantRequests");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Filter out default seeds if they exist
-        const filtered = parsed.filter(
-          (req) =>
-            req.tenantName !== "Emeka Obi" &&
-            req.tenantName !== "Maren Maureen" &&
-            req.tenantName !== "Ryan Herwinds" &&
-            req.name !== "Emeka Obi" &&
-            req.name !== "Maren Maureen" &&
-            req.name !== "Ryan Herwinds"
-        );
-        setTenantRequests(filtered);
-      } catch (e) {
-        setTenantRequests([]);
-      }
-    } else {
-      setTenantRequests([]);
+  const fetchAllData = async () => {
+    try {
+      setLoadingData(true);
+      // Fetch leases
+      const allLeases = await leaseService.getMyLeases();
+      setLeases(allLeases);
+
+      // Fetch invoices
+      const invs = await rentService.getMyInvoices();
+      setInvoices(invs);
+
+      // Fetch requests
+      const reqs = await maintenanceService.getMyRequests();
+      const statusMap = {
+        open: 'Pending',
+        pending: 'Pending',
+        acknowledged: 'In Progress',
+        in_progress: 'In Progress',
+        pending_inspection: 'In Progress',
+        resolved: 'Completed',
+        closed: 'Completed'
+      };
+      setTenantRequests(reqs.map(r => ({
+        id: r.id,
+        title: r.title,
+        category: r.priority === 'emergency' ? 'Emergency' : 'Routine',
+        urgency: r.priority ? r.priority.charAt(0).toUpperCase() + r.priority.slice(1) : 'Medium',
+        details: r.description && r.description !== "No description provided." ? r.description : r.title,
+        status: statusMap[r.status?.toLowerCase()] || 'Pending',
+        date: new Date(r.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short' }),
+        tenantName: r.tenant_name,
+      })));
+    } catch (e) {
+      console.warn("Failed to load landlord data:", e);
+    } finally {
+      setLoadingData(false);
     }
   };
 
   useEffect(() => {
-    loadRequests();
-    window.addEventListener("storage", loadRequests);
-    return () => window.removeEventListener("storage", loadRequests);
+    fetchAllData();
   }, []);
 
   const displayRequests = showAllRequests ? tenantRequests : tenantRequests.slice(0, 2);
@@ -1422,33 +1397,36 @@ export default function LandlordDashboard() {
                         <span className="activity-sub">Occupancy Rate</span>
                       </div>
 
-                      {/* Bar Graph - Dynamically scaled based on Occupancy Rate */}
+                      {/* Bar Graph - Dynamically scaled based on present day and real tenant activity */}
                       <div className="activity-chart-grid">
-                        {[
-                          { day: "Mon", base: 45, highlight: false },
-                          { day: "Tue", base: 60, highlight: false },
-                          { day: "Wed", base: 35, highlight: false },
-                          { day: "Thu", base: 75, highlight: false },
-                          { day: "Fri", base: 95, highlight: true }, // Highlighted bar
-                          { day: "Sat", base: 50, highlight: false },
-                          { day: "Sun", base: 40, highlight: false },
-                        ].map((bar, index) => {
-                          const barHeight = occupancyRate === 0
-                            ? "0%"
-                            : `${Math.max(12, Math.round(bar.base * (occupancyRate / 100)))}%`;
+                        {(() => {
+                          const todayDayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()];
+                          const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-                          return (
-                            <div key={index} className="activity-bar-col">
-                              <div className="activity-bar-container">
-                                <div
-                                  className={`activity-bar-fill ${bar.highlight && occupancyRate > 0 ? "highlight" : ""}`}
-                                  style={{ height: barHeight }}
-                                />
+                          return weekDays.map((day) => {
+                            const isToday = day === todayDayName;
+                            const dayReqs = tenantRequests.filter(r => {
+                              const d = r.date ? new Date(r.date) : null;
+                              return d && ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()] === day;
+                            }).length;
+
+                            const barHeight = dayReqs > 0 
+                              ? `${Math.min(100, dayReqs * 35)}%` 
+                              : (isToday && occupancyRate > 0 ? "30%" : "8%");
+
+                            return (
+                              <div key={day} className="activity-bar-col">
+                                <div className="activity-bar-container">
+                                  <div
+                                    className={`activity-bar-fill ${isToday ? "highlight" : ""}`}
+                                    style={{ height: barHeight }}
+                                  />
+                                </div>
+                                <span className="activity-bar-label">{day}</span>
                               </div>
-                              <span className="activity-bar-label">{bar.day}</span>
-                            </div>
-                          );
-                        })}
+                            );
+                          });
+                        })()}
                       </div>
                     </section>
                   </div>
@@ -1566,7 +1544,7 @@ export default function LandlordDashboard() {
                   <section className="db-card requests-card tour-requests">
                     <div className="activity-header" style={{ marginBottom: "16px" }}>
                       <h3 className="activity-title">
-                        {getActiveTenantsCount() === 0 ? "No tenants request" : "Tenant Requests"}
+                        {tenantRequests.length === 0 ? "No tenant requests" : "Tenant Requests"}
                       </h3>
                       <span className="activity-badge">{tenantRequests.length} total</span>
                     </div>
@@ -1575,9 +1553,9 @@ export default function LandlordDashboard() {
                       {tenantRequests.length === 0 ? (
                         <div className="requests-empty-state">
                           <div className="requests-empty-icon">📋</div>
-                          <h4 className="requests-empty-title">No tenants request</h4>
+                          <h4 className="requests-empty-title">No tenant requests</h4>
                           <p className="requests-empty-desc">
-                            {getActiveTenantsCount() === 0
+                            {activeTenantsCount === 0
                               ? "Approve tenant applications to receive tenancy and maintenance requests."
                               : "Maintenance requests will appear here once active tenants submit them."}
                           </p>
@@ -1890,7 +1868,7 @@ export default function LandlordDashboard() {
         <div className="welcome-modal-overlay" ref={overlayRef}>
           <div className="welcome-modal-card" ref={contentRef}>
             <div className="welcome-modal-icon-wrapper">
-              <Sparkles className="h-8 w-8 text-[#E5C583] animate-pulse" />
+              <ListChecks className="h-8 w-8 text-[#E5C583] animate-pulse" />
             </div>
             <h2 className="welcome-modal-title">Welcome to Lodale, {username.split(" ")[0]}!</h2>
             <p className="welcome-modal-desc">

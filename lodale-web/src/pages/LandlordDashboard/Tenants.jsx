@@ -3,6 +3,7 @@ import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, Shi
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
+import { leaseService } from "../../services/leaseService";
 import Avatar from "../../components/Avatar";
 import "./Tenants.css";
 
@@ -37,45 +38,45 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     // Load properties
     let propertyList = [];
     try {
-      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const currentUserId = sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
       propertyList = await propertyService.getLandlordProperties(currentUserId);
     } catch (e) {
       console.warn("Could not load properties:", e);
     }
     setProperties(propertyList);
 
-    // Load tenants
-    const savedTenants = localStorage.getItem("propertyTenants");
-    let parsedTenants = {};
-    if (savedTenants) {
-      try {
-        parsedTenants = JSON.parse(savedTenants);
-      } catch (e) {
-        parsedTenants = {};
-      }
-    }
+    // Load tenants from leases
+    try {
+      const leases = await leaseService.getMyLeases();
+      const allTenants = leases.map(l => {
+        const isActive = l.status === 'active';
+        const isPending = l.status === 'draft' || !l.landlord_signed_at || !l.tenant_signed_at;
+        let status = 'past';
+        if (isActive) status = 'active';
+        else if (isPending) status = 'pending';
 
-    // Flatten tenants map to single array with property context
-    const allTenants = [];
-    Object.keys(parsedTenants).forEach((propId) => {
-      const prop = propertyList.find((p) => p.id === propId);
-      const list = parsedTenants[propId] || [];
-      list.forEach((t) => {
-        allTenants.push({
-          ...t,
-          propertyId: propId,
-          propertyTitle: prop ? prop.title : "Unknown Property",
-        });
+        return {
+          id: l.id,
+          name: l.tenant_name || "Unknown Tenant",
+          email: l.tenant_email || "",
+          phone: l.tenant_contact || "",
+          propertyId: l.property_id,
+          propertyTitle: l.property_title,
+          status: status,
+          leaseStatus: isActive ? 'Active Tenant' : 'Pending Signatures',
+          rentAmount: l.rent_amount,
+          rentPeriod: l.rent_period,
+          dueDate: new Date(l.start_date).toLocaleDateString("en-US", { day: 'numeric', month: 'short' }),
+        };
       });
-    });
-
-    setTenantsList(allTenants);
+      setTenantsList(allTenants);
+    } catch (e) {
+      console.warn("Could not load tenants from leases:", e);
+    }
   };
 
   useEffect(() => {
     loadData();
-    window.addEventListener("storage", loadData);
-    return () => window.removeEventListener("storage", loadData);
   }, []);
 
   // Sync when applications approve or other tabs update localStorage

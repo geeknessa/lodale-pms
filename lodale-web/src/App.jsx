@@ -12,19 +12,19 @@ import PageLoader from "./components/PageLoader";
 import { LandlordAccessPrompt, TenantAccessPrompt } from "./components/RoleAccessPrompt";
 
 const GuestDashboard = lazy(() => import("./pages/GuestDashboard"));
-const ListingDetail = lazy(() => import("./pages/ListingDetail"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const About = lazy(() => import("./pages/About"));
 const Login = lazy(() => import("./pages/Login"));
 const SignUp = lazy(() => import("./pages/SignUp"));
 const Application = lazy(() => import("./pages/Application"));
-const AddProperty = lazy(() => import("./pages/AddProperty"));
 const AccessDenied = lazy(() => import("./pages/AccessDenied"));
-const DashboardAddProperty = lazy(() => import("./pages/DashboardAddProperty"));
-const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard/AdminDashboard"));
 const LandlordDashboard = lazy(() => import("./pages/LandlordDashboard/LandlordDashboard"));
-const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
 const TenantDashboard = lazy(() => import("./pages/TenantDashboard/TenantDashboard"));
+
+const PropertyForm = lazy(() => import("./components/PropertyForm"));
+const ListingDetailView = lazy(() => import("./components/PropertyView").then(m => ({ default: m.ListingDetailView })));
+const PropertyDetailView = lazy(() => import("./components/PropertyView").then(m => ({ default: m.PropertyDetailView })));
 import { AlertTriangle } from "lucide-react";
 
 
@@ -54,7 +54,7 @@ class ErrorBoundary extends React.Component {
               Something went wrong
             </h1>
             <p className="text-[14px] text-cream-100/75 leading-relaxed">
-              We're sorry, but we've run into an issue on our end. 
+              We're sorry, but we've run into an issue on our end.
               Don't worry, your data is safe. Please reload the page to continue.
             </p>
 
@@ -204,7 +204,7 @@ function LandlordProtectedRoute({ children }) {
     if (authState.reason === "wrong_role") {
       return <Navigate to="/access-denied" replace />;
     }
-    
+
     const expires = sessionStorage.getItem("sessionExpiresAt");
     const wasSessionExpired = expires && Date.now() > Number(expires);
 
@@ -249,7 +249,7 @@ function TenantProtectedRoute({ children }) {
     if (authState.reason === "wrong_role") {
       return <Navigate to="/access-denied" replace />;
     }
-    
+
     const expires = sessionStorage.getItem("sessionExpiresAt");
     const wasSessionExpired = expires && Date.now() > Number(expires);
 
@@ -304,7 +304,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Navigate to="/explore" replace />} />
                 <Route path="/explore" element={<GuestDashboard />} />
-                <Route path="/listings/:id" element={<ListingDetail />} />
+                <Route path="/listings/:id" element={<ListingDetailView />} />
                 <Route path="/how-it-works" element={<HowItWorks />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/login" element={<Login />} />
@@ -350,7 +350,7 @@ export default function App() {
                   path="/add-property"
                   element={
                     <LandlordProtectedRoute>
-                      <AddProperty />
+                      <PropertyForm isStandalone={true} />
                     </LandlordProtectedRoute>
                   }
                 />
@@ -366,7 +366,7 @@ export default function App() {
                   path="/dashboard/landlord/add-property"
                   element={
                     <LandlordProtectedRoute>
-                      <DashboardAddProperty />
+                      <PropertyForm isStandalone={false} />
                     </LandlordProtectedRoute>
                   }
                 />
@@ -374,7 +374,15 @@ export default function App() {
                   path="/dashboard/landlord/properties/:id"
                   element={
                     <LandlordProtectedRoute>
-                      <PropertyDetail />
+                      <PropertyDetailView />
+                    </LandlordProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard/landlord/properties/:id/edit"
+                  element={
+                    <LandlordProtectedRoute>
+                      <PropertyForm isStandalone={false} />
                     </LandlordProtectedRoute>
                   }
                 />
