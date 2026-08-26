@@ -9,7 +9,7 @@ const router = express.Router();
 router.get('/', propertyController.getProperties);
 router.get('/landlord/:landlordId', requireAuth, requireRole('landlord'), propertyController.getPropertiesByLandlord);
 router.get('/:id', propertyController.getPropertyById);
-router.post('/', optionalAuth, validate(createPropertySchema), propertyController.createProperty);
+router.post('/', requireAuth, requireRole('landlord'), validate(createPropertySchema), propertyController.createProperty);
 router.put('/:id', requireAuth, requireRole('landlord'), propertyController.updateProperty);
 router.patch('/:id/status', requireAuth, requireRole('landlord'), propertyController.updatePropertyStatus);
 router.post('/:id/request-deletion', requireAuth, requireRole('landlord'), propertyController.requestPropertyDeletion);

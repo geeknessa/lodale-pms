@@ -1,4 +1,4 @@
-import { pool } from '../config/db.js';
+import { pool } from '../db/db.js';
 
 // @desc    Get all conversations for the current user
 // @route   GET /api/chat/conversations

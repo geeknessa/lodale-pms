@@ -1,4 +1,4 @@
-import { pool } from '../config/db.js';
+import { pool } from '../db/db.js';
 
 const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 const CONSTANT_ADMIN_UUID = '00000000-0000-0000-0000-000000000001';

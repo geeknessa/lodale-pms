@@ -118,5 +118,67 @@ CREATE TABLE IF NOT EXISTS property_applications (
     UNIQUE(property_id, tenant_id)
 );
 
+-- LEASES TABLE
+CREATE TABLE IF NOT EXISTS leases (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE RESTRICT,
+    tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    landlord_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    application_id UUID UNIQUE REFERENCES property_applications(id) ON DELETE SET NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    rent_amount NUMERIC(20, 2) NOT NULL,
+    rent_period VARCHAR(20) NOT NULL,
+    security_deposit NUMERIC(20, 2) DEFAULT 0.00,
+    custom_clauses TEXT,
+    include_pets BOOLEAN DEFAULT false,
+    include_smoking BOOLEAN DEFAULT false,
+    include_late_fee BOOLEAN DEFAULT false,
+    status VARCHAR(50) DEFAULT 'draft',
+    tenant_signed_at TIMESTAMPTZ,
+    landlord_signed_at TIMESTAMPTZ,
+    tenant_signature_ip VARCHAR(50),
+    landlord_signature_ip VARCHAR(50),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
+-- RENT INVOICES TABLE
+CREATE TABLE IF NOT EXISTS rent_invoices (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+    amount NUMERIC(20, 2) NOT NULL,
+    due_date DATE NOT NULL,
+    status VARCHAR(50) DEFAULT 'unpaid', -- 'unpaid', 'paid', 'overdue'
+    billing_period_start DATE,
+    billing_period_end DATE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
+-- RENT PAYMENTS TABLE
+CREATE TABLE IF NOT EXISTS rent_payments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    invoice_id UUID REFERENCES rent_invoices(id) ON DELETE SET NULL,
+    lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+    amount NUMERIC(20, 2) NOT NULL,
+    payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    payment_method VARCHAR(50) NOT NULL, -- 'cash', 'bank_transfer', 'card'
+    reference_number VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- MAINTENANCE REQUESTS TABLE
+CREATE TABLE IF NOT EXISTS maintenance_requests (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    priority VARCHAR(30) DEFAULT 'medium', -- 'low', 'medium', 'high', 'emergency'
+    status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'in_progress', 'resolved', 'cancelled'
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
