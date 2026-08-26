@@ -16,8 +16,6 @@ export const authService = {
     if (data.token) {
       sessionStorage.setItem('lodale_token', data.token);
       sessionStorage.setItem('lodale_user', JSON.stringify(data.user));
-      sessionStorage.setItem('lodale_token', data.token);
-      localStorage.setItem('lodale_user', JSON.stringify(data.user));
     }
     return data;
   },
@@ -34,8 +32,6 @@ export const authService = {
     if (data.token) {
       sessionStorage.setItem('lodale_token', data.token);
       sessionStorage.setItem('lodale_user', JSON.stringify(data.user));
-      sessionStorage.setItem('lodale_token', data.token);
-      localStorage.setItem('lodale_user', JSON.stringify(data.user));
     }
     return data;
   },
@@ -46,7 +42,6 @@ export const authService = {
   async signOut() {
     sessionStorage.removeItem('lodale_token');
     sessionStorage.removeItem('lodale_user');
-    sessionStorage.removeItem('lodale_token');
     localStorage.removeItem('lodale_user');
   },
 
@@ -54,7 +49,7 @@ export const authService = {
    * Fetch current authenticated user
    */
   async getCurrentUser() {
-    const token = sessionStorage.getItem('lodale_token') || sessionStorage.getItem('lodale_token');
+    const token = sessionStorage.getItem('lodale_token');
     if (!token) return null;
 
     try {
@@ -63,7 +58,6 @@ export const authService = {
     } catch {
       sessionStorage.removeItem('lodale_token');
       sessionStorage.removeItem('lodale_user');
-      sessionStorage.removeItem('lodale_token');
       localStorage.removeItem('lodale_user');
       return null;
     }

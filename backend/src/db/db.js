@@ -31,7 +31,7 @@ async function ensureDatabaseExists() {
     url.pathname = '/postgres';
     const tempClient = new pg.Client({ connectionString: url.toString() });
     await tempClient.connect();
-    
+
     const res = await tempClient.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName]);
     if (res.rowCount === 0) {
       console.log(`[PostgreSQL] Database "${dbName}" does not exist. Creating database automatically...`);
@@ -128,6 +128,10 @@ export async function initDb() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
+      ALTER TABLE leases ADD COLUMN IF NOT EXISTS custom_clauses TEXT;
+      ALTER TABLE leases ADD COLUMN IF NOT EXISTS include_pets BOOLEAN DEFAULT false;
+      ALTER TABLE leases ADD COLUMN IF NOT EXISTS include_smoking BOOLEAN DEFAULT false;
+      ALTER TABLE leases ADD COLUMN IF NOT EXISTS include_late_fee BOOLEAN DEFAULT false;
       -- Avoid ON CONFLICT which fails without a unique constraint
     `);
 
@@ -204,6 +208,70 @@ export async function initDb() {
       
       -- Ensure rejection_reason exists if table was already created
       ALTER TABLE property_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+      CREATE TABLE IF NOT EXISTS leases (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        property_id UUID NOT NULL REFERENCES properties(id) ON DELETE RESTRICT,
+        tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+        landlord_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+        application_id UUID UNIQUE REFERENCES property_applications(id) ON DELETE SET NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        rent_amount NUMERIC(20, 2) NOT NULL,
+        rent_period VARCHAR(20) NOT NULL,
+        security_deposit NUMERIC(20, 2) DEFAULT 0.00,
+        custom_clauses TEXT,
+        include_pets BOOLEAN DEFAULT false,
+        include_smoking BOOLEAN DEFAULT false,
+        include_late_fee BOOLEAN DEFAULT false,
+        status VARCHAR(50) DEFAULT 'draft',
+        tenant_signed_at TIMESTAMPTZ,
+        landlord_signed_at TIMESTAMPTZ,
+        tenant_signature_ip VARCHAR(50),
+        landlord_signature_ip VARCHAR(50),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      ALTER TABLE leases DROP CONSTRAINT IF EXISTS leases_application_id_fkey;
+      ALTER TABLE leases ADD CONSTRAINT leases_application_id_fkey FOREIGN KEY (application_id) REFERENCES property_applications(id) ON DELETE SET NULL;
+
+      CREATE TABLE IF NOT EXISTS rent_invoices (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+        amount NUMERIC(20, 2) NOT NULL,
+        due_date DATE NOT NULL,
+        status VARCHAR(50) DEFAULT 'unpaid',
+        billing_period_start DATE,
+        billing_period_end DATE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS rent_payments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        invoice_id UUID REFERENCES rent_invoices(id) ON DELETE SET NULL,
+        lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+        amount NUMERIC(20, 2) NOT NULL,
+        payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
+        payment_method VARCHAR(50) NOT NULL,
+        reference_number VARCHAR(100),
+        notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS maintenance_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+        tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL,
+        priority VARCHAR(30) DEFAULT 'medium',
+        status VARCHAR(50) DEFAULT 'pending',
+        notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
     `);
 
     client.release();

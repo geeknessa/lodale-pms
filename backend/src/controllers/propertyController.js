@@ -88,8 +88,7 @@ export const propertyController = {
           id: landlord.id,
           name: `${landlord.first_name || ''} ${landlord.last_name || ''}`.trim() || 'Verified Landlord',
           first_name: landlord.first_name,
-          last_name: landlord.last_name,
-          phone_number: landlord.phone_number
+          last_name: landlord.last_name
        };
     }
 
@@ -116,13 +115,16 @@ export const propertyController = {
   createProperty: asyncHandler(async (req, res) => {
     const { 
       title, description, address_line1, city, state, rent_amount, 
-      bedrooms, bathrooms, property_type, amenities, landlord_id, 
+      bedrooms, bathrooms, property_type, amenities, 
       ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
       rules, images, cover_image, blocks, units 
     } = req.body;
 
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
-    const effectiveLandlordId = landlord_id || '11111111-1111-1111-1111-111111111111';
+    const effectiveLandlordId = req.user ? req.user.id : req.body.landlord_id;
+    if (!effectiveLandlordId) {
+      return res.status(401).json({ error: 'Unauthorized: Landlord identity required' });
+    }
     const sanitizedPropertyType = (property_type || 'single_house').toString().trim().toLowerCase().replace(/\s+/g, '_');
 
     const property = await PropertyModel.createProperty({
@@ -154,6 +156,14 @@ export const propertyController = {
 
   updateProperty: asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const existingProperty = await PropertyModel.findByIdOrSlug(id);
+    if (!existingProperty) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+    if (existingProperty.landlord_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: You can only update your own properties' });
+    }
+
     const data = req.body;
     
     // Quick sanitization of price from rent string to number if needed, but only if rent_amount isn't explicitly provided
@@ -191,6 +201,14 @@ export const propertyController = {
 
   deleteProperty: asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const existingProperty = await PropertyModel.findByIdOrSlug(id);
+    if (!existingProperty) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+    if (existingProperty.landlord_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: You can only delete your own properties' });
+    }
+
     await PropertyModel.deleteProperty(id);
     res.json({ message: 'Property deleted successfully' });
   }),
@@ -201,6 +219,14 @@ export const propertyController = {
     
     if (!status) {
       return res.status(400).json({ error: 'Status is required' });
+    }
+
+    const existingProperty = await PropertyModel.findByIdOrSlug(id);
+    if (!existingProperty) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+    if (existingProperty.landlord_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: You can only update status of your own properties' });
     }
 
     const updated = await PropertyModel.updatePropertyStatus(id, status);
@@ -219,6 +245,14 @@ export const propertyController = {
       return res.status(400).json({ error: 'Deletion reason is required' });
     }
 
+    const existingProperty = await PropertyModel.findByIdOrSlug(id);
+    if (!existingProperty) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+    if (existingProperty.landlord_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: You can only request deletion of your own properties' });
+    }
+
     const updated = await PropertyModel.requestDeletion(id, reason);
     if (!updated) {
       return res.status(400).json({ error: 'Property not found or is currently occupied.' });
@@ -233,6 +267,14 @@ export const propertyController = {
 
     if (!reason) {
       return res.status(400).json({ error: 'Suspension reason is required' });
+    }
+
+    const existingProperty = await PropertyModel.findByIdOrSlug(id);
+    if (!existingProperty) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+    if (existingProperty.landlord_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: You can only request suspension of your own properties' });
     }
 
     const updated = await PropertyModel.requestSuspension(id, reason);

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info, ChevronDown, User } from "lucide-react";
+import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info, ChevronDown, User, Edit3 } from "lucide-react";
 import { propertyService } from "../../services/propertyService";
 import { formatCurrency } from "../../utils/formatters";
 import UserInfo from "./components/UserInfo";
+import QuickEditPropertyModal from "../../components/QuickEditPropertyModal";
 import "./LandlordProperties.css";
 
 
@@ -93,6 +94,7 @@ export default function LandlordProperties() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [showTenantsPopupForProperty, setShowTenantsPopupForProperty] = useState(null);
   const [selectedTenantForDetails, setSelectedTenantForDetails] = useState(null);
+  const [editingProperty, setEditingProperty] = useState(null);
 
   const [username] = useState(() => {
     return sessionStorage.getItem("username") || "Ada";
@@ -438,11 +440,19 @@ export default function LandlordProperties() {
                     </div>
                   </div>
 
-                  {/* Action button spanning full width */}
-                  <div className="ap-card-actions">
+                  {/* Action buttons */}
+                  <div className="ap-card-actions flex items-center gap-2">
+                    <button
+                      onClick={() => setEditingProperty(item)}
+                      className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/40 transition-colors flex items-center gap-1 cursor-pointer"
+                      title="Edit property details"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" /> Edit
+                    </button>
+
                     <button
                       onClick={() => navigate(`/dashboard/landlord/properties/${item.id}`)}
-                      className="ap-action-btn btn-primary w-full"
+                      className="ap-action-btn btn-primary flex-1"
                       title="View details"
                     >
                       <ChevronRight className="h-4 w-4 mr-0.5" /> Details
@@ -524,6 +534,16 @@ export default function LandlordProperties() {
           onClose={() => setSelectedTenantForDetails(null)}
         />
       )}
+
+      {/* In-Page Quick Edit Property Modal */}
+      <QuickEditPropertyModal
+        isOpen={!!editingProperty}
+        onClose={() => setEditingProperty(null)}
+        property={editingProperty}
+        onSaveSuccess={(updated) => {
+          setProperties(prev => prev.map(p => p.id === editingProperty.id ? { ...p, ...updated } : p));
+        }}
+      />
     </div>
   );
 }

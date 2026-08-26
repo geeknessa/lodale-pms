@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search as SearchIcon, FileText, Clock, ChevronRight, Loader2, MessageSquare } from "lucide-react";
+import { Search as SearchIcon, FileText, Clock, ChevronRight, Loader2, MessageSquare, Trash2 } from "lucide-react";
 import Button from "../../components/Button";
 import { useNavigate } from "react-router-dom";
 import { applicationService } from "../../services/applicationService";
@@ -26,6 +26,20 @@ export default function TenantApplications({ setActiveTab }) {
       setError("Could not load applications. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleWithdraw = async (appId, propertyTitle) => {
+    if (!window.confirm(`Are you sure you want to withdraw your application for "${propertyTitle || 'this property'}"?`)) {
+      return;
+    }
+    try {
+      await applicationService.withdrawApplication(appId);
+      triggerToast("Application withdrawn successfully.", "info", "Withdrawn");
+      setApplications(prev => prev.filter(a => a.id !== appId));
+    } catch (err) {
+      console.error("Failed to withdraw application:", err);
+      triggerToast(err.message || "Failed to withdraw application.", "error", "Error");
     }
   };
 
@@ -184,23 +198,35 @@ export default function TenantApplications({ setActiveTab }) {
                   </div>
                 )}
                 
-                <div className="mt-auto pt-4 border-t border-neutral-100 dark:border-neutral-800/60 flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => {
-                      setSelectedAppForUpload(app);
-                      setShowUploadModal(true);
-                    }}
-                    className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-bold text-xs rounded-lg transition-colors border border-amber-200 dark:border-amber-900/40 flex items-center gap-1"
-                  >
-                    <FileText className="h-3.5 w-3.5" /> Upload Doc
-                  </button>
+                <div className="mt-auto pt-4 border-t border-neutral-100 dark:border-neutral-800/60 flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => {
+                        setSelectedAppForUpload(app);
+                        setShowUploadModal(true);
+                      }}
+                      className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-bold text-xs rounded-lg transition-colors border border-amber-200 dark:border-amber-900/40 flex items-center gap-1"
+                    >
+                      <FileText className="h-3.5 w-3.5" /> Upload Doc
+                    </button>
+
+                    {app.status !== 'leased' && app.status !== 'active' && (
+                      <button
+                        onClick={() => handleWithdraw(app.id, app.propertyTitle)}
+                        className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 font-bold text-xs rounded-lg transition-colors border border-rose-200 dark:border-rose-900/40 flex items-center gap-1"
+                        title="Withdraw your application for this property"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" /> Withdraw
+                      </button>
+                    )}
+                  </div>
 
                   <button
                     onClick={() => {
                       if (app.landlordId) {
                         sessionStorage.setItem("activeChatPartnerId", app.landlordId);
                       }
-                      if (setActiveTab) setActiveTab(2); // Fix: Chat is tab index 2!
+                      if (setActiveTab) setActiveTab(2);
                     }}
                     className="px-3 py-1.5 bg-moss-600 hover:bg-moss-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-sm"
                   >

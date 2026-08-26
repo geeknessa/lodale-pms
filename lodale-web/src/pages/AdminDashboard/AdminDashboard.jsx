@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Logo } from "../components/Logo";
-import { useTheme } from "../context/ThemeContext";
-import { adminService } from "../services/adminService";
-import { propertyService } from "../services/propertyService";
-import { authService } from "../services/authService";
-import AdminSupportChat from "./AdminDashboard/AdminSupportChat";
-import { formatCurrency, formatDate } from "../utils/formatters";
+import { Logo } from "../../components/Logo";
+import { useTheme } from "../../context/ThemeContext";
+import { adminService } from "../../services/adminService";
+import { propertyService } from "../../services/propertyService";
+import { authService } from "../../services/authService";
+import AdminSupportChat from "./AdminSupportChat";
+import { formatCurrency, formatDate } from "../../utils/formatters";
 import {
   LayoutDashboard,
   Users,
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
             avatarPreview: currentUser.avatar_url || prev.avatarPreview
           }));
         }
-      } catch (_e) {}
+      } catch (_e) { }
 
       // 2. Load Property Listings from Backend API (Both Pending & Public Listings)
       let apiPending = [];
@@ -1491,433 +1491,433 @@ export default function AdminDashboard() {
               </div>
 
               {/* Filter Toggle & Search */}
-          <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
-            <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
-              <button
-                onClick={() => setReviewFilter("Flagged")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "Flagged"
-                  ? "bg-rose-800 text-white"
-                  : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
-                  }`}
-              >
-                Flagged Only ({flaggedReviewsCount})
-              </button>
-              <button
-                onClick={() => setReviewFilter("All")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "All"
-                  ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33]"
-                  : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
-                  }`}
-              >
-                All Reviews ({reviews.length})
-              </button>
-            </div>
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+                <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
+                  <button
+                    onClick={() => setReviewFilter("Flagged")}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "Flagged"
+                      ? "bg-rose-800 text-white"
+                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                      }`}
+                  >
+                    Flagged Only ({flaggedReviewsCount})
+                  </button>
+                  <button
+                    onClick={() => setReviewFilter("All")}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "All"
+                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33]"
+                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                      }`}
+                  >
+                    All Reviews ({reviews.length})
+                  </button>
+                </div>
 
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
-              <input
-                type="text"
-                placeholder="Search in reviews..."
-                value={reviewSearch}
-                onChange={(e) => setReviewSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
-              />
-            </div>
-          </div>
-
-          {/* Reviews Feed */}
-          <div className="space-y-4">
-            {filteredReviews.length === 0 ? (
-              <div className="py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                No reviews match your current view.
+                <div className="relative w-full md:w-72">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+                  <input
+                    type="text"
+                    placeholder="Search in reviews..."
+                    value={reviewSearch}
+                    onChange={(e) => setReviewSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+                  />
+                </div>
               </div>
-            ) : (
-              filteredReviews.map((rev) => (
-                <div
-                  key={rev.id}
-                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm"
-                >
-                  <div className="space-y-2 max-w-2xl">
-                    <div className="flex items-center gap-2">
-                      <div className="flex text-amber-500">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${i < rev.rating ? "fill-amber-400 text-amber-400" : "text-gray-300 dark:text-gray-600"
-                              }`}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
-                        {rev.propertyTitle}
-                      </span>
-                      {rev.flagged && (
-                        <span className="text-[10px] bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded font-bold uppercase">
-                          FLAGGED
-                        </span>
-                      )}
-                    </div>
 
-                    <p className="text-sm text-[#262626] dark:text-[#E4EBE6] italic">
-                      "{rev.comment}"
-                    </p>
-
-                    <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                      By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {formatDate(rev.submittedAt, { year: 'numeric', month: 'numeric', day: 'numeric' })}
-                    </div>
-
-                    {rev.flagged && (
-                      <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded text-xs text-amber-900 dark:text-amber-300">
-                        <strong>Reported reason:</strong> {rev.flagReason}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => setSelectedReviewFlag(rev)}
-                      className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
-                    >
-                      Report Details
-                    </button>
-
-                    {rev.flagged && (
-                      <button
-                        onClick={() => handleDismissFlag(rev.id)}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
-                      >
-                        Dismiss Flag (Keep)
-                      </button>
-                    )}
-
-                    <button
-                      onClick={() => handleRemoveReview(rev.id)}
-                      className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
-                    >
-                      Remove Review
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* --- TAB: PROPERTY REQUESTS (DELETION & SUSPENSION) --- */}
-      {activeTab === "requests" && (
-              <div className="space-y-6">
-                <div>
-                  <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
-                    <FileText className="h-6 w-6 text-[#3A5A40] dark:text-[#E5C583]" />
-                    Property Deletion & Suspension Requests
-                  </h1>
-                  <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
-                    Review and act on landlord requests to suspend or delete listed properties.
-                  </p>
-                </div>
-
-                {propertyRequests.length === 0 ? (
-                  <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-2xl p-12 text-center">
-                    <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-3" />
-                    <h3 className="text-base font-bold text-ink-900 dark:text-white">No Pending Requests</h3>
-                    <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-1">
-                      There are currently no property deletion or suspension requests awaiting approval.
-                    </p>
+              {/* Reviews Feed */}
+              <div className="space-y-4">
+                {filteredReviews.length === 0 ? (
+                  <div className="py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                    No reviews match your current view.
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-4">
-                    {propertyRequests.map((req) => {
-                      const isDeletion = req.status === "deletion_requested";
-                      const reason = isDeletion ? req.deletion_reason : req.suspension_reason;
-
-                      return (
-                        <div key={req.id} className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 shadow-sm space-y-4">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${isDeletion ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
-                                  {isDeletion ? 'Deletion Request' : 'Suspension Request'}
-                                </span>
-                                <span className="text-xs text-ink-400">ID: {req.id}</span>
-                              </div>
-                              <h3 className="text-lg font-bold text-ink-900 dark:text-white">{req.title}</h3>
-                              <p className="text-xs text-ink-500 dark:text-cream-100/70">{req.city}, {req.state} • Landlord: <span className="font-semibold text-moss-800 dark:text-[#E5C583]">{req.landlord_name || req.landlord_email || 'Landlord'}</span></p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs font-bold text-moss-800 dark:text-[#E5C583]">₦{Number(req.rent_amount || 0).toLocaleString()}/yr</p>
-                            </div>
+                  filteredReviews.map((rev) => (
+                    <div
+                      key={rev.id}
+                      className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm"
+                    >
+                      <div className="space-y-2 max-w-2xl">
+                        <div className="flex items-center gap-2">
+                          <div className="flex text-amber-500">
+                            {[...Array(5)].map((_, i) => (
+                              <Star
+                                key={i}
+                                className={`h-4 w-4 ${i < rev.rating ? "fill-amber-400 text-amber-400" : "text-gray-300 dark:text-gray-600"
+                                  }`}
+                              />
+                            ))}
                           </div>
-
-                          <div className="bg-cream-50 dark:bg-white/5 p-3 rounded-lg border border-ink-100 dark:border-white/10">
-                            <p className="text-xs font-bold text-ink-500 uppercase tracking-wider mb-1">Reason Provided by Landlord:</p>
-                            <p className="text-xs text-ink-800 dark:text-cream-100 italic">"{reason || 'No reason specified.'}"</p>
-                          </div>
-
-                          <div className="flex items-center justify-end gap-3 pt-2">
-                            <button
-                              onClick={async () => {
-                                try {
-                                  if (isDeletion) {
-                                    await adminService.rejectDeletion(req.id);
-                                  } else {
-                                    await adminService.rejectSuspension(req.id);
-                                  }
-                                  triggerToast('Request rejected successfully.', 'success');
-                                  setPropertyRequests(prev => prev.filter(r => r.id !== req.id));
-                                } catch (e) {
-                                  triggerToast('Failed to reject request.', 'error');
-                                }
-                              }}
-                              className="px-4 py-2 text-xs font-bold rounded-lg border border-ink-200 dark:border-white/10 hover:bg-ink-50 dark:hover:bg-white/10 text-ink-700 dark:text-white"
-                            >
-                              Reject Request
-                            </button>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  if (isDeletion) {
-                                    await adminService.approveDeletion(req.id);
-                                  } else {
-                                    await adminService.approveSuspension(req.id);
-                                  }
-                                  triggerToast(isDeletion ? 'Property deleted.' : 'Property suspended.', 'success');
-                                  setPropertyRequests(prev => prev.filter(r => r.id !== req.id));
-                                } catch (e) {
-                                  triggerToast('Failed to approve request.', 'error');
-                                }
-                              }}
-                              className={`px-4 py-2 text-xs font-bold rounded-lg text-white shadow-sm ${isDeletion ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'}`}
-                            >
-                              {isDeletion ? 'Approve & Delete Property' : 'Approve & Suspend Listing'}
-                            </button>
-                          </div>
+                          <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                            {rev.propertyTitle}
+                          </span>
+                          {rev.flagged && (
+                            <span className="text-[10px] bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded font-bold uppercase">
+                              FLAGGED
+                            </span>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <p className="text-sm text-[#262626] dark:text-[#E4EBE6] italic">
+                          "{rev.comment}"
+                        </p>
+
+                        <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                          By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {formatDate(rev.submittedAt, { year: 'numeric', month: 'numeric', day: 'numeric' })}
+                        </div>
+
+                        {rev.flagged && (
+                          <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded text-xs text-amber-900 dark:text-amber-300">
+                            <strong>Reported reason:</strong> {rev.flagReason}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => setSelectedReviewFlag(rev)}
+                          className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                        >
+                          Report Details
+                        </button>
+
+                        {rev.flagged && (
+                          <button
+                            onClick={() => handleDismissFlag(rev.id)}
+                            className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                          >
+                            Dismiss Flag (Keep)
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleRemoveReview(rev.id)}
+                          className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                        >
+                          Remove Review
+                        </button>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* --- TAB 4: MY PROFILE --- */}
-            {activeTab === "support" && (
-              <div className="h-full">
-                <AdminSupportChat />
+          {/* --- TAB: PROPERTY REQUESTS (DELETION & SUSPENSION) --- */}
+          {activeTab === "requests" && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                  <FileText className="h-6 w-6 text-[#3A5A40] dark:text-[#E5C583]" />
+                  Property Deletion & Suspension Requests
+                </h1>
+                <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  Review and act on landlord requests to suspend or delete listed properties.
+                </p>
               </div>
-            )}
 
-            {/* Settings Tab / Sub-Tabs */}
-            {(activeTab === "profile" || activeTab === "settings") && (
-              <div className="space-y-6 animate-fade-in">
-                {/* Main Header */}
+              {propertyRequests.length === 0 ? (
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-2xl p-12 text-center">
+                  <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-3" />
+                  <h3 className="text-base font-bold text-ink-900 dark:text-white">No Pending Requests</h3>
+                  <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-1">
+                    There are currently no property deletion or suspension requests awaiting approval.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {propertyRequests.map((req) => {
+                    const isDeletion = req.status === "deletion_requested";
+                    const reason = isDeletion ? req.deletion_reason : req.suspension_reason;
+
+                    return (
+                      <div key={req.id} className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 shadow-sm space-y-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${isDeletion ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
+                                {isDeletion ? 'Deletion Request' : 'Suspension Request'}
+                              </span>
+                              <span className="text-xs text-ink-400">ID: {req.id}</span>
+                            </div>
+                            <h3 className="text-lg font-bold text-ink-900 dark:text-white">{req.title}</h3>
+                            <p className="text-xs text-ink-500 dark:text-cream-100/70">{req.city}, {req.state} • Landlord: <span className="font-semibold text-moss-800 dark:text-[#E5C583]">{req.landlord_name || req.landlord_email || 'Landlord'}</span></p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs font-bold text-moss-800 dark:text-[#E5C583]">₦{Number(req.rent_amount || 0).toLocaleString()}/yr</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-cream-50 dark:bg-white/5 p-3 rounded-lg border border-ink-100 dark:border-white/10">
+                          <p className="text-xs font-bold text-ink-500 uppercase tracking-wider mb-1">Reason Provided by Landlord:</p>
+                          <p className="text-xs text-ink-800 dark:text-cream-100 italic">"{reason || 'No reason specified.'}"</p>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                          <button
+                            onClick={async () => {
+                              try {
+                                if (isDeletion) {
+                                  await adminService.rejectDeletion(req.id);
+                                } else {
+                                  await adminService.rejectSuspension(req.id);
+                                }
+                                triggerToast('Request rejected successfully.', 'success');
+                                setPropertyRequests(prev => prev.filter(r => r.id !== req.id));
+                              } catch (e) {
+                                triggerToast('Failed to reject request.', 'error');
+                              }
+                            }}
+                            className="px-4 py-2 text-xs font-bold rounded-lg border border-ink-200 dark:border-white/10 hover:bg-ink-50 dark:hover:bg-white/10 text-ink-700 dark:text-white"
+                          >
+                            Reject Request
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                if (isDeletion) {
+                                  await adminService.approveDeletion(req.id);
+                                } else {
+                                  await adminService.approveSuspension(req.id);
+                                }
+                                triggerToast(isDeletion ? 'Property deleted.' : 'Property suspended.', 'success');
+                                setPropertyRequests(prev => prev.filter(r => r.id !== req.id));
+                              } catch (e) {
+                                triggerToast('Failed to approve request.', 'error');
+                              }
+                            }}
+                            className={`px-4 py-2 text-xs font-bold rounded-lg text-white shadow-sm ${isDeletion ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                          >
+                            {isDeletion ? 'Approve & Delete Property' : 'Approve & Suspend Listing'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* --- TAB 4: MY PROFILE --- */}
+          {activeTab === "support" && (
+            <div className="h-full">
+              <AdminSupportChat />
+            </div>
+          )}
+
+          {/* Settings Tab / Sub-Tabs */}
+          {(activeTab === "profile" || activeTab === "settings") && (
+            <div className="space-y-6 animate-fade-in">
+              {/* Main Header */}
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#DAD7CD] uppercase tracking-wider mb-1">
+                  <User className="h-4 w-4" /> System Administration
+                </div>
+                <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#DAD7CD]">
+                  My Profile
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#DAD7CD]/75 mt-1">
+                  Manage your personal information, contact details, and account password.
+                </p>
+              </div>
+
+              {/* Profile Details Form Card */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
                 <div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#DAD7CD] uppercase tracking-wider mb-1">
-                    <User className="h-4 w-4" /> System Administration
-                  </div>
-                  <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#DAD7CD]">
-                    My Profile
-                  </h1>
-                  <p className="text-sm text-[#262626]/70 dark:text-[#DAD7CD]/75 mt-1">
-                    Manage your personal information, contact details, and account password.
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
+                    <User className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
+                    Profile Details
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
+                    Update your public administrator details and identity attributes.
                   </p>
                 </div>
 
-                {/* Profile Details Form Card */}
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
-                  <div>
-                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
-                      <User className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
-                      Profile Details
-                    </h2>
-                    <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
-                      Update your public administrator details and identity attributes.
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleSaveProfile} className="space-y-6">
-                    {/* Photo Upload Section */}
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
-                      <div className="relative shrink-0">
-                        <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#DAD7CD] dark:text-[#121F1A] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
-                          {profileForm.avatarPreview ? (
-                            <img
-                              src={profileForm.avatarPreview}
-                              alt="Avatar Preview"
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            "TB"
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5 text-center sm:text-left">
-                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                          <label
-                            htmlFor="avatar-upload"
-                            className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-                          >
-                            <Upload className="h-3.5 w-3.5" /> Upload Photo
-                          </label>
-                          <input
-                            id="avatar-upload"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAvatarUpload}
-                            className="hidden"
+                <form onSubmit={handleSaveProfile} className="space-y-6">
+                  {/* Photo Upload Section */}
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                    <div className="relative shrink-0">
+                      <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#DAD7CD] dark:text-[#121F1A] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
+                        {profileForm.avatarPreview ? (
+                          <img
+                            src={profileForm.avatarPreview}
+                            alt="Avatar Preview"
+                            className="h-full w-full object-cover"
                           />
-                          {profileForm.avatarPreview && (
-                            <button
-                              type="button"
-                              onClick={() => setProfileForm((p) => ({ ...p, avatarPreview: null }))}
-                              className="px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
-                            >
-                              Remove
-                            </button>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-[#262626]/60 dark:text-[#DAD7CD]/75">
-                          Supported formats: JPG, PNG, GIF. Maximum size 2MB.
-                        </p>
+                        ) : (
+                          "TB"
+                        )}
                       </div>
                     </div>
 
-                    {/* Profile Form Fields */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                          Full Name
+                    <div className="space-y-1.5 text-center sm:text-left">
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                        <label
+                          htmlFor="avatar-upload"
+                          className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Upload className="h-3.5 w-3.5" /> Upload Photo
                         </label>
                         <input
-                          type="text"
-                          maxLength={50}
-                          value={profileForm.name}
-                          onInput={(e) => setProfileForm({ ...profileForm, name: e.target.value.replace(/[0-9]/g, '') })}
-                          onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                          required
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                          id="avatar-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
+                          className="hidden"
                         />
+                        {profileForm.avatarPreview && (
+                          <button
+                            type="button"
+                            onClick={() => setProfileForm((p) => ({ ...p, avatarPreview: null }))}
+                            className="px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
+                          >
+                            Remove
+                          </button>
+                        )}
                       </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                          Username
-                        </label>
-                        <input
-                          type="text"
-                          maxLength={50}
-                          value={profileForm.username}
-                          onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
-                          required
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                          Email Address
-                        </label>
-                        <input
-                          type="email"
-                          maxLength={100}
-                          value={profileForm.email}
-                          onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                          required
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                          Phone Number
-                        </label>
-                        <input
-                          type="tel"
-                          maxLength={15}
-                          value={profileForm.phone}
-                          onInput={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/[^0-9+]/g, '') })}
-                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                        />
-                      </div>
+                      <p className="text-[11px] text-[#262626]/60 dark:text-[#DAD7CD]/75">
+                        Supported formats: JPG, PNG, GIF. Maximum size 2MB.
+                      </p>
                     </div>
-
-                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
-                      <button
-                        type="submit"
-                        className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
-                      >
-                        Save Profile Changes
-                      </button>
-                    </div>
-                  </form>
-                </div>
-
-                {/* Change Password Card directly underneath Profile Details */}
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
-                  <div>
-                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
-                      <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
-                      Change Password
-                    </h2>
-                    <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
-                      Ensure your account is using a secure, random password.
-                    </p>
                   </div>
 
-                  <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                  {/* Profile Form Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                        Current Password
+                        Full Name
                       </label>
                       <input
-                        type="password"
-                        placeholder="••••••••"
-                        value={passwordForm.currentPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                        type="text"
+                        maxLength={50}
+                        value={profileForm.name}
+                        onInput={(e) => setProfileForm({ ...profileForm, name: e.target.value.replace(/[0-9]/g, '') })}
+                        onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                        required
                         className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
                       />
                     </div>
 
                     <div>
                       <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                        New Password
+                        Username
                       </label>
                       <input
-                        type="password"
-                        placeholder="••••••••"
-                        value={passwordForm.newPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                        type="text"
+                        maxLength={50}
+                        value={profileForm.username}
+                        onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
+                        required
                         className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
                       />
                     </div>
 
                     <div>
                       <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                        Confirm New Password
+                        Email Address
                       </label>
                       <input
-                        type="password"
-                        placeholder="••••••••"
-                        value={passwordForm.confirmPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                        type="email"
+                        maxLength={100}
+                        value={profileForm.email}
+                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                        required
                         className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
                       />
                     </div>
 
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        maxLength={15}
+                        value={profileForm.phone}
+                        onInput={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/[^0-9+]/g, '') })}
+                        onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
                     <button
                       type="submit"
-                      className="px-4 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
+                      className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
                     >
-                      Update Password
+                      Save Profile Changes
                     </button>
-                  </form>
-                </div>
+                  </div>
+                </form>
               </div>
-            )}
-          </main>
-        </div>
+
+              {/* Change Password Card directly underneath Profile Details */}
+              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+                <div>
+                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
+                    <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
+                    Change Password
+                  </h2>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
+                    Ensure your account is using a secure, random password.
+                  </p>
+                </div>
+
+                <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                      Current Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                      New Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwordForm.newPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                      Confirm New Password
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="••••••••"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
+                  >
+                    Update Password
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* --- MODAL 1: VIEW USER PROFILE --- */}
       {selectedUser && (
