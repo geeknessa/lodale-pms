@@ -80,9 +80,21 @@ export async function initDb() {
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS images TEXT;
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 7);
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 7);
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS minimum_income_required NUMERIC(20, 2) DEFAULT 0.00;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS requires_guarantor BOOLEAN DEFAULT false;
       ALTER TABLE properties ALTER COLUMN property_type TYPE TEXT USING property_type::text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status VARCHAR(50) DEFAULT 'active';
+
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
     `);
 
     // Widen numeric columns to prevent overflow with large Nigerian property values

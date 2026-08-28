@@ -148,8 +148,8 @@ export const getLandlordApplications = async (req, res) => {
          p.title as property_title,
          p.rent_amount as property_rent_amount,
          p.rent_period as property_rent_period,
-         p.minimum_income_required,
-         p.requires_guarantor,
+         COALESCE(p.minimum_income_required, 0) as minimum_income_required,
+         COALESCE(p.requires_guarantor, false) as requires_guarantor,
          u.first_name,
          u.last_name,
          u.email,
@@ -179,6 +179,8 @@ export const getLandlordApplications = async (req, res) => {
       propertyRentAmount: app.property_rent_amount,
       propertyRentPeriod: app.property_rent_period,
       tenantId: app.tenant_id,
+      tenant_first_name: app.first_name,
+      tenant_last_name: app.last_name,
       status: app.status,
       notes: app.notes,
       rejectionReason: app.rejection_reason,
@@ -186,7 +188,7 @@ export const getLandlordApplications = async (req, res) => {
       date: new Date(app.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }),
       propertyRequirements: {
         minimumIncome: parseFloat(app.minimum_income_required) || 0,
-        requiresGuarantor: app.requires_guarantor
+        requiresGuarantor: Boolean(app.requires_guarantor)
       },
       tenant: {
         firstName: app.first_name,

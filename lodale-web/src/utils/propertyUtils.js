@@ -116,7 +116,15 @@ export async function handlePropertySubmit({
   }
 
   const ownershipDocString = `${docType} (${docName})`;
-  const dbUserId = sessionStorage.getItem("db_user_id");
+  
+  let dbUserId = null;
+  try {
+    const userStr = sessionStorage.getItem("lodale_user") || localStorage.getItem("lodale_user");
+    if (userStr) {
+      const userObj = JSON.parse(userStr);
+      dbUserId = userObj.id || userObj.userId;
+    }
+  } catch (_e) {}
 
   const amenitiesList = selectedAmenities.length > 0 ? selectedAmenities : [];
   const sanitizedType = rawType.toLowerCase().replace(/\s+/g, "_");
@@ -168,7 +176,7 @@ export async function handlePropertySubmit({
         status: "vacant"
       }
     ],
-    ...(dbUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dbUserId) ? { landlord_id: dbUserId } : {}),
+    ...(dbUserId ? { landlord_id: dbUserId } : {}),
   };
 
   const newPropertyObj = {
@@ -188,8 +196,9 @@ export async function handlePropertySubmit({
     baths: numericBathrooms,
     bathrooms: numericBathrooms,
     unitsCount: unitsList.length || 1,
-    status: "Active Listing",
-    verificationStatus: docName ? "Verified Listing" : "Under Verification",
+    status: "Pending Approval",
+    rawStatus: "pending_review",
+    verificationStatus: "Under Verification",
     cover_image: coverPhoto || (propertyPhotos.length > 0 ? propertyPhotos[0] : propertyPhoto) || PRESET_PHOTOS[0].url,
     images: propertyPhotos.length > 0 ? propertyPhotos : (propertyPhoto ? [propertyPhoto] : [PRESET_PHOTOS[0].url]),
     description: finalDescription,
@@ -222,7 +231,7 @@ export async function handlePropertySubmit({
       newPropertyObj.id = backendProp.id;
     }
   } catch (err) {
-    console.warn("Backend API property create warning (using local storage fallback):", err);
+    console.warn("Backend API property create warning:", err);
   }
 
   try {

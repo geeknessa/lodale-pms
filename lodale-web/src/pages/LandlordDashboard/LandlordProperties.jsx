@@ -122,7 +122,15 @@ export default function LandlordProperties() {
 
   useEffect(() => {
     async function loadProperties() {
-      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      let currentUserId = "11111111-1111-1111-1111-111111111111";
+      try {
+        const uStr = sessionStorage.getItem("lodale_user") || localStorage.getItem("lodale_user");
+        if (uStr) {
+          const uObj = JSON.parse(uStr);
+          if (uObj.id) currentUserId = uObj.id;
+        }
+      } catch (_e) {}
+
       let apiProps = [];
       try {
         apiProps = await propertyService.getLandlordProperties(currentUserId);

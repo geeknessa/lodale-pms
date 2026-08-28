@@ -206,62 +206,6 @@ export default function AdminDashboard() {
           }
         });
 
-        // Add local storage properties (from "properties" and "landlordProperties")
-        const localPropsSources = ["properties", "landlordProperties"];
-        localPropsSources.forEach((srcKey) => {
-          try {
-            const raw = localStorage.getItem(srcKey);
-            if (raw) {
-              const list = JSON.parse(raw);
-              if (Array.isArray(list)) {
-                list.forEach((lp) => {
-                  if (!lp || (!lp.id && !lp.title)) return;
-                  const key = String(lp.id || lp.title);
-                  const rawS = (lp.status || "").toLowerCase();
-                  let sLabel = "Pending Approval";
-                  if (rawS === "active_vacant" || rawS === "approved" || rawS === "live" || rawS === "active" || lp.status === "Live") {
-                    sLabel = "Live";
-                  } else if (rawS === "inactive" || rawS === "rejected" || lp.status === "Rejected") {
-                    sLabel = "Rejected";
-                  }
-
-                  const lpRawPeriod = String(lp.rent_period || lp.rentPeriod || '').toLowerCase();
-                  const lpSuffix = lpRawPeriod.includes('month') ? '/mo' : (lpRawPeriod.includes('week') ? '/wk' : (lpRawPeriod.includes('night') || lpRawPeriod.includes('day') ? '/night' : '/yr'));
-                  const lpNumVal = Number(String(lp.rent_amount || lp.rent || lp.price || 0).replace(/[^0-9.]/g, '')) || 0;
-                  const lpFormattedPrice = lpNumVal > 0 ? `₦${lpNumVal.toLocaleString()}${lpSuffix}` : (lp.price || `₦0${lpSuffix}`);
-
-                  if (!map.has(key)) {
-                    map.set(key, {
-                      id: lp.id || key,
-                      title: lp.title || lp.name || "Property Listing",
-                      location: lp.location || `${lp.address_line1 || lp.address || 'Lagos'}, ${lp.city || 'Lagos'}`,
-                      price: lpFormattedPrice,
-                      type: lp.type || lp.property_type || "Apartment",
-                      status: sLabel,
-                      rawStatus: lp.status || "pending_review",
-                      submittedAt: lp.submittedAt || lp.created_at || new Date().toISOString(),
-                      landlord: lp.landlord || { name: lp.landlordName || "Verified Landlord", score: 5.0, reviews: 1 },
-                      description: lp.description || "",
-                      amenities: lp.amenities || [],
-                      blocks: lp.blocks || [],
-                      units: lp.units || [],
-                      ownershipDoc: lp.ownershipDoc || lp.ownership_doc || "Deed of Assignment",
-                      ownershipDocUrl: lp.ownershipDocUrl || lp.ownership_doc_url,
-                      deedVerified: true
-                    });
-                  } else {
-                    const existing = map.get(key);
-                    if (sLabel === "Live" && existing.status !== "Live") {
-                      existing.status = "Live";
-                      existing.rawStatus = "active_vacant";
-                    }
-                  }
-                });
-              }
-            }
-          } catch (_e) { }
-        });
-
         return Array.from(map.values());
       });
 

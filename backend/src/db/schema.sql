@@ -42,6 +42,8 @@ CREATE TABLE IF NOT EXISTS properties (
     lease_start_date DATE,
     available_from DATE,
     deletion_reason TEXT,
+    minimum_income_required NUMERIC(20, 2) DEFAULT 0.00,
+    requires_guarantor BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -141,6 +143,17 @@ CREATE TABLE IF NOT EXISTS leases (
     landlord_signature_ip VARCHAR(50),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- CHAT MESSAGES TABLE
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- RENT INVOICES TABLE
