@@ -9,13 +9,24 @@ export const propertyController = {
     const formatted = await Promise.all(properties.map(async p => {
       const amenities = await PropertyModel.getAmenities(p.id);
       const coverImage = await PropertyModel.getCoverImage(p.id);
+      const landlord = await UserModel.findById(p.landlord_id);
+      
+      let parsedImages = [];
+      try { parsedImages = typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []); } catch(e) {}
+      
+      const actualCoverImage = p.cover_image || coverImage || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
 
       return {
         ...p,
         amenities,
-        cover_image: coverImage || '/src/assets/skyline_apartment.png',
-        price: `₦${Number(p.rent_amount).toLocaleString()}/yr`,
+        images: parsedImages,
+        cover_image: actualCoverImage,
+        price: `₦${Number(p.rent_amount).toLocaleString()}${String(p.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
         location: `${p.address_line1}, ${p.city}`,
+        landlord: landlord ? { 
+          id: landlord.id, 
+          name: `${landlord.first_name || ''} ${landlord.last_name || ''}`.trim() || 'Verified Landlord' 
+        } : null
       };
     }));
 
@@ -31,15 +42,27 @@ export const propertyController = {
       const adminNotes = await PropertyModel.getRejectionReason(p.id);
       const blocks = await PropertyModel.getBlocks(p.id);
       const units = await PropertyModel.getUnits(p.id);
+      const landlord = await UserModel.findById(p.landlord_id);
+
+      let parsedImages = [];
+      try { parsedImages = typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []); } catch(e) {}
+      
+      const actualCoverImage = p.cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
 
       return {
         ...p,
         amenities,
         blocks,
         units,
+        images: parsedImages,
+        cover_image: actualCoverImage,
         admin_notes: adminNotes,
-        price: `₦${Number(p.rent_amount).toLocaleString()}/yr`,
+        price: `₦${Number(p.rent_amount).toLocaleString()}${String(p.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
         location: `${p.address_line1}, ${p.city}`,
+        landlord: landlord ? { 
+          id: landlord.id, 
+          name: `${landlord.first_name || ''} ${landlord.last_name || ''}`.trim() || 'Verified Landlord' 
+        } : null
       };
     }));
 
@@ -63,19 +86,29 @@ export const propertyController = {
     if (landlord) {
        landlordResponse = {
           id: landlord.id,
+          name: `${landlord.first_name || ''} ${landlord.last_name || ''}`.trim() || 'Verified Landlord',
           first_name: landlord.first_name,
           last_name: landlord.last_name,
           phone_number: landlord.phone_number
        };
     }
 
+    let parsedImages = [];
+    try { parsedImages = typeof property.images === 'string' ? JSON.parse(property.images) : (property.images || []); } catch(e) {}
+    
+    // Also try to get from PropertyModel if there's a property_images table
+    const coverImage = await PropertyModel.getCoverImage(property.id);
+    const actualCoverImage = property.cover_image || coverImage || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
+
     res.json({
       ...property,
       amenities,
       blocks,
       units,
+      images: parsedImages,
+      cover_image: actualCoverImage,
       landlord: landlordResponse,
-      price: `₦${Number(property.rent_amount).toLocaleString()}/yr`,
+      price: `₦${Number(property.rent_amount).toLocaleString()}${String(property.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
       location: `${property.address_line1}, ${property.city}`,
     });
   }),
@@ -123,8 +156,8 @@ export const propertyController = {
     const { id } = req.params;
     const data = req.body;
     
-    // Quick sanitization of price from rent string to number if needed
-    if (data.price) {
+    // Quick sanitization of price from rent string to number if needed, but only if rent_amount isn't explicitly provided
+    if (data.price && !data.rent_amount) {
       data.rent_amount = Number(String(data.price).replace(/[^0-9]/g, "")) || 0;
     }
 
@@ -132,12 +165,110 @@ export const propertyController = {
     if (!updated) {
       return res.status(404).json({ error: 'Property not found' });
     }
-    res.json(updated);
+    
+    // Fetch associated data to return a fully populated property object
+    const amenities = await PropertyModel.getAmenities(updated.id);
+    const blocks = await PropertyModel.getBlocks(updated.id);
+    const units = await PropertyModel.getUnits(updated.id);
+    
+    let parsedImages = [];
+    try { parsedImages = typeof updated.images === 'string' ? JSON.parse(updated.images) : (updated.images || []); } catch(e) {}
+    
+    const coverImage = await PropertyModel.getCoverImage(updated.id);
+    const actualCoverImage = updated.cover_image || coverImage || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
+
+    res.json({
+      ...updated,
+      amenities,
+      blocks,
+      units,
+      images: parsedImages,
+      cover_image: actualCoverImage,
+      price: `₦${Number(updated.rent_amount).toLocaleString()}${String(updated.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
+      location: `${updated.address_line1}, ${updated.city}`,
+    });
   }),
 
   deleteProperty: asyncHandler(async (req, res) => {
     const { id } = req.params;
     await PropertyModel.deleteProperty(id);
     res.json({ message: 'Property deleted successfully' });
+  }),
+
+  updatePropertyStatus: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    const updated = await PropertyModel.updatePropertyStatus(id, status);
+    if (!updated) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+    
+    res.json({ message: `Property status updated to ${status}`, property: updated });
+  }),
+
+  requestPropertyDeletion: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+    
+    if (!reason) {
+      return res.status(400).json({ error: 'Deletion reason is required' });
+    }
+
+    const updated = await PropertyModel.requestDeletion(id, reason);
+    if (!updated) {
+      return res.status(400).json({ error: 'Property not found or is currently occupied.' });
+    }
+    
+    res.json({ message: 'Property deletion requested. Pending admin approval.', property: updated });
+  }),
+
+  requestPropertySuspension: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason) {
+      return res.status(400).json({ error: 'Suspension reason is required' });
+    }
+
+    const updated = await PropertyModel.requestSuspension(id, reason);
+    if (!updated) {
+      return res.status(400).json({ error: 'Property not found or is currently occupied.' });
+    }
+
+    res.json({ message: 'Property suspension requested. Pending admin approval.', property: updated });
+  }),
+
+  approvePropertyDeletion: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const result = await PropertyModel.approveDeletion(id);
+    res.json({ message: 'Property deletion approved and removed successfully.', result });
+  }),
+
+  rejectPropertyDeletion: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updated = await PropertyModel.rejectDeletion(id);
+    res.json({ message: 'Property deletion request rejected.', property: updated });
+  }),
+
+  approvePropertySuspension: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updated = await PropertyModel.approveSuspension(id);
+    res.json({ message: 'Property suspension approved.', property: updated });
+  }),
+
+  rejectPropertySuspension: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const updated = await PropertyModel.rejectSuspension(id);
+    res.json({ message: 'Property suspension request rejected.', property: updated });
+  }),
+
+  getPendingRequests: asyncHandler(async (req, res) => {
+    const requests = await PropertyModel.getPendingRequests();
+    res.json({ requests });
   })
 };

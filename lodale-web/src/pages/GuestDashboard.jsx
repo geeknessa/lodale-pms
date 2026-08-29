@@ -305,8 +305,42 @@ export default function GuestDashboard() {
           }
         } catch (e) { }
 
+        const formatted = apiProps.map((item) => {
+          if (!item) return null;
+          const key = String(item.id || item.title);
+          
+          let landlordObj;
+          if (item.landlord && typeof item.landlord === "object" && (item.landlord.first_name || item.landlord.name)) {
+            const l = item.landlord;
+            landlordObj = {
+              id: l.id || null,
+              name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
+              score: l.score ?? 5.0,
+              reviews: l.reviews ?? 1,
+              phone_number: l.phone_number || null
+            };
+          } else {
+            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 5.0, reviews: 1, phone_number: null };
+          }
+          
+          return {
+            id: item.id || key,
+            title: item.title || item.address_line1 || "Property",
+            location: item.location || item.city || "Lagos, Nigeria",
+            price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
+            beds: item.beds || item.bedrooms || 1,
+            baths: item.baths || item.bathrooms || 1,
+            type: item.type || item.property_type || "apartment",
+            image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
+            amenities: item.amenities || [],
+            landlord: landlordObj,
+            status: item.status,
+            isPending: item.isPending
+          };
+        }).filter(Boolean);
+
         // STRICT FILTER: Exclude unapproved / pending / rejected listings from guest view
-        const approvedOnly = apiProps.filter((p) => {
+        const approvedOnly = formatted.filter((p) => {
           if (!p) return false;
           const status = (p.status || "").toLowerCase();
           if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
@@ -475,8 +509,8 @@ export default function GuestDashboard() {
             ))}
           </div>
         ) : (
-          <div className="mt-12 text-center p-12 rounded-2xl bg-[#0D1F17]/30 dark:bg-white/5 border border-ink-200/50 dark:border-white/10 flex flex-col items-center justify-center max-w-sm mx-auto">
-            <div className="h-16 w-16 rounded-2xl bg-neutral-100 dark:bg-white/10 flex items-center justify-center mb-4 text-neutral-400 dark:text-cream-100/40">
+          <div className="mt-12 text-center p-8 bg-transparent border-0 flex flex-col items-center justify-center max-w-sm mx-auto">
+            <div className="h-16 w-16 rounded-2xl bg-transparent border border-ink-200/40 dark:border-white/10 flex items-center justify-center mb-4 text-ink-400 dark:text-cream-100/40">
               <Search className="h-7 w-7" />
             </div>
             {searchQuery.trim() !== "" ? (

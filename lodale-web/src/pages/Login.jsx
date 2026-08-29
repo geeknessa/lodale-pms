@@ -23,7 +23,7 @@ export default function Login() {
     if (location.pathname === "/admin/login" || location.search.includes("role=admin")) {
       return "";
     }
-    return localStorage.getItem("lastLoggedInEmail") || "";
+    return sessionStorage.getItem("lastLoggedInEmail") || "";
   });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -56,12 +56,12 @@ export default function Login() {
 
   useEffect(() => {
     // If email is pre-filled, focus on the password field automatically
-    if (localStorage.getItem("lastLoggedInEmail") || location.pathname === "/admin/login" || location.search.includes("role=admin")) {
+    if (sessionStorage.getItem("lastLoggedInEmail") || location.pathname === "/admin/login" || location.search.includes("role=admin")) {
       passwordRef.current?.focus();
     }
 
     // Redirect already authenticated admin to /admin/dashboard
-    const isAlreadyAdmin = localStorage.getItem("isAuthenticated") === "true" && localStorage.getItem("userRole") === "admin";
+    const isAlreadyAdmin = sessionStorage.getItem("isAuthenticated") === "true" && sessionStorage.getItem("userRole") === "admin";
     if (isAlreadyAdmin && (location.pathname === "/admin/login" || location.pathname === "/login")) {
       navigate("/admin/dashboard");
     }
@@ -117,12 +117,12 @@ export default function Login() {
           sessionStorage.setItem("db_user_id", res.user.id);
           if (res.token) sessionStorage.setItem("lodale_token", res.token);
 
-          localStorage.setItem("isAuthenticated", "true");
-          localStorage.setItem("userRole", "admin");
-          localStorage.setItem("adminAuthenticated", "true");
-          localStorage.setItem("lastLoggedInEmail", cleanUsername);
-          localStorage.setItem("sessionExpiresAt", expiresAt);
-          if (res.token) localStorage.setItem("lodale_token", res.token);
+          sessionStorage.setItem("isAuthenticated", "true");
+          sessionStorage.setItem("userRole", "admin");
+          sessionStorage.setItem("adminAuthenticated", "true");
+          sessionStorage.setItem("lastLoggedInEmail", cleanUsername);
+          sessionStorage.setItem("sessionExpiresAt", expiresAt);
+          if (res.token) sessionStorage.setItem("lodale_token", res.token);
           localStorage.removeItem("explicitAdminSignOut");
 
           navigate("/admin/dashboard");
@@ -159,21 +159,21 @@ export default function Login() {
 
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userRole", userRole);
-        localStorage.setItem("lastLoggedInEmail", cleanEmail);
-        localStorage.setItem("sessionExpiresAt", expiresAt);
-        localStorage.setItem("username_" + cleanEmail, userFullName);
+        sessionStorage.setItem("isAuthenticated", "true");
+        sessionStorage.setItem("userRole", userRole);
+        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
+        sessionStorage.setItem("sessionExpiresAt", expiresAt);
+        sessionStorage.setItem("username_" + cleanEmail, userFullName);
 
         if (userRole === "admin") {
           sessionStorage.setItem("adminAuthenticated", "true");
-          localStorage.setItem("adminAuthenticated", "true");
+          sessionStorage.setItem("adminAuthenticated", "true");
           localStorage.removeItem("explicitAdminSignOut");
         }
 
         let savedProfile = {};
         try {
-          const rawSaved = localStorage.getItem("userProfile_" + cleanEmail);
+          const rawSaved = sessionStorage.getItem("userProfile_" + cleanEmail);
           if (rawSaved) savedProfile = JSON.parse(rawSaved);
         } catch (e) { }
 
@@ -196,9 +196,9 @@ export default function Login() {
           avatar_url: res.user.avatar_url || savedProfile.avatar_url || savedProfile.avatar || ""
         };
         sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-        localStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
         sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
-        localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
+        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
 
         navigate(userRole === "admin" ? "/admin/dashboard" : `/dashboard/${userRole}`);
         return;
@@ -256,7 +256,7 @@ export default function Login() {
 
       {/* Floating Back Button */}
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => navigate("/explore")}
         className="group absolute top-3 left-3 sm:top-6 sm:left-6 z-20 flex items-center gap-1.5 sm:gap-2 text-[12px] sm:text-[14px] font-semibold text-ink-900/80 dark:text-white/80 hover:text-ink-900 dark:hover:text-white bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black/10 dark:border-white/10 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shadow-none focus-visible:ring-2 focus-visible:ring-[#E5C583] outline-none"
       >
         <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 group-hover:-translate-x-0.5 transition-transform duration-200" />

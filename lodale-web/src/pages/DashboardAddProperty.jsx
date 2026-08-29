@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowRight,
@@ -40,9 +40,12 @@ import SearchableDropdown from "../components/SearchableDropdown";
 import DropdownWithOther from "../components/DropdownWithOther";
 import { ALL_NIGERIAN_STATES, NIGERIAN_STATES_CITIES } from "../utils/nigerianStatesCities";
 import { handlePropertySubmit, PRESET_PHOTOS, COMMON_AMENITIES } from "../utils/propertyUtils";
+import { propertyService } from "../services/propertyService";
 import "./DashboardAddProperty.css";
 
 export default function DashboardAddProperty() {
+  const { id } = useParams();
+  const isEditing = Boolean(id);
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [occupied, setOccupied] = useState(null); // null | true | false
@@ -247,13 +250,13 @@ export default function DashboardAddProperty() {
   // Landlord Profile & Avatar Modal State
   const [showLandlordProfileModal, setShowLandlordProfileModal] = useState(false);
   const [username] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedName = localStorage.getItem("landlordName_" + emailKey.toLowerCase());
       if (savedName) return savedName;
     }
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.name || parsed.displayName) return parsed.name || parsed.displayName;
@@ -263,7 +266,7 @@ export default function DashboardAddProperty() {
   });
 
   const [landlordAvatar, setLandlordAvatar] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
@@ -271,7 +274,7 @@ export default function DashboardAddProperty() {
     const globalSaved = sessionStorage.getItem("landlordAvatarUrl") || localStorage.getItem("landlordAvatarUrl");
     if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
@@ -282,7 +285,7 @@ export default function DashboardAddProperty() {
 
   useEffect(() => {
     const handleAvatarUpdate = () => {
-      const emailKey = localStorage.getItem("lastLoggedInEmail");
+      const emailKey = sessionStorage.getItem("lastLoggedInEmail");
       let updated = null;
       if (emailKey) {
         updated = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
@@ -292,7 +295,7 @@ export default function DashboardAddProperty() {
       }
       if (!updated) {
         try {
-          const raw = localStorage.getItem("currentUserProfile");
+          const raw = sessionStorage.getItem("currentUserProfile");
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed.avatar) updated = parsed.avatar;
@@ -459,6 +462,72 @@ export default function DashboardAddProperty() {
   const [tenantContact, setTenantContact] = useState("");
   const [leaseStartDate, setLeaseStartDate] = useState("");
   const [availableFrom, setAvailableFrom] = useState("");
+
+  // ============================================
+  // EDIT MODE: Fetch and Populate State
+  // ============================================
+  const [isFetchingEdit, setIsFetchingEdit] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    
+    const loadEditData = async () => {
+      setIsFetchingEdit(true);
+      try {
+        const item = await propertyService.getPropertyById(id);
+        if (item) {
+          setDisplayName(item.title || "");
+          setAddress(item.address_line1 || item.location || "");
+          setCityName(item.city || "");
+          setStateName(item.state || "Lagos");
+          
+          if (item.property_type) setPropertyType(item.property_type);
+          if (item.houseSubtype || item.house_subtype) setHouseSubtype(item.houseSubtype || item.house_subtype);
+          setIsMultiUnit(Boolean(item.isMultiUnit || (item.units && item.units.length > 1)));
+          
+          if (item.rent_amount || item.price) {
+            const rawRent = String(item.rent_amount || item.price).replace(/[^0-9]/g, "");
+            setRent(rawRent);
+          }
+          if (item.rentCycle || item.rent_cycle) setRentCycle(item.rentCycle || item.rent_cycle);
+          if (item.bedrooms || item.beds) setBedrooms(String(item.bedrooms || item.beds));
+          if (item.bathrooms || item.baths) setBathrooms(String(item.bathrooms || item.baths));
+          
+          if (item.latitude) setLatitude(String(item.latitude));
+          if (item.longitude) setLongitude(String(item.longitude));
+          
+          if (item.description) setDescription(item.description);
+          if (item.rules) setRules(item.rules);
+          
+          if (item.amenities && Array.isArray(item.amenities)) {
+            setSelectedAmenities(item.amenities);
+          }
+          
+          if (item.blocks && Array.isArray(item.blocks)) setBlocksList(item.blocks);
+          if (item.units && Array.isArray(item.units)) setUnitsList(item.units);
+          
+          const rawCover = item.cover_image || item.image || (item.images && item.images.length > 0 ? item.images[0] : "");
+          let photos = item.images && Array.isArray(item.images) ? [...item.images] : (rawCover ? [rawCover] : []);
+          
+          if (photos.length > 0) {
+            setPropertyPhotos(photos);
+            const coverIdx = photos.findIndex(p => p === rawCover);
+            if (coverIdx !== -1) setCoverPhotoIndex(coverIdx);
+          }
+          
+          if (item.ownership_doc_type || item.docType) setDocType(item.ownership_doc_type || item.docType);
+          if (item.ownership_doc) setDocName(item.ownership_doc);
+          if (item.ownership_doc_url) setDocDataUrl(item.ownership_doc_url);
+        }
+      } catch (err) {
+        showToast("Failed to load property data for editing.", "error");
+      } finally {
+        setIsFetchingEdit(false);
+      }
+    };
+    
+    loadEditData();
+  }, [id, isEditing]);
 
   const fileInputRef = useRef(null);
   const docInputRef = useRef(null);
@@ -685,6 +754,30 @@ export default function DashboardAddProperty() {
     );
   };
 
+  const isStepValid = (stepNum) => {
+    if (stepNum === 1) {
+      return !!(displayName?.trim() && address?.trim() && stateName && cityName);
+    }
+    if (stepNum === 2) {
+      if (isMultiUnit) {
+        return !!(unitsList && unitsList.length > 0);
+      } else {
+        const numericRent = Number(rent?.replace(/[^0-9]/g, ""));
+        return !!(rent && !isNaN(numericRent) && numericRent > 0);
+      }
+    }
+    if (stepNum === 3) {
+      return true;
+    }
+    if (stepNum === 4) {
+      return !!(docName?.trim() && propertyPhotos && propertyPhotos.length > 0);
+    }
+    if (stepNum === 5) {
+      return occupied !== null;
+    }
+    return false;
+  };
+
   const handleNextStep = () => {
     setFormError("");
     if (currentStep === 1) {
@@ -828,7 +921,13 @@ export default function DashboardAddProperty() {
       unitsList,
       isMultiUnit,
       setFormError,
-      setIsSubmitted
+      setIsSubmitted,
+      editId: id,
+      occupied,
+      tenantName,
+      tenantContact,
+      leaseStartDate,
+      availableFrom
     });
   };
 
@@ -867,7 +966,7 @@ export default function DashboardAddProperty() {
           </div>
 
           <div ref={textContainerRef} className="dap-success-texts">
-            <h2 className="dap-success-heading">Property Portfolio Registered!</h2>
+            <h2 className="dap-success-heading">{isEditing ? "Property Updated!" : "Property Portfolio Registered!"}</h2>
             <p className="dap-success-body">
               Your property listing and proof of ownership legal documents have been queued for administrative review. An administrator will verify your submitted documents shortly.
             </p>
@@ -1083,10 +1182,10 @@ export default function DashboardAddProperty() {
         <aside className="dap-left-panel">
           <div>
             <div className="mb-6">
-              <div className="dap-panel-section-title">PORTFOLIO ONBOARDING</div>
+              <div className="dap-panel-section-title">{isEditing ? "EDIT PROPERTY" : "PORTFOLIO ONBOARDING"}</div>
               {stepsInfo.map((sObj) => {
                 const isActive = currentStep === sObj.step;
-                const isCompleted = currentStep > sObj.step;
+                const isCompleted = isStepValid(sObj.step);
                 const StepIcon = sObj.icon;
                 return (
                   <button
@@ -1873,7 +1972,7 @@ export default function DashboardAddProperty() {
                   )}
 
                   <Button type="submit" variant="primary" className="w-full py-3 text-xs font-bold cursor-pointer mt-4">
-                    Complete Property Submission
+                    {isEditing ? "Save Property Changes" : "Complete Property Submission"}
                   </Button>
                 </div>
               )}
@@ -1909,133 +2008,6 @@ export default function DashboardAddProperty() {
           </div>
         </main>
 
-        {/* ─────────────────────────────────────────────────────────────
-            4. STICKY RIGHT GALLERY & RICH LEGAL PROOF SUMMARY PANEL
-           ───────────────────────────────────────────────────────────── */}
-        <aside className="dap-right-panel">
-          <div>
-            <div className="dap-gallery-title">
-              <span>Attached Media</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold normal-case tracking-normal bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 shrink-0">
-                {propertyPhotos.length} photos
-              </span>
-            </div>
-            <div className="space-y-3">
-              {propertyPhotos.map((photo, idx) => {
-                const photoUrl = typeof photo === "object" ? photo.url : photo;
-                return (
-                  <div
-                    key={idx}
-                    className={`dap-gallery-thumb-card ${idx === coverPhotoIndex ? "cover" : ""} group relative`}
-                    onClick={() => setCoverPhotoIndex(idx)}
-                  >
-                    <img src={photoUrl} alt={`Photo ${idx}`} className="dap-gallery-thumb-img" />
-                    {idx === coverPhotoIndex && (
-                      <span className="dap-gallery-cover-badge">Cover Image</span>
-                    )}
-                    {/* TOP-RIGHT IMAGE DELETE BUTTON */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleDeletePhoto(idx, e)}
-                      className="absolute top-2 right-2 h-7 w-7 rounded-full bg-rose-600/90 hover:bg-rose-700 text-white flex items-center justify-center border-none cursor-pointer shadow-md transition-transform hover:scale-105 z-10"
-                      title="Delete photo"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <div className="dap-gallery-title">
-              <span>Legal Proof Document</span>
-              {docName ? (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold normal-case tracking-normal bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0">
-                  <CheckCircle2 className="h-3 w-3" /> Attached
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold normal-case tracking-normal bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
-                  <Clock className="h-3 w-3" /> Pending
-                </span>
-              )}
-            </div>
-
-            <div
-              className={`p-4 rounded-2xl border transition-all duration-200 ${
-                docName
-                  ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-500/30 shadow-xs"
-                  : "bg-amber-50/30 dark:bg-amber-950/10 border-amber-500/25 border-dashed"
-              }`}
-            >
-              {docName ? (
-                /* OCCUPIED / ATTACHED STATE */
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="p-2.5 rounded-xl bg-[#2C4633] text-[#E5C583] dark:bg-[#E5C583] dark:text-[#0B1512] shrink-0 shadow-xs">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#2C4633] dark:text-[#E5C583]">
-                        {docType}
-                      </div>
-                      <div className="font-bold text-xs text-slate-900 dark:text-white truncate mt-0.5">
-                        {docName}
-                      </div>
-                      <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3 inline" /> Verified Legal Proof
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-emerald-500/20 flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={handleOpenDocPicker}
-                      className="text-[11px] font-bold text-[#2C4633] dark:text-[#E5C583] hover:underline cursor-pointer border-none bg-transparent p-0"
-                    >
-                      Replace Paper
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDocName("");
-                        setDocDataUrl("");
-                        setDocUploaded(false);
-                      }}
-                      className="text-[11px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 cursor-pointer border-none bg-transparent p-0"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* EMPTY STATE */
-                <div className="flex flex-col items-center justify-center text-center py-3 space-y-2">
-                  <div className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                    <ShieldCheck className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-xs text-slate-900 dark:text-white">
-                      {docType} Needed
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-[200px] leading-tight mt-0.5">
-                      Attach proof of ownership document in Step 4 for verification.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleOpenDocPicker}
-                    className="mt-1 px-3 py-1.5 text-xs font-bold rounded-xl bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] cursor-pointer border-none transition-opacity hover:opacity-90"
-                  >
-                    + Upload Legal Document
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
@@ -2138,7 +2110,7 @@ export default function DashboardAddProperty() {
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-slate-400 dark:text-slate-400 font-medium">Email Address</span>
                 <span className="text-slate-900 dark:text-white font-semibold">
-                  {localStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
+                  {sessionStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
@@ -2146,7 +2118,7 @@ export default function DashboardAddProperty() {
                 <span className="text-slate-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      const p = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      const p = JSON.parse(sessionStorage.getItem("currentUserProfile") || "{}");
                       return p.phone || "+234 803 123 4567";
                     } catch (e) {
                       return "+234 803 123 4567";

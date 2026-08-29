@@ -1,5 +1,6 @@
 import { AdminModel } from '../models/adminModel.js';
 import { PropertyModel } from '../models/propertyModel.js';
+import { UserModel } from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { clearDatabase } from '../config/db.js';
 
@@ -25,8 +26,9 @@ export const adminController = {
       return {
         id: p.id,
         title: p.title,
-        location: `${p.address_line1}, ${p.city}`,
-        price: `₦${Number(p.rent_amount).toLocaleString()}/yr`,
+        rent_amount: p.rent_amount || p.rent || 0,
+        rent_period: p.rent_period || 'per annum',
+        price: `₦${Number(p.rent_amount || p.rent || 0).toLocaleString()}${String(p.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
         type: p.property_type,
         status: statusLabel,
         rawStatus: p.status,
@@ -100,13 +102,14 @@ export const adminController = {
     const formatted = users.map(u => {
       const rawRole = (u.primary_role || 'tenant').toString().toLowerCase();
       const role = rawRole.includes('admin') ? 'Admin' : (rawRole.includes('landlord') ? 'Landlord' : 'Tenant');
+      const isSuspended = (u.account_status || 'active').toString().toLowerCase() === 'suspended';
       return {
         id: u.id,
         name: `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
         email: u.email,
         phone: u.phone_number || '',
         role,
-        status: 'Active',
+        status: isSuspended ? 'Suspended' : 'Active',
         joinedDate: u.created_at ? new Date(u.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         listingsCount: u.listings_count ?? (role === 'Landlord' ? 1 : 0),
         verifications: [
@@ -117,6 +120,26 @@ export const adminController = {
     });
 
     res.json(formatted);
+  }),
+
+  updateUserStatus: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const normalizedStatus = (status || '').toLowerCase();
+    if (!['active', 'suspended'].includes(normalizedStatus)) {
+      return res.status(400).json({ error: 'Invalid status. Must be "active" or "suspended".' });
+    }
+
+    const updatedUser = await UserModel.updateUserStatus(id, normalizedStatus);
+    if (!updatedUser) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    res.json({
+      message: `User ${updatedUser.first_name || updatedUser.email} account status updated to ${normalizedStatus}.`,
+      user: updatedUser
+    });
   }),
 
   deleteUser: asyncHandler(async (req, res) => {

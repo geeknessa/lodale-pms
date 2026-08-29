@@ -1,15 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2 } from "lucide-react";
+import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, Heart } from "lucide-react";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
+import { applicationService } from "../../services/applicationService";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
+import Avatar from "../../components/Avatar";
 import "./TenantSearch.css";
-
-// Dynamic data collections
-const SEARCH_LISTINGS = [];
-const LANDLORDS = [];
 
 // formatCurrency imported from formatters.js
 
@@ -20,7 +18,7 @@ function PropertyCard({ property, onInspect }) {
       <div className="property-card-image-wrapper">
         <img src={property.image} alt={property.title} className="property-card-image" />
         <span className="property-card-price-tag">
-          {formatCurrency(property.price, "/mo")}
+          {property.price}
         </span>
       </div>
 
@@ -54,7 +52,7 @@ function LandlordCard({ landlord, onInspect }) {
     <div className="search-landlord-card">
       <div className="landlord-card-header text-center">
         <div className="landlord-avatar-wrapper">
-          <img src={landlord.avatar} alt={landlord.name} className="landlord-avatar-img" />
+          <Avatar src={landlord.avatar} name={landlord.name} className="landlord-avatar-img rounded-full" />
           <span className="landlord-verification-tick"><Check className="h-3 w-3" /></span>
         </div>
         <h4 className="landlord-name-text">{landlord.name}</h4>
@@ -66,7 +64,7 @@ function LandlordCard({ landlord, onInspect }) {
           <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Rating Score</span>
           <span className="font-bold text-amber-500 flex items-center gap-1">
             <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-            <span>{landlord.score} ({landlord.reviews} reviews)</span>
+            <span>{landlord.score > 0 ? `${landlord.score} (${landlord.reviews} reviews)` : "No rating yet"}</span>
           </span>
         </div>
         <div className="landlord-metric flex justify-between items-center text-[12.5px] mb-3">
@@ -97,7 +95,7 @@ function LandlordCard({ landlord, onInspect }) {
   );
 }
 
-export default function TenantSearch({ setShowProfileModal, onStartChat }) {
+export default function TenantSearch({ setActiveTab, setShowProfileModal, onStartChat, tenantAvatar }) {
   const navigate = useNavigate();
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
@@ -134,17 +132,31 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
         const formatted = apiProps.map((item) => {
           if (!item) return null;
           const key = String(item.id || item.title);
+          // Normalise landlord object from either API shape
+          let landlordObj;
+          if (item.landlord && typeof item.landlord === "object" && (item.landlord.first_name || item.landlord.name)) {
+            const l = item.landlord;
+            landlordObj = {
+              id: l.id || null,
+              name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
+              score: l.score || 0,
+              reviews: l.reviews || 0,
+              phone_number: l.phone_number || null
+            };
+          } else {
+            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 0, reviews: 0, phone_number: null };
+          }
           return {
             id: item.id || key,
             title: item.title || item.address_line1 || "Property",
             location: item.location || item.city || "Lagos, Nigeria",
-            price: typeof item.price === "number" ? item.price : Number(String(item.price || item.rent_amount || "0").replace(/[^0-9]/g, "")) || 0,
+            price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
             beds: item.beds || item.bedrooms || 1,
             baths: item.baths || item.bathrooms || 1,
             type: item.type || item.property_type || "apartment",
             image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
             amenities: item.amenities || [],
-            landlord: typeof item.landlord === "object" ? item.landlord : { name: item.landlord || "Verified Landlord", score: 5.0, reviews: 1 },
+            landlord: landlordObj,
             status: item.status,
             isPending: item.isPending,
             recommendationCategory: item.recommendationCategory || "Popular properties"
@@ -170,6 +182,36 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     loadTenantProperties();
   }, []);
 
+  // Derive unique landlords dynamically from loaded listings
+  const dynamicLandlords = useMemo(() => {
+    const seen = new Map(); // landlordName -> landlord entry
+    allListings.forEach((p) => {
+      const l = p.landlord;
+      if (!l || !l.name) return;
+      const key = l.name.toLowerCase().trim();
+      if (!seen.has(key)) {
+        seen.set(key, {
+          id: l.id || key,
+          name: l.name,
+          score: l.score || 0,
+          reviews: l.reviews || 0,
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(l.name)}&background=2C4633&color=E5C583&size=96`,
+          location: p.location || "Lagos, Nigeria",
+          properties: [p.title],
+          category: "Top Rated Landlords",
+          joinedStatus: "new"
+        });
+      } else {
+        // Accumulate managed properties
+        const existing = seen.get(key);
+        if (!existing.properties.includes(p.title)) {
+          existing.properties.push(p.title);
+        }
+      }
+    });
+    return Array.from(seen.values());
+  }, [allListings]);
+
   useEffect(() => {
     function handleClickOutside(e) {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
@@ -189,11 +231,111 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
   const [lastVisitedListings, setLastVisitedListings] = useState(() => {
     try {
       const saved = localStorage.getItem("lastVisitedListings");
-      return saved ? JSON.parse(saved) : [];
+      return saved ? JSON.parse(saved).slice(0, 5) : [];
     } catch (e) {
       return [];
     }
   });
+
+  const [savedPropertiesList, setSavedPropertiesList] = useState([]);
+
+  useEffect(() => {
+    const fetchSavedProperties = () => {
+      try {
+        const saved = localStorage.getItem("savedProperties");
+        if (saved) {
+          // Format saved properties to match the UI shape expected by PropertyCard
+          const parsed = JSON.parse(saved);
+          const formattedSaved = parsed.map((item) => ({
+             id: item.id,
+             title: item.title || "Property",
+             location: item.location || item.address_line1 || item.city || "Lagos, Nigeria",
+             price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
+             beds: item.beds || item.bedrooms || 1,
+             baths: item.baths || item.bathrooms || 1,
+             type: item.type || item.property_type || "apartment",
+             image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
+             amenities: item.amenities || [],
+             landlord: item.landlord,
+             status: item.status,
+             isPending: item.isPending,
+          }));
+          setSavedPropertiesList(formattedSaved);
+        } else {
+          setSavedPropertiesList([]);
+        }
+      } catch (e) {}
+    };
+    fetchSavedProperties();
+    window.addEventListener("propertySavedChanged", fetchSavedProperties);
+    // Refresh when returning to the tab
+    window.addEventListener("focus", fetchSavedProperties);
+    return () => {
+      window.removeEventListener("propertySavedChanged", fetchSavedProperties);
+      window.removeEventListener("focus", fetchSavedProperties);
+    };
+  }, []);
+
+  // Sync saved properties details whenever allListings updates from the backend
+  useEffect(() => {
+    if (allListings.length > 0) {
+      try {
+        const savedStr = localStorage.getItem("savedProperties");
+        if (savedStr) {
+          const rawSaved = JSON.parse(savedStr);
+          if (Array.isArray(rawSaved) && rawSaved.length > 0) {
+            let updatedCount = 0;
+            const syncedSaved = rawSaved
+              .filter(savedItem => allListings.some(al => String(al.id) === String(savedItem.id)))
+              .map(savedItem => {
+                const fresh = allListings.find(al => String(al.id) === String(savedItem.id));
+                if (fresh) {
+                  updatedCount++;
+                  const formattedPrice = fresh.price || `₦${Number(fresh.rent_amount || 0).toLocaleString()}${String(fresh.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`;
+                  const formattedLocation = fresh.location || `${fresh.city || ''}, ${fresh.state || ''}`;
+                  return {
+                    ...savedItem,
+                    ...fresh,
+                    title: fresh.title || savedItem.title,
+                    price: formattedPrice,
+                    location: formattedLocation,
+                    bedrooms: fresh.bedrooms || fresh.beds || savedItem.bedrooms,
+                    bathrooms: fresh.bathrooms || fresh.baths || savedItem.bathrooms,
+                    beds: fresh.bedrooms || fresh.beds || savedItem.beds,
+                    baths: fresh.bathrooms || fresh.baths || savedItem.baths,
+                    amenities: fresh.amenities || savedItem.amenities,
+                    rules: fresh.rules || savedItem.rules,
+                    images: fresh.images || savedItem.images,
+                    cover_image: fresh.cover_image || savedItem.cover_image
+                  };
+                }
+                return savedItem;
+              });
+
+            if (syncedSaved.length !== rawSaved.length || updatedCount > 0) {
+              localStorage.setItem("savedProperties", JSON.stringify(syncedSaved));
+              setSavedPropertiesList(syncedSaved.map(item => ({
+                id: item.id,
+                title: item.title || "Property",
+                location: item.location || `${item.city || ''}, ${item.state || ''}` || "Lagos, Nigeria",
+                price: item.price || `₦${Number(item.rent_amount || 0).toLocaleString()}/yr`,
+                beds: item.beds || item.bedrooms || 1,
+                baths: item.baths || item.bathrooms || 1,
+                type: item.type || item.property_type || "apartment",
+                image: item.cover_image || item.image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
+                amenities: item.amenities || [],
+                landlord: item.landlord,
+                status: item.status,
+                isPending: item.isPending
+              })));
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to sync saved properties:", e);
+      }
+    }
+  }, [allListings]);
 
   const handleInspectProperty = (property) => {
     setSelectedProperty(property);
@@ -202,13 +344,15 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     // Dynamic Last Visited update on tap
     setLastVisitedListings(prev => {
       const filtered = prev.filter(p => p && p.id !== property.id);
-      const updated = [property, ...filtered].slice(0, 10);
+      const updated = [property, ...filtered].slice(0, 5);
       try {
         localStorage.setItem("lastVisitedListings", JSON.stringify(updated));
       } catch (e) { }
       return updated;
     });
   };
+
+
 
   // Landlord Details modal states
   const [selectedLandlord, setSelectedLandlord] = useState(null);
@@ -219,8 +363,8 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     setShowLandlordDetailsModal(true);
   };
 
-  // Landlord Filtering & Search matching logic
-  const filteredLandlords = LANDLORDS.filter(landlord => {
+  // Landlord Filtering & Search matching logic (against dynamic landlords derived from listings)
+  const filteredLandlords = dynamicLandlords.filter(landlord => {
     // 1. Text Search matching
     if (searchQuery.trim() !== "") {
       if (!landlord.name.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -230,7 +374,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
 
     // 2. Filter match on any of the landlord's properties
     if (filterPrice !== "" || filterBeds !== "" || filterType !== "") {
-      const landlordProperties = allListings.filter(p => (p.landlord?.name || p.landlord) === landlord.name);
+      const landlordProperties = allListings.filter(p => p.landlord?.name === landlord.name);
       const hasMatchingProperty = landlordProperties.some(listing => {
         if (filterPrice !== "") {
           const maxPrice = parseFloat(filterPrice);
@@ -256,8 +400,9 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     return true;
   });
 
-  const topRatedLandlords = LANDLORDS.filter(l => l.category === "Top Rated Landlords");
-  const nearYouLandlords = LANDLORDS.filter(l => l.category === "Landlords near you");
+  // All dynamic landlords shown in default swimlanes
+  const topRatedLandlords = dynamicLandlords;
+  const nearYouLandlords = [];
 
   // Helper to check if any filters are active
   const hasActiveFilters = searchQuery.trim() !== "" || filterPrice !== "" || filterBeds !== "" || filterType !== "" || filterLandlordTenure !== "";
@@ -306,7 +451,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
 
   const userLocationStr = (() => {
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const prof = JSON.parse(raw);
         return prof.location || "";
@@ -325,6 +470,18 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
       return true;
     });
   })();
+
+  useEffect(() => {
+    const handleResumeApply = (e) => {
+      const propId = e.detail;
+      const property = allAvailableProperties.find(p => p.id == propId);
+      if (property) {
+        handleInspectProperty(property);
+      }
+    };
+    window.addEventListener("resumeQuickApply", handleResumeApply);
+    return () => window.removeEventListener("resumeQuickApply", handleResumeApply);
+  }, [allAvailableProperties]);
 
   const searchSuggestions = (() => {
     const q = searchQuery.toLowerCase().trim();
@@ -366,8 +523,8 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
       }
     });
 
-    // 3. Match Landlords
-    LANDLORDS.forEach(l => {
+    // 3. Match Landlords from dynamic list
+    dynamicLandlords.forEach(l => {
       if (l.name && l.name.toLowerCase().includes(q)) {
         const key = `land-${l.name}`;
         if (!addedKeys.has(key)) {
@@ -375,7 +532,7 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
           suggestions.push({
             icon: <User className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />,
             text: l.name,
-            subtitle: `Verified Partner (${l.rating}★)`,
+            subtitle: `Verified Partner (${l.score}★)`,
             category: "Landlord",
             filterVal: l.name
           });
@@ -386,8 +543,12 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
     return suggestions.slice(0, 6);
   })();
 
-  const lastVisitedProperties = lastVisitedListings;
-  const lastVisitedIds = new Set(lastVisitedProperties.map(p => p && p.id).filter(Boolean));
+  const availablePropertyIds = new Set(allAvailableProperties.map(p => p.id));
+  const lastVisitedProperties = lastVisitedListings
+    .filter(p => p && availablePropertyIds.has(p.id))
+    .map(p => allAvailableProperties.find(l => l.id === p.id) || p)
+    .slice(0, 5);
+  const lastVisitedIds = new Set(lastVisitedProperties.map(p => p.id));
 
   const closeToYouProperties = (() => {
     const locLower = userLocationStr.toLowerCase().trim();
@@ -445,8 +606,12 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
 
           <div className="db-controls-group">
             <div className="db-profile-avatar-wrapper" onClick={() => setShowProfileModal(true)} title="Profile settings">
-              <div className="db-avatar">
-                <User className="h-4 w-4 text-[#1E382A] dark:text-[#E5C583]" />
+              <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#1E382A] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border border-[#1E382A]/20 dark:border-[#E5C583]/30">
+                {tenantAvatar ? (
+                  <img src={tenantAvatar} alt="Tenant Avatar" className="h-full w-full object-cover" />
+                ) : (
+                  <User className="h-4 w-4 text-[#1E382A] dark:text-[#E5C583]" />
+                )}
               </div>
             </div>
           </div>
@@ -609,6 +774,21 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                 )}
               </div>
 
+              {/* Section 1.5: Saved Properties */}
+              {savedPropertiesList.length > 0 && (
+                <div className="recommendation-row mb-8">
+                  <h3 className="recommendation-section-title flex items-center gap-2">
+                    <Heart className="h-4.5 w-4.5 text-rose-500 fill-rose-500" />
+                    Saved Properties
+                  </h3>
+                  <div className="recommendation-cards-scroller">
+                    {savedPropertiesList.map(p => (
+                      <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Section 2: Close to You */}
               <div className="recommendation-row mb-8">
                 <h3 className="recommendation-section-title">
@@ -623,20 +803,42 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                 ) : (
                   <div className="p-6 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C] my-2">
                     <div className="mb-2 flex justify-center"><MapPin className="h-7 w-7 text-moss-600 dark:text-[#E5C583]" /></div>
-                    <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">
-                      No properties currently available close to {userLocationStr || "your location"}
-                    </h4>
-                    <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7] max-w-md mx-auto mb-4 leading-relaxed">
-                      We don&apos;t have active listings in this location yet. You can explore all available listings across Nigeria below.
-                    </p>
-                    <Button
-                      onClick={() => {
-                        setViewAllListings(true);
-                      }}
-                      className="bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12.5px] font-bold px-5 py-2.5 rounded-xl"
-                    >
-                      View Available Listings
-                    </Button>
+                    
+                    {!userLocationStr ? (
+                      <>
+                        <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">
+                          Set your location to see nearby properties
+                        </h4>
+                        <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7] max-w-md mx-auto mb-4 leading-relaxed">
+                          We noticed you haven't set a location in your profile. Update your location in settings to get personalized recommendations for properties near you.
+                        </p>
+                        <Button
+                          onClick={() => {
+                            setActiveTab(3); // Navigate to settings tab
+                          }}
+                          className="bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12.5px] font-bold px-5 py-2.5 rounded-xl"
+                        >
+                          Go to Settings
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">
+                          No properties currently available close to {userLocationStr}
+                        </h4>
+                        <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7] max-w-md mx-auto mb-4 leading-relaxed">
+                          We don't have active listings in this location yet. You can explore all available listings across Nigeria below.
+                        </p>
+                        <Button
+                          onClick={() => {
+                            setViewAllListings(true);
+                          }}
+                          className="bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12.5px] font-bold px-5 py-2.5 rounded-xl"
+                        >
+                          View Available Listings
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -671,24 +873,24 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
             </div>
           ) : (
             <div className="recommendations-container text-left tour-search-results">
-              {/* Section 1: Top Rated Landlords */}
+              {/* All Landlords derived from listings */}
               <div className="recommendation-row mb-8">
-                <h3 className="recommendation-section-title">Top Rated Landlords</h3>
-                <div className="recommendation-cards-scroller">
-                  {topRatedLandlords.map(l => (
-                    <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} />
-                  ))}
-                </div>
-              </div>
-
-              {/* Section 2: Landlords near you */}
-              <div className="recommendation-row">
-                <h3 className="recommendation-section-title">Landlords near you</h3>
-                <div className="recommendation-cards-scroller">
-                  {nearYouLandlords.map(l => (
-                    <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} />
-                  ))}
-                </div>
+                <h3 className="recommendation-section-title">Verified Landlords</h3>
+                {topRatedLandlords.length > 0 ? (
+                  <div className="recommendation-cards-scroller">
+                    {topRatedLandlords.map(l => (
+                      <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C] my-2">
+                    <div className="mb-2 flex justify-center"><User className="h-7 w-7 text-moss-600 dark:text-[#E5C583]" /></div>
+                    <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">No landlords yet</h4>
+                    <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7] max-w-md mx-auto leading-relaxed">
+                      Landlord profiles will appear here once properties are listed and approved on Lodale.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )
@@ -758,10 +960,16 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                   filteredListings.map(p => (
                     <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
                   ))
-                ) : (
+                ) : filteredLandlords.length > 0 ? (
                   filteredLandlords.map(l => (
                     <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} />
                   ))
+                ) : (
+                  <div className="col-span-full p-8 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C]">
+                    <User className="h-8 w-8 text-moss-600 dark:text-[#E5C583] mx-auto mb-3" />
+                    <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">No landlords match your search</h4>
+                    <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Try a different name or clear your filters.</p>
+                  </div>
                 )}
               </div>
             )}
@@ -968,12 +1176,14 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
               {/* Landlord validation details */}
               <div className="flex flex-col gap-3 border-t border-neutral-100 dark:border-neutral-800/60 pt-4 mb-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Verified Landlord</span>
+                  <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Landlord / Manager</span>
                   <span className="text-[13px] font-bold">{selectedProperty.landlord.name}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Landlord Rating Score</span>
-                  <span className="text-[13px] font-bold text-amber-500">★ {selectedProperty.landlord.score} ({selectedProperty.landlord.reviews} reviews)</span>
+                  <span className="text-[13px] font-bold text-amber-500">
+                    {selectedProperty.landlord.score > 0 ? `★ ${selectedProperty.landlord.score} (${selectedProperty.landlord.reviews} reviews)` : "No rating yet"}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Ownership Status</span>
@@ -1009,9 +1219,39 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                   Landlord Profile
                 </Button>
                 <Button
-                  onClick={() => {
-                    triggerToast("Application submitted successfully! Your pre-verified NIN profile has been shared with the landlord.", "success", "Application Sent");
-                    setShowPropertyDetailsModal(false);
+                  onClick={async () => {
+                    const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                    const raw = sessionStorage.getItem("tenantCurrentProfile") || (userEmail ? localStorage.getItem("tenantProfile_" + userEmail) : null) || "{}";
+                    const prof = JSON.parse(raw);
+                    
+                    if (!prof.phone && !prof.phone_number || !prof.occupation || !prof.income) {
+                      triggerToast("Please complete your profile details before applying.", "warning", "Incomplete Profile");
+                      setShowPropertyDetailsModal(false);
+                      localStorage.setItem("pendingQuickApplyPropertyId", selectedProperty.id);
+                      if (setActiveTab) setActiveTab(3);
+                      return;
+                    }
+
+                    try {
+                      // Check for existing application first
+                      const existingApp = await applicationService.getApplicationForProperty(selectedProperty.id);
+                      if (existingApp) {
+                        triggerToast(`You have already applied for this property. Status: ${existingApp.status || "Pending"}`, "info", "Already Applied");
+                        return;
+                      }
+
+                      await applicationService.apply(selectedProperty.id, "Quick Apply via Tenant Search.");
+                      triggerToast("Application submitted! Your profile has been shared with the landlord.", "success", "Application Sent");
+                      setShowPropertyDetailsModal(false);
+                      if (setActiveTab) setActiveTab(4); // Navigate to Applications tab
+                    } catch (err) {
+                      const message = err.message || "Failed to submit application.";
+                      if (message.toLowerCase().includes("already")) {
+                        triggerToast("You have already applied for this property.", "info", "Already Applied");
+                      } else {
+                        triggerToast(message, "error", "Application Error");
+                      }
+                    }
                   }}
                   variant="secondary"
                   className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3 text-[12.5px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white border border-neutral-200 dark:border-neutral-700"
@@ -1036,8 +1276,12 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
             <div className="modal-scroll-area">
               {/* Landlord profile header */}
               <div className="flex flex-col items-center py-4 mb-4 border-b border-neutral-100 dark:border-neutral-800/40">
-                <div className="landlord-avatar-wrapper" style={{ width: "80px", height: "80px", position: "relative" }}>
-                  <img src={selectedLandlord.avatar} alt={selectedLandlord.name} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", border: "2px solid #E5C583" }} />
+                <div style={{ width: "96px", height: "96px", margin: "0 auto 16px auto", borderRadius: "50%", position: "relative" }}>
+                  <Avatar 
+                    src={selectedLandlord.avatar} 
+                    name={selectedLandlord.name} 
+                    style={{ width: "100%", height: "100%", borderRadius: "50%", border: "2px solid #E5C583" }} 
+                  />
                   <span className="landlord-verification-tick flex items-center justify-center" style={{ position: "absolute", bottom: "0", right: "0", width: "22px", height: "22px" }}><Check className="h-3 w-3" /></span>
                 </div>
                 <h4 className="font-bold text-[20px] text-ink-900 dark:text-white mt-3 mb-1">
@@ -1053,8 +1297,10 @@ export default function TenantSearch({ setShowProfileModal, onStartChat }) {
                 <span className="summary-lbl">Reliability Breakdown</span>
 
                 <div className="flex justify-between items-center text-[12.5px]">
-                  <span>Overall Rating</span>
-                  <span className="font-bold text-amber-500">★ {selectedLandlord.score} / 5.0 ({selectedLandlord.reviews} Reviews)</span>
+                  <span className="text-xs text-[#6C6E73] dark:text-[#A3BCA7]">Total Rating</span>
+                  <span className="font-bold text-amber-500">
+                    {selectedLandlord.score > 0 ? `★ ${selectedLandlord.score} / 5.0 (${selectedLandlord.reviews} Reviews)` : "No rating yet"}
+                  </span>
                 </div>
 
                 <div className="flex justify-between items-center text-[12.5px] mt-1">

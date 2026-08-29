@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { triggerToast } from "../../context/ToastContext";
 import {
   LayoutDashboard,
@@ -39,6 +39,7 @@ import "./TenantDashboard.css";
 import TenantSearch from "./TenantSearch";
 import TenantChat from "./TenantChat";
 import TenantSettings from "./TenantSettings";
+import TenantApplications from "./TenantApplications";
 
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
@@ -162,12 +163,16 @@ const TOUR_STEPS = [
 
 export default function TenantDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme, toggleTheme } = useTheme();
 
-  // Active navigation tab (persisted on page reload)
-  // 0: Dashboard, 1: Search, 2: Chat, 3: Settings
+  // Active navigation tab (persisted on page reload, or from navigation state)
+  // 0: Dashboard, 1: Search, 2: Chat, 3: Settings, 4: Applications
   const [activeTab, setActiveTabState] = useState(() => {
     try {
+      // If navigated from ListingDetail with a specific tab request, honour it
+      const navInitialTab = location?.state?.initialTab;
+      if (typeof navInitialTab === "number") return navInitialTab;
       const saved = localStorage.getItem("tenantActiveTab");
       return saved !== null ? Number(saved) : 0;
     } catch (e) {
@@ -182,13 +187,13 @@ export default function TenantDashboard() {
     } catch (e) { }
   };
 
-  // Retrieve username with fallback
+  // Retrieve username with fallback — reads tenant-scoped keys first
   const [username, setUsername] = useState(() => {
-    const sessName = sessionStorage.getItem("username");
+    const sessName = sessionStorage.getItem("tenantUsername") || sessionStorage.getItem("username");
     if (sessName) return sessName;
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    return storedName || localStorage.getItem("username") || "Tunde";
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+    const storedName = emailKey ? (localStorage.getItem("tenantUsername_" + emailKey) || sessionStorage.getItem("username_" + emailKey)) : null;
+    return storedName || localStorage.getItem("tenantUsername") || sessionStorage.getItem("username") || "Tunde";
   });
   const firstName = username.split(" ")[0];
 
@@ -203,15 +208,16 @@ export default function TenantDashboard() {
     year: "numeric",
   });
 
-  // Tenant avatar state (uses User icon by default until user uploads custom photo)
+  // Tenant avatar state — reads tenant-scoped keys so it never picks up a landlord avatar
   const [tenantAvatar, setTenantAvatar] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
     }
-    const globalSaved = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
-    if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
+    // Fallback: session-level quick sync key set by TenantSettings on upload
+    const sessionAvatar = sessionStorage.getItem("tenantAvatarUrl");
+    if (sessionAvatar && !sessionAvatar.includes("unsplash.com")) return sessionAvatar;
     return "";
   });
 
@@ -222,18 +228,24 @@ export default function TenantDashboard() {
       if (sessEmail && e?.key === "lastLoggedInEmail" && e?.newValue?.toLowerCase() !== sessEmail) {
         return;
       }
-      const emailKey = sessEmail || localStorage.getItem("lastLoggedInEmail")?.toLowerCase();
-      const storedName = sessionStorage.getItem("username") || (emailKey ? localStorage.getItem("username_" + emailKey) : null);
+      const emailKey = sessEmail || sessionStorage.getItem("lastLoggedInEmail")?.toLowerCase();
+      // Read tenant-scoped username first to prevent landlord name overwriting tenant display
+      const storedName =
+        sessionStorage.getItem("tenantUsername") ||
+        (emailKey ? localStorage.getItem("tenantUsername_" + emailKey) : null) ||
+        sessionStorage.getItem("username") ||
+        (emailKey ? sessionStorage.getItem("username_" + emailKey) : null);
       if (storedName) {
         setUsername(storedName);
       }
 
+      // Read tenant-scoped avatar only
       let updated = null;
       if (emailKey) {
         updated = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
       }
       if (!updated) {
-        updated = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl");
+        updated = sessionStorage.getItem("tenantAvatarUrl");
       }
       if (updated) {
         setTenantAvatar(updated);
@@ -241,6 +253,17 @@ export default function TenantDashboard() {
     };
     window.addEventListener("storage", handleStorageUpdate);
     return () => window.removeEventListener("storage", handleStorageUpdate);
+  }, []);
+
+  // Listen to tenantProfileUpdated custom event (fired by TenantSettings)
+  useEffect(() => {
+    const handleTenantProfileUpdated = (e) => {
+      const { name, avatar } = e.detail || {};
+      if (name) setUsername(name);
+      if (avatar) setTenantAvatar(avatar);
+    };
+    window.addEventListener("tenantProfileUpdated", handleTenantProfileUpdated);
+    return () => window.removeEventListener("tenantProfileUpdated", handleTenantProfileUpdated);
   }, []);
 
   // Welcome Overlay states for new signup animation
@@ -287,7 +310,7 @@ export default function TenantDashboard() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const currentName = (localStorage.getItem("username") || "Tunde").toLowerCase();
+        const currentName = (sessionStorage.getItem("username") || "Tunde").toLowerCase();
         return parsed.filter(r => {
           if (!r) return false;
           const reqUser = (r.tenantName || r.name || "").toLowerCase();
@@ -320,6 +343,10 @@ export default function TenantDashboard() {
   const [showPayModal, setShowPayModal] = useState(false);
   const [payingState, setPayingState] = useState("idle"); // idle | processing | success
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editPhone, setEditPhone] = useState("");
+  const [editOccupation, setEditOccupation] = useState("");
+  const [editIncome, setEditIncome] = useState("");
 
   // Ticket detail & modal states
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -339,6 +366,16 @@ export default function TenantDashboard() {
       localStorage.setItem("tenantChats", JSON.stringify([]));
       localStorage.removeItem("isNewSignUp");
     }
+
+    // Listen for resume quick apply to switch back to Search tab
+    const handleResumeApply = () => {
+      setActiveTab(1);
+    };
+    window.addEventListener("resumeQuickApply", handleResumeApply);
+    
+    return () => {
+      window.removeEventListener("resumeQuickApply", handleResumeApply);
+    };
   }, []);
 
   // Load tenant specific requests
@@ -347,7 +384,7 @@ export default function TenantDashboard() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        const currentName = (localStorage.getItem("username") || "Tunde").toLowerCase();
+        const currentName = (sessionStorage.getItem("username") || "Tunde").toLowerCase();
         const filtered = parsed.filter(r => {
           if (!r) return false;
           const reqUser = (r.tenantName || r.name || "").toLowerCase();
@@ -626,10 +663,10 @@ export default function TenantDashboard() {
     sessionStorage.removeItem("currentUserProfile");
     sessionStorage.removeItem("lodale_token");
     sessionStorage.removeItem("lodale_user");
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("userRole");
     navigate("/login", { replace: true });
   };
 
@@ -639,6 +676,7 @@ export default function TenantDashboard() {
     if (activeTab === 1) return "Search";
     if (activeTab === 2) return "Chat";
     if (activeTab === 3) return "Settings";
+    if (activeTab === 4) return "Applications";
     return "";
   };
 
@@ -675,7 +713,8 @@ export default function TenantDashboard() {
                 { icon: LayoutDashboard, label: "Dashboard home", idx: 0 },
                 { icon: Search, label: "Search properties", idx: 1 },
                 { icon: MessageSquare, label: "Chat Room", idx: 2 },
-                { icon: Settings, label: "Settings & Profile", idx: 3 }
+                { icon: Settings, label: "Settings & Profile", idx: 3 },
+                { icon: FileText, label: "Applications", idx: 4 }
               ].map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.idx;
@@ -889,20 +928,73 @@ export default function TenantDashboard() {
             <div className="flex flex-col gap-3 mt-2 border-t border-neutral-100 dark:border-neutral-800/60 pt-4">
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Email Address</span>
-                <span className="text-[13px] font-bold">{sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
+                <span className="text-[13px] font-bold">{sessionStorage.getItem("lastLoggedInEmail") || "Not provided"}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Phone Number</span>
-                <span className="text-[13px] font-bold">
-                  {(() => {
-                    try {
-                      const prof = JSON.parse(sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || "{}");
-                      return prof.phone || "Not provided";
-                    } catch (e) {
-                      return "Not provided";
-                    }
-                  })()}
-                </span>
+                {isEditingProfile ? (
+                  <input
+                    type="tel"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    className="bg-cream-50 dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
+                    placeholder="+234..."
+                  />
+                ) : (
+                  <span className="text-[13px] font-bold">
+                    {(() => {
+                      try {
+                        const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                        const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                        return JSON.parse(raw).phone || "Not provided";
+                      } catch (e) { return "Not provided"; }
+                    })()}
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
+                <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Occupation</span>
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={editOccupation}
+                    onChange={(e) => setEditOccupation(e.target.value)}
+                    className="bg-cream-50 dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
+                    placeholder="e.g. Engineer"
+                  />
+                ) : (
+                  <span className="text-[13px] font-bold">
+                    {(() => {
+                      try {
+                        const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                        const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                        return JSON.parse(raw).occupation || "Not provided";
+                      } catch (e) { return "Not provided"; }
+                    })()}
+                  </span>
+                )}
+              </div>
+              <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
+                <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Monthly Income</span>
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={editIncome}
+                    onChange={(e) => setEditIncome(e.target.value)}
+                    className="bg-cream-50 dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
+                    placeholder="e.g. ₦400,000"
+                  />
+                ) : (
+                  <span className="text-[13px] font-bold">
+                    {(() => {
+                      try {
+                        const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                        const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                        return JSON.parse(raw).income || "Not provided";
+                      } catch (e) { return "Not provided"; }
+                    })()}
+                  </span>
+                )}
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Active Unit</span>
@@ -914,12 +1006,61 @@ export default function TenantDashboard() {
               </div>
             </div>
 
-            <Button
-              onClick={() => setShowProfileModal(false)}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
-            >
-              Close Profile Details
-            </Button>
+            <div className="flex gap-2 mt-6">
+              {isEditingProfile ? (
+                <>
+                  <Button
+                    onClick={() => setIsEditingProfile(false)}
+                    variant="secondary"
+                    className="flex-1 bg-neutral-200 dark:bg-neutral-800 text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                      const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                      const prof = JSON.parse(raw);
+                      prof.phone = editPhone;
+                      prof.occupation = editOccupation;
+                      prof.income = editIncome;
+                      sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(prof));
+                      if (emailKey) localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(prof));
+                      window.dispatchEvent(new Event("storage"));
+                      setIsEditingProfile(false);
+                      triggerToast("Profile updated successfully!", "success", "Profile Saved");
+                    }}
+                    className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
+                  >
+                    Save Profile
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={() => setShowProfileModal(false)}
+                    variant="secondary"
+                    className="flex-1 bg-neutral-200 dark:bg-neutral-800 text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                      const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                      const prof = JSON.parse(raw);
+                      setEditPhone(prof.phone || "");
+                      setEditOccupation(prof.occupation || "");
+                      setEditIncome(prof.income || "");
+                      setIsEditingProfile(true);
+                    }}
+                    className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
+                  >
+                    Edit Profile
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1321,7 +1462,8 @@ export default function TenantDashboard() {
                 { icon: LayoutDashboard, label: "Dashboard home" },
                 { icon: Search, label: "Search" },
                 { icon: MessageSquare, label: "Chat" },
-                { icon: Settings, label: "Settings" }
+                { icon: Settings, label: "Settings" },
+                { icon: FileText, label: "Applications" }
               ].map((item, index) => {
                 const Icon = item.icon;
                 const isActive = activeTab === index;
@@ -1744,7 +1886,9 @@ export default function TenantDashboard() {
           </main>
         ) : activeTab === 1 ? (
           <TenantSearch
+            setActiveTab={setActiveTab}
             setShowProfileModal={setShowProfileModal}
+            tenantAvatar={tenantAvatar}
             onStartChat={(landlordName) => {
               localStorage.setItem("activeChatLandlordName", landlordName);
               setActiveTab(2);
@@ -1756,10 +1900,22 @@ export default function TenantDashboard() {
           </main>
         ) : activeTab === 3 ? (
           <main className="db-main-content">
-            <TenantSettings onSignOut={handleSignOut} />
+            <TenantSettings
+              onSignOut={handleSignOut}
+              currentAvatar={tenantAvatar}
+              onAvatarChange={setTenantAvatar}
+              onProfileUpdate={(name, avatar) => {
+                if (name) setUsername(name);
+                if (avatar) setTenantAvatar(avatar);
+              }}
+            />
+          </main>
+        ) : activeTab === 4 ? (
+          <main className="db-main-content">
+            <TenantApplications setActiveTab={setActiveTab} />
           </main>
         ) : (
-          /* TAB 4+: UNDER DEVELOPMENT VIEWS */
+          /* TAB 5+: UNDER DEVELOPMENT VIEWS */
           <div className="under-development-wrapper flex-1 flex items-center justify-center">
             <div className="under-dev-card text-center">
               <div className="sparkle-icon flex justify-center"><Sparkles className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>

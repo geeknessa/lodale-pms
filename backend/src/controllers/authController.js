@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { UserModel } from '../models/userModel.js';
+import { ProfileModel } from '../models/profileModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'lodale_secret_key_2026';
@@ -16,6 +17,13 @@ export const authController = {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await UserModel.create({ firstName, lastName, email, hashedPassword, phone, role });
+
+    // Auto-create an empty role-specific profile row
+    if (newUser.primary_role === 'landlord') {
+      await ProfileModel.createEmptyLandlordProfile(newUser.id);
+    } else if (newUser.primary_role === 'tenant') {
+      await ProfileModel.createEmptyTenantProfile(newUser.id);
+    }
 
     const token = jwt.sign({ id: newUser.id, email: newUser.email, role: newUser.primary_role }, JWT_SECRET, { expiresIn: '7d' });
 
@@ -47,7 +55,7 @@ export const authController = {
           dbAdmin = await UserModel.findByEmail('admin');
         }
         const adminUser = dbAdmin || {
-          id: 'constant_admin_id',
+          id: '00000000-0000-0000-0000-000000000001',
           email: 'admin@lodale.com',
           first_name: 'System',
           last_name: 'Admin',
@@ -60,7 +68,15 @@ export const authController = {
 
     // 2. Regular user login flow
     const user = await UserModel.findByEmail(email);
-    if (!user || !user.password_hash) {
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    if ((user.account_status || '').toLowerCase() === 'suspended') {
+      return res.status(403).json({ error: 'Your account has been suspended. Contact support.' });
+    }
+
+    if (!user.password_hash) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 

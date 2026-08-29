@@ -29,14 +29,17 @@ import {
   X,
   Trash2,
   BellOff,
+  ClipboardList
 } from "lucide-react";
 import { Logo } from "../../components/Logo";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
+import { applicationService } from "../../services/applicationService";
 import LandlordProperties from "./LandlordProperties";
 import UserInfo from "./components/UserInfo";
 import RequestInfo from "./components/RequestInfo";
 import LandlordChat from "./components/Landllordchat";
+import LandlordApplications from "./components/LandlordApplications";
 import SettingsTab from "./Settings";
 import Tenants from "./Tenants";
 import "./LandlordDashboard.css";
@@ -170,9 +173,9 @@ export default function LandlordDashboard() {
   const [username, setUsername] = useState(() => {
     const sessName = sessionStorage.getItem("username");
     if (sessName) return sessName;
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-    return storedName || localStorage.getItem("username") || "Ada";
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+    const storedName = emailKey ? sessionStorage.getItem("username_" + emailKey) : null;
+    return storedName || sessionStorage.getItem("username") || "Ada";
   });
 
   const getActiveTenantsList = () => {
@@ -256,7 +259,7 @@ export default function LandlordDashboard() {
 
   // Landlord profile avatar state (persisted across uploads)
   const [landlordAvatar, setLandlordAvatar] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail");
+    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
       if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
@@ -264,7 +267,7 @@ export default function LandlordDashboard() {
     const globalSaved = sessionStorage.getItem("landlordAvatarUrl") || localStorage.getItem("landlordAvatarUrl");
     if (globalSaved && !globalSaved.includes("unsplash.com")) return globalSaved;
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile");
+      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
@@ -275,7 +278,7 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     const handleAvatarUpdate = () => {
-      const emailKey = localStorage.getItem("lastLoggedInEmail");
+      const emailKey = sessionStorage.getItem("lastLoggedInEmail");
       let updated = null;
       if (emailKey) {
         updated = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
@@ -285,7 +288,7 @@ export default function LandlordDashboard() {
       }
       if (!updated) {
         try {
-          const raw = localStorage.getItem("currentUserProfile");
+          const raw = sessionStorage.getItem("currentUserProfile");
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed.avatar) updated = parsed.avatar;
@@ -300,17 +303,20 @@ export default function LandlordDashboard() {
     window.addEventListener("storage", handleAvatarUpdate);
     return () => window.removeEventListener("storage", handleAvatarUpdate);
   }, []);
-  const [applications, setApplications] = useState(() => {
-    const saved = localStorage.getItem("propertyApplications");
-    if (saved) {
+  const [applications, setApplications] = useState([]);
+
+  useEffect(() => {
+    async function fetchBadgeCount() {
       try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return [];
+        localStorage.removeItem("propertyApplications");
+        const apps = await applicationService.getLandlordApplications();
+        setApplications(Array.isArray(apps) ? apps : []);
+      } catch (err) {
+        setApplications([]);
       }
     }
-    return [];
-  });
+    fetchBadgeCount();
+  }, []);
 
   const [notifications, setNotifications] = useState(() => {
     const saved = localStorage.getItem("landlordNotifications");
@@ -330,18 +336,12 @@ export default function LandlordDashboard() {
   });
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
-  // Sync username, applications & notifications if changed in storage
+  // Sync username & notifications if changed in storage
   useEffect(() => {
     const handleStorageChange = () => {
-      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-      const storedName = emailKey ? localStorage.getItem("username_" + emailKey) : null;
-      setUsername(sessionStorage.getItem("username") || storedName || localStorage.getItem("username") || "Landlord User");
-      const savedApps = localStorage.getItem("propertyApplications");
-      if (savedApps) {
-        try {
-          setApplications(JSON.parse(savedApps));
-        } catch (e) { }
-      }
+      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+      const storedName = emailKey ? sessionStorage.getItem("username_" + emailKey) : null;
+      setUsername(sessionStorage.getItem("username") || storedName || sessionStorage.getItem("username") || "Landlord User");
       const savedNotifs = localStorage.getItem("landlordNotifications");
       if (savedNotifs) {
         try {
@@ -701,20 +701,21 @@ export default function LandlordDashboard() {
     sessionStorage.removeItem("currentUserProfile");
     sessionStorage.removeItem("lodale_token");
     sessionStorage.removeItem("lodale_user");
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userRole");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("userRole");
     navigate("/login", { replace: true });
   }
 
   // Sidebar navigation items
   const sidebarItems = [
-    { icon: LayoutDashboard, label: "Dashboard Home" },
-    { icon: Building2, label: "Properties" },
-    { icon: Users, label: "Tenants" },
-    { icon: MessageSquare, label: "Chat" },
-    { icon: Settings, label: "Settings" },
+    { id: "dashboard", icon: LayoutDashboard, label: "Dashboard Home", tabIndex: 0, action: () => { setActiveTab(0); setActivePill("Overview"); } },
+    { id: "properties", icon: Building2, label: "Properties", tabIndex: 1, action: () => setActiveTab(1) },
+    { id: "tenants", icon: Users, label: "Tenants", tabIndex: 2, action: () => setActiveTab(2) },
+    { id: "applications", icon: ClipboardList, label: "Applications", tabIndex: 0, action: () => { setActiveTab(0); setActivePill("Applications"); } },
+    { id: "chat", icon: MessageSquare, label: "Chat", tabIndex: 3, action: () => setActiveTab(3) },
+    { id: "settings", icon: Settings, label: "Settings", tabIndex: 4, action: () => setActiveTab(4) },
   ];
 
   // Filter listings where landlord name matches the username, or fallback to general listings list
@@ -723,7 +724,7 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     async function loadProperties() {
-      const currentUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
       let apiProps = [];
       try {
         apiProps = await propertyService.getLandlordProperties(currentUserId);
@@ -947,80 +948,7 @@ export default function LandlordDashboard() {
               ))}
             </nav>
 
-            {activePill === "Applications" && (
-              <div className="db-applications-popup">
-                <div className="db-popup-header">
-                  <h3>New Rental Applications</h3>
-                  <button
-                    className="db-popup-close-btn"
-                    onClick={() => {
-                      setActivePill("Overview");
-                    }}
-                  >
-                    &times;
-                  </button>
-                </div>
-                <div className="db-popup-body">
-                  {applications.length === 0 ? (
-                    <div className="db-popup-empty">
-                      <p>No pending applications</p>
-                    </div>
-                  ) : (
-                    <div className="db-popup-list">
-                      {applications.map((app) => (
-                        <div key={app.id} className="db-popup-item">
-                          <img
-                            src={app.avatar}
-                            alt={app.tenantName}
-                            className="db-popup-avatar cursor-pointer"
-                            onClick={() => {
-                              setSelectedTenantForDetails(app);
-                              setActivePill("Overview");
-                            }}
-                          />
-                          <div className="db-popup-info">
-                            <div className="db-popup-name-row">
-                              <span
-                                className="db-popup-name cursor-pointer hover:underline"
-                                onClick={() => {
-                                  setSelectedTenantForDetails(app);
-                                  setActivePill("Overview");
-                                }}
-                              >
-                                {app.tenantName}
-                              </span>
-                              <span className="db-popup-score flex items-center gap-1 font-bold text-amber-500">
-                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
-                                <span>{app.reliabilityScore}</span>
-                              </span>
-                            </div>
-                            <p className="db-popup-property">{app.propertyTitle}</p>
-                            <span className="db-popup-date">{app.date}</span>
-                          </div>
-                          <div className="db-popup-actions">
-                            <button
-                              className="db-action-btn approve"
-                              onClick={() => handleApproveApplication(app)}
-                            >
-                              Approve
-                            </button>
-                            <button
-                              className="db-action-btn decline"
-                              onClick={() => {
-                                triggerToast(`Declined ${app.tenantName}'s application.`, "info", "Application Declined");
-                                setApplications((prev) => prev.filter((a) => a.id !== app.id));
-                              }}
-                            >
-                              Decline
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {activePill === "Applications" && null /* Rendered as a separate page now */}
 
             {activePill === "Payments" && (
               <div className="db-applications-popup db-payments-popup">
@@ -1334,11 +1262,13 @@ export default function LandlordDashboard() {
           <div className="db-sidebar-nav">
             {sidebarItems.map((item, index) => {
               const Icon = item.icon;
-              const isActive = index === activeTab;
+              const isActive = item.id === "dashboard" ? activeTab === 0 && activePill !== "Applications" 
+                             : item.id === "applications" ? activeTab === 0 && activePill === "Applications"
+                             : activeTab === item.tabIndex;
               return (
                 <button
-                  key={index}
-                  onClick={() => setActiveTab(index)}
+                  key={item.id}
+                  onClick={item.action}
                   className={`db-sidebar-btn ${isActive ? "active" : ""} tour-nav-${index}`}
                 >
                   <Icon className="h-5 w-5" />
@@ -1420,312 +1350,318 @@ export default function LandlordDashboard() {
           )}
 
           {activeTab === 0 ? (
-            /* DASHBOARD CONTENT GRID */
-            <div className="space-y-6">
-              {/* TOP ROW GRID */}
-              <div className="db-grid">
+            activePill === "Applications" ? (
+              <div className="mt-2">
+                <LandlordApplications setActiveTab={setActiveTab} />
+              </div>
+            ) : (
+              /* DASHBOARD CONTENT GRID */
+              <div className="space-y-6">
+                {/* TOP ROW GRID */}
+                <div className="db-grid">
 
-                {/* COLUMN 1: PORTFOLIO SUMMARY CARD */}
-                <div className="db-col">
-                  {/* Landlord Rating Card */}
-                  <div className="pro-advantages-panel">
-                    <div className="pro-advantages-header">
-                      <h4 className="pro-advantages-title">Account Rating</h4>
-                      <span
-                        className="pro-advantages-badge cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
+                  {/* COLUMN 1: PORTFOLIO SUMMARY CARD */}
+                  <div className="db-col">
+                    {/* Landlord Rating Card */}
+                    <div className="pro-advantages-panel">
+                      <div className="pro-advantages-header">
+                        <h4 className="pro-advantages-title">Account Rating</h4>
+                        <span
+                          className="pro-advantages-badge cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
+                          onClick={() => setShowRatingModal(true)}
+                          title="View rating reviews"
+                        >
+                          {ratingData.hasReviews ? `★ ${ratingData.rating}` : "New Account"}
+                        </span>
+                      </div>
+                      <p
+                        className="pro-advantages-desc cursor-pointer hover:text-[#E4EAE1] transition-colors"
                         onClick={() => setShowRatingModal(true)}
-                        title="View rating reviews"
+                        title="Click to view tenant reviews"
                       >
-                        {ratingData.hasReviews ? `★ ${ratingData.rating}` : "New Account"}
-                      </span>
+                        {ratingData.hasReviews
+                          ? `Based on ${ratingData.count} verified tenant ${ratingData.count === 1 ? "review" : "reviews"} and on-time payouts.`
+                          : "No tenant reviews yet. Complete active leases to build your platform reliability score."}
+                      </p>
+
+                      <div className="pro-advantages-chart-row">
+                        <button
+                          onClick={() => setShowRatingModal(true)}
+                          className="pro-advantages-btn"
+                          title="View reviews list"
+                          style={{ marginLeft: "auto" }}
+                        >
+                          <ArrowUpRight className="h-4.5 w-4.5" />
+                        </button>
+                      </div>
+
+                      <p className="pro-advantages-footer-text">
+                        {ratingData.hasReviews ? "Join the top-rated landlords on Lodale." : "Build your landlord reputation on Lodale."}
+                      </p>
                     </div>
-                    <p
-                      className="pro-advantages-desc cursor-pointer hover:text-[#E4EAE1] transition-colors"
-                      onClick={() => setShowRatingModal(true)}
-                      title="Click to view tenant reviews"
-                    >
-                      {ratingData.hasReviews
-                        ? `Based on ${ratingData.count} verified tenant ${ratingData.count === 1 ? "review" : "reviews"} and on-time payouts.`
-                        : "No tenant reviews yet. Complete active leases to build your platform reliability score."}
-                    </p>
+                  </div>
 
-                    <div className="pro-advantages-chart-row">
+                  {/* COLUMN 2: ACTIVITY AND REVENUE STATS */}
+                  <div className="db-col">
+                    {/* Activity / Occupancy rate bar chart */}
+                    <section className="db-card activity-card tour-occupancy">
+                      <div className="activity-header">
+                        <div>
+                          <h3 className="activity-title">Weekly Activity</h3>
+                          <p className="text-[11.5px] text-ink-400 dark:text-cream-100/60 font-medium mt-0.5">
+                            Daily tenant interactions & unit occupancy
+                          </p>
+                        </div>
+                        <span className="activity-badge">Weekly logs</span>
+                      </div>
+
+                      <div className="activity-metric">
+                        <span className="activity-val">
+                          {displayProperties.length === 0 ? "0%" : `${occupancyRate}%`}
+                        </span>
+                        <span className="activity-sub">Occupancy Rate</span>
+                      </div>
+
+                      {/* Bar Graph - Dynamically scaled based on Occupancy Rate */}
+                      <div className="activity-chart-grid">
+                        {[
+                          { day: "Mon", base: 45, highlight: false },
+                          { day: "Tue", base: 60, highlight: false },
+                          { day: "Wed", base: 35, highlight: false },
+                          { day: "Thu", base: 75, highlight: false },
+                          { day: "Fri", base: 95, highlight: true }, // Highlighted bar
+                          { day: "Sat", base: 50, highlight: false },
+                          { day: "Sun", base: 40, highlight: false },
+                        ].map((bar, index) => {
+                          const barHeight = occupancyRate === 0
+                            ? "0%"
+                            : `${Math.max(12, Math.round(bar.base * (occupancyRate / 100)))}%`;
+
+                          return (
+                            <div key={index} className="activity-bar-col">
+                              <div className="activity-bar-container">
+                                <div
+                                  className={`activity-bar-fill ${bar.highlight && occupancyRate > 0 ? "highlight" : ""}`}
+                                  style={{ height: barHeight }}
+                                />
+                              </div>
+                              <span className="activity-bar-label">{bar.day}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  </div>
+
+                  {/* COLUMN 3: PAYOUT ACCOUNT */}
+                  <div className="db-col">
+                    {/* Payout Account Visa Mock Card */}
+                    <div className="visa-card-mock tour-vault">
+                      <div className="visa-card-highlight" />
+
+                      <div className="visa-card-header">
+                        <div>
+                          <p className="visa-card-brand">Available Payouts</p>
+                          <p className="visa-card-holder">{username}</p>
+                        </div>
+                        <span className="visa-card-logo">L.</span>
+                      </div>
+
+                      <div className="visa-card-body">
+                        <p className="visa-card-lbl">Available Balance</p>
+                        <p className="visa-card-amount">₦{availablePayoutBalance.toLocaleString()}</p>
+                      </div>
+
+                      <div className="visa-card-footer">
+                        <span>•••• 8802</span>
+                        <span>EXP 09/29</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* BOTTOM ROW GRID (Properties and Tenant Requests half & half) */}
+                <div className="db-bottom-row">
+                  {/* Vertical properties log list */}
+                  <section className="db-card properties-list-card tour-property-list">
+                    <div className="activity-header">
+                      <h3 className="activity-title" style={{ cursor: "pointer" }} onClick={() => setActiveTab(1)}>My Properties</h3>
                       <button
-                        onClick={() => setShowRatingModal(true)}
-                        className="pro-advantages-btn"
-                        title="View reviews list"
-                        style={{ marginLeft: "auto" }}
+                        onClick={() => setActiveTab(1)}
+                        className="activity-badge"
+                        style={{ background: "rgba(38, 38, 38, 0.06)", border: "none", cursor: "pointer", transition: "all 0.2s ease" }}
                       >
-                        <ArrowUpRight className="h-4.5 w-4.5" />
+                        View All
                       </button>
                     </div>
 
-                    <p className="pro-advantages-footer-text">
-                      {ratingData.hasReviews ? "Join the top-rated landlords on Lodale." : "Build your landlord reputation on Lodale."}
-                    </p>
-                  </div>
-                </div>
+                    <div className="properties-vertical-scroll">
+                      {(() => {
+                        const activeTenantsMap = (() => {
+                          try {
+                            const saved = localStorage.getItem("propertyTenants");
+                            return saved ? JSON.parse(saved) : {};
+                          } catch (e) {
+                            return {};
+                          }
+                        })();
 
-                {/* COLUMN 2: ACTIVITY AND REVENUE STATS */}
-                <div className="db-col">
-                  {/* Activity / Occupancy rate bar chart */}
-                  <section className="db-card activity-card tour-occupancy">
-                    <div className="activity-header">
-                      <div>
-                        <h3 className="activity-title">Weekly Activity</h3>
-                        <p className="text-[11.5px] text-ink-400 dark:text-cream-100/60 font-medium mt-0.5">
-                          Daily tenant interactions & unit occupancy
-                        </p>
-                      </div>
-                      <span className="activity-badge">Weekly logs</span>
-                    </div>
+                        const liveAndOccupiedProps = displayProperties.filter((p) => {
+                          const status = (p.status || "").toLowerCase();
+                          const isLiveOrApproved = status === "active_vacant" || status === "approved" || status === "live" || status === "active";
+                          const isOccupied = status === "occupied" || status === "active_occupied" || (activeTenantsMap[p.id] && activeTenantsMap[p.id].length > 0);
+                          return isLiveOrApproved || isOccupied;
+                        });
 
-                    <div className="activity-metric">
-                      <span className="activity-val">
-                        {displayProperties.length === 0 ? "0%" : `${occupancyRate}%`}
-                      </span>
-                      <span className="activity-sub">Occupancy Rate</span>
-                    </div>
-
-                    {/* Bar Graph - Dynamically scaled based on Occupancy Rate */}
-                    <div className="activity-chart-grid">
-                      {[
-                        { day: "Mon", base: 45, highlight: false },
-                        { day: "Tue", base: 60, highlight: false },
-                        { day: "Wed", base: 35, highlight: false },
-                        { day: "Thu", base: 75, highlight: false },
-                        { day: "Fri", base: 95, highlight: true }, // Highlighted bar
-                        { day: "Sat", base: 50, highlight: false },
-                        { day: "Sun", base: 40, highlight: false },
-                      ].map((bar, index) => {
-                        const barHeight = occupancyRate === 0
-                          ? "0%"
-                          : `${Math.max(12, Math.round(bar.base * (occupancyRate / 100)))}%`;
-
-                        return (
-                          <div key={index} className="activity-bar-col">
-                            <div className="activity-bar-container">
-                              <div
-                                className={`activity-bar-fill ${bar.highlight && occupancyRate > 0 ? "highlight" : ""}`}
-                                style={{ height: barHeight }}
-                              />
+                        if (liveAndOccupiedProps.length === 0) {
+                          return (
+                            <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--text-muted)", fontSize: "13px", fontWeight: "600" }}>
+                              No live or occupied properties available.
                             </div>
-                            <span className="activity-bar-label">{bar.day}</span>
-                          </div>
-                        );
-                      })}
+                          );
+                        }
+
+                        return liveAndOccupiedProps.map((property) => {
+                          const hasTenants = (activeTenantsMap[property.id] && activeTenantsMap[property.id].length > 0) || property.status === "occupied" || property.status === "active_occupied";
+                          return (
+                            <div key={property.id} className="property-mini-item flex items-center justify-between p-3 rounded-xl border border-ink-100 dark:border-white/10 mb-2">
+                              <div className="flex items-center gap-3">
+                                <div className="property-mini-img p-2 bg-[#3A5A40]/10 rounded-lg">
+                                  <Building2 className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" />
+                                </div>
+                                <div className="property-mini-details">
+                                  <p className="property-mini-title font-bold text-xs text-ink-900 dark:text-white">{property.title}</p>
+                                  <p className="property-mini-subtitle text-[11px] text-ink-500 dark:text-cream-100/70">{property.location}</p>
+                                  <p className="property-mini-price text-xs font-bold text-moss-700 dark:text-[#E5C583] mt-0.5">{property.price}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {hasTenants ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-300">
+                                    <Users className="h-3 w-3" /> Occupied
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-300">
+                                    <CheckCircle2 className="h-3 w-3" /> Live
+                                  </span>
+                                )}
+                                <button
+                                  onClick={() => navigate(`/dashboard/landlord/properties/${property.id}`)}
+                                  className="property-mini-btn p-1.5 rounded-lg hover:bg-ink-100 dark:hover:bg-white/10 transition-colors"
+                                  title="View details"
+                                >
+                                  <ArrowUpRight className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
+                  </section>
+
+                  {/* Tenant Requests list */}
+                  <section className="db-card requests-card tour-requests">
+                    <div className="activity-header" style={{ marginBottom: "16px" }}>
+                      <h3 className="activity-title">
+                        {getActiveTenantsCount() === 0 ? "No tenants request" : "Tenant Requests"}
+                      </h3>
+                      <span className="activity-badge">{tenantRequests.length} total</span>
+                    </div>
+
+                    <div className="requests-list">
+                      {tenantRequests.length === 0 ? (
+                        <div className="requests-empty-state">
+                          <div className="requests-empty-icon">📋</div>
+                          <h4 className="requests-empty-title">No tenants request</h4>
+                          <p className="requests-empty-desc">
+                            {getActiveTenantsCount() === 0
+                              ? "Approve tenant applications to receive tenancy and maintenance requests."
+                              : "Maintenance requests will appear here once active tenants submit them."}
+                          </p>
+                        </div>
+                      ) : (
+                        displayRequests.map((req) => {
+                          const unitName = req.leaseStatus
+                            ? req.leaseStatus.replace("Active Tenant (", "").replace(")", "")
+                            : "Unit General";
+                          const isUpgrade = (req.type || "").toLowerCase() === "upgrade";
+                          const typeBadgeClass = isUpgrade
+                            ? "request-type-badge upgrade"
+                            : "request-type-badge repair";
+
+                          return (
+                            <div key={req.id} className="request-item">
+                              <img
+                                src={req.avatar}
+                                alt={req.tenantName}
+                                className="request-tenant-avatar cursor-pointer"
+                                onClick={() => setSelectedTenantForDetails(req)}
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <div className="request-content">
+                                <div className="request-header-row">
+                                  <span
+                                    className="request-tenant-name cursor-pointer hover:underline"
+                                    onClick={() => setSelectedTenantForDetails(req)}
+                                  >
+                                    {req.tenantName}
+                                  </span>
+                                  {req.reliabilityScore && (
+                                    <span className="request-score" title="Reliability Score">
+                                      ★ {req.reliabilityScore}
+                                    </span>
+                                  )}
+                                  <span className="request-date">• {req.date}</span>
+                                </div>
+
+                                <div className="request-meta-tags">
+                                  <span className="request-unit-badge">
+                                    {unitName}
+                                  </span>
+                                  {req.type && (
+                                    <span className={typeBadgeClass}>
+                                      {req.type}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <p className="request-details">{req.details}</p>
+                              </div>
+                              <div className="request-actions-col">
+                                <span className={`request-status-badge ${req.status.toLowerCase().replace(" ", "-")}`}>
+                                  {req.status}
+                                </span>
+                                <button
+                                  className="db-view-request-btn"
+                                  onClick={() => setSelectedRequestForDetails(req)}
+                                >
+                                  Inspect
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    {tenantRequests.length > 0 && (
+                      <button
+                        onClick={() => setShowAllRequests(!showAllRequests)}
+                        className="requests-show-more-btn"
+                      >
+                        {showAllRequests ? "Show Less" : "Show More"}
+                      </button>
+                    )}
                   </section>
                 </div>
 
-                {/* COLUMN 3: PAYOUT ACCOUNT */}
-                <div className="db-col">
-                  {/* Payout Account Visa Mock Card */}
-                  <div className="visa-card-mock tour-vault">
-                    <div className="visa-card-highlight" />
-
-                    <div className="visa-card-header">
-                      <div>
-                        <p className="visa-card-brand">Available Payouts</p>
-                        <p className="visa-card-holder">{username}</p>
-                      </div>
-                      <span className="visa-card-logo">L.</span>
-                    </div>
-
-                    <div className="visa-card-body">
-                      <p className="visa-card-lbl">Available Balance</p>
-                      <p className="visa-card-amount">₦{availablePayoutBalance.toLocaleString()}</p>
-                    </div>
-
-                    <div className="visa-card-footer">
-                      <span>•••• 8802</span>
-                      <span>EXP 09/29</span>
-                    </div>
-                  </div>
-                </div>
-
               </div>
-
-              {/* BOTTOM ROW GRID (Properties and Tenant Requests half & half) */}
-              <div className="db-bottom-row">
-                {/* Vertical properties log list */}
-                <section className="db-card properties-list-card tour-property-list">
-                  <div className="activity-header">
-                    <h3 className="activity-title" style={{ cursor: "pointer" }} onClick={() => setActiveTab(1)}>My Properties</h3>
-                    <button
-                      onClick={() => setActiveTab(1)}
-                      className="activity-badge"
-                      style={{ background: "rgba(38, 38, 38, 0.06)", border: "none", cursor: "pointer", transition: "all 0.2s ease" }}
-                    >
-                      View All
-                    </button>
-                  </div>
-
-                  <div className="properties-vertical-scroll">
-                    {(() => {
-                      const activeTenantsMap = (() => {
-                        try {
-                          const saved = localStorage.getItem("propertyTenants");
-                          return saved ? JSON.parse(saved) : {};
-                        } catch (e) {
-                          return {};
-                        }
-                      })();
-
-                      const liveAndOccupiedProps = displayProperties.filter((p) => {
-                        const status = (p.status || "").toLowerCase();
-                        const isLiveOrApproved = status === "active_vacant" || status === "approved" || status === "live" || status === "active";
-                        const isOccupied = status === "occupied" || status === "active_occupied" || (activeTenantsMap[p.id] && activeTenantsMap[p.id].length > 0);
-                        return isLiveOrApproved || isOccupied;
-                      });
-
-                      if (liveAndOccupiedProps.length === 0) {
-                        return (
-                          <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--text-muted)", fontSize: "13px", fontWeight: "600" }}>
-                            No live or occupied properties available.
-                          </div>
-                        );
-                      }
-
-                      return liveAndOccupiedProps.map((property) => {
-                        const hasTenants = (activeTenantsMap[property.id] && activeTenantsMap[property.id].length > 0) || property.status === "occupied" || property.status === "active_occupied";
-                        return (
-                          <div key={property.id} className="property-mini-item flex items-center justify-between p-3 rounded-xl border border-ink-100 dark:border-white/10 mb-2">
-                            <div className="flex items-center gap-3">
-                              <div className="property-mini-img p-2 bg-[#3A5A40]/10 rounded-lg">
-                                <Building2 className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" />
-                              </div>
-                              <div className="property-mini-details">
-                                <p className="property-mini-title font-bold text-xs text-ink-900 dark:text-white">{property.title}</p>
-                                <p className="property-mini-subtitle text-[11px] text-ink-500 dark:text-cream-100/70">{property.location}</p>
-                                <p className="property-mini-price text-xs font-bold text-moss-700 dark:text-[#E5C583] mt-0.5">{property.price}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {hasTenants ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-300">
-                                  <Users className="h-3 w-3" /> Occupied
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-300">
-                                  <CheckCircle2 className="h-3 w-3" /> Live
-                                </span>
-                              )}
-                              <button
-                                onClick={() => navigate(`/dashboard/landlord/properties/${property.id}`)}
-                                className="property-mini-btn p-1.5 rounded-lg hover:bg-ink-100 dark:hover:bg-white/10 transition-colors"
-                                title="View details"
-                              >
-                                <ArrowUpRight className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
-                  </div>
-                </section>
-
-                {/* Tenant Requests list */}
-                <section className="db-card requests-card tour-requests">
-                  <div className="activity-header" style={{ marginBottom: "16px" }}>
-                    <h3 className="activity-title">
-                      {getActiveTenantsCount() === 0 ? "No tenants request" : "Tenant Requests"}
-                    </h3>
-                    <span className="activity-badge">{tenantRequests.length} total</span>
-                  </div>
-
-                  <div className="requests-list">
-                    {tenantRequests.length === 0 ? (
-                      <div className="requests-empty-state">
-                        <div className="requests-empty-icon">📋</div>
-                        <h4 className="requests-empty-title">No tenants request</h4>
-                        <p className="requests-empty-desc">
-                          {getActiveTenantsCount() === 0
-                            ? "Approve tenant applications to receive tenancy and maintenance requests."
-                            : "Maintenance requests will appear here once active tenants submit them."}
-                        </p>
-                      </div>
-                    ) : (
-                      displayRequests.map((req) => {
-                        const unitName = req.leaseStatus
-                          ? req.leaseStatus.replace("Active Tenant (", "").replace(")", "")
-                          : "Unit General";
-                        const isUpgrade = (req.type || "").toLowerCase() === "upgrade";
-                        const typeBadgeClass = isUpgrade
-                          ? "request-type-badge upgrade"
-                          : "request-type-badge repair";
-
-                        return (
-                          <div key={req.id} className="request-item">
-                            <img
-                              src={req.avatar}
-                              alt={req.tenantName}
-                              className="request-tenant-avatar cursor-pointer"
-                              onClick={() => setSelectedTenantForDetails(req)}
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                            <div className="request-content">
-                              <div className="request-header-row">
-                                <span
-                                  className="request-tenant-name cursor-pointer hover:underline"
-                                  onClick={() => setSelectedTenantForDetails(req)}
-                                >
-                                  {req.tenantName}
-                                </span>
-                                {req.reliabilityScore && (
-                                  <span className="request-score" title="Reliability Score">
-                                    ★ {req.reliabilityScore}
-                                  </span>
-                                )}
-                                <span className="request-date">• {req.date}</span>
-                              </div>
-
-                              <div className="request-meta-tags">
-                                <span className="request-unit-badge">
-                                  {unitName}
-                                </span>
-                                {req.type && (
-                                  <span className={typeBadgeClass}>
-                                    {req.type}
-                                  </span>
-                                )}
-                              </div>
-
-                              <p className="request-details">{req.details}</p>
-                            </div>
-                            <div className="request-actions-col">
-                              <span className={`request-status-badge ${req.status.toLowerCase().replace(" ", "-")}`}>
-                                {req.status}
-                              </span>
-                              <button
-                                className="db-view-request-btn"
-                                onClick={() => setSelectedRequestForDetails(req)}
-                              >
-                                Inspect
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {tenantRequests.length > 0 && (
-                    <button
-                      onClick={() => setShowAllRequests(!showAllRequests)}
-                      className="requests-show-more-btn"
-                    >
-                      {showAllRequests ? "Show Less" : "Show More"}
-                    </button>
-                  )}
-                </section>
-              </div>
-
-            </div>
+            )
           ) : activeTab === 1 ? (
             <LandlordProperties />
           ) : activeTab === 2 ? (
@@ -1861,7 +1797,7 @@ export default function LandlordDashboard() {
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Email Address</span>
                 <span className="text-ink-900 dark:text-white font-semibold">
-                  {localStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
+                  {sessionStorage.getItem("lastLoggedInEmail") || "ada.k@lodale.com"}
                 </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
@@ -1869,7 +1805,7 @@ export default function LandlordDashboard() {
                 <span className="text-ink-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      const p = JSON.parse(localStorage.getItem("currentUserProfile") || "{}");
+                      const p = JSON.parse(sessionStorage.getItem("currentUserProfile") || "{}");
                       return p.phone || "Not provided";
                     } catch (e) {
                       return "Not provided";
@@ -1907,7 +1843,7 @@ export default function LandlordDashboard() {
                 <span className="text-ink-900 dark:text-white font-semibold">
                   {(() => {
                     try {
-                      const email = localStorage.getItem("lastLoggedInEmail");
+                      const email = sessionStorage.getItem("lastLoggedInEmail");
                       if (email) {
                         const reg = localStorage.getItem("registeredUser_" + email);
                         if (reg) {

@@ -11,6 +11,9 @@ router.get('/landlord/:landlordId', requireAuth, requireRole('landlord'), proper
 router.get('/:id', propertyController.getPropertyById);
 router.post('/', optionalAuth, validate(createPropertySchema), propertyController.createProperty);
 router.put('/:id', requireAuth, requireRole('landlord'), propertyController.updateProperty);
+router.patch('/:id/status', requireAuth, requireRole('landlord'), propertyController.updatePropertyStatus);
+router.post('/:id/request-deletion', requireAuth, requireRole('landlord'), propertyController.requestPropertyDeletion);
+router.post('/:id/request-suspension', requireAuth, requireRole('landlord'), propertyController.requestPropertySuspension);
 router.delete('/:id', requireAuth, requireRole('landlord'), propertyController.deleteProperty);
 
 export default router;

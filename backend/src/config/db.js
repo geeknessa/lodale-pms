@@ -11,13 +11,18 @@ dotenv.config();
 
 const { Pool } = pg;
 
+if (!process.env.DATABASE_URL) {
+  console.error('[FATAL] DATABASE_URL environment variable is required. Set it in backend/.env');
+  process.exit(1);
+}
+
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://postgres:lodale@localhost:5432/lodale_db',
+  connectionString: process.env.DATABASE_URL,
 });
 
 // Helper to ensure target database exists before connecting
 async function ensureDatabaseExists() {
-  const dbUrlStr = process.env.DATABASE_URL || 'postgres://postgres:lodale@localhost:5432/lodale_db';
+  const dbUrlStr = process.env.DATABASE_URL;
   try {
     const url = new URL(dbUrlStr);
     const dbName = url.pathname.replace(/^\//, '') || 'lodale_db';
@@ -77,7 +82,18 @@ export async function initDb() {
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 7);
       ALTER TABLE properties ALTER COLUMN property_type TYPE TEXT USING property_type::text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status VARCHAR(50) DEFAULT 'active';
     `);
+
+    // Widen numeric columns to prevent overflow with large Nigerian property values
+    try {
+      await client.query(`
+        ALTER TABLE properties ALTER COLUMN rent_amount TYPE NUMERIC(20, 2);
+        ALTER TABLE property_units ALTER COLUMN rent_amount TYPE NUMERIC(20, 2);
+      `);
+    } catch (e) {
+      // Columns may already be at correct size — safe to ignore
+    }
 
     // Ensure listing_approval_queue table exists for admin workflow
     await client.query(`
@@ -106,17 +122,88 @@ export async function initDb() {
         unit_name VARCHAR(100) NOT NULL,
         bedrooms SMALLINT NOT NULL DEFAULT 1,
         bathrooms SMALLINT NOT NULL DEFAULT 1,
-        rent_amount NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
+        rent_amount NUMERIC(20, 2) NOT NULL DEFAULT 0.00,
         rent_period VARCHAR(20) NOT NULL DEFAULT 'annually',
         status VARCHAR(30) NOT NULL DEFAULT 'vacant',
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
-      -- Ensure core System Admin account exists in database
-      INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number)
-      VALUES 
-        ('System', 'Admin', 'admin@lodale.com', '$2a$10$oGLTVt6pnp30pVGSiVmAmu8FgTjGo/2IYOD/gZhzhaaY/obTdBdlK', 'admin', 'verified', '+234 801 000 0000')
-      ON CONFLICT (email) DO NOTHING;
+      -- Avoid ON CONFLICT which fails without a unique constraint
+    `);
+
+    const adminCheck = await client.query("SELECT id FROM users WHERE email IN ('admin', 'admin@lodale.com')");
+    if (adminCheck.rowCount === 0) {
+      await client.query(`
+        INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number)
+        VALUES 
+          ('System', 'Admin', 'admin', '$2a$10$oGLTVt6pnp30pVGSiVmAmu8FgTjGo/2IYOD/gZhzhaaY/obTdBdlK', 'admin', 'verified', '+234 801 000 0000')
+      `);
+    }
+
+    // --- Migration: Role-Specific Profile Tables ---
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS landlord_profiles (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        business_name VARCHAR(255),
+        business_type VARCHAR(100),
+        tax_id VARCHAR(100),
+        bank_name VARCHAR(150),
+        bank_account_number VARCHAR(50),
+        bank_account_name VARCHAR(150),
+        total_properties_managed INTEGER DEFAULT 0,
+        years_in_business INTEGER,
+        professional_license VARCHAR(100),
+        website_url TEXT,
+        bio TEXT,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS tenant_profiles (
+        user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        date_of_birth DATE,
+        nationality VARCHAR(100),
+        occupation VARCHAR(150),
+        employer_name VARCHAR(255),
+        employment_status VARCHAR(50),
+        monthly_income NUMERIC(15, 2),
+        marital_status VARCHAR(50),
+        number_of_dependants SMALLINT DEFAULT 0,
+        guarantor_name VARCHAR(255),
+        guarantor_phone VARCHAR(50),
+        guarantor_email VARCHAR(255),
+        guarantor_relationship VARCHAR(100),
+        emergency_contact_name VARCHAR(255),
+        emergency_contact_phone VARCHAR(50),
+        emergency_contact_relationship VARCHAR(100),
+        preferred_move_in_date DATE,
+        max_budget NUMERIC(15, 2),
+        bio TEXT,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS support_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sender_role VARCHAR(50) NOT NULL,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS property_applications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+        tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status VARCHAR(50) DEFAULT 'pending',
+        notes TEXT,
+        rejection_reason TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(property_id, tenant_id)
+      );
+      
+      -- Ensure rejection_reason exists if table was already created
+      ALTER TABLE property_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
     `);
 
     client.release();

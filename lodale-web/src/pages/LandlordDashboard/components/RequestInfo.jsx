@@ -1,4 +1,5 @@
 import { X, Calendar, ClipboardList, PenTool, CheckCircle, Clock } from "lucide-react";
+import Avatar from "../../../components/Avatar";
 
 export default function RequestInfo({ request, onClose, onUpdateStatus }) {
   if (!request) return null;
@@ -36,7 +37,7 @@ export default function RequestInfo({ request, onClose, onUpdateStatus }) {
           <div className="ui-info-section">
             <h3 className="ui-section-title">Submitted By</h3>
             <div className="ui-detail-item" style={{ padding: "12px", gap: "14px" }}>
-              <img src={request.avatar} alt={request.tenantName} className="ui-profile-avatar" style={{ width: "44px", height: "44px" }} />
+              <Avatar src={request.avatar} name={request.tenantName} className="ui-profile-avatar rounded-full" style={{ width: "44px", height: "44px" }} />
               <div className="ui-detail-text">
                 <span className="ui-detail-value" style={{ fontSize: "14px" }}>{request.tenantName}</span>
                 <span className="ui-detail-label">{request.leaseStatus || "Active Tenant"}</span>

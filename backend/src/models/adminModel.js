@@ -71,7 +71,7 @@ export const AdminModel = {
 
   async getAllUsers() {
     const res = await pool.query(`
-      SELECT u.id, u.first_name, u.last_name, u.email, u.phone_number, u.primary_role, u.id_verification_status, u.created_at,
+      SELECT u.id, u.first_name, u.last_name, u.email, u.phone_number, u.primary_role, u.id_verification_status, u.account_status, u.created_at,
              COUNT(p.id)::int AS listings_count
       FROM users u
       LEFT JOIN properties p ON u.id = p.landlord_id

@@ -64,16 +64,21 @@ export const PropertyModel = {
       effectiveLandlordId, title, slug, description, sanitizedPropertyType, 
       address_line1, city, state, bedrooms, bathrooms, rent_amount, status, 
       ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
-      rules, images, cover_image, blocks = [], units = []
+      rules, images, cover_image, blocks = [], units = [],
+      is_occupied, tenant_name, tenant_contact, lease_start_date, available_from
     } = data;
+    
+    const safeLeaseStart = (lease_start_date && typeof lease_start_date === 'string' && lease_start_date.trim() !== "") ? lease_start_date : null;
+    const safeAvailableFrom = (available_from && typeof available_from === 'string' && available_from.trim() !== "") ? available_from : null;
 
     const insertRes = await pool.query(`
       INSERT INTO properties (
         landlord_id, title, slug, description, property_type, address_line1, city, state, 
         bedrooms, bathrooms, rent_amount, status, ownership_doc, ownership_doc_url, 
-        ownership_doc_type, latitude, longitude, rules, images, cover_image
+        ownership_doc_type, latitude, longitude, rules, images, cover_image,
+        is_occupied, tenant_name, tenant_contact, lease_start_date, available_from
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
       RETURNING *
     `, [
       effectiveLandlordId, title, slug, description || '',
@@ -82,7 +87,8 @@ export const PropertyModel = {
       ownership_doc || null, ownership_doc_url || null, ownership_doc_type || null,
       latitude ? Number(latitude) : null, longitude ? Number(longitude) : null,
       rules || null,
-      images ? JSON.stringify(images) : '[]', cover_image || null
+      images ? JSON.stringify(images) : '[]', cover_image || null,
+      is_occupied || false, tenant_name || null, tenant_contact || null, safeLeaseStart, safeAvailableFrom
     ]);
 
     const property = insertRes.rows[0];
@@ -190,7 +196,8 @@ export const PropertyModel = {
   async updateProperty(id, data) {
     const { 
       title, description, rent_amount, beds, baths, 
-      address_line1, city, state, property_type, cover_image, rules, images, amenities
+      address_line1, city, state, property_type, cover_image, rules, images, amenities,
+      is_occupied, tenant_name, tenant_contact, lease_start_date, available_from
     } = data;
     
     // Convert undefined to null for COALESCE to work properly
@@ -198,6 +205,9 @@ export const PropertyModel = {
     const safeRent = (rent_amount !== undefined && rent_amount !== "") ? Number(rent_amount) : null;
     const safeBeds = (beds !== undefined && beds !== "") ? Number(beds) : null;
     const safeBaths = (baths !== undefined && baths !== "") ? Number(baths) : null;
+    
+    const safeLeaseStart = (lease_start_date && typeof lease_start_date === 'string' && lease_start_date.trim() !== "") ? lease_start_date : null;
+    const safeAvailableFrom = (available_from && typeof available_from === 'string' && available_from.trim() !== "") ? available_from : null;
 
     const res = await pool.query(`
       UPDATE properties 
@@ -214,8 +224,14 @@ export const PropertyModel = {
         cover_image = COALESCE($10, cover_image),
         rules = COALESCE($11, rules),
         images = COALESCE($12, images),
+        is_occupied = COALESCE($13, is_occupied),
+        tenant_name = $14,
+        tenant_contact = $15,
+        lease_start_date = $16,
+        available_from = $17,
+        rent_period = COALESCE($18, rent_period),
         updated_at = NOW()
-      WHERE id = $13
+      WHERE id = $19
       RETURNING *
     `, [
       title || null, 
@@ -230,6 +246,12 @@ export const PropertyModel = {
       cover_image || null, 
       rules || null,
       images ? JSON.stringify(images) : null,
+      is_occupied !== undefined ? is_occupied : null,
+      tenant_name || null,
+      tenant_contact || null,
+      safeLeaseStart,
+      safeAvailableFrom,
+      data.rent_period || null,
       id
     ]);
     
@@ -248,5 +270,69 @@ export const PropertyModel = {
 
   async deleteProperty(id) {
     await pool.query('DELETE FROM properties WHERE id = $1', [id]);
+  },
+
+  async updatePropertyStatus(id, status) {
+    const res = await pool.query(
+      'UPDATE properties SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [status, id]
+    );
+    return res.rows[0];
+  },
+
+  async requestDeletion(id, reason) {
+    const res = await pool.query(
+      'UPDATE properties SET status = $1, deletion_reason = $2, updated_at = NOW() WHERE id = $3 AND (is_occupied = FALSE OR is_occupied IS NULL) RETURNING *',
+      ['deletion_requested', reason, id]
+    );
+    return res.rows[0];
+  },
+
+  async requestSuspension(id, reason) {
+    const res = await pool.query(
+      'UPDATE properties SET status = $1, suspension_reason = $2, updated_at = NOW() WHERE id = $3 AND (is_occupied = FALSE OR is_occupied IS NULL) RETURNING *',
+      ['suspension_requested', reason, id]
+    );
+    return res.rows[0];
+  },
+
+  async approveDeletion(id) {
+    await pool.query('DELETE FROM properties WHERE id = $1', [id]);
+    return { id, deleted: true };
+  },
+
+  async rejectDeletion(id) {
+    const res = await pool.query(
+      'UPDATE properties SET status = $1, deletion_reason = NULL, updated_at = NOW() WHERE id = $2 RETURNING *',
+      ['active_vacant', id]
+    );
+    return res.rows[0];
+  },
+
+  async approveSuspension(id) {
+    const res = await pool.query(
+      'UPDATE properties SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      ['suspended', id]
+    );
+    return res.rows[0];
+  },
+
+  async rejectSuspension(id) {
+    const res = await pool.query(
+      'UPDATE properties SET status = $1, suspension_reason = NULL, updated_at = NOW() WHERE id = $2 RETURNING *',
+      ['active_vacant', id]
+    );
+    return res.rows[0];
+  },
+
+  async getPendingRequests() {
+    const res = await pool.query(`
+      SELECT p.*, u.first_name || ' ' || u.last_name as landlord_name, u.email as landlord_email
+      FROM properties p
+      LEFT JOIN users u ON p.landlord_id = u.id
+      WHERE p.status IN ('deletion_requested', 'suspension_requested')
+      ORDER BY p.updated_at DESC
+    `);
+    return res.rows;
   }
 };

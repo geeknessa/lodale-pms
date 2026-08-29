@@ -4,12 +4,15 @@ import { Logo } from "../components/Logo";
 import { useTheme } from "../context/ThemeContext";
 import { adminService } from "../services/adminService";
 import { propertyService } from "../services/propertyService";
+import { authService } from "../services/authService";
+import AdminSupportChat from "./AdminDashboard/AdminSupportChat";
 import { formatCurrency, formatDate } from "../utils/formatters";
 import {
   LayoutDashboard,
   Users,
   Building2,
   MessageSquareWarning,
+  MessageSquare,
   Search,
   Filter,
   CheckCircle2,
@@ -38,13 +41,31 @@ import {
   User,
   KeyRound,
   Upload,
-  Menu
+  Menu,
+  Settings,
+  Palette,
+  Bell,
+  Sliders,
+  Info,
+  Shield,
+  Laptop,
+  Smartphone,
+  Monitor
 } from "lucide-react";
 
 // --- INITIAL DATA ---
 const INITIAL_USERS = [];
 const INITIAL_LISTINGS = [];
 const INITIAL_REVIEWS = [];
+
+const SETTINGS_PAGES = [
+  { id: "profile", label: "My Profile", icon: User },
+  { id: "account", label: "Account & Security", icon: KeyRound },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "preferences", label: "Preferences", icon: Sliders },
+  { id: "about", label: "System Info", icon: Info }
+];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -53,8 +74,9 @@ export default function AdminDashboard() {
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings'
+  // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings' | 'profile' | 'support'
   const [activeTab, setActiveTab] = useState("overview");
+  const [settingsSubTab, setSettingsSubTab] = useState("profile");
 
   // Handle Escape key to close mobile sidebar drawer
   useEffect(() => {
@@ -73,11 +95,11 @@ export default function AdminDashboard() {
 
   const handleAdminSignOut = () => {
     sessionStorage.clear();
-    localStorage.removeItem("isAuthenticated");
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("adminAuthenticated");
-    localStorage.removeItem("sessionExpiresAt");
-    localStorage.removeItem("lodale_token");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("adminAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("lodale_token");
     localStorage.setItem("explicitAdminSignOut", "true");
     navigate("/admin/login", { replace: true });
   };
@@ -87,44 +109,89 @@ export default function AdminDashboard() {
   const [listings, setListings] = useState(INITIAL_LISTINGS);
   const [reviews, setReviews] = useState(INITIAL_REVIEWS);
   const [selectedDocViewer, setSelectedDocViewer] = useState(null);
+  const [propertyRequests, setPropertyRequests] = useState([]);
 
   useEffect(() => {
     async function loadAdminData() {
-      // Clear legacy/cached property arrays so admin dashboard starts completely empty
+      // 1. Load Registered Users from Backend API
       try {
-        localStorage.removeItem("properties");
-        localStorage.removeItem("landlordProperties");
-        localStorage.removeItem("userProperties");
-        localStorage.removeItem("pendingProperties");
+        const apiUsers = await adminService.getUsers();
+        if (Array.isArray(apiUsers)) {
+          setUsers(apiUsers);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch admin users:", err);
+      }
+
+      // Load logged in Admin Profile
+      try {
+        const stored = JSON.parse(sessionStorage.getItem('lodale_user') || localStorage.getItem('lodale_user') || '{}');
+        const currentUser = await authService.getCurrentUser() || stored;
+        if (currentUser && (currentUser.email || currentUser.first_name)) {
+          setProfileForm(prev => ({
+            ...prev,
+            name: `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || currentUser.email || prev.name,
+            username: currentUser.email ? currentUser.email.split('@')[0] : prev.username,
+            email: currentUser.email || prev.email,
+            phone: currentUser.phone_number || currentUser.phone || prev.phone,
+            avatarPreview: currentUser.avatar_url || prev.avatarPreview
+          }));
+        }
       } catch (_e) {}
 
-      // 1. Load Property Listings from Backend API
+      // 2. Load Property Listings from Backend API (Both Pending & Public Listings)
       let apiPending = [];
+      let apiAll = [];
       try {
         apiPending = await adminService.getPendingProperties();
       } catch (err) {
         console.warn("Backend API offline fallback:", err);
       }
 
+      try {
+        apiAll = await propertyService.getProperties();
+      } catch (err) {
+        console.warn("Backend API all properties fallback:", err);
+      }
+
+      try {
+        const reqs = await adminService.getPendingRequests();
+        setPropertyRequests(reqs);
+      } catch (err) {
+        console.warn("Failed to load property requests:", err);
+      }
+
+      const combinedApiProperties = [...(Array.isArray(apiPending) ? apiPending : []), ...(Array.isArray(apiAll) ? apiAll : [])];
+
       setListings(() => {
         const map = new Map();
 
         // Add API properties
-        if (Array.isArray(apiPending)) {
-          apiPending.forEach((p) => {
-            if (!p || !p.id) return;
-            const rawS = (p.rawStatus || p.status || "").toLowerCase();
-            let sLabel = "Pending Approval";
-            if (rawS === "active_vacant" || rawS === "approved" || rawS === "live" || rawS === "active" || p.status === "Live") {
-              sLabel = "Live";
-            } else if (rawS === "inactive" || rawS === "rejected" || p.status === "Rejected") {
-              sLabel = "Rejected";
-            } else if (rawS === "pending_review" || rawS === "pending" || rawS === "draft" || p.status === "Pending Approval" || p.status === "Info Requested") {
-              sLabel = p.queue_status === "under_review" || p.status === "Info Requested" ? "Info Requested" : "Pending Approval";
-            }
+        combinedApiProperties.forEach((p) => {
+          if (!p || (!p.id && !p.title)) return;
+          const key = String(p.id || p.title);
+          const rawS = (p.rawStatus || p.status || "").toLowerCase();
+          let sLabel = "Pending Approval";
+          if (rawS === "active_vacant" || rawS === "approved" || rawS === "live" || rawS === "active" || p.status === "Live") {
+            sLabel = "Live";
+          } else if (rawS === "inactive" || rawS === "rejected" || p.status === "Rejected") {
+            sLabel = "Rejected";
+          } else if (rawS === "pending_review" || rawS === "pending" || rawS === "draft" || p.status === "Pending Approval" || p.status === "Info Requested") {
+            sLabel = p.queue_status === "under_review" || p.status === "Info Requested" ? "Info Requested" : "Pending Approval";
+          }
 
-            map.set(String(p.id), {
+          const rawPeriod = String(p.rent_period || p.rentPeriod || '').toLowerCase();
+          const suffix = rawPeriod.includes('month') ? '/mo' : (rawPeriod.includes('week') ? '/wk' : (rawPeriod.includes('night') || rawPeriod.includes('day') ? '/night' : '/yr'));
+          const numVal = Number(String(p.rent_amount || p.rent || p.price || 0).replace(/[^0-9.]/g, '')) || 0;
+          const formattedPrice = numVal > 0 ? `₦${numVal.toLocaleString()}${suffix}` : (p.price || `₦0${suffix}`);
+
+          if (!map.has(key)) {
+            map.set(key, {
               ...p,
+              id: p.id || key,
+              title: p.title || p.name || "Property Listing",
+              location: p.location || `${p.address_line1 || p.address || 'Lagos'}, ${p.city || 'Lagos'}`,
+              price: formattedPrice,
               status: sLabel,
               rawStatus: rawS || "active_vacant",
               ownershipDoc: p.ownershipDoc || p.ownership_doc || 'Deed of Assignment',
@@ -133,11 +200,11 @@ export default function AdminDashboard() {
               docDataUrl: p.docDataUrl || p.ownership_doc_url,
               deedVerified: true,
               type: p.type || p.property_type || 'Apartment',
-              rent: p.price || formatCurrency(p.rent_amount || 2500000, "/yr"),
+              rent: formattedPrice,
               landlord: p.landlord || { name: 'Verified Landlord', score: 5.0, reviews: 1 }
             });
-          });
-        }
+          }
+        });
 
         // Add local storage properties (from "properties" and "landlordProperties")
         const localPropsSources = ["properties", "landlordProperties"];
@@ -158,12 +225,17 @@ export default function AdminDashboard() {
                     sLabel = "Rejected";
                   }
 
+                  const lpRawPeriod = String(lp.rent_period || lp.rentPeriod || '').toLowerCase();
+                  const lpSuffix = lpRawPeriod.includes('month') ? '/mo' : (lpRawPeriod.includes('week') ? '/wk' : (lpRawPeriod.includes('night') || lpRawPeriod.includes('day') ? '/night' : '/yr'));
+                  const lpNumVal = Number(String(lp.rent_amount || lp.rent || lp.price || 0).replace(/[^0-9.]/g, '')) || 0;
+                  const lpFormattedPrice = lpNumVal > 0 ? `₦${lpNumVal.toLocaleString()}${lpSuffix}` : (lp.price || `₦0${lpSuffix}`);
+
                   if (!map.has(key)) {
                     map.set(key, {
                       id: lp.id || key,
                       title: lp.title || lp.name || "Property Listing",
                       location: lp.location || `${lp.address_line1 || lp.address || 'Lagos'}, ${lp.city || 'Lagos'}`,
-                      price: lp.price || formatCurrency(lp.rent_amount || lp.rent || 2500000, "/yr"),
+                      price: lpFormattedPrice,
                       type: lp.type || lp.property_type || "Apartment",
                       status: sLabel,
                       rawStatus: lp.status || "pending_review",
@@ -187,21 +259,11 @@ export default function AdminDashboard() {
                 });
               }
             }
-          } catch (_e) {}
+          } catch (_e) { }
         });
 
         return Array.from(map.values());
       });
-
-      // 2. Load Registered Users from Backend API (DB Source of Truth)
-      try {
-        const apiUsers = await adminService.getUsers();
-        if (Array.isArray(apiUsers) && apiUsers.length > 0) {
-          setUsers(apiUsers);
-        }
-      } catch (err) {
-        console.warn("Backend API users fallback:", err);
-      }
     }
 
     loadAdminData();
@@ -243,10 +305,10 @@ export default function AdminDashboard() {
 
   // --- SETTINGS FORM STATES ---
   const [profileForm, setProfileForm] = useState({
-    name: "Tunde Bakare",
-    username: "tundebakare_admin",
-    email: "tunde.b@lodale.com",
-    phone: "+234 809 333 2211",
+    name: "Admin User",
+    username: "admin",
+    email: "admin@lodale.com",
+    phone: "+234 800 000 0000",
     avatarPreview: null,
   });
 
@@ -290,33 +352,44 @@ export default function AdminDashboard() {
 
 
   // --- CORE ACTIONS ---
-  const handleToggleUserStatus = (userId) => {
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === userId) {
-          const newStatus = u.status === "Active" ? "Suspended" : "Active";
-          showToast(`User ${u.name} is now ${newStatus}.`);
-          return {
-            ...u,
-            status: newStatus,
-            suspensionReason:
-              newStatus === "Suspended"
-                ? "Suspended by Admin for safety review."
-                : null,
-          };
-        }
-        return u;
-      })
-    );
-    if (selectedUser?.id === userId) {
-      setSelectedUser((prev) =>
-        prev
-          ? {
-            ...prev,
-            status: prev.status === "Active" ? "Suspended" : "Active",
+  const handleToggleUserStatus = async (userId) => {
+    const target = users.find((u) => u.id === userId);
+    if (!target) return;
+
+    const newStatus = target.status === "Active" ? "Suspended" : "Active";
+    const rawStatus = newStatus.toLowerCase();
+
+    try {
+      await adminService.updateUserStatus(userId, rawStatus);
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id === userId) {
+            return {
+              ...u,
+              status: newStatus,
+              suspensionReason:
+                newStatus === "Suspended"
+                  ? "Suspended by Admin for safety review."
+                  : null,
+            };
           }
-          : null
+          return u;
+        })
       );
+      showToast(`User ${target.name} account is now ${newStatus}.`);
+      if (selectedUser?.id === userId) {
+        setSelectedUser((prev) =>
+          prev
+            ? {
+              ...prev,
+              status: newStatus,
+            }
+            : null
+        );
+      }
+    } catch (err) {
+      console.error("Failed to update user status:", err);
+      showToast(`Failed to update user status: ${err.message || "Server error"}`);
     }
   };
 
@@ -337,8 +410,8 @@ export default function AdminDashboard() {
         if (target?.email) {
           const lowerEmail = target.email.toLowerCase();
           localStorage.removeItem(`registeredUser_${lowerEmail}`);
-          localStorage.removeItem(`userProfile_${lowerEmail}`);
-          localStorage.removeItem(`username_${lowerEmail}`);
+          sessionStorage.removeItem(`userProfile_${lowerEmail}`);
+          sessionStorage.removeItem(`username_${lowerEmail}`);
         }
       } catch (err) {
         console.error("Failed to delete user:", err);
@@ -383,7 +456,7 @@ export default function AdminDashboard() {
             localStorage.setItem(key, JSON.stringify(updated));
           }
         }
-      } catch (_err) {}
+      } catch (_err) { }
     });
 
     // Send notification to landlord
@@ -399,7 +472,7 @@ export default function AdminDashboard() {
         read: false
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
-    } catch (_err) {}
+    } catch (_err) { }
 
     showToast(`Listing "${propertyTitle}" approved and is now live!`);
     if (selectedListing?.id === listingId) {
@@ -434,7 +507,7 @@ export default function AdminDashboard() {
         );
         localStorage.setItem("properties", JSON.stringify(updated));
       }
-    } catch (_err) {}
+    } catch (_err) { }
 
     // Send notification to landlord
     try {
@@ -450,7 +523,7 @@ export default function AdminDashboard() {
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
       window.dispatchEvent(new Event("storage"));
-    } catch (_err) {}
+    } catch (_err) { }
 
     showToast(`Listing "${propertyTitle}" rejected.`);
     setIsRejectingModalOpen(false);
@@ -489,7 +562,7 @@ export default function AdminDashboard() {
         );
         localStorage.setItem("properties", JSON.stringify(updated));
       }
-    } catch (_err) {}
+    } catch (_err) { }
 
     // Send notification to landlord
     try {
@@ -505,7 +578,7 @@ export default function AdminDashboard() {
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
       window.dispatchEvent(new Event("storage"));
-    } catch (_err) {}
+    } catch (_err) { }
 
     showToast(`Requested more info for "${propertyTitle}".`);
     if (selectedListing?.id === listingId) {
@@ -729,7 +802,7 @@ export default function AdminDashboard() {
                 Safety &amp; Management
               </div>
 
-              {/* 1. User Management */}
+              {/* User Management */}
               <button
                 onClick={() => {
                   setActiveTab("users");
@@ -742,14 +815,14 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Users className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-                  <span className="truncate">1. User Management</span>
+                  <span className="truncate">User Management</span>
                 </div>
                 <span className="text-[11px] bg-[#262626]/40 dark:bg-black/40 px-1.5 py-0.5 rounded-full text-[#DAD7CD] ml-1 shrink-0">
                   {users.length}
                 </span>
               </button>
 
-              {/* 2. Listing Oversight */}
+              {/* Listing Oversight */}
               <button
                 onClick={() => {
                   setActiveTab("listings");
@@ -771,7 +844,29 @@ export default function AdminDashboard() {
                 )}
               </button>
 
-              {/* 3. Review & Rating Moderation */}
+              {/* Property Requests (Deletion & Suspension) */}
+              <button
+                onClick={() => {
+                  setActiveTab("requests");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "requests"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <FileText className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">Property Requests</span>
+                </div>
+                {propertyRequests.length > 0 && (
+                  <span className="text-[11px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
+                    {propertyRequests.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Review & Rating Moderation */}
               <button
                 onClick={() => {
                   setActiveTab("reviews");
@@ -784,7 +879,7 @@ export default function AdminDashboard() {
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <MessageSquareWarning className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
-                  <span className="truncate">3. Review Moderation</span>
+                  <span className="truncate">Review Moderation</span>
                 </div>
                 {flaggedReviewsCount > 0 && (
                   <span className="text-[11px] bg-rose-700 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
@@ -793,13 +888,31 @@ export default function AdminDashboard() {
                 )}
               </button>
 
+              {/* Support Messages */}
+              <button
+                onClick={() => {
+                  setActiveTab("support");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "support"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <MessageSquare className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">Support Messages</span>
+                </div>
+              </button>
+
               {/* My Profile */}
               <button
                 onClick={() => {
                   setActiveTab("profile");
+                  setSettingsSubTab("profile");
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "profile"
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "profile" || activeTab === "settings"
                   ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
                   : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
                   }`}
@@ -1368,330 +1481,433 @@ export default function AdminDashboard() {
               </div>
 
               {/* Filter Toggle & Search */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
-                <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
-                  <button
-                    onClick={() => setReviewFilter("Flagged")}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "Flagged"
-                      ? "bg-rose-800 text-white"
-                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
-                      }`}
-                  >
-                    Flagged Only ({flaggedReviewsCount})
-                  </button>
-                  <button
-                    onClick={() => setReviewFilter("All")}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "All"
-                      ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33]"
-                      : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
-                      }`}
-                  >
-                    All Reviews ({reviews.length})
-                  </button>
-                </div>
-
-                <div className="relative w-full md:w-72">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
-                  <input
-                    type="text"
-                    placeholder="Search in reviews..."
-                    value={reviewSearch}
-                    onChange={(e) => setReviewSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
-                  />
-                </div>
-              </div>
-
-              {/* Reviews Feed */}
-              <div className="space-y-4">
-                {filteredReviews.length === 0 ? (
-                  <div className="py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                    No reviews match your current view.
-                  </div>
-                ) : (
-                  filteredReviews.map((rev) => (
-                    <div
-                      key={rev.id}
-                      className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm"
-                    >
-                      <div className="space-y-2 max-w-2xl">
-                        <div className="flex items-center gap-2">
-                          <div className="flex text-amber-500">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-4 w-4 ${i < rev.rating ? "fill-amber-400 text-amber-400" : "text-gray-300 dark:text-gray-600"
-                                  }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
-                            {rev.propertyTitle}
-                          </span>
-                          {rev.flagged && (
-                            <span className="text-[10px] bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded font-bold uppercase">
-                              FLAGGED
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-sm text-[#262626] dark:text-[#E4EBE6] italic">
-                          "{rev.comment}"
-                        </p>
-
-                        <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
-                          By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {formatDate(rev.submittedAt, { year: 'numeric', month: 'numeric', day: 'numeric' })}
-                        </div>
-
-                        {rev.flagged && (
-                          <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded text-xs text-amber-900 dark:text-amber-300">
-                            <strong>Reported reason:</strong> {rev.flagReason}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => setSelectedReviewFlag(rev)}
-                          className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
-                        >
-                          Report Details
-                        </button>
-
-                        {rev.flagged && (
-                          <button
-                            onClick={() => handleDismissFlag(rev.id)}
-                            className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
-                          >
-                            Dismiss Flag (Keep)
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => handleRemoveReview(rev.id)}
-                          className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
-                        >
-                          Remove Review
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+          <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+            <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
+              <button
+                onClick={() => setReviewFilter("Flagged")}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "Flagged"
+                  ? "bg-rose-800 text-white"
+                  : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                  }`}
+              >
+                Flagged Only ({flaggedReviewsCount})
+              </button>
+              <button
+                onClick={() => setReviewFilter("All")}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors shrink-0 ${reviewFilter === "All"
+                  ? "bg-[#3A5A40] dark:bg-[#E5C583] text-white dark:text-[#263b33]"
+                  : "text-[#262626]/80 dark:text-[#A3BCA7] hover:text-[#262626] dark:hover:text-white"
+                  }`}
+              >
+                All Reviews ({reviews.length})
+              </button>
             </div>
-          )}
 
-          {/* --- TAB 4: MY PROFILE (SIMPLIFIED & SINGLE PAGE) --- */}
-          {activeTab === "profile" && (
-            <div className="space-y-6 animate-fade-in">
-              {/* Main Header */}
-              <div>
-                <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#DAD7CD] uppercase tracking-wider mb-1">
-                  <User className="h-4 w-4" /> System Administration
-                </div>
-                <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#DAD7CD]">
-                  My Profile
-                </h1>
-                <p className="text-sm text-[#262626]/70 dark:text-[#DAD7CD]/75 mt-1">
-                  Manage your personal information, contact details, and account password.
-                </p>
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
+              <input
+                type="text"
+                placeholder="Search in reviews..."
+                value={reviewSearch}
+                onChange={(e) => setReviewSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm bg-[#DAD7CD]/40 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#E5C583] text-[#262626] dark:text-[#E4EBE6]"
+              />
+            </div>
+          </div>
+
+          {/* Reviews Feed */}
+          <div className="space-y-4">
+            {filteredReviews.length === 0 ? (
+              <div className="py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                No reviews match your current view.
               </div>
-
-              {/* Profile Details Form Card */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
-                <div>
-                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
-                    <User className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
-                    Profile Details
-                  </h2>
-                  <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
-                    Update your public administrator details and identity attributes.
-                  </p>
-                </div>
-
-                <form onSubmit={handleSaveProfile} className="space-y-6">
-                  {/* Photo Upload Section */}
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
-                    <div className="relative shrink-0">
-                      <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#DAD7CD] dark:text-[#121F1A] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
-                        {profileForm.avatarPreview ? (
-                          <img
-                            src={profileForm.avatarPreview}
-                            alt="Avatar Preview"
-                            className="h-full w-full object-cover"
+            ) : (
+              filteredReviews.map((rev) => (
+                <div
+                  key={rev.id}
+                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm"
+                >
+                  <div className="space-y-2 max-w-2xl">
+                    <div className="flex items-center gap-2">
+                      <div className="flex text-amber-500">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-4 w-4 ${i < rev.rating ? "fill-amber-400 text-amber-400" : "text-gray-300 dark:text-gray-600"
+                              }`}
                           />
-                        ) : (
-                          "TB"
-                        )}
+                        ))}
                       </div>
+                      <span className="text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                        {rev.propertyTitle}
+                      </span>
+                      {rev.flagged && (
+                        <span className="text-[10px] bg-rose-100 dark:bg-rose-950/80 text-rose-900 dark:text-rose-300 px-2 py-0.5 rounded font-bold uppercase">
+                          FLAGGED
+                        </span>
+                      )}
                     </div>
 
-                    <div className="space-y-1.5 text-center sm:text-left">
-                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                        <label
-                          htmlFor="avatar-upload"
-                          className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Upload className="h-3.5 w-3.5" /> Upload Photo
-                        </label>
-                        <input
-                          id="avatar-upload"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                          className="hidden"
-                        />
-                        {profileForm.avatarPreview && (
-                          <button
-                            type="button"
-                            onClick={() => setProfileForm((p) => ({ ...p, avatarPreview: null }))}
-                            className="px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-[#262626]/60 dark:text-[#DAD7CD]/75">
-                        Supported formats: JPG, PNG, GIF. Maximum size 2MB.
-                      </p>
+                    <p className="text-sm text-[#262626] dark:text-[#E4EBE6] italic">
+                      "{rev.comment}"
+                    </p>
+
+                    <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                      By <strong className="text-[#262626] dark:text-[#F0F5F2]">{rev.authorName}</strong> • {formatDate(rev.submittedAt, { year: 'numeric', month: 'numeric', day: 'numeric' })}
                     </div>
+
+                    {rev.flagged && (
+                      <div className="p-2 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 rounded text-xs text-amber-900 dark:text-amber-300">
+                        <strong>Reported reason:</strong> {rev.flagReason}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Profile Form Fields */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                        Full Name
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={50}
-                        value={profileForm.name}
-                        onInput={(e) => setProfileForm({ ...profileForm, name: e.target.value.replace(/[0-9]/g, '') })}
-                        onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                        required
-                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                        Username
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={50}
-                        value={profileForm.username}
-                        onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
-                        required
-                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        maxLength={100}
-                        value={profileForm.email}
-                        onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                        required
-                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        maxLength={15}
-                        value={profileForm.phone}
-                        onInput={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/[^0-9+]/g, '') })}
-                        onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
                     <button
-                      type="submit"
-                      className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
+                      onClick={() => setSelectedReviewFlag(rev)}
+                      className="px-3 py-1.5 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
                     >
-                      Save Profile Changes
+                      Report Details
+                    </button>
+
+                    {rev.flagged && (
+                      <button
+                        onClick={() => handleDismissFlag(rev.id)}
+                        className="px-3 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                      >
+                        Dismiss Flag (Keep)
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => handleRemoveReview(rev.id)}
+                      className="px-3 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                    >
+                      Remove Review
                     </button>
                   </div>
-                </form>
-              </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
-              {/* Change Password Card */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+      {/* --- TAB: PROPERTY REQUESTS (DELETION & SUSPENSION) --- */}
+      {activeTab === "requests" && (
+              <div className="space-y-6">
                 <div>
-                  <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
-                    <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
-                    Change Password
-                  </h2>
-                  <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
-                    Ensure your account is using a secure, random password.
+                  <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                    <FileText className="h-6 w-6 text-[#3A5A40] dark:text-[#E5C583]" />
+                    Property Deletion & Suspension Requests
+                  </h1>
+                  <p className="text-xs text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                    Review and act on landlord requests to suspend or delete listed properties.
                   </p>
                 </div>
 
-                <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                      Current Password
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      value={passwordForm.currentPassword}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                    />
+                {propertyRequests.length === 0 ? (
+                  <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-2xl p-12 text-center">
+                    <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-3" />
+                    <h3 className="text-base font-bold text-ink-900 dark:text-white">No Pending Requests</h3>
+                    <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-1">
+                      There are currently no property deletion or suspension requests awaiting approval.
+                    </p>
                   </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4">
+                    {propertyRequests.map((req) => {
+                      const isDeletion = req.status === "deletion_requested";
+                      const reason = isDeletion ? req.deletion_reason : req.suspension_reason;
 
-                  <div>
-                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                      New Password
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      value={passwordForm.newPassword}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                    />
+                      return (
+                        <div key={req.id} className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 shadow-sm space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ${isDeletion ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'}`}>
+                                  {isDeletion ? 'Deletion Request' : 'Suspension Request'}
+                                </span>
+                                <span className="text-xs text-ink-400">ID: {req.id}</span>
+                              </div>
+                              <h3 className="text-lg font-bold text-ink-900 dark:text-white">{req.title}</h3>
+                              <p className="text-xs text-ink-500 dark:text-cream-100/70">{req.city}, {req.state} • Landlord: <span className="font-semibold text-moss-800 dark:text-[#E5C583]">{req.landlord_name || req.landlord_email || 'Landlord'}</span></p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs font-bold text-moss-800 dark:text-[#E5C583]">₦{Number(req.rent_amount || 0).toLocaleString()}/yr</p>
+                            </div>
+                          </div>
+
+                          <div className="bg-cream-50 dark:bg-white/5 p-3 rounded-lg border border-ink-100 dark:border-white/10">
+                            <p className="text-xs font-bold text-ink-500 uppercase tracking-wider mb-1">Reason Provided by Landlord:</p>
+                            <p className="text-xs text-ink-800 dark:text-cream-100 italic">"{reason || 'No reason specified.'}"</p>
+                          </div>
+
+                          <div className="flex items-center justify-end gap-3 pt-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  if (isDeletion) {
+                                    await adminService.rejectDeletion(req.id);
+                                  } else {
+                                    await adminService.rejectSuspension(req.id);
+                                  }
+                                  triggerToast('Request rejected successfully.', 'success');
+                                  setPropertyRequests(prev => prev.filter(r => r.id !== req.id));
+                                } catch (e) {
+                                  triggerToast('Failed to reject request.', 'error');
+                                }
+                              }}
+                              className="px-4 py-2 text-xs font-bold rounded-lg border border-ink-200 dark:border-white/10 hover:bg-ink-50 dark:hover:bg-white/10 text-ink-700 dark:text-white"
+                            >
+                              Reject Request
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  if (isDeletion) {
+                                    await adminService.approveDeletion(req.id);
+                                  } else {
+                                    await adminService.approveSuspension(req.id);
+                                  }
+                                  triggerToast(isDeletion ? 'Property deleted.' : 'Property suspended.', 'success');
+                                  setPropertyRequests(prev => prev.filter(r => r.id !== req.id));
+                                } catch (e) {
+                                  triggerToast('Failed to approve request.', 'error');
+                                }
+                              }}
+                              className={`px-4 py-2 text-xs font-bold rounded-lg text-white shadow-sm ${isDeletion ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-600 hover:bg-amber-700'}`}
+                            >
+                              {isDeletion ? 'Approve & Delete Property' : 'Approve & Suspend Listing'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
-                      Confirm New Password
-                    </label>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      value={passwordForm.confirmPassword}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                      className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
-                  >
-                    Update Password
-                  </button>
-                </form>
+                )}
               </div>
-            </div>
-          )}
-        </main>
-      </div>
+            )}
+
+            {/* --- TAB 4: MY PROFILE --- */}
+            {activeTab === "support" && (
+              <div className="h-full">
+                <AdminSupportChat />
+              </div>
+            )}
+
+            {/* Settings Tab / Sub-Tabs */}
+            {(activeTab === "profile" || activeTab === "settings") && (
+              <div className="space-y-6 animate-fade-in">
+                {/* Main Header */}
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#DAD7CD] uppercase tracking-wider mb-1">
+                    <User className="h-4 w-4" /> System Administration
+                  </div>
+                  <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#DAD7CD]">
+                    My Profile
+                  </h1>
+                  <p className="text-sm text-[#262626]/70 dark:text-[#DAD7CD]/75 mt-1">
+                    Manage your personal information, contact details, and account password.
+                  </p>
+                </div>
+
+                {/* Profile Details Form Card */}
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+                  <div>
+                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
+                      <User className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
+                      Profile Details
+                    </h2>
+                    <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
+                      Update your public administrator details and identity attributes.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSaveProfile} className="space-y-6">
+                    {/* Photo Upload Section */}
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 p-4 bg-[#DAD7CD]/20 dark:bg-[#1B2C25] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                      <div className="relative shrink-0">
+                        <div className="h-16 w-16 rounded-full bg-[#344E41] text-white dark:bg-[#DAD7CD] dark:text-[#121F1A] font-serif font-bold text-2xl flex items-center justify-center overflow-hidden shadow">
+                          {profileForm.avatarPreview ? (
+                            <img
+                              src={profileForm.avatarPreview}
+                              alt="Avatar Preview"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            "TB"
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 text-center sm:text-left">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                          <label
+                            htmlFor="avatar-upload"
+                            className="px-3 py-1.5 text-xs font-semibold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                          >
+                            <Upload className="h-3.5 w-3.5" /> Upload Photo
+                          </label>
+                          <input
+                            id="avatar-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            className="hidden"
+                          />
+                          {profileForm.avatarPreview && (
+                            <button
+                              type="button"
+                              onClick={() => setProfileForm((p) => ({ ...p, avatarPreview: null }))}
+                              className="px-3 py-1.5 text-xs font-medium text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded transition-colors"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#262626]/60 dark:text-[#DAD7CD]/75">
+                          Supported formats: JPG, PNG, GIF. Maximum size 2MB.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Profile Form Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                          Full Name
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={50}
+                          value={profileForm.name}
+                          onInput={(e) => setProfileForm({ ...profileForm, name: e.target.value.replace(/[0-9]/g, '') })}
+                          onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                          required
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                          Username
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={50}
+                          value={profileForm.username}
+                          onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
+                          required
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          maxLength={100}
+                          value={profileForm.email}
+                          onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                          required
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                          Phone Number
+                        </label>
+                        <input
+                          type="tel"
+                          maxLength={15}
+                          value={profileForm.phone}
+                          onInput={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/[^0-9+]/g, '') })}
+                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                          className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-[#DAD7CD] dark:border-[#233B31] flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-5 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
+                      >
+                        Save Profile Changes
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Change Password Card directly underneath Profile Details */}
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+                  <div>
+                    <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
+                      <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
+                      Change Password
+                    </h2>
+                    <p className="text-xs text-[#262626]/70 dark:text-[#DAD7CD]/75">
+                      Ensure your account is using a secure, random password.
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Current Password
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={passwordForm.currentPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        New Password
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={passwordForm.newPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#262626] dark:text-[#DAD7CD] mb-1">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="••••••••"
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                        className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#DAD7CD] focus:outline-none focus:border-[#3A5A40] dark:focus:border-[#3A5A40]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-xs font-bold bg-[#3A5A40] hover:bg-[#344E41] dark:bg-[#3A5A40] dark:hover:bg-[#344E41] text-white rounded-lg transition-colors shadow-sm"
+                    >
+                      Update Password
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
 
       {/* --- MODAL 1: VIEW USER PROFILE --- */}
       {selectedUser && (
@@ -1834,7 +2050,7 @@ export default function AdminDashboard() {
                       </span>
                     )}
                   </div>
-                  
+
                   <div className="max-h-36 overflow-y-auto space-y-1">
                     {selectedListing.units.map((u, uIdx) => (
                       <div key={uIdx} className="flex items-center justify-between text-xs py-1 px-2 bg-white/60 dark:bg-white/5 rounded border border-black/5 dark:border-white/5">
@@ -2140,8 +2356,8 @@ export default function AdminDashboard() {
             <div className="flex-1 overflow-auto bg-[#F4F6F4] dark:bg-[#0E1714] rounded-xl p-4 min-h-[350px] flex flex-col items-center justify-center border border-[#DAD7CD]/50 dark:border-[#233B31]">
               {selectedDocViewer.url ? (
                 selectedDocViewer.url.startsWith("data:image/") ||
-                /\.(jpg|jpeg|png|webp|gif|svg)($|\?)/i.test(selectedDocViewer.url) ||
-                selectedDocViewer.url.startsWith("blob:") ? (
+                  /\.(jpg|jpeg|png|webp|gif|svg)($|\?)/i.test(selectedDocViewer.url) ||
+                  selectedDocViewer.url.startsWith("blob:") ? (
                   <img
                     src={selectedDocViewer.url}
                     alt="Uploaded Document / Photo"

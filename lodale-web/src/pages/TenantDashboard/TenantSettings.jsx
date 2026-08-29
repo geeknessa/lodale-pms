@@ -7,6 +7,7 @@ import {
   Calendar,
   ChevronDown,
   CheckCircle2,
+  AlertCircle,
   FileText,
   Download,
   Eye,
@@ -23,35 +24,77 @@ import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
 import "./TenantSettings.css";
 
-export default function TenantSettings({ onSignOut }) {
+export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChange, onProfileUpdate }) {
   const [activeTab, setActiveTab] = useState("personal"); // "personal" | "security" | "documents"
   const [docSubTab, setDocSubTab] = useState("pending"); // "pending" | "signed"
 
+  // Helper to read initial local tenant profile
+  const getInitialProfile = () => {
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+    try {
+      const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { }
+    return null;
+  };
+
+  const initialProf = getInitialProfile();
+  const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+
+  const initialUsername =
+    sessionStorage.getItem("tenantUsername") ||
+    (emailKey ? localStorage.getItem("tenantUsername_" + emailKey) : null) ||
+    sessionStorage.getItem("username") ||
+    sessionStorage.getItem("username") ||
+    "Tunde";
+  const nameParts = initialUsername.split(" ");
+  const initialFirst = initialProf?.first_name || initialProf?.firstName || nameParts[0] || "";
+  const initialLast = initialProf?.last_name || initialProf?.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
+  const initialEmail = initialProf?.email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "";
+  const initialPhone = initialProf?.phone_number || initialProf?.phone || "";
+  const initialAddress = initialProf?.address || "";
+  const initialDob = initialProf?.dob || "";
+  const initialLocation = initialProf?.location || "";
+  const initialPostalCode = initialProf?.postalCode || "";
+  const initialOccupation = initialProf?.occupation || "";
+  const initialIncome = initialProf?.income || "";
+  const initialAvatar =
+    currentAvatar ||
+    initialProf?.avatar ||
+    initialProf?.avatar_url ||
+    (emailKey ? localStorage.getItem("tenantAvatar_" + emailKey) : null) ||
+    sessionStorage.getItem("tenantAvatarUrl") ||
+    localStorage.getItem("tenantAvatarUrl") ||
+    "";
+
   // Load initial settings
-  const [userProfile, setUserProfile] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    address: "",
-    dob: "",
-    location: "",
-    postalCode: "",
-    avatar: ""
-  });
+  const [userProfile, setUserProfile] = useState(initialProf || {});
 
   const [gender, setGender] = useState("Male");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
-  const [phone, setPhone] = useState("");
-  const [dob, setDob] = useState("");
-  const [location, setLocation] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
+  const [firstName, setFirstName] = useState(initialFirst);
+  const [lastName, setLastName] = useState(initialLast);
+  const [email, setEmail] = useState(initialEmail);
+  const [address, setAddress] = useState(initialAddress);
+  const [phone, setPhone] = useState(initialPhone);
+  const [dob, setDob] = useState(initialDob);
+  const [location, setLocation] = useState(initialLocation);
+  const [postalCode, setPostalCode] = useState(initialPostalCode);
+  const [occupation, setOccupation] = useState(initialOccupation);
+  const [income, setIncome] = useState(initialIncome);
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState(null); // { type: "success" | "error" | "warning", text: string }
 
   const fileInputRef = useRef(null);
+
+  // Sync if currentAvatar prop changes from parent
+  useEffect(() => {
+    if (currentAvatar) {
+      setAvatarUrl(currentAvatar);
+    }
+  }, [currentAvatar]);
 
   // Security form states
   const [currentPassword, setCurrentPassword] = useState("");
@@ -88,69 +131,25 @@ export default function TenantSettings({ onSignOut }) {
   const [confirmCheck, setConfirmCheck] = useState(false);
   const [selectedDocToView, setSelectedDocToView] = useState(null);
 
-  const loadStoredProfile = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
-    let localProf = null;
-    try {
-      const raw = sessionStorage.getItem("currentUserProfile") || localStorage.getItem("currentUserProfile") || (emailKey ? localStorage.getItem("userProfile_" + emailKey) : null);
-      if (raw) localProf = JSON.parse(raw);
-    } catch (e) { }
-
-    const storedUsername = sessionStorage.getItem("username") || (emailKey ? localStorage.getItem("username_" + emailKey) : null) || localStorage.getItem("username") || "";
-
-    let fname = localProf?.firstName || localProf?.first_name || "";
-    let lname = localProf?.lastName || localProf?.last_name || "";
-    if (!fname && storedUsername) {
-      const parts = storedUsername.trim().split(" ");
-      fname = parts[0] || "";
-      lname = parts.slice(1).join(" ") || "";
-    }
-
-    setFirstName(fname);
-    setLastName(lname);
-    setEmail(localProf?.email || emailKey || "");
-    setPhone(localProf?.phone || localProf?.phone_number || "");
-    setAddress(localProf?.address || "");
-    setDob(localProf?.dob || "");
-    setLocation(localProf?.location || "");
-    setPostalCode(localProf?.postalCode || localProf?.postal_code || "");
-    if (localProf?.gender) setGender(localProf.gender);
-
-    let savedAvatar = "";
-    if (emailKey) {
-      savedAvatar = localStorage.getItem("tenantAvatar_" + emailKey);
-    }
-    if (!savedAvatar) {
-      savedAvatar = sessionStorage.getItem("tenantAvatarUrl") || localStorage.getItem("tenantAvatarUrl") || localProf?.avatar || localProf?.avatar_url || "";
-    }
-    setAvatarUrl(savedAvatar || "");
-    if (localProf) setUserProfile(localProf);
-  };
-
   useEffect(() => {
-    loadStoredProfile();
-
-    async function fetchProfile() {
+    async function loadProfile() {
       try {
         const profile = await userService.getProfile();
         if (profile) {
-          setUserProfile(prev => ({ ...prev, ...profile }));
+          setUserProfile((prev) => ({ ...prev, ...profile }));
           if (profile.first_name) setFirstName(profile.first_name);
           if (profile.last_name) setLastName(profile.last_name);
           if (profile.email) setEmail(profile.email);
-          if (profile.phone_number || profile.phone) setPhone(profile.phone_number || profile.phone);
-          if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
-          if (profile.address) setAddress(profile.address);
-          if (profile.dob) setDob(profile.dob);
-          if (profile.location) setLocation(profile.location);
-          if (profile.postal_code || profile.postalCode) setPostalCode(profile.postal_code || profile.postalCode);
-          if (profile.gender) setGender(profile.gender);
+          if (profile.phone_number) setPhone(profile.phone_number);
+          if (profile.avatar_url && !avatarUrl) {
+            setAvatarUrl(profile.avatar_url);
+          }
         }
       } catch (err) {
-        console.warn("Failed to fetch tenant profile", err);
+        console.warn("Using local tenant profile cache:", err);
       }
     }
-    fetchProfile();
+    loadProfile();
   }, []);
 
   // Listen to cross-tab storage changes for tenant documents
@@ -177,43 +176,44 @@ export default function TenantSettings({ onSignOut }) {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setFeedbackMessage({ type: "error", text: "Image file is too large (max 5MB)." });
+        triggerToast("Image file is too large (max 5MB).", "error", "Upload Failed");
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (evt) => {
         const base64Data = evt.target.result;
         setAvatarUrl(base64Data);
-        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+
+        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
         if (emailKey) {
+          // Tenant-scoped avatar key — does not overwrite landlord avatar
           localStorage.setItem("tenantAvatar_" + emailKey, base64Data);
         }
+        // Session-level quick sync keys
         sessionStorage.setItem("tenantAvatarUrl", base64Data);
         localStorage.setItem("tenantAvatarUrl", base64Data);
 
-        const updatedProf = {
-          ...userProfile,
-          firstName,
-          lastName,
-          first_name: firstName,
-          last_name: lastName,
-          email,
-          phone,
-          phone_number: phone,
-          address,
-          dob,
-          location,
-          postalCode,
-          postal_code: postalCode,
-          gender,
-          avatar: base64Data,
-          avatar_url: base64Data
-        };
+        const updatedProf = { ...userProfile, avatar: base64Data, avatar_url: base64Data };
         setUserProfile(updatedProf);
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+        // Tenant-scoped profile session key
+        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(updatedProf));
         if (emailKey) {
-          localStorage.setItem("userProfile_" + emailKey, JSON.stringify(updatedProf));
+          localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(updatedProf));
         }
 
+        // Notify parent / sidebar / header
+        onAvatarChange?.(base64Data);
+        onProfileUpdate?.(undefined, base64Data);
+
+        // Dispatch named event so TenantDashboard updates avatar in real-time
+        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { avatar: base64Data } }));
         window.dispatchEvent(new Event("storage"));
+
+        setFeedbackMessage({ type: "success", text: "Profile picture updated successfully!" });
+        triggerToast("Profile picture updated successfully!", "success", "Photo Updated");
       };
       reader.readAsDataURL(file);
     }
@@ -221,87 +221,123 @@ export default function TenantSettings({ onSignOut }) {
 
   const handleSaveChanges = async (e) => {
     e.preventDefault();
+    setFeedbackMessage(null);
+
     if (activeTab === "personal") {
+      if (!firstName.trim()) {
+        setFeedbackMessage({ type: "error", text: "First name is required." });
+        triggerToast("First name is required.", "error", "Validation Error");
+        return;
+      }
+
+      setIsSaving(true);
       try {
-        const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-        const updatedName = `${firstName.trim()} ${lastName.trim()}`.trim();
+        // Step 1: Always save locally first (tenant-scoped keys — never touches landlord data)
+        const newFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+        const curEmail = (sessionStorage.getItem("lastLoggedInEmail") || email || "").toLowerCase();
 
-        const profileData = {
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          phone_number: phone.trim(),
-          avatar_url: avatarUrl,
-          address: address.trim(),
-          dob: dob.trim(),
-          location: location,
-          postal_code: postalCode.trim(),
-          gender: gender
-        };
-
-        try {
-          await userService.updateProfile(profileData);
-        } catch (apiErr) {
-          console.warn("Backend updateProfile notice:", apiErr);
+        sessionStorage.setItem("tenantUsername", newFullName);
+        if (curEmail) {
+          localStorage.setItem("tenantUsername_" + curEmail, newFullName);
         }
 
-        const updatedProf = {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
+        const profToSave = {
+          ...userProfile,
           first_name: firstName.trim(),
           last_name: lastName.trim(),
-          email: cleanEmail,
+          email: email.trim(),
           phone: phone.trim(),
           phone_number: phone.trim(),
           address: address.trim(),
           dob: dob.trim(),
           location: location,
           postalCode: postalCode.trim(),
-          postal_code: postalCode.trim(),
-          gender: gender,
-          avatar: avatarUrl,
-          avatar_url: avatarUrl,
-          role: "tenant"
+          occupation: occupation.trim(),
+          income: income.trim(),
+          avatar: avatarUrl || userProfile.avatar || ""
         };
-
-        setUserProfile(updatedProf);
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-        localStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-
-        if (cleanEmail) {
-          localStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
-          localStorage.setItem("username_" + cleanEmail, updatedName);
-          if (avatarUrl) {
-            localStorage.setItem("tenantAvatar_" + cleanEmail, avatarUrl);
-          }
-        }
-        if (updatedName) {
-          sessionStorage.setItem("username", updatedName);
-          localStorage.setItem("username", updatedName);
+        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(profToSave));
+        if (curEmail) {
+          localStorage.setItem("tenantProfile_" + curEmail, JSON.stringify(profToSave));
         }
         if (avatarUrl) {
+          if (curEmail) localStorage.setItem("tenantAvatar_" + curEmail, avatarUrl);
           sessionStorage.setItem("tenantAvatarUrl", avatarUrl);
           localStorage.setItem("tenantAvatarUrl", avatarUrl);
         }
 
+        // Notify parent / sidebar / header
+        onAvatarChange?.(avatarUrl);
+        onProfileUpdate?.(newFullName, avatarUrl);
+
+        // Notify sidebar and search header to refresh immediately
+        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: newFullName, avatar: avatarUrl } }));
         window.dispatchEvent(new Event("storage"));
 
-        triggerToast("Personal profile information updated successfully!", "success", "Profile Saved");
+        // Step 2: Try to sync with backend — fail gracefully if session has expired
+        const token = sessionStorage.getItem("lodale_token") || sessionStorage.getItem("lodale_token");
+        if (token) {
+          try {
+            // Only send avatar_url to the backend if it's a real URL (not a >1MB base64 blob)
+            const isBase64 = avatarUrl && avatarUrl.startsWith("data:");
+            const updatedProfile = await userService.updateProfile({
+              first_name: firstName.trim(),
+              last_name: lastName.trim(),
+              phone_number: phone.trim(),
+              avatar_url: isBase64 ? undefined : (avatarUrl || undefined)
+            });
+
+            if (updatedProfile) {
+              const serverName = `${updatedProfile.first_name || ""} ${updatedProfile.last_name || ""}`.trim();
+              if (serverName) {
+                sessionStorage.setItem("tenantUsername", serverName);
+                if (curEmail) {
+                  localStorage.setItem("tenantUsername_" + curEmail, serverName);
+                }
+                window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: serverName, avatar: avatarUrl } }));
+              }
+            }
+          } catch (apiErr) {
+            console.warn("[TenantSettings] Background API sync note (profile saved locally):", apiErr?.message);
+          }
+        }
+
+        setIsSaving(false);
+        setSaveSuccess(true);
+        setFeedbackMessage({ type: "success", text: "Profile information updated successfully!" });
+        triggerToast("Profile information updated successfully!", "success", "Profile Saved");
+
+        const pendingPropertyId = localStorage.getItem("pendingQuickApplyPropertyId");
+        if (pendingPropertyId) {
+          localStorage.removeItem("pendingQuickApplyPropertyId");
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("resumeQuickApply", { detail: pendingPropertyId }));
+          }, 500);
+        }
+
+        setTimeout(() => setSaveSuccess(false), 3500);
       } catch (err) {
-        triggerToast("Failed to update profile", "error", "Error");
+        setIsSaving(false);
+        setFeedbackMessage({ type: "error", text: err.message || "Failed to update profile." });
+        triggerToast(err.message || "Failed to update profile", "error", "Error");
       }
     } else if (activeTab === "security") {
       if (!currentPassword) {
+        setFeedbackMessage({ type: "warning", text: "Please enter your current password." });
         triggerToast("Please enter your current password.", "warning", "Security");
         return;
       }
       if (newPassword !== confirmPassword) {
+        setFeedbackMessage({ type: "error", text: "New password and confirmation do not match." });
         triggerToast("New password and confirmation do not match.", "error", "Password Mismatch");
         return;
       }
       if (newPassword.length < 6) {
+        setFeedbackMessage({ type: "warning", text: "Password must be at least 6 characters long." });
         triggerToast("Password must be at least 6 characters long.", "warning", "Security");
         return;
       }
+      setFeedbackMessage({ type: "success", text: "Password updated successfully!" });
       triggerToast("Password updated successfully!", "success", "Password Changed");
       setCurrentPassword("");
       setNewPassword("");
@@ -310,13 +346,35 @@ export default function TenantSettings({ onSignOut }) {
   };
 
   const handleDiscardChanges = () => {
+    setFeedbackMessage(null);
     if (activeTab === "personal") {
-      loadStoredProfile();
+      const curEmail = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+      const name =
+        sessionStorage.getItem("tenantUsername") ||
+        (curEmail ? localStorage.getItem("tenantUsername_" + curEmail) : null) ||
+        sessionStorage.getItem("username") ||
+        sessionStorage.getItem("username");
+      if (name) {
+        const parts = name.split(" ");
+        setFirstName(parts[0]);
+        setLastName(parts.length > 1 ? parts.slice(1).join(" ") : "");
+      } else {
+        setFirstName("Roland");
+        setLastName("Donald");
+      }
+      setEmail(sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "rolandDonald@mail.com");
+      setGender("Male");
+      setAddress("");
+      setPhone("");
+      setDob("");
+      setLocation("");
+      setPostalCode("");
     } else {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     }
+    setFeedbackMessage({ type: "warning", text: "Unsaved changes discarded." });
     triggerToast("Unsaved changes discarded.", "info", "Form Reset");
   };
 
@@ -356,7 +414,7 @@ export default function TenantSettings({ onSignOut }) {
     try {
       const savedLandlordDocs = localStorage.getItem("landlordDocuments");
       const landlordDocs = savedLandlordDocs ? JSON.parse(savedLandlordDocs) : [];
-      const tenantName = (sessionStorage.getItem("username") || localStorage.getItem("username") || `${firstName} ${lastName}`).trim();
+      const tenantName = (sessionStorage.getItem("username") || sessionStorage.getItem("username") || `${firstName} ${lastName}`).trim();
       const updatedLandlord = [
         ...landlordDocs.filter(d => d.id !== selectedDocToSign.id),
         {
@@ -753,7 +811,43 @@ export default function TenantSettings({ onSignOut }) {
       <div className="settings-form-panel">
         {activeTab === "personal" ? (
           <form className="settings-main-form" onSubmit={handleSaveChanges}>
-            <h2 className="settings-form-title">Personal Information</h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="settings-form-title mb-0">Personal Information</h2>
+              {saveSuccess && (
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 animate-pulse">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> All Changes Saved
+                </span>
+              )}
+            </div>
+
+            {/* Inline Feedback Banner */}
+            {feedbackMessage && (
+              <div
+                className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${
+                  feedbackMessage.type === "success"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    : feedbackMessage.type === "error"
+                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                    : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  {feedbackMessage.type === "success" ? (
+                    <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                  )}
+                  <span>{feedbackMessage.text}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFeedbackMessage(null)}
+                  className="text-inherit hover:opacity-75 p-1 cursor-pointer bg-transparent border-none outline-none"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
 
             {/* Gender Selection */}
             <div className="gender-selection-row">
@@ -848,15 +942,37 @@ export default function TenantSettings({ onSignOut }) {
               </div>
 
               <div className="settings-form-group">
-                <label className="settings-input-label">Phone Number</label>
+                <label className="settings-input-label">Phone Number <span className="text-red-500">*</span></label>
                 <input
                   type="tel"
                   maxLength={15}
                   value={phone}
                   onInput={(e) => e.target.value = e.target.value.replace(/[^0-9+]/g, '')}
-                  onChange={(e) => setPhone(e.target.value.replace(/[^0-9+]/g, ''))}
+                  onChange={(e) => setPhone(e.target.value)}
                   className="settings-form-input"
-                  placeholder="e.g. +2348012345678"
+                  placeholder="Phone Number"
+                />
+              </div>
+
+              <div className="settings-form-group">
+                <label className="settings-input-label">Occupation <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  className="settings-form-input"
+                  placeholder="e.g. Software Engineer"
+                />
+              </div>
+
+              <div className="settings-form-group">
+                <label className="settings-input-label">Monthly Income <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  value={income}
+                  onChange={(e) => setIncome(e.target.value)}
+                  className="settings-form-input"
+                  placeholder="e.g. ₦500,000"
                 />
               </div>
 
@@ -887,11 +1003,9 @@ export default function TenantSettings({ onSignOut }) {
                 <label className="settings-input-label">Postal Code</label>
                 <input
                   type="text"
-                  inputMode="numeric"
                   maxLength={20}
                   value={postalCode}
-                  onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
-                  onChange={(e) => setPostalCode(e.target.value.replace(/[^0-9]/g, ''))}
+                  onChange={(e) => setPostalCode(e.target.value)}
                   className="settings-form-input"
                   placeholder="Postal Code"
                 />
@@ -909,16 +1023,62 @@ export default function TenantSettings({ onSignOut }) {
               </Button>
               <Button
                 type="submit"
-                className="settings-btn settings-btn-save"
+                disabled={isSaving}
+                className={`settings-btn settings-btn-save flex items-center justify-center gap-2 transition-all ${
+                  saveSuccess ? "!bg-emerald-600 !text-white" : ""
+                }`}
               >
-                Save Changes
+                {isSaving ? (
+                  <>
+                    <span className="inline-block animate-spin mr-1">⏳</span>
+                    <span>Saving...</span>
+                  </>
+                ) : saveSuccess ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 text-white" />
+                    <span>Saved!</span>
+                  </>
+                ) : (
+                  "Save Changes"
+                )}
               </Button>
             </div>
           </form>
         ) : activeTab === "security" ? (
           /* Login & Password Form */
           <form className="settings-main-form" onSubmit={handleSaveChanges}>
-            <h2 className="settings-form-title">Login & Password</h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="settings-form-title mb-0">Login & Password</h2>
+            </div>
+
+            {/* Inline Feedback Banner for Security */}
+            {feedbackMessage && (
+              <div
+                className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${
+                  feedbackMessage.type === "success"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    : feedbackMessage.type === "error"
+                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
+                    : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  {feedbackMessage.type === "success" ? (
+                    <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  ) : (
+                    <AlertCircle className="h-4.5 w-4.5 text-rose-600 dark:text-rose-400 shrink-0" />
+                  )}
+                  <span>{feedbackMessage.text}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFeedbackMessage(null)}
+                  className="text-inherit hover:opacity-75 p-1 cursor-pointer bg-transparent border-none outline-none"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
 
             <div className="settings-inputs-grid single-col">
               <div className="settings-form-group">
@@ -972,6 +1132,7 @@ export default function TenantSettings({ onSignOut }) {
               </Button>
               <Button
                 type="submit"
+                disabled={isSaving}
                 className="settings-btn settings-btn-save"
               >
                 Save Changes

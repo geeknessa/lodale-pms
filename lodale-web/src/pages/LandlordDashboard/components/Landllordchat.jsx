@@ -1,54 +1,106 @@
 import { useState, useEffect, useRef } from "react";
-import { 
-  Search, Phone, Video, MoreHorizontal, Send, Paperclip, 
-  Mic, Play, Pause, ChevronRight, Building2
+import {
+  Search, Phone, Video, MoreHorizontal, Send, Paperclip,
+  Mic, Play, Pause, ChevronRight, Building2, ArrowLeft
 } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
+import { supportService } from "../../../services/supportService";
+import { chatService } from "../../../services/chatService";
+import { applicationService } from "../../../services/applicationService";
+import Avatar from "../../../components/Avatar";
 import gsap from "gsap";
 import "./Landllordchat.css";
 
 export default function LandlordChat() {
+  const [activeTab, setActiveTab] = useState("Tenants"); // 'Tenants' | 'Applicants'
+  const [activeChatId, setActiveChatId] = useState(null); // partnerId
   const [chats, setChats] = useState([]);
-  const [activeChatId, setActiveChatId] = useState(null);
+  const [applications, setApplications] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
-  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [mobileShowSidebar, setMobileShowSidebar] = useState(true);
+
+  const [supportMessages, setSupportMessages] = useState([]);
+  const [threadMessages, setThreadMessages] = useState([]);
 
   const messagesEndRef = useRef(null);
   const chatListRef = useRef(null);
   const messageThreadRef = useRef(null);
 
-  // Load chats from localStorage
+  // Initial Data Fetching
   useEffect(() => {
-    const loadChats = () => {
-      const saved = localStorage.getItem("landlordChats");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setChats(parsed);
-        
-        // Auto-select chat from activeChatTenantName if set from Tenants tab
-        const redirectTenantName = localStorage.getItem("activeChatTenantName");
-        if (redirectTenantName) {
-          const thread = parsed.find(c => c.name.toLowerCase() === redirectTenantName.toLowerCase());
-          if (thread) {
-            setActiveChatId(thread.id);
-          }
-          localStorage.removeItem("activeChatTenantName");
-        } else if (parsed.length > 0 && !activeChatId) {
-          setActiveChatId(parsed[0].id);
-        }
-      }
+    const fetchData = async () => {
+      // Fetch Chat Conversations & Applications
+      const [convos, apps] = await Promise.all([
+        chatService.getConversations(),
+        applicationService.getLandlordApplications()
+      ]);
+      setApplications(apps);
+
+      // Inject Support Thread at top
+      const supportThread = {
+        partner_id: "lodale-support",
+        first_name: "Lodale",
+        last_name: "Admin",
+        avatar_url: "/logo_black.svg",
+        last_message: supportMessages.length > 0 ? supportMessages[supportMessages.length - 1].message : "Lodale Official Support Team",
+        last_message_time: supportMessages.length > 0 ? supportMessages[supportMessages.length - 1].created_at : new Date(),
+        isSupport: true
+      };
+
+      setChats([supportThread, ...convos]);
     };
 
-    loadChats();
-    window.addEventListener("storage", loadChats);
-    return () => window.removeEventListener("storage", loadChats);
-  }, [activeChatId]);
+    fetchData();
+    // Simple polling for conversations every 15s
+    const interval = setInterval(fetchData, 15000);
+    return () => clearInterval(interval);
+  }, [supportMessages]);
+
+  // Fetch support messages separately
+  useEffect(() => {
+    const fetchSupport = async () => {
+      const msgs = await supportService.getUserMessages();
+      setSupportMessages(msgs || []);
+    };
+    fetchSupport();
+    const interval = setInterval(fetchSupport, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch individual thread messages when active chat changes
+  useEffect(() => {
+    if (!activeChatId) return;
+
+    if (activeChatId === "lodale-support") {
+      setThreadMessages(supportMessages.map(m => ({
+        id: m.id,
+        isMine: m.sender_role === 'landlord',
+        text: m.message,
+        time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      })));
+      return;
+    }
+
+    const fetchThread = async () => {
+      const msgs = await chatService.getMessages(activeChatId);
+      setThreadMessages(msgs.map(m => ({
+        id: m.id,
+        isMine: m.sender_id !== activeChatId,
+        text: m.message,
+        time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      })));
+    };
+
+    fetchThread();
+    const interval = setInterval(fetchThread, 5000);
+    return () => clearInterval(interval);
+  }, [activeChatId, supportMessages]);
 
   // Scroll to bottom of message thread
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeChatId, chats]);
+  }, [threadMessages]);
 
   // GSAP animations on active chat change
   useEffect(() => {
@@ -61,63 +113,181 @@ export default function LandlordChat() {
     }
   }, [activeChatId]);
 
-  const activeChat = chats.find(c => c.id === activeChatId);
+  // Combine existing chat conversations with all property applicants
+  const allChats = [...chats];
+  applications.forEach(app => {
+    const tenantId = app.tenantId || app.tenant_id || app.tenant?.id;
+    if (tenantId && !allChats.some(c => String(c.partner_id) === String(tenantId))) {
+      allChats.push({
+        partner_id: tenantId,
+        first_name: app.tenant?.firstName || "Applicant",
+        last_name: app.tenant?.lastName || "",
+        avatar_url: app.tenant?.avatar || "",
+        last_message: `Applicant for ${app.propertyTitle || 'Property'}`,
+        last_message_time: app.createdAt || app.date,
+        isApplicant: true,
+        propertyTitle: app.propertyTitle
+      });
+    }
+  });
 
-  const filteredChats = chats.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const applicantIds = new Set(applications.map(a => String(a.tenantId || a.tenant_id || a.tenant?.id)));
 
-  const handleSendMessage = (e) => {
+  const activeChat = allChats.find(c => String(c.partner_id) === String(activeChatId));
+
+  const filteredChats = allChats.filter(c => {
+    // 1. Filter by Active Tab
+    if (activeTab === "Applicants") {
+      // Show ONLY applicants in the Applicants tab
+      if (!applicantIds.has(String(c.partner_id))) return false;
+    } else {
+      // Show ONLY tenants (and support) in the Tenants tab
+      if (!c.isSupport && applicantIds.has(String(c.partner_id))) return false;
+    }
+
+    // 2. Filter by search query
+    const name = c.isSupport ? "Lodale Admin" : `${c.first_name || ''} ${c.last_name || ''}`;
+    return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.last_message || "").toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
     if (!newMessage.trim() || !activeChatId) return;
 
-    const updatedChats = chats.map(c => {
-      if (c.id === activeChatId) {
-        const newMsgObj = {
-          id: Date.now(),
-          sender: "landlord",
-          text: newMessage,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-        return {
-          ...c,
-          lastMessage: newMessage,
-          time: "Just now",
-          messages: [...c.messages, newMsgObj]
-        };
+    if (activeChatId === "lodale-support") {
+      try {
+        const sent = await supportService.sendMessage(newMessage);
+        setSupportMessages(prev => [...prev, sent]);
+        setNewMessage("");
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      } catch (err) {
+        triggerToast("Failed to send message to Lodale Admin", "error");
       }
-      return c;
-    });
+      return;
+    }
 
-    setChats(updatedChats);
-    localStorage.setItem("landlordChats", JSON.stringify(updatedChats));
-    setNewMessage("");
-    window.dispatchEvent(new Event("storage"));
+    try {
+      await chatService.sendMessage(activeChatId, newMessage);
+      setNewMessage("");
+      // Optimistically fetch thread to show message immediately
+      const msgs = await chatService.getMessages(activeChatId);
+      setThreadMessages(msgs.map(m => ({
+        id: m.id,
+        isMine: m.sender_id !== activeChatId,
+        text: m.message,
+        time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      })));
+    } catch (err) {
+      triggerToast("Failed to send message", "error");
+    }
+  };
+
+  const landlordFileInputRef = useRef(null);
+
+  const handlePaperclipFile = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        triggerToast("File size exceeds 5MB limit.", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const dataUrl = event.target.result;
+        const msg = `[DOCUMENT UPLOADED]\nDocument Type: Attachment\nFile Name: ${file.name}\nData: ${dataUrl}`;
+        if (activeChatId) {
+          try {
+            await chatService.sendMessage(activeChatId, msg);
+            triggerToast(`Sent attachment "${file.name}"`, "success");
+            const msgs = await chatService.getMessages(activeChatId);
+            setThreadMessages(msgs.map(m => ({
+              id: m.id,
+              isMine: m.sender_id !== activeChatId,
+              text: m.message,
+              time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            })));
+          } catch (err) {
+            triggerToast("Failed to send attachment", "error");
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const renderMessageText = (text) => {
+    if (!text) return "";
+    if (text.startsWith("[DOCUMENT UPLOADED]")) {
+      const typeMatch = text.match(/Document Type:\s*(.+)/);
+      const nameMatch = text.match(/File Name:\s*(.+)/);
+      const dataMatch = text.match(/Data:\s*(.+)/);
+
+      const docType = typeMatch ? typeMatch[1].trim() : "Attached Document";
+      const fileName = nameMatch ? nameMatch[1].trim() : "Document File";
+      const dataUrl = dataMatch ? dataMatch[1].trim() : null;
+
+      return (
+        <div className="p-3 bg-white/10 rounded-xl border border-white/20 my-1 space-y-2 text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">📄</span>
+            <div>
+              <p className="font-bold text-xs">{docType}</p>
+              <p className="text-[11px] opacity-80">{fileName}</p>
+            </div>
+          </div>
+          {dataUrl && (
+            <a
+              href={dataUrl}
+              download={fileName}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+            >
+              📥 Download / View Document
+            </a>
+          )}
+        </div>
+      );
+    }
+    return text;
   };
 
   return (
-    <div className="lc-container">
+    <div className={`lc-container ${mobileShowSidebar ? "mobile-sidebar-active" : "mobile-thread-active"}`}>
+      <input
+        type="file"
+        ref={landlordFileInputRef}
+        onChange={handlePaperclipFile}
+        accept="image/*,application/pdf,.doc,.docx"
+        className="hidden"
+      />
       {/* 1. LEFT COLUMN: Chat List */}
       <div className="lc-sidebar">
+
         {/* Tabs */}
         <div className="lc-tabs">
-          <button className="lc-tab active">Tenants</button>
-          <button className="lc-tab" onClick={() => triggerToast("Applicants list is populated via the top applications bar.", "info", "Applicants Filter")}>Applicants</button>
+          <button
+            className={`lc-tab ${activeTab === "Tenants" ? "active" : ""}`}
+            onClick={() => { setActiveTab("Tenants"); setActiveChatId(null); setMobileShowSidebar(true); }}
+          >
+            Tenants
+          </button>
+          <button
+            className={`lc-tab ${activeTab === "Applicants" ? "active" : ""}`}
+            onClick={() => { setActiveTab("Applicants"); setActiveChatId(null); setMobileShowSidebar(true); }}
+          >
+            Applicants
+          </button>
         </div>
 
         {/* Sort & Search */}
         <div className="lc-search-bar-row">
-          <div className="lc-sort-dropdown">
-            <span>Latest First</span>
-            <ChevronRight className="h-3.5 w-3.5 rotate-90 text-ink-500" />
-          </div>
-          
-          <div className="lc-search-wrapper">
+          <div className="lc-search-wrapper" style={{ width: '100%' }}>
             <Search className="lc-search-icon" />
-            <input 
-              type="text" 
-              placeholder="Search chat..." 
+            <input
+              type="text"
+              placeholder={`Search ${activeTab.toLowerCase()}...`}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="lc-search-input"
@@ -129,34 +299,49 @@ export default function LandlordChat() {
         <div className="lc-list-stack" ref={chatListRef}>
           {filteredChats.length > 0 ? (
             filteredChats.map((chat) => {
-              const isActive = chat.id === activeChatId;
+              const isActive = chat.partner_id === activeChatId;
+              const name = chat.isSupport ? "Lodale Admin" : `${chat.first_name} ${chat.last_name}`;
+
+              let timeStr = "Just now";
+              if (chat.last_message_time) {
+                const d = new Date(chat.last_message_time);
+                if (!isNaN(d.getTime())) {
+                  timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+              }
+
               return (
-                <div 
-                  key={chat.id} 
+                <div
+                  key={chat.partner_id}
                   className={`lc-chat-card ${isActive ? "active" : ""}`}
-                  onClick={() => setActiveChatId(chat.id)}
+                  onClick={() => {
+                    setActiveChatId(chat.partner_id);
+                    setMobileShowSidebar(false);
+                  }}
                 >
                   <div className="lc-card-avatar-wrapper">
-                    <img src={chat.avatar} alt={chat.name} className="lc-card-avatar" />
+                    <Avatar src={chat.avatar_url} name={name} className="lc-card-avatar rounded-full" />
                     <span className="lc-online-badge" />
                   </div>
 
                   <div className="lc-card-info">
                     <div className="lc-card-header-row">
-                      <span className="lc-card-name">{chat.name}</span>
-                      <span className="lc-card-time">{chat.time}</span>
+                      <span className="lc-card-name">{name}</span>
+                      <span className="lc-card-time">{timeStr}</span>
                     </div>
-                    <p className="lc-card-snippet">{chat.lastMessage}</p>
+                    <p className="lc-card-snippet">{chat.last_message || "Start a conversation"}</p>
                   </div>
-                  
+
                   {isActive && <div className="lc-active-indicator" />}
                 </div>
               );
             })
           ) : (
             <div className="lc-empty-chats">
-              <p>No active conversations yet.</p>
-              <span className="text-[11px] text-ink-300">Approve applications or interact with tenant requests to start chatting.</span>
+              <p>No active {activeTab.toLowerCase()} conversations yet.</p>
+              {activeTab === "Applicants" && (
+                <span className="text-[11px] text-ink-300">Start a chat with an applicant from the Applications tab.</span>
+              )}
             </div>
           )}
         </div>
@@ -167,19 +352,33 @@ export default function LandlordChat() {
         <div className="lc-thread-wrapper">
           {/* Header */}
           <div className="lc-thread-header">
+            {/* Mobile Back Button */}
+            <button
+              className="lc-mobile-back-btn p-2 mr-2 text-ink-500 hover:bg-ink-100 rounded-lg lg:hidden"
+              onClick={() => setMobileShowSidebar(true)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+
             <div className="lc-header-tenant-info">
-              <img src={activeChat.avatar} alt={activeChat.name} className="lc-header-avatar" />
+              <Avatar
+                src={activeChat.avatar_url}
+                name={activeChat.isSupport ? "Lodale Admin" : `${activeChat.first_name} ${activeChat.last_name}`}
+                className="lc-header-avatar rounded-full"
+              />
               <div>
-                <h3 className="lc-header-name">{activeChat.name}</h3>
-                <span className="lc-header-status">Online</span>
+                <h3 className="lc-header-name">
+                  {activeChat.isSupport ? "Lodale Official Support" : `${activeChat.first_name} ${activeChat.last_name}`}
+                </h3>
+                <span className="lc-header-status text-moss-600 dark:text-moss-400">Online</span>
               </div>
             </div>
 
             <div className="lc-header-actions">
-              <button className="lc-header-btn" title="Phone Call" onClick={() => triggerToast(`Initiating direct call with ${activeChat.name}...`, "info", "Voice Call")}>
+              <button className="lc-header-btn" title="Voice Call">
                 <Phone className="h-4.5 w-4.5" />
               </button>
-              <button className="lc-header-btn" title="Video Call" onClick={() => triggerToast(`Starting video meeting with ${activeChat.name}...`, "info", "Video Call")}>
+              <button className="lc-header-btn" title="Video Call">
                 <Video className="h-4.5 w-4.5" />
               </button>
               <button className="lc-header-btn" title="More Options">
@@ -190,109 +389,114 @@ export default function LandlordChat() {
 
           {/* Scrollable messages area */}
           <div className="lc-messages-container" ref={messageThreadRef}>
+            {activeChatId === "lodale-support" && (
+              <div className="p-3 mb-4 mx-4 rounded-xl bg-emerald-50 dark:bg-[#1A2E22] border border-emerald-200 dark:border-[#2A4B36] text-center shadow-sm">
+                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                  Lodale Official Support
+                </p>
+                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 leading-tight">
+                  Send a message here if you have any problems or complaints. Our team will respond shortly.
+                </p>
+              </div>
+            )}
+
             <div className="lc-date-divider">
               <span>Today</span>
             </div>
 
-            {activeChat.messages.length === 0 ? (
+            {threadMessages.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", color: "var(--text-muted)", textAlign: "center" }}>
                 <span style={{ fontSize: "28px" }}>💬</span>
                 <p style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-primary)", margin: "12px 0 4px 0" }}>No Messages Yet</p>
-                <p style={{ fontSize: "11.5px", margin: 0, maxWidth: "200px", lineHeight: "1.4" }}>Send a message to start the conversation with {activeChat.name}.</p>
+                <p style={{ fontSize: "11.5px", margin: 0, maxWidth: "200px", lineHeight: "1.4" }}>Send a message to start the conversation.</p>
               </div>
             ) : (
-              <>
-                {activeChat.messages.map((msg, index) => {
-                  const isLandlord = msg.sender === "landlord";
-                  return (
-                    <div key={msg.id || index} className={`lc-bubble-wrapper ${isLandlord ? "outgoing" : "incoming"}`}>
-                      {!isLandlord && (
-                        <img src={activeChat.avatar} alt={activeChat.name} className="lc-bubble-avatar" />
-                      )}
-                      <div className="lc-bubble-content">
-                        <div className="lc-bubble text-[13px]">{msg.text}</div>
-                        <span className="lc-bubble-time">{msg.time}</span>
-                      </div>
+              threadMessages.map((msg, index) => {
+                const isMine = msg.isMine;
+                return (
+                  <div key={msg.id || index} className={`lc-bubble-wrapper ${isMine ? "outgoing" : "incoming"}`}>
+                    {!isMine && (
+                      <Avatar
+                        src={activeChat.avatar_url}
+                        name={activeChat.isSupport ? "Lodale Admin" : `${activeChat.first_name} ${activeChat.last_name}`}
+                        className="lc-bubble-avatar rounded-full"
+                      />
+                    )}
+                    <div className="lc-bubble-content">
+                      <div className="lc-bubble text-[13px]">{renderMessageText(msg.text)}</div>
+                      <span className="lc-bubble-time">{msg.time}</span>
                     </div>
-                  );
-                })}
-
-                {/* Audio Waveform mock message bubble */}
-                <div className="lc-bubble-wrapper incoming">
-                  <img src={activeChat.avatar} alt={activeChat.name} className="lc-bubble-avatar" />
-                  <div className="lc-bubble-content">
-                    <div className="lc-audio-bubble">
-                      <button className="lc-audio-play-btn" onClick={() => setAudioPlaying(!audioPlaying)}>
-                        {audioPlaying ? <Pause className="h-4 w-4 fill-white text-white" /> : <Play className="h-4 w-4 fill-white text-white ml-0.5" />}
-                      </button>
-                      <div className="lc-waveform">
-                        {[12, 18, 14, 25, 30, 20, 16, 22, 28, 12, 14, 20, 26, 32, 15, 10, 18, 22, 14, 20, 12, 16, 24, 18, 14, 10, 12, 16, 14, 12, 10].map((h, i) => (
-                          <span 
-                            key={i} 
-                            className={`lc-waveform-bar ${audioPlaying ? "playing" : ""}`} 
-                            style={{ height: `${h}px`, animationDelay: `${i * 0.05}s` }} 
-                          />
-                        ))}
-                      </div>
-                      <span className="lc-audio-duration">01:24</span>
-                    </div>
-                    <span className="lc-bubble-time">Today 11:45 AM</span>
                   </div>
-                </div>
-              </>
+                );
+              })
             )}
-
-            {/* Application quick action bar if tenant */}
-            {activeChat.linkedProperty && (
-              <>
-                <div className="lc-linked-property-card">
-                  <div>
-                    <span className="lc-[#E5C583]">Linked Listing:</span>
-                    <h4 className="lc-prop-title">{activeChat.linkedProperty}</h4>
-                  </div>
-                  <span className="lc-prop-badge">Lease Active</span>
-                </div>
-
-                <div className="lc-quick-actions">
-                  <span className="lc-qa-lbl">Landlord Quick Actions:</span>
-                  <div className="lc-qa-btns">
-                    <button className="lc-qa-btn approve">Approve Lease</button>
-                    <button className="lc-qa-btn decline">Decline</button>
-                  </div>
-                </div>
-              </>
-            )}
-
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Quick Request Chips for Applicants */}
+          {activeTab === "Applicants" && (
+            <div className="flex items-center gap-2 px-4 py-2 bg-cream-50 dark:bg-black/20 border-t border-ink-100 dark:border-white/5 overflow-x-auto text-[11px] font-semibold text-ink-700 dark:text-cream-100">
+              <span className="text-ink-400 dark:text-cream-100/60 uppercase text-[10px] tracking-wider shrink-0 font-bold">Request:</span>
+              <button
+                type="button"
+                onClick={() => setNewMessage("[REQUEST] Please provide your 3 months recent payslips / proof of employment.")}
+                className="px-2.5 py-1 bg-white dark:bg-white/10 hover:bg-moss-50 dark:hover:bg-moss-900/40 rounded-full border border-ink-200 dark:border-white/10 shrink-0 transition-colors"
+              >
+                📄 Payslips / Employment
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewMessage("[REQUEST] Please provide your Government ID / NIN verification.")}
+                className="px-2.5 py-1 bg-white dark:bg-white/10 hover:bg-moss-50 dark:hover:bg-moss-900/40 rounded-full border border-ink-200 dark:border-white/10 shrink-0 transition-colors"
+              >
+                🆔 ID / NIN
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewMessage("[REQUEST] Please provide your Guarantor full name, phone number, and relationship.")}
+                className="px-2.5 py-1 bg-white dark:bg-white/10 hover:bg-moss-50 dark:hover:bg-moss-900/40 rounded-full border border-ink-200 dark:border-white/10 shrink-0 transition-colors"
+              >
+                🛡️ Guarantor Info
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewMessage("[REQUEST] Please upload your 6-month bank statement.")}
+                className="px-2.5 py-1 bg-white dark:bg-white/10 hover:bg-moss-50 dark:hover:bg-moss-900/40 rounded-full border border-ink-200 dark:border-white/10 shrink-0 transition-colors"
+              >
+                💼 Bank Statement
+              </button>
+            </div>
+          )}
+
           {/* Form input */}
           <form className="lc-input-form" onSubmit={handleSendMessage}>
-            <button type="button" className="lc-input-btn" title="Add Attachment" onClick={() => triggerToast("File attachment dialog ready. Select image or document.", "info", "Attach File")}>
+            <button
+              type="button"
+              className="lc-input-btn"
+              title="Attach Document or Image"
+              onClick={() => landlordFileInputRef.current?.click()}
+            >
               <Paperclip className="h-5 w-5" />
             </button>
-            
-            <input 
-              type="text" 
-              placeholder="Type your message..." 
+
+            <input
+              type="text"
+              placeholder="Type your message..."
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               className="lc-input-field text-[13.5px]"
             />
 
-            <button type="button" className="lc-input-btn" title="Record Audio" onClick={() => triggerToast("Recording voice note. Release to send.", "info", "Voice Note")}>
-              <Mic className="h-5 w-5" />
-            </button>
             <button type="submit" className="lc-send-btn" title="Send Message">
               <Send className="h-4.5 w-4.5 text-white" />
             </button>
           </form>
         </div>
       ) : (
-        <div className="lc-thread-wrapper lc-no-active">
+        <div className="lc-thread-wrapper lc-no-active hidden lg:flex">
           <Building2 className="h-14 w-14 text-ink-200 mb-2 animate-bounce" />
           <h3>Select a conversation</h3>
-          <p>Choose a tenant from the list on the left to view messages and details.</p>
+          <p>Choose a chat from the list on the left to view messages.</p>
         </div>
       )}
     </div>

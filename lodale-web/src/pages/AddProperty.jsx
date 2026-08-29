@@ -705,7 +705,7 @@ export default function AddProperty() {
 
           <Button
             type="submit"
-            className="mt-8 w-full"
+            className="mt-8 w-full text-[12px] sm:text-[13px] py-2.5 sm:py-3 px-4"
             disabled={occupied === null}
           >
             {occupied === true

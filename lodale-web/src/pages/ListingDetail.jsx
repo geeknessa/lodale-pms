@@ -13,13 +13,104 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  LayoutDashboard,
+  Search,
+  MessageSquare,
+  Settings,
+  LogOut,
+  Sun,
+  Moon,
+  User
 } from "lucide-react";
 import NavBar from "../components/NavBar";
 import Button from "../components/Button";
 import { propertyService } from "../services/propertyService";
 import { triggerToast } from "../context/ToastContext";
 import { formatDistanceToNow } from "../utils/formatters";
+import { useTheme } from "../context/ThemeContext";
+import "./TenantDashboard/TenantDashboard.css";
+
+// Tenant sidebar strip — shown inside ListingDetail when the viewer is a logged-in tenant.
+// Mirrors the icon set of TenantDashboard. Each icon navigates back to the correct dashboard tab.
+function TenantSidebarStrip() {
+  const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+
+  const handleSignOut = () => {
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("tenantUsername");
+    sessionStorage.removeItem("userRole");
+    sessionStorage.removeItem("db_user_id");
+    sessionStorage.removeItem("tenantCurrentProfile");
+    sessionStorage.removeItem("lodale_token");
+    sessionStorage.removeItem("isAuthenticated");
+    sessionStorage.removeItem("sessionExpiresAt");
+    sessionStorage.removeItem("username");
+    sessionStorage.removeItem("userRole");
+    navigate("/login", { replace: true });
+  };
+
+  const navItems = [
+    { icon: LayoutDashboard, label: "Dashboard", tab: 0 },
+    { icon: Search, label: "Search", tab: 1 },
+    { icon: MessageSquare, label: "Chat", tab: 2 },
+    { icon: Settings, label: "Settings", tab: 3 },
+  ];
+
+  return (
+    <aside
+      className="tenant-sidebar hidden md:flex"
+      style={{ position: "sticky", top: 0, height: "100vh", flexShrink: 0 }}
+    >
+      <div className="sidebar-top-group">
+        {/* Logo back to home */}
+        <div
+          className="sidebar-logo-mark mb-6 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => navigate("/explore")}
+          title="Go to Home Page"
+        >
+          <span style={{ fontFamily: "'Playfair Display', serif", fontWeight: 700, fontSize: "20px", color: "#2C4633", letterSpacing: "-0.5px" }}>L</span>
+        </div>
+
+        <div className="tenant-sidebar-nav">
+          {navItems.map(({ icon: Icon, label, tab }) => (
+            <button
+              key={tab}
+              title={label}
+              onClick={() => navigate("/dashboard/tenant", { state: { initialTab: tab } })}
+              className="tenant-sidebar-btn"
+            >
+              <Icon className="h-5 w-5" />
+              <span className="tenant-sidebar-tooltip">{label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="tenant-sidebar-bottom">
+        <button
+          className="tenant-sidebar-btn theme-toggle-btn mb-3"
+          onClick={toggleTheme}
+          title="Toggle Theme"
+        >
+          {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          <span className="tenant-sidebar-tooltip">Toggle Theme</span>
+        </button>
+        <button
+          className="tenant-sidebar-btn logout-btn"
+          onClick={handleSignOut}
+          title="Log Out"
+        >
+          <LogOut className="h-5 w-5" />
+          <span className="tenant-sidebar-tooltip">Log Out</span>
+        </button>
+      </div>
+    </aside>
+  );
+}
 
 export default function ListingDetail() {
   const { id } = useParams();
@@ -29,6 +120,9 @@ export default function ListingDetail() {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isSaved, setIsSaved] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+
+  // Detect if the current viewer is an authenticated tenant
+  const isTenant = sessionStorage.getItem("userRole") === "tenant";
 
   // In-App Direct Chat Drawer State
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -40,7 +134,29 @@ export default function ListingDetail() {
       setIsLoading(true);
       try {
         const item = await propertyService.getPropertyById(id);
-        setListing(item || null);
+        if (item) {
+          setListing(item);
+          const savedStr = localStorage.getItem("savedProperties");
+          const savedArr = savedStr ? JSON.parse(savedStr) : [];
+          const isItemSaved = savedArr.some(p => String(p.id) === String(item.id));
+          setIsSaved(isItemSaved);
+
+          if (isItemSaved) {
+            const updatedSaved = savedArr.map(p => {
+              if (String(p.id) === String(item.id)) {
+                return {
+                  ...p,
+                  ...item,
+                  price: `₦${Number(item.rent_amount || item.price || 0).toLocaleString()}${String(item.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
+                  location: `${item.address_line1 || item.address || ''}, ${item.city || ''}`
+                };
+              }
+              return p;
+            });
+            localStorage.setItem("savedProperties", JSON.stringify(updatedSaved));
+            window.dispatchEvent(new Event("propertySavedChanged"));
+          }
+        }
       } catch (err) {
         setListing(null);
       } finally {
@@ -50,8 +166,34 @@ export default function ListingDetail() {
     fetchListing();
   }, [id]);
 
+  const handleToggleSave = () => {
+    if (!listing) return;
+    const savedStr = localStorage.getItem("savedProperties");
+    const currentSaved = savedStr ? JSON.parse(savedStr) : [];
+    
+    if (isSaved) {
+      const updated = currentSaved.filter(p => p.id !== listing.id);
+      localStorage.setItem("savedProperties", JSON.stringify(updated));
+      setIsSaved(false);
+      triggerToast("Property removed from saved.", "info", "Removed");
+    } else {
+      const updated = [listing, ...currentSaved.filter(p => p.id !== listing.id)];
+      localStorage.setItem("savedProperties", JSON.stringify(updated));
+      setIsSaved(true);
+      triggerToast("Property saved successfully!", "success", "Saved");
+    }
+    window.dispatchEvent(new Event("propertySavedChanged"));
+  };
+
   if (isLoading) {
-    return (
+    return isTenant ? (
+      <div className="tenant-wrapper" style={{ display: "flex" }}>
+        <TenantSidebarStrip />
+        <div className="flex-1 flex justify-center items-center text-ink-500 dark:text-cream-100/70 text-xs font-semibold min-h-screen bg-[#FDFBF7] dark:bg-[#12221C]">
+          Loading listing details...
+        </div>
+      </div>
+    ) : (
       <div className="min-h-screen bg-cream-50 dark:bg-[#12221C] flex flex-col">
         <NavBar />
         <div className="flex-1 flex justify-center items-center text-ink-500 dark:text-cream-100/70 text-xs font-semibold">
@@ -62,7 +204,20 @@ export default function ListingDetail() {
   }
 
   if (!listing) {
-    return (
+    return isTenant ? (
+      <div className="tenant-wrapper" style={{ display: "flex" }}>
+        <TenantSidebarStrip />
+        <div className="flex-1 flex flex-col justify-center items-center text-center p-6 min-h-screen bg-[#FDFBF7] dark:bg-[#12221C]">
+          <h2 className="text-xl font-bold text-ink-900 dark:text-white mb-2">Listing Not Found</h2>
+          <p className="text-ink-500 dark:text-cream-100/70 text-sm mb-6">
+            This property does not exist or may have been removed.
+          </p>
+          <Button variant="primary" onClick={() => navigate(-1)}>
+            Go Back
+          </Button>
+        </div>
+      </div>
+    ) : (
       <div className="min-h-screen bg-cream-50 dark:bg-[#12221C] flex flex-col">
         <NavBar />
         <div className="flex-1 flex flex-col justify-center items-center text-center p-6">
@@ -101,7 +256,7 @@ export default function ListingDetail() {
   };
 
   const handleOpenChat = () => {
-    const isAuth = localStorage.getItem("isAuthenticated") === "true" || sessionStorage.getItem("isAuthenticated") === "true";
+    const isAuth = sessionStorage.getItem("isAuthenticated") === "true" || sessionStorage.getItem("isAuthenticated") === "true";
     if (!isAuth) {
       navigate("/login", { state: { from: `/listing/${id}` } });
       return;
@@ -134,25 +289,56 @@ export default function ListingDetail() {
     setChatMessages((prev) => [...prev, userMsg]);
     setInputMessage("");
 
-    // Simulate instant landlord response
+    // Sync to P2P chats in localStorage
+    const tenantName = sessionStorage.getItem("username") || "Tenant User";
+    const tenantEmail = sessionStorage.getItem("lastLoggedInEmail") || "tenant@example.com";
+    const propertyLandlordName = listing.landlord?.name || listing.landlord_name || "Skyline Properties Ltd";
+
+    // 1. Add to Tenant's chat list
+    const tChats = JSON.parse(localStorage.getItem("tenantChats") || "[]");
+    let tThread = tChats.find(c => c.name === propertyLandlordName);
+    if (!tThread) {
+      tThread = { id: Date.now() + Math.random(), name: propertyLandlordName, messages: [], unread: 0, avatar: propertyLandlordName.charAt(0).toUpperCase() };
+      tChats.unshift(tThread);
+    }
+    tThread.messages.push({ ...userMsg, sender: 'user' });
+    localStorage.setItem("tenantChats", JSON.stringify(tChats));
+
+    // 2. Add to Landlord's chat list
+    const lChats = JSON.parse(localStorage.getItem("landlordChats") || "[]");
+    let lThread = lChats.find(c => c.name === tenantName);
+    if (!lThread) {
+      lThread = { id: Date.now() + Math.random(), name: tenantName, messages: [], unread: 1, avatar: tenantName.charAt(0).toUpperCase() };
+      lChats.unshift(lThread);
+    }
+    lThread.messages.push({ ...userMsg, sender: 'tenant' });
+    lThread.unread = (lThread.unread || 0) + 1;
+    localStorage.setItem("landlordChats", JSON.stringify(lChats));
+
+    window.dispatchEvent(new Event("storage"));
+
+    // Simulate instant system notification
     setTimeout(() => {
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: "landlord",
-          text: "Thank you for reaching out! I've received your message and will arrange a viewing inspection for you shortly.",
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
+      const replyText = `Your message has been sent to ${propertyLandlordName}. You will receive a response shortly.`;
+      const replyMsg = {
+        id: Date.now() + 1,
+        sender: "system",
+        text: replyText,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setChatMessages((prev) => [...prev, replyMsg]);
+
+      // Note: We don't sync the "system" message to P2P because it's a local UI notification.
+      // The user's actual message was already synced to the Landlord above.
+
+      window.dispatchEvent(new Event("storage"));
     }, 1200);
   };
 
   // Price formatting
-  const rawPrice = listing.rent_amount || listing.price || 15000000;
-  const formattedPrice = typeof rawPrice === "number"
-    ? `₦${rawPrice.toLocaleString()}`
-    : String(rawPrice).startsWith("₦") ? rawPrice : `₦${rawPrice}`;
+  const rentAmount = Number(listing.rent_amount) || 0;
+  const rentPeriodStr = String(listing.rent_period || '').toLowerCase().includes('month') ? '/month' : '/year';
+  const formattedPrice = `₦${rentAmount.toLocaleString()}`;
 
   const propertyTypeDisplay = listing.property_type
     ? listing.property_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
@@ -167,15 +353,17 @@ export default function ListingDetail() {
     ? listing.amenities
     : typeof listing.amenities === "string" && listing.amenities
       ? listing.amenities.split(",").map((a) => a.trim()).filter(Boolean)
-      : ["Swimming Pool", "Boys Quarter", "Security", "Parking", "Gated Estate", "Prepaid Meter", "Gym", "Elevator", "Water Supply", "Electricity", "Generator", "Air Conditioning", "CCTV", "Serviced", "Furnished", "Internet"];
+      : [];
 
   const landlordName = listing.landlord?.name || listing.landlord_name || "Skyline Properties Ltd";
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] dark:bg-[#12221C] text-ink-900 dark:text-cream-100 transition-colors">
-      <NavBar />
+    <div className={isTenant ? "tenant-wrapper" : "min-h-screen bg-[#FDFBF7] dark:bg-[#12221C] text-ink-900 dark:text-cream-100 transition-colors"}
+      style={isTenant ? { display: "flex" } : undefined}
+    >
+      {isTenant ? <TenantSidebarStrip /> : <NavBar />}
 
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8">
+      <div className={isTenant ? "db-main-content flex-1 overflow-y-auto" : "mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-8"}>
         
         {/* TOP BAR: Back Link & Quick Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-ink-200/50 dark:border-white/10">
@@ -193,7 +381,7 @@ export default function ListingDetail() {
 
           <div className="flex items-center gap-2 self-end sm:self-auto">
             <button
-              onClick={() => setIsSaved(!isSaved)}
+              onClick={handleToggleSave}
               className={`px-3.5 py-1.5 rounded-full border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer outline-none ${isSaved
                 ? "bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-950/60 dark:border-rose-800 dark:text-rose-300"
                 : "bg-white dark:bg-[#16241F] border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100 hover:border-moss-500"
@@ -357,24 +545,26 @@ export default function ListingDetail() {
               </p>
 
               {/* Map Box Preview */}
-              <div className="relative rounded-2xl overflow-hidden border border-ink-200 dark:border-white/10 h-64 bg-cream-200 dark:bg-[#16241F] shadow-xs flex items-center justify-center">
-                <iframe
-                  title="Property Location Map"
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  scrolling="no"
-                  marginHeight="0"
-                  marginWidth="0"
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(locationDisplay)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
-                  className="w-full h-full opacity-90 dark:opacity-80"
-                />
+              <div className="mt-4">
+                <a href={`https://maps.google.com/maps?q=${encodeURIComponent(locationDisplay)}`} target="_blank" rel="noopener noreferrer" className="relative rounded-2xl overflow-hidden border border-ink-200 dark:border-white/10 h-64 bg-[#EAF0E8] dark:bg-[#16241F] shadow-xs flex flex-col items-center justify-center group hover:border-moss-400 transition-colors block">
+                  
+                  {/* Decorative Map Grid Background */}
+                  <div className="absolute inset-0 opacity-10 dark:opacity-5" style={{ backgroundImage: 'linear-gradient(#2C4633 1px, transparent 1px), linear-gradient(90deg, #2C4633 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                  
+                  <div className="relative z-10 flex flex-col items-center">
+                     <div className="h-14 w-14 rounded-full bg-white dark:bg-[#0A1612] shadow-md flex items-center justify-center mb-3 group-hover:-translate-y-1 transition-transform">
+                       <MapPin className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" />
+                     </div>
+                     <span className="text-sm font-bold text-ink-900 dark:text-white mb-1">View Full Map</span>
+                     <span className="text-[10px] uppercase tracking-wider text-ink-500 font-bold">Opens in new tab</span>
+                  </div>
 
-                {/* Price Marker Overlay Pill */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#12221C] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-white/20 flex items-center gap-1.5 z-10">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{formattedPrice}</span>
-                </div>
+                  {/* Price Marker Overlay Pill */}
+                  <div className="absolute bottom-4 right-4 bg-[#12221C] text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg border border-white/20 flex items-center gap-1.5 z-10">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>{formattedPrice}</span>
+                  </div>
+                </a>
               </div>
             </div>
 
@@ -413,11 +603,11 @@ export default function ListingDetail() {
           </div>
 
           {/* RIGHT STICKY SIDEBAR */}
-          <div className="sticky top-24 space-y-4">
+          <div className="sticky top-32 space-y-4">
             <div className="p-6 rounded-2xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#16241F] shadow-sm">
               <div className="text-2xl font-bold text-moss-800 dark:text-[#E5C583] mb-4">
                 {formattedPrice}
-                <span className="text-xs font-normal text-ink-500 dark:text-cream-100/60 ml-1">/year</span>
+                <span className="text-xs font-normal text-ink-500 dark:text-cream-100/60 ml-1">{rentPeriodStr}</span>
               </div>
 
               {/* Primary Contact Landlord Button (In-App Chat) */}
@@ -466,15 +656,15 @@ export default function ListingDetail() {
           <div className="w-full sm:w-[420px] bg-white dark:bg-[#12221C] h-full shadow-2xl flex flex-col justify-between border-l border-ink-200 dark:border-white/10">
             
             {/* Chat Drawer Header */}
-            <div className="p-4 bg-moss-800 dark:bg-[#16241F] text-white flex items-center justify-between border-b border-white/10">
+            <div className="p-4 bg-white dark:bg-[#16241F] border-b border-ink-100 dark:border-white/10 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-full bg-[#E5C583] text-[#263b33] font-bold text-sm flex items-center justify-center shrink-0">
                   {landlordName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <div className="font-bold text-xs text-white">{landlordName}</div>
-                  <div className="text-[10px] text-emerald-300 flex items-center gap-1 font-medium">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <div className="font-bold text-xs text-ink-900 dark:text-white">{landlordName}</div>
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-300 flex items-center gap-1 font-medium">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
                     Online — usually responds in minutes
                   </div>
                 </div>
@@ -483,7 +673,8 @@ export default function ListingDetail() {
               <button
                 type="button"
                 onClick={() => setIsChatOpen(false)}
-                className="text-white/80 hover:text-white p-1 rounded-lg cursor-pointer bg-transparent border-none outline-none"
+                className="h-8 w-8 flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 dark:bg-white/10 dark:hover:bg-white/20 text-ink-900 dark:text-white cursor-pointer transition-colors border-none outline-none shadow-sm"
+                title="Close Chat"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -494,19 +685,24 @@ export default function ListingDetail() {
               {chatMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex flex-col max-w-[80%] ${msg.sender === "user" ? "ml-auto items-end" : "items-start"}`}
+                  className={`flex flex-col ${msg.sender === "system" ? "w-full items-center my-4" : `max-w-[80%] ${msg.sender === "user" ? "ml-auto items-end" : "items-start"}`}`}
                 >
                   <div
-                    className={`p-3 rounded-2xl text-xs font-medium leading-relaxed ${msg.sender === "user"
-                      ? "bg-moss-700 text-white rounded-br-none"
-                      : "bg-white dark:bg-[#16241F] text-ink-900 dark:text-white border border-ink-200 dark:border-white/10 rounded-bl-none shadow-xs"
-                      }`}
+                    className={`p-3 text-xs font-medium leading-relaxed ${
+                      msg.sender === "user"
+                        ? "bg-moss-700 text-white rounded-2xl rounded-br-none"
+                        : msg.sender === "system"
+                        ? "bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 italic rounded-xl text-center border border-dashed border-neutral-300 dark:border-neutral-700 mx-auto"
+                        : "bg-white dark:bg-[#16241F] text-ink-900 dark:text-white border border-ink-200 dark:border-white/10 rounded-2xl rounded-bl-none shadow-xs"
+                    }`}
                   >
                     {msg.text}
                   </div>
-                  <span className="text-[10px] text-ink-400 dark:text-cream-100/50 mt-1 px-1 font-mono">
-                    {msg.time}
-                  </span>
+                  {msg.sender !== "system" && (
+                    <span className="text-[10px] text-ink-400 dark:text-cream-100/50 mt-1 px-1 font-mono">
+                      {msg.time}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

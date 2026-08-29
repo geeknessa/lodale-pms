@@ -7,7 +7,7 @@ export default function AccessDenied() {
   const navigate = useNavigate();
 
   const handleGoBack = () => {
-    const userRole = localStorage.getItem("userRole");
+    const userRole = sessionStorage.getItem("userRole");
     if (userRole === "landlord") {
       navigate("/dashboard/landlord");
     } else if (userRole === "tenant" || userRole === "user") {

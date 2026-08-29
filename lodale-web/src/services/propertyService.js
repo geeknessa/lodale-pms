@@ -74,4 +74,34 @@ export const propertyService = {
       method: 'DELETE',
     });
   },
+
+  /**
+   * Update a property's status
+   */
+  async updatePropertyStatus(id, status) {
+    return await apiClient(`/properties/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    });
+  },
+
+  /**
+   * Request deletion of a property
+   */
+  async requestPropertyDeletion(id, reason) {
+    return await apiClient(`/properties/${id}/request-deletion`, {
+      method: 'POST',
+      body: { reason },
+    });
+  },
+
+  /**
+   * Request suspension of a property
+   */
+  async requestPropertySuspension(id, reason) {
+    return await apiClient(`/properties/${id}/request-suspension`, {
+      method: 'POST',
+      body: { reason },
+    });
+  },
 };
