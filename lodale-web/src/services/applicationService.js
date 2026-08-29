@@ -57,4 +57,14 @@ export const applicationService = {
     });
     return data.application;
   },
+
+  /**
+   * Withdraw an application (Tenant only).
+   */
+  async withdrawApplication(applicationId) {
+    const data = await apiClient(`/applications/${applicationId}`, {
+      method: 'DELETE',
+    });
+    return data;
+  },
 };

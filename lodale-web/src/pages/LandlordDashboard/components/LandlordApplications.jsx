@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { applicationService } from "../../../services/applicationService";
 import { chatService } from "../../../services/chatService";
+import { leaseService } from "../../../services/leaseService";
 import Avatar from "../../../components/Avatar";
+import LeaseBuilderModal from "../../../components/LeaseBuilderModal";
 import { 
   CheckCircle2, XCircle, FileText, Briefcase, 
   Wallet, ShieldCheck, Mail, MapPin, Calendar, ExternalLink, MessageSquare
@@ -17,6 +19,76 @@ export default function LandlordApplications({ setActiveTab }) {
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Lease Setup Modal State
+  const [showLeaseSetupModal, setShowLeaseSetupModal] = useState(false);
+  const [leaseForm, setLeaseForm] = useState({
+    startDate: "",
+    duration: "1_year",
+    rentAmount: "",
+    rentPeriod: "annually",
+    securityDeposit: "",
+    customClauses: "",
+    includePets: false,
+    includeSmoking: false,
+    includeLateFee: true
+  });
+
+  const openLeaseSetup = () => {
+    if (!activeApp) return;
+    setLeaseForm({
+      startDate: new Date().toISOString().split('T')[0],
+      duration: "1_year",
+      rentAmount: activeApp.propertyRentAmount || "",
+      rentPeriod: activeApp.propertyRentPeriod || "annually",
+      securityDeposit: "",
+      customClauses: "",
+      includePets: false,
+      includeSmoking: false,
+      includeLateFee: true
+    });
+    setShowLeaseSetupModal(true);
+  };
+
+  const handleGenerateLease = async (e) => {
+    e.preventDefault();
+    if (!activeApp) return;
+    setIsSubmitting(true);
+    try {
+      const start = new Date(leaseForm.startDate);
+      let end = new Date(start);
+      if (leaseForm.duration === "1_month") {
+        end.setMonth(end.getMonth() + 1);
+      } else if (leaseForm.duration === "6_months") {
+        end.setMonth(end.getMonth() + 6);
+      } else {
+        end.setFullYear(end.getFullYear() + 1);
+      }
+
+      await leaseService.generateLease({
+        propertyId: activeApp.propertyId,
+        tenantId: activeApp.tenantId,
+        applicationId: activeApp.id,
+        startDate: leaseForm.startDate,
+        endDate: end.toISOString().split('T')[0],
+        rentAmount: leaseForm.rentAmount,
+        rentPeriod: leaseForm.rentPeriod,
+        securityDeposit: leaseForm.securityDeposit || 0,
+        customClauses: leaseForm.customClauses,
+        includePets: leaseForm.includePets,
+        includeSmoking: leaseForm.includeSmoking,
+        includeLateFee: leaseForm.includeLateFee
+      });
+      triggerToast("Lease generated successfully and sent to tenant!", "success");
+      setShowLeaseSetupModal(false);
+      fetchApplications();
+    } catch (err) {
+      console.error(err);
+      triggerToast(err.response?.data?.error || "Failed to generate lease", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     fetchApplications();
@@ -309,7 +381,7 @@ export default function LandlordApplications({ setActiveTab }) {
                 </button>
                 <button 
                   className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg transition-colors shadow-sm disabled:opacity-50"
-                  onClick={() => handleStatusUpdate('approved')}
+                  onClick={openLeaseSetup}
                   disabled={activeApp.status === 'approved' || isSubmitting}
                 >
                   Approve Application
@@ -406,7 +478,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
       {/* Decline Reason Modal */}
       {showDeclineModal && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/75 backdrop-blur-md p-4">
           <div className="bg-white dark:bg-[#12221C] rounded-2xl w-full max-w-md p-6 shadow-2xl">
             <h3 className="text-lg font-bold text-ink-900 dark:text-white mb-2">Decline Application</h3>
             <p className="text-sm text-ink-500 mb-4">
@@ -439,6 +511,23 @@ export default function LandlordApplications({ setActiveTab }) {
           </div>
         </div>
       )}
+
+      {/* Lease Builder Modal */}
+      <LeaseBuilderModal
+        isOpen={showLeaseSetupModal}
+        onClose={() => setShowLeaseSetupModal(false)}
+        application={activeApp}
+        property={{
+          id: activeApp?.propertyId,
+          title: activeApp?.propertyTitle,
+          rent_amount: activeApp?.propertyRentAmount,
+          rent_period: activeApp?.propertyRentPeriod
+        }}
+        tenant={activeApp?.tenant}
+        onSuccess={() => {
+          fetchApplications();
+        }}
+      />
     </div>
   );
 }

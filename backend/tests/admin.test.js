@@ -1,7 +1,7 @@
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import app from '../src/server.js';
-import { pool } from '../src/config/db.js';
+import { pool } from '../src/db/db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'lodale_secret_key_2026';
 

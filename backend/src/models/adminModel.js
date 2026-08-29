@@ -1,4 +1,4 @@
-import { pool } from '../config/db.js';
+import { pool } from '../db/db.js';
 import { UserModel } from './userModel.js';
 
 export const AdminModel = {

@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
-import { User, Lock, LogOut, Calendar, CheckCircle2, Pencil, Sun, Moon, FileText, Send, Download } from "lucide-react";
+import { User, Lock, Sun, Moon, Calendar, LogOut, Pencil, FileText, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import { triggerToast } from "../../context/ToastContext";
-import { formatDate } from "../../utils/formatters";
-import { propertyService } from "../../services/propertyService";
 import { userService } from "../../services/userService";
+import { profileService } from "../../services/profileService";
+import { leaseService } from "../../services/leaseService";
+import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import "./Settings.css";
 
 export default function Settings() {
@@ -31,7 +31,7 @@ export default function Settings() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  
+
   // Scoped helper to define landlord fullName cleanly
   const getFullName = () => {
     return `${firstName} ${lastName}`.trim() || sessionStorage.getItem("username") || "Landlord User";
@@ -45,6 +45,11 @@ export default function Settings() {
   const [postalCode, setPostalCode] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
+  // Bank Account State for Rent Payouts
+  const [bankName, setBankName] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [bankAccountName, setBankAccountName] = useState("");
+
   const loadStoredProfile = () => {
     const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
     let localProf = null;
@@ -54,7 +59,7 @@ export default function Settings() {
     } catch (e) { }
 
     const storedUsername = sessionStorage.getItem("username") || (emailKey ? sessionStorage.getItem("username_" + emailKey) : null) || sessionStorage.getItem("username") || "";
-    
+
     let fname = localProf?.firstName || localProf?.first_name || "";
     let lname = localProf?.lastName || localProf?.last_name || "";
     if (!fname && storedUsername) {
@@ -89,7 +94,11 @@ export default function Settings() {
 
     async function fetchProfile() {
       try {
-        const profile = await userService.getProfile();
+        const [profile, roleProfile] = await Promise.all([
+          userService.getProfile(),
+          profileService.getMyProfile()
+        ]);
+
         if (profile) {
           setUserProfile(profile);
           if (profile.first_name) setFirstName(profile.first_name);
@@ -102,6 +111,12 @@ export default function Settings() {
           if (profile.location) setLocation(profile.location);
           if (profile.postal_code || profile.postalCode) setPostalCode(profile.postal_code || profile.postalCode);
           if (profile.gender) setGender(profile.gender);
+        }
+
+        if (roleProfile) {
+          if (roleProfile.bank_name) setBankName(roleProfile.bank_name);
+          if (roleProfile.bank_account_number) setBankAccountNumber(roleProfile.bank_account_number);
+          if (roleProfile.bank_account_name) setBankAccountName(roleProfile.bank_account_name);
         }
       } catch (err) {
         console.warn("Failed to fetch landlord profile", err);
@@ -138,385 +153,42 @@ export default function Settings() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
-  // Document Generator States
-  const [properties, setProperties] = useState([]);
-  const [activeTenantsList, setActiveTenantsList] = useState([]);
-  const [tenantName, setTenantName] = useState("");
-  const [selectedPropertyId, setSelectedPropertyId] = useState("");
-  const [rentAmount, setRentAmount] = useState("");
-  const [leaseStart, setLeaseStart] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
-  });
-  const [leaseTermNumber, setLeaseTermNumber] = useState("1");
-  const [leaseTermUnit, setLeaseTermUnit] = useState("Year"); // "Month" | "Year"
+  // Leases State
+  const [leases, setLeases] = useState([]);
+  const [selectedLeaseToSign, setSelectedLeaseToSign] = useState(null);
+  const [signatureInput, setSignatureInput] = useState("");
+  const [confirmCheck, setConfirmCheck] = useState(false);
 
-  const termNum = Math.max(1, parseInt(leaseTermNumber, 10) || 1);
-  const leaseDuration = `${termNum} ${leaseTermUnit}${termNum > 1 ? "s" : ""}`;
-
-  const getCalculatedEndDate = (startDateStr) => {
-    const endDate = new Date(startDateStr);
-    if (leaseTermUnit === "Month") {
-      endDate.setMonth(endDate.getMonth() + termNum);
-    } else {
-      endDate.setFullYear(endDate.getFullYear() + termNum);
-    }
-    return endDate;
-  };
-  const [includePets, setIncludePets] = useState(false);
-  const [includeSmoking, setIncludeSmoking] = useState(false);
-  const [includeLateFee, setIncludeLateFee] = useState(true);
-  const [customClause, setCustomClause] = useState("");
-
-  // Load properties and tenants
   useEffect(() => {
-    async function fetchProperties() {
-      try {
-        const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
-        const props = await propertyService.getLandlordProperties(currentUserId);
-        setProperties(props);
-        if (props.length > 0) {
-          setSelectedPropertyId(props[0].id);
-          setRentAmount(props[0].price || "250000");
-        }
-      } catch (e) {
-        console.warn("Error fetching properties", e);
-      }
-    }
-    fetchProperties();
+    fetchLeases();
+  }, [activeTab]);
 
-    const savedTenants = localStorage.getItem("propertyTenants");
-    let parsedTenants = {};
-    if (savedTenants) {
-      try {
-        parsedTenants = JSON.parse(savedTenants);
-      } catch {
-        parsedTenants = {};
-      }
-    }
-
-    const allTenants = [];
-    Object.keys(parsedTenants).forEach((propId) => {
-      const list = parsedTenants[propId] || [];
-      list.forEach((t) => {
-        allTenants.push(t);
-      });
-    });
-    setActiveTenantsList(allTenants);
-
-    if (allTenants.length > 0) {
-      setTenantName(allTenants[0].name || allTenants[0].tenantName || "");
-    }
-  }, []);
-
-  const handlePropertyChange = (propId) => {
-    setSelectedPropertyId(propId);
-    const prop = properties.find(p => p.id === propId);
-    if (prop) {
-      setRentAmount(prop.price || "");
+  const fetchLeases = async () => {
+    try {
+      const data = await leaseService.getMyLeases();
+      setLeases(data);
+    } catch (err) {
+      console.error("Failed to fetch leases", err);
     }
   };
 
-  const selectedProperty = properties.find(p => p.id === selectedPropertyId) || properties[0] || { title: "Specify Property", location: "Specify Location" };
-
-
-
-  const handleDownloadDoc = () => {
-    const today = formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" });
-    const formattedStartDate = formatDate(leaseStart, { day: "numeric", month: "long", year: "numeric" });
-
-    const endDate = getCalculatedEndDate(leaseStart);
-    const formattedEndDate = formatDate(endDate, { day: "numeric", month: "long", year: "numeric" });
-
-    const wordHtml = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-      <head>
-        <title>Tenancy Agreement - ${tenantName}</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
-          body { font-family: 'Georgia', serif; line-height: 1.6; padding: 40px; color: #111; }
-          h1 { text-align: center; font-size: 20pt; text-transform: uppercase; color: #2C4633; margin-bottom: 20pt; font-weight: bold; }
-          h2 { font-size: 14pt; color: #2C4633; margin-top: 15pt; border-bottom: 1px solid #2C4633; padding-bottom: 3pt; font-weight: bold; }
-          p { font-size: 11pt; margin-bottom: 10pt; text-align: justify; }
-          ul { margin-bottom: 10pt; }
-          li { font-size: 11pt; margin-bottom: 6pt; }
-          .sig-table { margin-top: 50pt; width: 100%; border-collapse: collapse; border: none; }
-          .sig-cell { width: 50%; border: none; padding-top: 10pt; font-size: 11pt; }
-        </style>
-      </head>
-      <body>
-        <h1>Residential Tenancy Agreement</h1>
-        <p style='text-align: center; font-size: 10pt; font-style: italic; color: #666;'>Lodale Property Management System</p>
-        <hr style='border: none; border-top: 2px solid #2C4633; margin-bottom: 20pt;' />
-        
-        <p><strong>THIS AGREEMENT</strong> is made this <strong>${today}</strong>,</p>
-        
-        <p><strong>BETWEEN:</strong></p>
-        <p><strong>LANDLORD:</strong> ${fullName}</p>
-        <p><strong>AND</strong></p>
-        <p><strong>TENANT:</strong> ${tenantName || "[Tenant Name]"}</p>
-        
-        <h2>1. PROPERTY DESCRIPTION</h2>
-        <p>The Landlord agrees to lease to the Tenant, and the Tenant agrees to lease from the Landlord, the property located at:</p>
-        <p><strong>${selectedProperty.title || "[Property Title]"}</strong>, situated at <em>${selectedProperty.location || "[Property Location]"}</em>.</p>
-        
-        <h2>2. TERM OF LEASE</h2>
-        <p>The term of this lease shall be for a duration of <strong>${leaseDuration}</strong>, commencing on <strong>${formattedStartDate}</strong> and ending on <strong>${formattedEndDate}</strong>.</p>
-        
-        <h2>3. RENT PAYMENT</h2>
-        <p>The Tenant shall pay a rent of <strong>${rentAmount || "[Rent Amount]"}</strong> per month, payable in advance on or before the 1st day of every calendar month.</p>
-        
-        <h2>4. COVENANTS AND POLICIES</h2>
-        <ul>
-          <li><strong>PETS:</strong> ${includePets ? "The Landlord consents to the Tenant keeping domestic pets at the property." : "No pets shall be kept on the property without prior written consent from the Landlord."}</li>
-          <li><strong>SMOKING:</strong> ${includeSmoking ? "Smoking is permitted in designated outdoor areas only." : "The Tenant shall maintain the property smoke-free. Indoor smoking is strictly prohibited."}</li>
-          ${includeLateFee ? "<li><strong>LATE FEE:</strong> A late fee penalty of 10% of the monthly rent shall be charged if rent remains unpaid after 5 days from the due date.</li>" : ""}
-          ${customClause ? `<li><strong>ADDITIONAL TERMS:</strong> ${customClause}</li>` : ""}
-        </ul>
-        
-        <p style='margin-top: 30pt;'>IN WITNESS WHEREOF, the parties hereto have set their hands and seals on the day and year first above written.</p>
-        
-        <table class='sig-table'>
-          <tr>
-            <td class='sig-cell'>
-              <div style='font-family: "Great Vibes", "Georgia", cursive; font-size: 26pt; color: #1A365D; line-height: 1; margin-bottom: 2pt;'>${fullName}</div>
-              <div style='font-size: 8pt; color: #10B981; font-weight: bold; text-transform: uppercase; margin-bottom: 5pt;'>✓ Digitally Signed via Lodale Sign</div>
-              <div style='border-top: 1px solid #333; width: 80%; padding-top: 5pt;'>
-                <strong>${fullName}</strong><br/>
-                Landlord
-              </div>
-            </td>
-            <td class='sig-cell' style='padding-top: 40pt;'>
-              <div style='border-top: 1px solid #000; width: 80%; padding-top: 5pt;'>
-                <strong>${tenantName || "[Tenant Name]"}</strong><br/>
-                Tenant
-              </div>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-
-    const blob = new Blob(['\ufeff' + wordHtml], { type: "application/msword;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `Tenancy_Agreement_${(tenantName || "Tenant").replace(/\s+/g, "_")}.doc`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    setSaveSuccess(true);
-    setToastMessage("Word document (.doc) exported successfully!");
-    setTimeout(() => {
-      setSaveSuccess(false);
-      setToastMessage("");
-    }, 3000);
-  };
-
-  const handlePrintPDF = () => {
-    const today = formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" });
-    const formattedStartDate = formatDate(leaseStart, { day: "numeric", month: "long", year: "numeric" });
-
-    const endDate = getCalculatedEndDate(leaseStart);
-    const formattedEndDate = formatDate(endDate, { day: "numeric", month: "long", year: "numeric" });
-
-    const printWindow = window.open("", "_blank", "width=850,height=900,left=50,top=50");
-    printWindow.document.write(`
-      <html>
-      <head>
-        <title>Tenancy Agreement - ${tenantName}</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
-          body { 
-            font-family: 'Georgia', serif; 
-            line-height: 1.6; 
-            padding: 50px; 
-            color: #111; 
-            background-color: #fff;
-          }
-          .header-box {
-            text-align: center;
-            border-bottom: 2px double #2C4633;
-            padding-bottom: 15px;
-            margin-bottom: 30px;
-          }
-          h1 { 
-            font-size: 22pt; 
-            text-transform: uppercase; 
-            color: #2C4633; 
-            margin: 0;
-            font-weight: bold;
-            letter-spacing: 1px;
-          }
-          .system-tag {
-            font-size: 9pt;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #666;
-            margin-top: 5px;
-            display: block;
-          }
-          h2 { 
-            font-size: 13pt; 
-            color: #2C4633; 
-            margin-top: 25px; 
-            margin-bottom: 10px;
-            border-bottom: 1px solid #ddd; 
-            padding-bottom: 3px; 
-            font-weight: bold; 
-          }
-          p { 
-            font-size: 11pt; 
-            margin-bottom: 12px; 
-            text-align: justify; 
-          }
-          ul { 
-            margin-bottom: 15px; 
-            padding-left: 20px;
-          }
-          li { 
-            font-size: 11pt; 
-            margin-bottom: 8px; 
-          }
-          .sig-row { 
-            margin-top: 60px; 
-            display: flex; 
-            justify-content: space-between; 
-          }
-          .sig-box { 
-            width: 45%; 
-            border-top: 1px solid #333; 
-            padding-top: 8px; 
-            text-align: center; 
-            font-size: 11pt; 
-          }
-          @media print {
-            body { padding: 20px; }
-            @page { margin: 1in; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header-box">
-          <h1>Tenancy Agreement</h1>
-          <span class="system-tag">Lodale Property Management System</span>
-        </div>
-        
-        <p><strong>THIS AGREEMENT</strong> is made this <strong>${today}</strong>,</p>
-        
-        <p><strong>BETWEEN:</strong></p>
-        <p><strong>LANDLORD:</strong> ${fullName}</p>
-        <p><strong>AND</strong></p>
-        <p><strong>TENANT:</strong> ${tenantName || "[Tenant Name]"}</p>
-        
-        <h2>1. PROPERTY DESCRIPTION</h2>
-        <p>The Landlord agrees to lease to the Tenant, and the Tenant agrees to lease from the Landlord, the property located at:</p>
-        <p><strong>${selectedProperty.title || "[Property Title]"}</strong>, situated at <em>${selectedProperty.location || "[Property Location]"}</em>.</p>
-        
-        <h2>2. TERM OF LEASE</h2>
-        <p>The term of this lease shall be for a duration of <strong>${leaseDuration}</strong>, commencing on <strong>${formattedStartDate}</strong> and ending on <strong>${formattedEndDate}</strong>.</p>
-        
-        <h2>3. RENT PAYMENT</h2>
-        <p>The Tenant shall pay a rent of <strong>${rentAmount || "[Rent Amount]"}</strong> per month, payable in advance on or before the 1st day of every calendar month.</p>
-        
-        <h2>4. COVENANTS AND POLICIES</h2>
-        <ul>
-          <li><strong>PETS:</strong> ${includePets ? "The Landlord consents to the Tenant keeping domestic pets at the property." : "No pets shall be kept on the property without prior written consent from the Landlord."}</li>
-          <li><strong>SMOKING:</strong> ${includeSmoking ? "Smoking is permitted in designated outdoor areas only." : "The Tenant shall maintain the property smoke-free. Indoor smoking is strictly prohibited."}</li>
-          ${includeLateFee ? "<li><strong>LATE FEE:</strong> A late fee penalty of 10% of the monthly rent shall be charged if rent remains unpaid after 5 days from the due date.</li>" : ""}
-          ${customClause ? `<li><strong>ADDITIONAL TERMS:</strong> ${customClause}</li>` : ""}
-        </ul>
-        
-        <p style="margin-top: 40px;">IN WITNESS WHEREOF, the parties hereto have set their hands and seals on the day and year first above written.</p>
-        
-        <div class="sig-row">
-          <div class="sig-box" style="border-top: none; padding-top: 0; text-align: left;">
-            <div style="font-family: 'Great Vibes', 'Georgia', cursive; font-size: 28px; color: #1A365D; line-height: 1; margin-bottom: 2px;">${fullName}</div>
-            <div style="font-size: 8.5px; color: #10B981; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">✓ Digitally Signed via Lodale Sign</div>
-            <div style="border-top: 1px solid #333; padding-top: 5px;">
-              <strong>${fullName}</strong><br/>
-              Landlord
-            </div>
-          </div>
-          <div class="sig-box" style="margin-top: 45px;">
-            <strong>${tenantName || "[Tenant Name]"}</strong><br/>
-            Tenant
-          </div>
-        </div>
-
-        <script>
-          window.onload = function() {
-            setTimeout(function() {
-              window.print();
-              window.close();
-            }, 300);
-          }
-        </script>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-  };
-
-  const handleSendToTenant = () => {
-    if (!tenantName) {
-      triggerToast("Please select or enter a tenant name first.", "warning", "Missing Tenant");
+  const handleSignLease = async () => {
+    if (!signatureInput.trim() || !confirmCheck) {
+      triggerToast("Please provide your signature and check the confirmation box.", "warning");
       return;
     }
-
-    const docId = "doc-" + Date.now();
-    const refCode = "DOC-" + new Date().getFullYear() + "-LOD-" + Math.floor(10000 + Math.random() * 90000);
-    const dateSentStr = formatDate(new Date(), { day: "numeric", month: "short", year: "numeric" });
-
-    const newDoc = {
-      id: docId,
-      refCode: refCode,
-      title: `Tenancy Lease Agreement (${leaseDuration})`,
-      type: "Lease Agreement",
-      propertyName: selectedProperty.title || "Modern Residential Unit",
-      propertyLocation: selectedProperty.location || "",
-      landlordName: fullName || "Landlord / Property Manager",
-      tenantName: tenantName,
-      rentAmount: rentAmount,
-      leaseDuration: leaseDuration,
-      leaseStart: leaseStart,
-      dateSent: dateSentStr,
-      status: "pending",
-      content: `RESIDENTIAL TENANCY LEASE AGREEMENT\n\n1. PARTIES & DEMISED PREMISES:\nThis Tenancy Lease Agreement is entered into between Landlord: ${fullName} and Tenant: ${tenantName} for the demised property: ${selectedProperty.title || "Apartment Unit"}, situated at ${selectedProperty.location || "Nigeria"}.\n\n2. DURATION & COMMENCEMENT:\nThe lease term shall be for a duration of ${leaseDuration}, commencing on ${formatDate(leaseStart, { day: "numeric", month: "long", year: "numeric" })}.\n\n3. RENT & PAYMENT TERMS:\nThe agreed rent is ${rentAmount || "₦0"} per month, payable in advance on or before the agreed cycle.\n\n4. COVENANTS AND POLICIES:\n- Pets: ${includePets ? "Permitted" : "No unauthorized pets allowed"}\n- Smoking: ${includeSmoking ? "Permitted in designated outdoor areas only" : "Strictly prohibited indoors"}\n- Late Penalty: ${includeLateFee ? "10% charge if rent is unpaid after 5 days" : "Standard billing policies apply"}\n${customClause ? `\n- Additional Clauses:\n${customClause}\n` : ""}\n5. ACKNOWLEDGEMENT & EXECUTION:\nBoth parties acknowledge the validity of this contract upon digital execution.`
-    };
-
-    const savedTenantDocs = localStorage.getItem("tenantLegalDocuments");
-    const tenantDocsList = savedTenantDocs ? JSON.parse(savedTenantDocs) : [];
-    tenantDocsList.unshift(newDoc);
-    localStorage.setItem("tenantLegalDocuments", JSON.stringify(tenantDocsList));
-
-    const savedNotifs = localStorage.getItem("landlordNotifications");
-    const notifsList = savedNotifs ? JSON.parse(savedNotifs) : [];
-
-    const newNotif = {
-      id: "notif-send-" + Date.now(),
-      title: "Agreement Sent",
-      message: `Tenancy agreement generated for ${selectedProperty.title} has been successfully sent to ${tenantName} for signing.`,
-      time: "Just now",
-      type: "success",
-      read: false
-    };
-
-    notifsList.unshift(newNotif);
-    localStorage.setItem("landlordNotifications", JSON.stringify(notifsList));
-    window.dispatchEvent(new Event("storage"));
-
-    setSaveSuccess(true);
-    triggerToast(`Agreement successfully sent to ${tenantName} for signing!`, "success", "Agreement Sent");
-    setToastMessage(`Agreement successfully sent to ${tenantName} for signing!`);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      setToastMessage("");
-    }, 4000);
+    try {
+      await leaseService.signLease(selectedLeaseToSign.id);
+      triggerToast("Lease signed successfully!", "success");
+      setSelectedLeaseToSign(null);
+      setSignatureInput("");
+      setConfirmCheck(false);
+      fetchLeases();
+    } catch (err) {
+      triggerToast(err.response?.data?.error || "Failed to sign lease", "error");
+    }
   };
+
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -525,12 +197,19 @@ export default function Settings() {
       const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
 
       try {
-        await userService.updateProfile({
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          phone_number: phone.trim(),
-          avatar_url: avatarUrl
-        });
+        await Promise.all([
+          userService.updateProfile({
+            first_name: firstName.trim(),
+            last_name: lastName.trim(),
+            phone_number: phone.trim(),
+            avatar_url: avatarUrl
+          }),
+          profileService.updateMyProfile({
+            bank_name: bankName.trim(),
+            bank_account_number: bankAccountNumber.trim(),
+            bank_account_name: bankAccountName.trim()
+          })
+        ]);
       } catch (apiErr) {
         console.warn("Backend updateProfile warning:", apiErr);
       }
@@ -674,7 +353,7 @@ export default function Settings() {
               onClick={() => setActiveTab("document")}
             >
               <FileText className="h-4.5 w-4.5" />
-              <span>Document Generator</span>
+              <span>Leases & Documents</span>
             </button>
 
             <button
@@ -778,6 +457,58 @@ export default function Settings() {
                     onChange={(e) => setAddress(e.target.value)}
                     className="set-ref-input"
                   />
+                </div>
+
+                <div className="set-ref-input-group">
+                  <label className="set-ref-lbl">Postal Code</label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    className="set-ref-input"
+                    placeholder="e.g. 100001"
+                  />
+                </div>
+
+                {/* Banking & Payout Details */}
+                <div className="full pt-6 mt-4 border-t border-neutral-200 dark:border-white/10">
+                  <h3 className="text-sm font-bold text-ink-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                    🏦 Banking Details (For Rent Payouts)
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <label className="set-ref-lbl">Bank Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. GTBank, Access Bank"
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        className="set-ref-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="set-ref-lbl">Account Number</label>
+                      <input
+                        type="text"
+                        maxLength={10}
+                        placeholder="e.g. 0123456789"
+                        value={bankAccountNumber}
+                        onChange={(e) => setBankAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                        className="set-ref-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="set-ref-lbl">Account Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. John Doe Enterprises"
+                        value={bankAccountName}
+                        onChange={(e) => setBankAccountName(e.target.value)}
+                        className="set-ref-input"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="set-ref-input-group">
@@ -937,287 +668,105 @@ export default function Settings() {
               </div>
             </form>
           ) : (
-            <div className="set-ref-form doc-gen-wrapper">
-              <h1 className="set-ref-title">Tenancy Agreement Generator</h1>
+            <div className="set-ref-form">
+              <h1 className="set-ref-title">Leases & Legal Documents</h1>
               <p className="doc-gen-subtitle text-xs text-ink-500 dark:text-cream-100/60 -mt-2.5 mb-4">
-                Configure lease parameters to generate a legally-binding tenancy contract agreement.
+                View and sign your generated tenancy agreements.
               </p>
 
-              <div className="doc-gen-split">
-                {/* Form Controls */}
-                <div className="doc-gen-form">
-                  <div className="set-ref-input-group full">
-                    <label className="set-ref-lbl">Select Tenant</label>
-                    <div className="relative">
-                      {activeTenantsList.length > 0 ? (
-                        <select
-                          value={tenantName}
-                          onChange={(e) => setTenantName(e.target.value)}
-                          className="set-ref-input cursor-pointer"
+              {leases.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 text-ink-400">
+                  <FileText className="h-12 w-12 mb-3 opacity-50" />
+                  <p>No leases found.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {leases.map(lease => (
+                    <div key={lease.id} className="bg-white dark:bg-[#16241F] border border-[#E4EAE1] dark:border-white/10 rounded-xl p-5 shadow-sm">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-bold text-ink-900 dark:text-white">{lease.property_title}</h3>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${lease.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
+                          lease.landlord_signed_at ? 'bg-amber-100 text-amber-800' :
+                            'bg-rose-100 text-rose-800'
+                          }`}>
+                          {lease.status === 'active' ? 'Active' : lease.landlord_signed_at ? 'Pending Tenant' : 'Needs Your Signature'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-ink-600 mb-1">Tenant: <strong>{lease.tenant_name}</strong></p>
+                      <p className="text-xs text-ink-600 mb-3">Rent: <strong>₦{parseFloat(lease.rent_amount).toLocaleString()} {lease.rent_period}</strong></p>
+
+                      {!lease.landlord_signed_at ? (
+                        <button
+                          onClick={() => setSelectedLeaseToSign(lease)}
+                          className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg"
                         >
-                          {activeTenantsList.map((t, idx) => (
-                            <option key={t.id || idx} value={t.name || t.tenantName}>
-                              {t.name || t.tenantName} ({t.email})
-                            </option>
-                          ))}
-                        </select>
+                          Sign Lease
+                        </button>
                       ) : (
-                        <input
-                          type="text"
-                          placeholder="Type tenant's name"
-                          value={tenantName}
-                          onChange={(e) => setTenantName(e.target.value)}
-                          className="set-ref-input"
-                          required
-                        />
+                        <button disabled className="w-full py-2 bg-ink-100 text-ink-500 font-bold text-sm rounded-lg">
+                          Signed on {new Date(lease.landlord_signed_at).toLocaleDateString()}
+                        </button>
                       )}
                     </div>
-                  </div>
-
-                  <div className="set-ref-input-group full">
-                    <label className="set-ref-lbl">Select Property</label>
-                    <select
-                      value={selectedPropertyId}
-                      onChange={(e) => handlePropertyChange(e.target.value)}
-                      className="set-ref-input cursor-pointer"
-                    >
-                      {properties.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="set-ref-grid">
-                    <div className="set-ref-input-group">
-                      <label className="set-ref-lbl">Rent Amount (₦)</label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={rentAmount}
-                        onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
-                        onChange={(e) => setRentAmount(e.target.value.replace(/[^0-9]/g, ''))}
-                        className="set-ref-input"
-                        placeholder="e.g. 350000"
-                        required
-                      />
-                    </div>
-
-                    <div className="set-ref-input-group">
-                      <label className="set-ref-lbl">Lease Duration</label>
-                      <div className="flex gap-2.5">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={3}
-                          value={leaseTermNumber}
-                          onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
-                          onChange={(e) => setLeaseTermNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                          className="set-ref-input flex-1 min-w-[70px]"
-                          placeholder="e.g. 1"
-                          required
-                        />
-                        <select
-                          value={leaseTermUnit}
-                          onChange={(e) => setLeaseTermUnit(e.target.value)}
-                          className="set-ref-input cursor-pointer flex-1 min-w-[105px]"
-                        >
-                          <option value="Month">Month(s)</option>
-                          <option value="Year">Year(s)</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="set-ref-input-group full">
-                    <label className="set-ref-lbl">Lease Start Date</label>
-                    <input
-                      type="date"
-                      value={leaseStart}
-                      onChange={(e) => setLeaseStart(e.target.value)}
-                      className="set-ref-input"
-                      required
-                    />
-                  </div>
-
-                  <div className="doc-gen-clauses space-y-2 mt-4">
-                    <label className="set-ref-lbl font-extrabold mb-1 block">Lease Policies</label>
-                    
-                    <label className="flex items-center gap-2 text-xs font-semibold text-ink-700 dark:text-cream-100/80 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={includePets}
-                        onChange={(e) => setIncludePets(e.target.checked)}
-                        className="accent-[#2C4633] dark:accent-[#E5C583]"
-                      />
-                      <span>Allow domestic pets at the property</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 text-xs font-semibold text-ink-700 dark:text-cream-100/80 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={includeSmoking}
-                        onChange={(e) => setIncludeSmoking(e.target.checked)}
-                        className="accent-[#2C4633] dark:accent-[#E5C583]"
-                      />
-                      <span>Allow smoking in outdoor designated areas</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 text-xs font-semibold text-ink-700 dark:text-cream-100/80 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={includeLateFee}
-                        onChange={(e) => setIncludeLateFee(e.target.checked)}
-                        className="accent-[#2C4633] dark:accent-[#E5C583]"
-                      />
-                      <span>Apply 10% penalty fee for late rent payouts</span>
-                    </label>
-                  </div>
-
-                  <div className="set-ref-input-group full mt-4">
-                    <label className="set-ref-lbl">Custom Terms / Clauses</label>
-                    <textarea
-                      placeholder="Add any additional custom lease agreements here..."
-                      value={customClause}
-                      onChange={(e) => setCustomClause(e.target.value)}
-                      className="set-ref-input min-h-[70px] resize-none"
-                    />
-                  </div>
+                  ))}
                 </div>
-
-                {/* Live Preview Paper */}
-                <div className="doc-preview-card">
-                  <div className="doc-paper shadow-xl bg-white dark:bg-[#16241F] border border-[#E4EAE1] dark:border-white/10 rounded-2xl p-6 md:p-8 overflow-y-auto max-h-[500px] text-left relative">
-                    
-                    {/* Stylized Document Watermark / Seal background */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none select-none" style={{ opacity: 0.03 }}>
-                      <span className="font-serif text-[100px] font-extrabold text-[#2C4633] tracking-widest leading-none">LODALE</span>
-                    </div>
-
-                    {/* Document Header letterhead */}
-                    <div className="text-center border-b pb-4 mb-5 border-[#E4EAE1] dark:border-white/10 relative">
-                      {/* Decorative Seal Icon */}
-                      <div className="mx-auto mb-2 w-12 h-12 rounded-full border-2 border-double border-[#2C4633] dark:border-[#E5C583] flex items-center justify-center text-[#2C4633] dark:text-[#E5C583] bg-cream-50 dark:bg-white/5 font-serif font-extrabold text-sm shadow-xs">
-                        L
-                      </div>
-                      <h2 className="font-serif text-[#2C4633] dark:text-[#E5C583] text-xl font-bold uppercase tracking-wide">Tenancy Agreement</h2>
-                      <span className="text-[9px] text-ink-400 dark:text-cream-100/50 font-bold uppercase tracking-wider block mt-1">Lodale Property Management System</span>
-                    </div>
-
-                    {/* Document body text */}
-                    <div className="space-y-4 text-xs font-serif text-ink-800 dark:text-cream-100/90 leading-relaxed">
-                      <p><strong>THIS AGREEMENT</strong> is made this <strong>{formatDate(new Date(), { day: "numeric", month: "long", year: "numeric" })}</strong>,</p>
-                      
-                      <p className="font-bold border-b pb-1 border-ink-100 dark:border-white/5 text-[11px] text-[#2C4633] dark:text-[#E5C583] uppercase tracking-wider">The Parties</p>
-                      <div className="grid grid-cols-2 gap-4 bg-ink-50/50 dark:bg-white/2 p-3 rounded-xl">
-                        <div>
-                          <span className="text-[10px] text-ink-400 dark:text-cream-100/50 uppercase block font-bold">Landlord</span>
-                          <span className="font-bold text-ink-900 dark:text-white">{fullName}</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-ink-400 dark:text-cream-100/50 uppercase block font-bold">Tenant</span>
-                          <span className="font-bold text-ink-900 dark:text-white">{tenantName || "Specify Tenant"}</span>
-                        </div>
-                      </div>
-
-                      <p className="font-bold border-b pb-1 border-ink-100 dark:border-white/5 text-[11px] text-[#2C4633] dark:text-[#E5C583] uppercase tracking-wider">1. Property Description</p>
-                      <p>
-                        The Landlord agrees to lease to the Tenant, and the Tenant agrees to lease from the Landlord, the property located at:
-                        <strong className="block mt-1 text-ink-900 dark:text-white">{selectedProperty.title || "Specify Property"}</strong>
-                        <span className="text-[11px] text-ink-500 dark:text-cream-100/60 block mt-0.5">{selectedProperty.location || "Specify Location"}</span>
-                      </p>
-
-                      <p className="font-bold border-b pb-1 border-ink-100 dark:border-white/5 text-[11px] text-[#2C4633] dark:text-[#E5C583] uppercase tracking-wider">2. Term of Lease</p>
-                      <p>
-                        The term of this lease shall be for a duration of <strong>{leaseDuration}</strong>, commencing on <strong>{formatDate(leaseStart, { day: "numeric", month: "long", year: "numeric" })}</strong>.
-                      </p>
-
-                      <p className="font-bold border-b pb-1 border-ink-100 dark:border-white/5 text-[11px] text-[#2C4633] dark:text-[#E5C583] uppercase tracking-wider">3. Rent Payment</p>
-                      <p>
-                        The Tenant shall pay a rent of <strong>{rentAmount || "₦0"}</strong> per month, payable in advance on or before the 1st of every month.
-                      </p>
-
-                      <p className="font-bold border-b pb-1 border-ink-100 dark:border-white/5 text-[11px] text-[#2C4633] dark:text-[#E5C583] uppercase tracking-wider">4. Covenants & Policies</p>
-                      <ul className="list-disc pl-4 space-y-1.5 font-sans">
-                        <li>
-                          <strong>Pets Policy:</strong> {includePets ? "The Landlord consents to the Tenant keeping domestic pets at the property." : "No pets shall be kept on the property without prior written consent from the Landlord."}
-                        </li>
-                        <li>
-                          <strong>Smoking Policy:</strong> {includeSmoking ? "Smoking is permitted in designated outdoor areas only." : "The Tenant shall maintain the property smoke-free. Indoor smoking is strictly prohibited."}
-                        </li>
-                        {includeLateFee && (
-                          <li>
-                            <strong>Late Fee Policy:</strong> A late fee penalty of 10% of the rent shall be charged if rent is unpaid after 5 days from the due date.
-                          </li>
-                        )}
-                        {customClause && (
-                          <li>
-                            <strong>Additional Clause:</strong> {customClause}
-                          </li>
-                        )}
-                      </ul>
-
-                      <p className="pt-2 text-ink-500 dark:text-cream-100/60 italic text-[11px]">
-                        IN WITNESS WHEREOF, the parties hereto have set their hands and seals on the day and year first above written.
-                      </p>
-
-                      {/* Signature Lines */}
-                      <div className="grid grid-cols-2 gap-8 pt-8 border-t border-ink-100 dark:border-white/10 mt-6">
-                        <div className="text-left">
-                          <div className="doc-e-signature font-serif text-[#1A365D] dark:text-[#E5C583] text-2xl mb-1 select-none">
-                            {fullName}
-                          </div>
-                          <div className="doc-sig-status text-[#10B981] text-[9px] font-bold uppercase tracking-wider mb-2 flex items-center gap-1">
-                            <span>✓</span> Digitally Signed
-                          </div>
-                          <div className="border-t border-ink-300 dark:border-white/20 pt-2 text-[11px] font-bold text-ink-800 dark:text-white">
-                            {fullName}
-                          </div>
-                          <span className="text-[9px] text-ink-400 dark:text-cream-100/50 uppercase block">Landlord Signature</span>
-                        </div>
-                        <div className="text-center pt-10">
-                          <div className="border-t border-dashed border-ink-400 dark:border-white/20 pt-2 text-[11px] font-bold text-ink-800 dark:text-white">
-                            {tenantName || "...................................."}
-                          </div>
-                          <span className="text-[9px] text-ink-400 dark:text-cream-100/50 uppercase block">Tenant Signature</span>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="doc-footer-actions flex justify-end gap-3 mt-6 border-t pt-4 border-ink-100 dark:border-white/10">
-                <button
-                  type="button"
-                  onClick={handleDownloadDoc}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-ink-200 dark:border-white/10 hover:bg-ink-100/40 dark:hover:bg-white/5 text-ink-800 dark:text-white text-xs font-bold transition-all cursor-pointer"
-                >
-                  <Download className="h-4 w-4" /> Export Word (.doc)
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePrintPDF}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-ink-200 dark:border-white/10 hover:bg-ink-100/40 dark:hover:bg-white/5 text-ink-800 dark:text-white text-xs font-bold transition-all cursor-pointer"
-                >
-                  <FileText className="h-4 w-4" /> Print / Save PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSendToTenant}
-                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#263b33] hover:opacity-90 text-xs font-bold transition-all cursor-pointer"
-                >
-                  <Send className="h-4 w-4" /> Send to Tenant
-                </button>
-              </div>
+              )}
             </div>
           )}
         </div>
-
       </div>
+
+      {/* Signing Modal */}
+      {selectedLeaseToSign && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-[#12221C] rounded-2xl w-full max-w-md p-6 shadow-2xl my-8">
+            <h3 className="text-xl font-bold text-ink-900 dark:text-white mb-1 flex items-center gap-2">
+              <Lock className="h-5 w-5 text-moss-600" /> Sign Lease Agreement
+            </h3>
+            <p className="text-sm text-ink-500 mb-6">
+              You are electronically signing the lease for <strong>{selectedLeaseToSign.property_title}</strong> with <strong>{selectedLeaseToSign.tenant_name}</strong>.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-ink-700 dark:text-cream-100 mb-1">Digital Signature (Type your full name)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Engr. Clement Okoro"
+                  value={signatureInput}
+                  onChange={(e) => setSignatureInput(e.target.value)}
+                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-sm text-ink-900 dark:text-white bg-cream-50 dark:bg-white/5 outline-none focus:border-moss-600 font-serif italic"
+                />
+              </div>
+              <label className="flex items-start gap-2 text-xs text-ink-700 dark:text-cream-100 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={confirmCheck}
+                  onChange={(e) => setConfirmCheck(e.target.checked)}
+                  className="mt-0.5 rounded text-moss-600 focus:ring-moss-500"
+                />
+                <span className="leading-relaxed">I agree to be legally bound by this electronic signature, which carries the same legal weight as a physical signature on a paper document.</span>
+              </label>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-ink-100 dark:border-white/10 mt-4">
+                <button
+                  onClick={() => { setSelectedLeaseToSign(null); setSignatureInput(""); setConfirmCheck(false); }}
+                  className="px-4 py-2 font-bold text-sm text-ink-600 hover:bg-ink-50 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSignLease}
+                  disabled={!signatureInput.trim() || !confirmCheck}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg disabled:opacity-50"
+                >
+                  Sign Document
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { AdminModel } from '../models/adminModel.js';
 import { PropertyModel } from '../models/propertyModel.js';
 import { UserModel } from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { clearDatabase } from '../config/db.js';
+import { clearDatabase } from '../db/db.js';
 
 export const adminController = {
   getPendingProperties: asyncHandler(async (req, res) => {

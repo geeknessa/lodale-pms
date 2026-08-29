@@ -22,6 +22,8 @@ import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
+import { profileService } from "../../services/profileService";
+import { leaseService } from "../../services/leaseService";
 import "./TenantSettings.css";
 
 export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChange, onProfileUpdate }) {
@@ -102,28 +104,33 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [confirmPassword, setConfirmPassword] = useState("");
 
   // Documents & E-Signing State Management
-  const [documents, setDocuments] = useState(() => {
-    const saved = localStorage.getItem("tenantLegalDocuments");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) { }
-    }
-    return [
-      {
-        id: "doc-1",
-        refCode: "DOC-2026-LOD-84920",
-        title: "Tenancy Lease Agreement (2026-2027)",
+  const [documents, setDocuments] = useState([]);
+
+  const fetchLeases = async () => {
+    try {
+      const leases = await leaseService.getMyLeases();
+      const formatted = leases.map(l => ({
+        id: l.id,
+        refCode: `LOD-${l.id.substring(0, 8).toUpperCase()}`,
+        title: `Tenancy Lease Agreement (${l.property_title})`,
         type: "Lease Agreement",
-        propertyName: "Modern Luxury Villa, Lekki Phase 1",
-        landlordName: "Skyline Realty / Engr. Clement Okoro",
-        dateSent: "07 Aug 2026",
-        status: "pending",
-        content: `RESIDENTIAL TENANCY LEASE AGREEMENT (2026 - 2027)\n\n1. PARTIES & DEMISED PREMISES:\nThis Tenancy Lease Agreement is made between Engr. Clement Okoro (Landlord/Lessor) and the Tenant for the property: Modern Luxury Villa, Lekki Phase 1, Lagos, Nigeria.\n\n2. TERM & COMMENCEMENT:\nThe lease term shall be for a duration of Twelve (12) calendar months commencing immediately upon execution.\n\n3. RENT & SERVICE CHARGES:\nRent is agreed at ₦3,500,000 per annum, payable in advance. Service charges cover 24/7 security, central water filtration, and backup power generator servicing.\n\n4. COVENANTS & CARE OF PREMISES:\nThe Tenant agrees to keep the demised property in good, tenantable condition, refrain from unauthorized structural alterations, and report maintenance requests promptly.\n\n5. GOVERNING LAW & JURISDICTION:\nThis Agreement is governed by the tenancy laws of the Federal Republic of Nigeria.`
-      }
-    ];
-  });
+        propertyName: l.property_title,
+        landlordName: l.landlord_name,
+        dateSent: new Date(l.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }),
+        signedAt: l.tenant_signed_at ? new Date(l.tenant_signed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : new Date(l.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        status: (l.status === 'active' || l.status === 'signed' || l.tenant_signed_at) ? 'signed' : 'pending',
+        content: `RESIDENTIAL TENANCY LEASE AGREEMENT\n\n1. PARTIES & DEMISED PREMISES:\nThis Tenancy Lease Agreement is made between ${l.landlord_name} (Landlord/Lessor) and ${l.tenant_name} (Tenant) for the property: ${l.property_title}, ${l.property_address}, ${l.property_city}, Nigeria.\n\n2. TERM & COMMENCEMENT:\nThe lease term shall commence on ${new Date(l.start_date).toLocaleDateString()} and end on ${new Date(l.end_date).toLocaleDateString()}.\n\n3. RENT & SERVICE CHARGES:\nRent is agreed at ₦${parseFloat(l.rent_amount).toLocaleString()} ${l.rent_period === 'monthly' ? 'per month' : 'per annum'}, payable in advance.\n\n4. COVENANTS & CARE OF PREMISES:\nThe Tenant agrees to keep the demised property in good, tenantable condition.\n- Pets: ${l.include_pets ? "Permitted" : "No unauthorized pets allowed"}\n- Smoking: ${l.include_smoking ? "Permitted in designated outdoor areas only" : "Strictly prohibited indoors"}\n- Late Penalty: ${l.include_late_fee ? "10% charge if rent is unpaid after 5 days" : "Standard billing policies apply"}\n${l.custom_clauses ? `\n- Additional Clauses:\n${l.custom_clauses}\n` : ""}\n5. GOVERNING LAW & JURISDICTION:\nThis Agreement is governed by the tenancy laws of the Federal Republic of Nigeria.`,
+        backendLease: l
+      }));
+      setDocuments(formatted);
+    } catch (err) {
+      console.error("Failed to fetch leases", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeases();
+  }, []);
 
   // Modal E-Signing states
   const [selectedDocToSign, setSelectedDocToSign] = useState(null);
@@ -152,22 +159,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     loadProfile();
   }, []);
 
-  // Listen to cross-tab storage changes for tenant documents
-  useEffect(() => {
-    const syncDocs = () => {
-      const saved = localStorage.getItem("tenantLegalDocuments");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setDocuments(parsed);
-          }
-        } catch (e) { }
-      }
-    };
-    window.addEventListener("storage", syncDocs);
-    return () => window.removeEventListener("storage", syncDocs);
-  }, []);
+
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -379,75 +371,26 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   };
 
   // Submit E-Signature Handler
-  const handleSignDocument = (e) => {
+  const handleSignDocument = async (e) => {
     e.preventDefault();
-    if (!signatureInput.trim()) {
-      triggerToast("Please enter your full name as your digital signature.", "warning", "Signature Required");
+    if (!signatureInput.trim() || !confirmCheck) {
+      triggerToast("Please provide your signature and check the confirmation box.", "warning");
       return;
     }
-    if (!confirmCheck) {
-      triggerToast("Please check the box to confirm legal agreement.", "warning", "Confirmation Required");
-      return;
-    }
-
-    const nowStr = new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    }) + ", " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const updated = documents.map((doc) => {
-      if (doc.id === selectedDocToSign.id) {
-        return {
-          ...doc,
-          status: "signed",
-          signedAt: nowStr,
-          signedName: signatureInput.trim()
-        };
-      }
-      return doc;
-    });
-
-    setDocuments(updated);
-    localStorage.setItem("tenantLegalDocuments", JSON.stringify(updated));
 
     try {
-      const savedLandlordDocs = localStorage.getItem("landlordDocuments");
-      const landlordDocs = savedLandlordDocs ? JSON.parse(savedLandlordDocs) : [];
-      const tenantName = (sessionStorage.getItem("username") || sessionStorage.getItem("username") || `${firstName} ${lastName}`).trim();
-      const updatedLandlord = [
-        ...landlordDocs.filter(d => d.id !== selectedDocToSign.id),
-        {
-          id: selectedDocToSign.id,
-          title: selectedDocToSign.title,
-          tenantName: tenantName,
-          landlordName: selectedDocToSign.landlordName,
-          dateSigned: nowStr,
-          signedName: signatureInput.trim(),
-          status: "Signed"
-        }
-      ];
-      localStorage.setItem("landlordDocuments", JSON.stringify(updatedLandlord));
-
-      const savedLandlordNotifs = localStorage.getItem("landlordNotifications");
-      const landlordNotifs = savedLandlordNotifs ? JSON.parse(savedLandlordNotifs) : [];
-      landlordNotifs.unshift({
-        id: "notif-signed-" + Date.now(),
-        title: "Agreement Signed",
-        message: `${tenantName} has signed the tenancy agreement for ${selectedDocToSign.propertyName || "the property"}.`,
-        time: "Just now",
-        type: "success",
-        read: false
-      });
-      localStorage.setItem("landlordNotifications", JSON.stringify(landlordNotifs));
-    } catch (err) { }
-
-    window.dispatchEvent(new Event("storage"));
-    triggerToast("Document signed successfully & returned to landlord!", "success", "Document Signed");
-    setSelectedDocToSign(null);
-    setSignatureInput("");
-    setConfirmCheck(false);
-    setDocSubTab("signed");
+      await leaseService.signLease(selectedDocToSign.id);
+      
+      triggerToast("Document signed successfully & returned to landlord!", "success", "Document Signed");
+      setSelectedDocToSign(null);
+      setSignatureInput("");
+      setConfirmCheck(false);
+      setDocSubTab("signed");
+      
+      fetchLeases();
+    } catch (err) {
+      triggerToast("Failed to sign lease", "error");
+    }
   };
 
   // PDF Generator HTML Template
@@ -456,7 +399,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     const refCode = doc.refCode || "DOC-2026-LOD-84920";
     const propertyName = doc.propertyName || "Modern Luxury Villa, Lekki Phase 1";
     const landlordName = doc.landlordName || "Skyline Realty / Engr. Clement Okoro";
-    const signedDate = doc.signedAt || "Aug 7, 2026";
+    const signedDate = doc.signedAt || new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
     return `<!DOCTYPE html>
 <html>

@@ -1,4 +1,4 @@
-import { pool } from '../config/db.js';
+import { pool } from '../db/db.js';
 
 // @desc    Apply for a property
 // @route   POST /api/applications
@@ -146,6 +146,8 @@ export const getLandlordApplications = async (req, res) => {
          a.property_id,
          a.tenant_id,
          p.title as property_title,
+         p.rent_amount as property_rent_amount,
+         p.rent_period as property_rent_period,
          p.minimum_income_required,
          p.requires_guarantor,
          u.first_name,
@@ -174,6 +176,8 @@ export const getLandlordApplications = async (req, res) => {
       id: app.id,
       propertyId: app.property_id,
       propertyTitle: app.property_title,
+      propertyRentAmount: app.property_rent_amount,
+      propertyRentPeriod: app.property_rent_period,
       tenantId: app.tenant_id,
       status: app.status,
       notes: app.notes,
@@ -251,5 +255,37 @@ export const updateApplicationStatus = async (req, res) => {
   } catch (error) {
     console.error('Update application status error:', error);
     res.status(500).json({ success: false, message: 'Server error updating application status' });
+  }
+};
+
+// @desc    Withdraw/Cancel an application
+// @route   DELETE /api/applications/:id
+// @access  Private (Tenant)
+export const withdrawApplication = async (req, res) => {
+  const { id } = req.params;
+  const tenantId = req.user.id;
+
+  try {
+    const appCheck = await pool.query(
+      'SELECT id, status FROM property_applications WHERE id = $1 AND tenant_id = $2',
+      [id, tenantId]
+    );
+
+    if (appCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Application not found or not owned by you' });
+    }
+
+    const app = appCheck.rows[0];
+    if (app.status === 'leased' || app.status === 'active') {
+      return res.status(400).json({ success: false, message: 'Cannot withdraw an application for an active tenancy.' });
+    }
+
+    // Delete application
+    await pool.query('DELETE FROM property_applications WHERE id = $1', [id]);
+
+    res.json({ success: true, message: 'Application withdrawn successfully.' });
+  } catch (error) {
+    console.error('Withdraw application error:', error);
+    res.status(500).json({ success: false, message: 'Server error withdrawing application' });
   }
 };
