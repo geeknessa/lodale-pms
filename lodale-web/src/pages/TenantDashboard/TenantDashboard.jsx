@@ -43,6 +43,7 @@ import TenantApplications from "./TenantApplications";
 import { leaseService } from "../../services/leaseService";
 import { rentService } from "../../services/rentService";
 import { maintenanceService } from "../../services/maintenanceService";
+import { chatService } from "../../services/chatService";
 
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
@@ -1016,7 +1017,9 @@ export default function TenantDashboard() {
                       prof.occupation = editOccupation;
                       prof.income = editIncome;
                       sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(prof));
+                      sessionStorage.setItem("currentUserProfile", JSON.stringify(prof));
                       if (emailKey) localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(prof));
+                      window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: prof }));
                       window.dispatchEvent(new Event("storage"));
                       setIsEditingProfile(false);
                       triggerToast("Profile updated successfully!", "success", "Profile Saved");
@@ -1740,6 +1743,25 @@ export default function TenantDashboard() {
                             <span className="meta-val highlight-gold">{activeLease.price || "₦150,000"}</span>
                           </div>
                         </div>
+                        <Button
+                          onClick={async () => {
+                            const landlordName = activeLease.landlord || "Landlord";
+                            const landlordId = activeLease.landlord_id || activeLease.landlordId || `landlord-${landlordName.toLowerCase().replace(/\s+/g, '-')}`;
+                            try {
+                              await chatService.sendMessage(landlordId, `Hello ${landlordName}, reaching out regarding my active lease for ${activeLease.propertyTitle || 'my unit'}.`, null, {
+                                partner_name: landlordName,
+                                partner_avatar: ""
+                              });
+                            } catch (e) { }
+                            sessionStorage.setItem("activeChatPartnerId", landlordId);
+                            localStorage.setItem("activeChatPartnerId", landlordId);
+                            setActiveTab(2); // Navigate to Chat tab
+                          }}
+                          className="w-full mt-3 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12px] font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Chat with Landlord ({activeLease.landlord})
+                        </Button>
                       </div>
                     </>
                   ) : (
@@ -1917,7 +1939,7 @@ export default function TenantDashboard() {
           />
         ) : activeTab === 2 ? (
           <main className="db-main-content chat-tab-active">
-            <TenantChat />
+            <TenantChat setActiveTab={setActiveTab} />
           </main>
         ) : activeTab === 3 ? (
           <main className="db-main-content">

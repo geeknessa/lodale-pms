@@ -148,6 +148,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           if (profile.last_name) setLastName(profile.last_name);
           if (profile.email) setEmail(profile.email);
           if (profile.phone_number) setPhone(profile.phone_number);
+          if (profile.location) setLocation(profile.location);
           if (profile.avatar_url && !avatarUrl) {
             setAvatarUrl(profile.avatar_url);
           }
@@ -249,6 +250,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           avatar: avatarUrl || userProfile.avatar || ""
         };
         sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(profToSave));
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(profToSave));
         if (curEmail) {
           localStorage.setItem("tenantProfile_" + curEmail, JSON.stringify(profToSave));
         }
@@ -263,7 +265,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         onProfileUpdate?.(newFullName, avatarUrl);
 
         // Notify sidebar and search header to refresh immediately
-        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: newFullName, avatar: avatarUrl } }));
+        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: newFullName, avatar: avatarUrl, location: location } }));
         window.dispatchEvent(new Event("storage"));
 
         // Step 2: Try to sync with backend — fail gracefully if session has expired

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Search, Phone, Video, MoreHorizontal, Send, Paperclip,
-  Mic, Play, Pause, ChevronRight, Building2, ArrowLeft
+  Search, Phone, Video, Send, Paperclip,
+  Building2, ArrowLeft, Trash2
 } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
 import { supportService } from "../../../services/supportService";
@@ -27,33 +27,29 @@ export default function LandlordChat() {
   const chatListRef = useRef(null);
   const messageThreadRef = useRef(null);
 
+  const supportThread = {
+    partner_id: "lodale-support",
+    first_name: "Lodale",
+    last_name: "Admin",
+    avatar_url: "/logo_black.svg",
+    last_message: supportMessages.length > 0 ? supportMessages[supportMessages.length - 1].message : "Lodale Official Support Team",
+    last_message_time: supportMessages.length > 0 ? supportMessages[supportMessages.length - 1].created_at : new Date(),
+    isSupport: true
+  };
+
   // Initial Data Fetching
+  const fetchChatData = async () => {
+    const [convos, apps] = await Promise.all([
+      chatService.getConversations(),
+      applicationService.getLandlordApplications()
+    ]);
+    setApplications(apps);
+    setChats([supportThread, ...convos]);
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      // Fetch Chat Conversations & Applications
-      const [convos, apps] = await Promise.all([
-        chatService.getConversations(),
-        applicationService.getLandlordApplications()
-      ]);
-      setApplications(apps);
-
-      // Inject Support Thread at top
-      const supportThread = {
-        partner_id: "lodale-support",
-        first_name: "Lodale",
-        last_name: "Admin",
-        avatar_url: "/logo_black.svg",
-        last_message: supportMessages.length > 0 ? supportMessages[supportMessages.length - 1].message : "Lodale Official Support Team",
-        last_message_time: supportMessages.length > 0 ? supportMessages[supportMessages.length - 1].created_at : new Date(),
-        isSupport: true
-      };
-
-      setChats([supportThread, ...convos]);
-    };
-
-    fetchData();
-    // Simple polling for conversations every 15s
-    const interval = setInterval(fetchData, 15000);
+    fetchChatData();
+    const interval = setInterval(fetchChatData, 12000);
     return () => clearInterval(interval);
   }, [supportMessages]);
 
@@ -93,7 +89,7 @@ export default function LandlordChat() {
     };
 
     fetchThread();
-    const interval = setInterval(fetchThread, 5000);
+    const interval = setInterval(fetchThread, 4000);
     return () => clearInterval(interval);
   }, [activeChatId, supportMessages]);
 
@@ -113,43 +109,72 @@ export default function LandlordChat() {
     }
   }, [activeChatId]);
 
-  // Combine existing chat conversations with all property applicants
-  const allChats = [...chats];
-  applications.forEach(app => {
-    const tenantId = app.tenantId || app.tenant_id || app.tenant?.id;
-    if (tenantId && !allChats.some(c => String(c.partner_id) === String(tenantId))) {
-      allChats.push({
-        partner_id: tenantId,
-        first_name: app.tenant?.firstName || "Applicant",
-        last_name: app.tenant?.lastName || "",
-        avatar_url: app.tenant?.avatar || "",
-        last_message: `Applicant for ${app.propertyTitle || 'Property'}`,
-        last_message_time: app.createdAt || app.date,
-        isApplicant: true,
-        propertyTitle: app.propertyTitle
-      });
-    }
-  });
+  // Handle partner ID passed from Applications or Tenants view
+  useEffect(() => {
+    const checkPendingPartner = () => {
+      const pendingPartnerId = sessionStorage.getItem("activeChatPartnerId") || localStorage.getItem("activeChatPartnerId");
+      if (pendingPartnerId) {
+        setActiveChatId(pendingPartnerId);
+        setMobileShowSidebar(false);
+        sessionStorage.removeItem("activeChatPartnerId");
+        localStorage.removeItem("activeChatPartnerId");
+        return;
+      }
+      const pendingName = localStorage.getItem("activeChatTenantName");
+      if (pendingName) {
+        const found = chats.find(c => `${c.first_name || ''} ${c.last_name || ''}`.trim().toLowerCase() === pendingName.trim().toLowerCase());
+        if (found) {
+          setActiveChatId(found.partner_id);
+          setMobileShowSidebar(false);
+        }
+        localStorage.removeItem("activeChatTenantName");
+      }
+    };
+    checkPendingPartner();
+    window.addEventListener("focus", checkPendingPartner);
+    return () => window.removeEventListener("focus", checkPendingPartner);
+  }, [chats]);
 
-  const applicantIds = new Set(applications.map(a => String(a.tenantId || a.tenant_id || a.tenant?.id)));
+  // Pending applicant IDs only (if status is pending / under_review / info_requested)
+  const pendingApplicantIds = new Set(
+    applications
+      .filter(a => {
+        const s = (a.status || '').toLowerCase();
+        return s === 'pending' || s === 'under_review' || s === 'info_requested' || s === 'reviewing';
+      })
+      .map(a => String(a.tenantId || a.tenant_id || a.tenant?.id))
+  );
 
-  const activeChat = allChats.find(c => String(c.partner_id) === String(activeChatId));
+  const activeChat = chats.find(c => String(c.partner_id) === String(activeChatId));
 
-  const filteredChats = allChats.filter(c => {
+  const filteredChats = chats.filter(c => {
     // 1. Filter by Active Tab
     if (activeTab === "Applicants") {
-      // Show ONLY applicants in the Applicants tab
-      if (!applicantIds.has(String(c.partner_id))) return false;
+      if (!pendingApplicantIds.has(String(c.partner_id))) return false;
     } else {
-      // Show ONLY tenants (and support) in the Tenants tab
-      if (!c.isSupport && applicantIds.has(String(c.partner_id))) return false;
+      if (!c.isSupport && pendingApplicantIds.has(String(c.partner_id))) return false;
     }
 
     // 2. Filter by search query
-    const name = c.isSupport ? "Lodale Admin" : `${c.first_name || ''} ${c.last_name || ''}`;
+    const name = c.isSupport ? "Lodale Admin" : `${c.first_name || ''} ${c.last_name || ''}`.trim();
     return name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.last_message || "").toLowerCase().includes(searchQuery.toLowerCase());
+           (c.last_message || "").toLowerCase().includes(searchQuery.toLowerCase());
   });
+
+  const handleDeleteConversation = async () => {
+    if (!activeChatId || activeChatId === "lodale-support") return;
+    const confirmDelete = window.confirm("Are you sure you want to delete this conversation? This will clear all messages with this contact.");
+    if (!confirmDelete) return;
+
+    try {
+      await chatService.deleteConversation(activeChatId);
+      triggerToast("Conversation deleted", "info", "Deleted");
+      setActiveChatId(null);
+      fetchChatData();
+    } catch (err) {
+      triggerToast("Failed to delete conversation", "error");
+    }
+  };
 
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
@@ -170,7 +195,6 @@ export default function LandlordChat() {
     try {
       await chatService.sendMessage(activeChatId, newMessage);
       setNewMessage("");
-      // Optimistically fetch thread to show message immediately
       const msgs = await chatService.getMessages(activeChatId);
       setThreadMessages(msgs.map(m => ({
         id: m.id,
@@ -183,7 +207,7 @@ export default function LandlordChat() {
     }
   };
 
-  const landlordFileInputRef = useRef(null);
+  const chatFileInputRef = useRef(null);
 
   const handlePaperclipFile = (e) => {
     const file = e.target.files[0];
@@ -195,7 +219,7 @@ export default function LandlordChat() {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const dataUrl = event.target.result;
-        const msg = `[DOCUMENT UPLOADED]\nDocument Type: Attachment\nFile Name: ${file.name}\nData: ${dataUrl}`;
+        const msg = `[DOCUMENT UPLOADED]\nDocument Type: Chat Attachment\nFile Name: ${file.name}\nData: ${dataUrl}`;
         if (activeChatId) {
           try {
             await chatService.sendMessage(activeChatId, msg);
@@ -242,7 +266,7 @@ export default function LandlordChat() {
               download={fileName}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-emerald-900 dark:bg-emerald-950 dark:text-emerald-300 rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-moss-900 dark:bg-moss-800 dark:text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
             >
               📥 Download / View Document
             </a>
@@ -257,28 +281,33 @@ export default function LandlordChat() {
     <div className={`lc-container ${mobileShowSidebar ? "mobile-sidebar-active" : "mobile-thread-active"}`}>
       <input
         type="file"
-        ref={landlordFileInputRef}
+        ref={chatFileInputRef}
         onChange={handlePaperclipFile}
         accept="image/*,application/pdf,.doc,.docx"
         className="hidden"
       />
+      
       {/* 1. LEFT COLUMN: Chat List */}
       <div className="lc-sidebar">
 
-        {/* Tabs */}
-        <div className="lc-tabs">
-          <button
-            className={`lc-tab ${activeTab === "Tenants" ? "active" : ""}`}
-            onClick={() => { setActiveTab("Tenants"); setActiveChatId(null); setMobileShowSidebar(true); }}
-          >
-            Tenants
-          </button>
-          <button
-            className={`lc-tab ${activeTab === "Applicants" ? "active" : ""}`}
-            onClick={() => { setActiveTab("Applicants"); setActiveChatId(null); setMobileShowSidebar(true); }}
-          >
-            Applicants
-          </button>
+        {/* Header */}
+        <div className="lc-sidebar-header" style={{ padding: "20px 20px 12px 20px" }}>
+          <h2 className="lc-sidebar-title text-left" style={{ fontSize: "20px", fontWeight: "850", color: "var(--text-primary)", margin: "0 0 12px 0", letterSpacing: "-0.02em" }}>Messages</h2>
+          
+          <div className="lc-tabs-row flex items-center gap-2">
+            <button
+              className={`lc-tab ${activeTab === "Tenants" ? "active" : ""}`}
+              onClick={() => { setActiveTab("Tenants"); setActiveChatId(null); setMobileShowSidebar(true); }}
+            >
+              Tenants
+            </button>
+            <button
+              className={`lc-tab ${activeTab === "Applicants" ? "active" : ""}`}
+              onClick={() => { setActiveTab("Applicants"); setActiveChatId(null); setMobileShowSidebar(true); }}
+            >
+              Applicants
+            </button>
+          </div>
         </div>
 
         {/* Sort & Search */}
@@ -300,7 +329,7 @@ export default function LandlordChat() {
           {filteredChats.length > 0 ? (
             filteredChats.map((chat) => {
               const isActive = chat.partner_id === activeChatId;
-              const name = chat.isSupport ? "Lodale Admin" : `${chat.first_name} ${chat.last_name}`;
+              const name = chat.isSupport ? "Lodale Admin" : `${chat.first_name || ''} ${chat.last_name || ''}`.trim() || "Contact";
 
               let timeStr = "Just now";
               if (chat.last_message_time) {
@@ -331,17 +360,15 @@ export default function LandlordChat() {
                     </div>
                     <p className="lc-card-snippet">{chat.last_message || "Start a conversation"}</p>
                   </div>
-
+                  
                   {isActive && <div className="lc-active-indicator" />}
                 </div>
               );
             })
           ) : (
-            <div className="lc-empty-chats">
-              <p>No active {activeTab.toLowerCase()} conversations yet.</p>
-              {activeTab === "Applicants" && (
-                <span className="text-[11px] text-ink-300">Start a chat with an applicant from the Applications tab.</span>
-              )}
+            <div className="lc-empty-chats flex flex-col items-center justify-center p-6 text-center">
+              <p className="text-xs font-semibold text-ink-700 dark:text-cream-100">No {activeTab.toLowerCase()} conversations yet.</p>
+              <span className="text-[11px] text-ink-400 mt-1">Initiate a chat directly from Applications or Tenants directory.</span>
             </div>
           )}
         </div>
@@ -363,43 +390,38 @@ export default function LandlordChat() {
             <div className="lc-header-tenant-info">
               <Avatar
                 src={activeChat.avatar_url}
-                name={activeChat.isSupport ? "Lodale Admin" : `${activeChat.first_name} ${activeChat.last_name}`}
+                name={activeChat.isSupport ? "Lodale Admin" : `${activeChat.first_name || ''} ${activeChat.last_name || ''}`.trim()}
                 className="lc-header-avatar rounded-full"
               />
               <div>
                 <h3 className="lc-header-name">
-                  {activeChat.isSupport ? "Lodale Official Support" : `${activeChat.first_name} ${activeChat.last_name}`}
+                  {activeChat.isSupport ? "Lodale Official Support" : `${activeChat.first_name || ''} ${activeChat.last_name || ''}`.trim()}
                 </h3>
                 <span className="lc-header-status text-moss-600 dark:text-moss-400">Online</span>
               </div>
             </div>
 
-            <div className="lc-header-actions">
+            <div className="lc-header-actions flex items-center gap-1">
               <button className="lc-header-btn" title="Voice Call">
                 <Phone className="h-4.5 w-4.5" />
               </button>
               <button className="lc-header-btn" title="Video Call">
                 <Video className="h-4.5 w-4.5" />
               </button>
-              <button className="lc-header-btn" title="More Options">
-                <MoreHorizontal className="h-4.5 w-4.5" />
-              </button>
+              {activeChatId !== "lodale-support" && (
+                <button
+                  className="lc-header-btn text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 p-2 rounded-lg transition-colors cursor-pointer"
+                  title="Delete Conversation"
+                  onClick={handleDeleteConversation}
+                >
+                  <Trash2 className="h-4.5 w-4.5 text-rose-600" />
+                </button>
+              )}
             </div>
           </div>
 
           {/* Scrollable messages area */}
           <div className="lc-messages-container" ref={messageThreadRef}>
-            {activeChatId === "lodale-support" && (
-              <div className="p-3 mb-4 mx-4 rounded-xl bg-emerald-50 dark:bg-[#1A2E22] border border-emerald-200 dark:border-[#2A4B36] text-center shadow-sm">
-                <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                  Lodale Official Support
-                </p>
-                <p className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-1 leading-tight">
-                  Send a message here if you have any problems or complaints. Our team will respond shortly.
-                </p>
-              </div>
-            )}
-
             <div className="lc-date-divider">
               <span>Today</span>
             </div>
@@ -418,7 +440,7 @@ export default function LandlordChat() {
                     {!isMine && (
                       <Avatar
                         src={activeChat.avatar_url}
-                        name={activeChat.isSupport ? "Lodale Admin" : `${activeChat.first_name} ${activeChat.last_name}`}
+                        name={activeChat.isSupport ? "Lodale Admin" : `${activeChat.first_name || ''} ${activeChat.last_name || ''}`.trim()}
                         className="lc-bubble-avatar rounded-full"
                       />
                     )}
@@ -433,48 +455,13 @@ export default function LandlordChat() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Request Chips for Applicants */}
-          {activeTab === "Applicants" && (
-            <div className="flex items-center gap-2 px-4 py-2 bg-cream-50 dark:bg-black/20 border-t border-ink-100 dark:border-white/5 overflow-x-auto text-[11px] font-semibold text-ink-700 dark:text-cream-100">
-              <span className="text-ink-400 dark:text-cream-100/60 uppercase text-[10px] tracking-wider shrink-0 font-bold">Request:</span>
-              <button
-                type="button"
-                onClick={() => setNewMessage("[REQUEST] Please provide your 3 months recent payslips / proof of employment.")}
-                className="px-2.5 py-1 bg-white dark:bg-white/10 hover:bg-moss-50 dark:hover:bg-moss-900/40 rounded-full border border-ink-200 dark:border-white/10 shrink-0 transition-colors"
-              >
-                📄 Payslips / Employment
-              </button>
-              <button
-                type="button"
-                onClick={() => setNewMessage("[REQUEST] Please provide your Government ID / NIN verification.")}
-                className="px-2.5 py-1 bg-white dark:bg-white/10 hover:bg-moss-50 dark:hover:bg-moss-900/40 rounded-full border border-ink-200 dark:border-white/10 shrink-0 transition-colors"
-              >
-                🆔 ID / NIN
-              </button>
-              <button
-                type="button"
-                onClick={() => setNewMessage("[REQUEST] Please provide your Guarantor full name, phone number, and relationship.")}
-                className="px-2.5 py-1 bg-white dark:bg-white/10 hover:bg-moss-50 dark:hover:bg-moss-900/40 rounded-full border border-ink-200 dark:border-white/10 shrink-0 transition-colors"
-              >
-                🛡️ Guarantor Info
-              </button>
-              <button
-                type="button"
-                onClick={() => setNewMessage("[REQUEST] Please upload your 6-month bank statement.")}
-                className="px-2.5 py-1 bg-white dark:bg-white/10 hover:bg-moss-50 dark:hover:bg-moss-900/40 rounded-full border border-ink-200 dark:border-white/10 shrink-0 transition-colors"
-              >
-                💼 Bank Statement
-              </button>
-            </div>
-          )}
-
           {/* Form input */}
           <form className="lc-input-form" onSubmit={handleSendMessage}>
             <button
               type="button"
               className="lc-input-btn"
               title="Attach Document or Image"
-              onClick={() => landlordFileInputRef.current?.click()}
+              onClick={() => chatFileInputRef.current?.click()}
             >
               <Paperclip className="h-5 w-5" />
             </button>

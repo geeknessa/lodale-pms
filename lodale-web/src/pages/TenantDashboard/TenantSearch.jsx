@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, Heart } from "lucide-react";
+import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, Heart, MessageSquare } from "lucide-react";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { applicationService } from "../../services/applicationService";
+import { chatService } from "../../services/chatService";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import Avatar from "../../components/Avatar";
@@ -449,16 +450,36 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
     return true;
   });
 
-  const userLocationStr = (() => {
+  const getUserLocationStr = () => {
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
+      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+      const raw =
+        sessionStorage.getItem("tenantCurrentProfile") ||
+        sessionStorage.getItem("currentUserProfile") ||
+        (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null);
       if (raw) {
         const prof = JSON.parse(raw);
         return prof.location || "";
       }
     } catch { }
     return "";
-  })();
+  };
+
+  const [userLocationStr, setUserLocationStr] = useState(getUserLocationStr);
+
+  useEffect(() => {
+    const handleLocationUpdate = () => {
+      setUserLocationStr(getUserLocationStr());
+    };
+    window.addEventListener("tenantProfileUpdated", handleLocationUpdate);
+    window.addEventListener("storage", handleLocationUpdate);
+    window.addEventListener("focus", handleLocationUpdate);
+    return () => {
+      window.removeEventListener("tenantProfileUpdated", handleLocationUpdate);
+      window.removeEventListener("storage", handleLocationUpdate);
+      window.removeEventListener("focus", handleLocationUpdate);
+    };
+  }, []);
 
   const allAvailableProperties = (() => {
     const seen = new Set();
@@ -555,17 +576,26 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
     if (locLower) {
       const allTokens = locLower
         .split(/[\s,\-()]+/)
-        .filter(k => k.length > 2 && !["usa", "states", "united", "atlanta", "london", "york"].includes(k));
+        .filter(k => k.length > 2 && !["usa", "states", "united", "atlanta", "london", "york", "nigeria"].includes(k));
 
       // Prefer specific area tokens over generic "lagos", "fct", "state"
       const specificTokens = allTokens.filter(k => !["lagos", "fct", "state"].includes(k));
       const searchTokens = specificTokens.length > 0 ? specificTokens : allTokens;
 
       if (searchTokens.length > 0) {
+        const matches = allAvailableProperties.filter(l => {
+          if (lastVisitedIds.has(l.id)) return false;
+          const propLoc = (l.location || "").toLowerCase();
+          return searchTokens.some(k => propLoc.includes(k));
+        });
+        if (matches.length > 0) return matches;
+      }
+
+      if (allTokens.length > 0) {
         return allAvailableProperties.filter(l => {
           if (lastVisitedIds.has(l.id)) return false;
           const propLoc = (l.location || "").toLowerCase();
-          return searchTokens.every(k => propLoc.includes(k));
+          return allTokens.some(k => propLoc.includes(k));
         });
       }
       return [];
@@ -1203,20 +1233,25 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
               >
                 View Full Listing & Photos
               </Button>
-              <div className="flex gap-3">
+              <div className="flex gap-2.5">
                 <Button
-                  onClick={() => {
-                    const landlordObj = LANDLORDS.find(l => l.name === selectedProperty.landlord.name);
-                    if (landlordObj) {
-                      setSelectedLandlord(landlordObj);
-                      setShowLandlordDetailsModal(true);
-                    }
+                  onClick={async () => {
+                    const landlordName = selectedProperty.landlord?.name || "Landlord";
+                    const landlordId = selectedProperty.landlord?.id || `landlord-${landlordName.toLowerCase().replace(/\s+/g, '-')}`;
+                    await chatService.sendMessage(landlordId, `Hello ${landlordName}, I am inquiring about your property "${selectedProperty.title}".`, selectedProperty.id, {
+                      partner_name: landlordName,
+                      partner_avatar: selectedProperty.landlord?.avatar || ""
+                    });
+                    sessionStorage.setItem("activeChatPartnerId", landlordId);
+                    localStorage.setItem("activeChatPartnerId", landlordId);
                     setShowPropertyDetailsModal(false);
+                    triggerToast(`Opening chat with ${landlordName}...`, "info", "Starting Chat");
+                    if (setActiveTab) setActiveTab(2); // Navigate to Chat tab
                   }}
-                  variant="secondary"
-                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3 text-[12.5px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white"
+                  className="flex-1 bg-moss-600 dark:bg-moss-700 hover:bg-moss-700 text-white font-bold py-3 text-[12.5px] rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
                 >
-                  Landlord Profile
+                  <MessageSquare className="h-4 w-4" />
+                  Chat with Landlord
                 </Button>
                 <Button
                   onClick={async () => {

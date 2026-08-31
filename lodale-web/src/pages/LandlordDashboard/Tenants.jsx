@@ -4,6 +4,9 @@ import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
 import { leaseService } from "../../services/leaseService";
+import { applicationService } from "../../services/applicationService";
+import { chatService } from "../../services/chatService";
+import { apiClient } from "../../lib/apiClient";
 import Avatar from "../../components/Avatar";
 import "./Tenants.css";
 
@@ -45,38 +48,164 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     }
     setProperties(propertyList);
 
-    // Load tenants from leases
+    // Load tenants from backend dedicated endpoint, leases, applications, and local storage
     try {
-      const leases = await leaseService.getMyLeases();
-      const allTenants = leases.map(l => {
-        const isActive = l.status === 'active';
-        const isPending = l.status === 'draft' || !l.landlord_signed_at || !l.tenant_signed_at;
+      const allTenants = [];
+      const seenKeys = new Set();
+
+      // 0. Primary Backend Tenants Endpoint
+      try {
+        const tenantRes = await apiClient('/users/tenants').catch(() => null);
+        if (tenantRes && Array.isArray(tenantRes.tenants)) {
+          tenantRes.tenants.forEach(t => {
+            const key = String(t.id || t.email || t.name).toLowerCase();
+            if (key && !seenKeys.has(key)) {
+              seenKeys.add(key);
+              allTenants.push(t);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Could not fetch /users/tenants:", e);
+      }
+
+      const [leases, apps] = await Promise.all([
+        leaseService.getMyLeases().catch(() => []),
+        applicationService.getLandlordApplications().catch(() => [])
+      ]);
+
+      // 1. Process Leases from Backend API
+      (leases || []).forEach(l => {
+        const isSigned = !!l.tenant_signed_at || l.status === 'signed' || l.status === 'active';
+        const isPaid = l.payment_status === 'paid' || l.is_paid || l.status === 'active';
+        const isActive = (l.status === 'active' || isSigned) && isPaid;
+        const isPending = !isActive;
+
         let status = 'past';
         if (isActive) status = 'active';
         else if (isPending) status = 'pending';
 
-        return {
-          id: l.id,
+        let badgeLabel = 'Active Tenant';
+        if (!isActive) {
+          if (!isSigned && !isPaid) badgeLabel = 'Pending Sign & Pay';
+          else if (!isSigned) badgeLabel = 'Pending Signature';
+          else if (!isPaid) badgeLabel = 'Pending Payment';
+          else badgeLabel = 'Pending';
+        }
+
+        const key = String(l.tenant_id || l.id || l.tenant_email || l.tenant_name).toLowerCase();
+        if (key) seenKeys.add(key);
+
+        allTenants.push({
+          id: l.tenant_id || l.id,
           name: l.tenant_name || "Unknown Tenant",
           email: l.tenant_email || "",
-          phone: l.tenant_contact || "",
+          phone: l.tenant_contact || l.phone || "",
           propertyId: l.property_id,
-          propertyTitle: l.property_title,
+          propertyTitle: l.property_title || "Leased Property",
           status: status,
-          leaseStatus: isActive ? 'Active Tenant' : 'Pending Signatures',
+          leaseStatus: badgeLabel,
           rentAmount: l.rent_amount,
           rentPeriod: l.rent_period,
-          dueDate: new Date(l.start_date).toLocaleDateString("en-US", { day: 'numeric', month: 'short' }),
-        };
+          dueDate: l.start_date ? new Date(l.start_date).toLocaleDateString("en-US", { day: 'numeric', month: 'short' }) : "1st of month",
+          paymentStatus: isPaid ? "Paid" : "Unpaid"
+        });
       });
+
+      // 2. Process Applications (ONLY include if a lease agreement has been generated/sent or fully leased)
+      (apps || []).forEach(a => {
+        const tenantId = String(a.tenantId || a.tenant_id || a.tenant?.id || a.id || '');
+        const tenantEmail = a.tenant?.email || a.email || "";
+        const tenantName = `${a.tenant?.firstName || a.first_name || ''} ${a.tenant?.lastName || a.last_name || ''}`.trim() || a.tenantName || a.tenant?.name || "Tenant";
+        const key = String(tenantId || tenantEmail || tenantName).toLowerCase();
+
+        if (key && !seenKeys.has(key)) {
+          const s = (a.status || '').toLowerCase();
+          const isFullyLeased = s === 'leased' || s === 'active';
+          const isLeaseSent = s === 'approved' || s === 'lease_generated' || s === 'pending_tenant' || s === 'signed';
+
+          // Strictly skip raw applicants who have not been sent a lease agreement
+          if (!isFullyLeased && !isLeaseSent) return;
+
+          seenKeys.add(key);
+
+          let status = isFullyLeased ? 'active' : 'pending';
+          let badgeLabel = isFullyLeased ? 'Active Tenant' : 'Pending Sign & Pay';
+
+          allTenants.push({
+            id: tenantId || `tenant-app-${a.id}`,
+            name: tenantName,
+            email: tenantEmail,
+            phone: a.tenant?.phone || a.tenantPhone || a.phone || "",
+            propertyId: a.propertyId || a.property_id,
+            propertyTitle: a.propertyTitle || a.property_title || "Leased Property",
+            status: status,
+            leaseStatus: badgeLabel,
+            rentAmount: a.propertyRentAmount || a.property_rent_amount || 0,
+            dueDate: "1st of month",
+            paymentStatus: isFullyLeased ? "Paid" : "Unpaid"
+          });
+        }
+      });
+
+      // 3. Process Local Storage Property Tenants
+      try {
+        const rawLocal = localStorage.getItem("propertyTenants");
+        if (rawLocal) {
+          const localMap = JSON.parse(rawLocal);
+          if (Array.isArray(localMap)) {
+            localMap.forEach(t => {
+              const key = String(t.id || t.email || t.name).toLowerCase();
+              if (key && !seenKeys.has(key)) {
+                seenKeys.add(key);
+                allTenants.push(t);
+              }
+            });
+          } else if (typeof localMap === 'object') {
+            Object.keys(localMap).forEach(propId => {
+              const list = Array.isArray(localMap[propId]) ? localMap[propId] : [localMap[propId]];
+              list.forEach(t => {
+                if (!t) return;
+                const key = String(t.id || t.email || t.name).toLowerCase();
+                if (key && !seenKeys.has(key)) {
+                  seenKeys.add(key);
+                  allTenants.push({
+                    id: t.id || Date.now(),
+                    name: t.name || t.tenantName || "Tenant",
+                    email: t.email || "",
+                    phone: t.phone || "",
+                    propertyId: propId,
+                    propertyTitle: t.propertyTitle || "Property",
+                    status: (t.status || 'active').toLowerCase(),
+                    leaseStatus: t.leaseStatus || "Active Tenant",
+                    rentAmount: t.rentAmount || 0,
+                    dueDate: t.dueDate || "1st of month",
+                    paymentStatus: t.paymentStatus || "Paid"
+                  });
+                }
+              });
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Error reading local propertyTenants:", err);
+      }
+
       setTenantsList(allTenants);
     } catch (e) {
-      console.warn("Could not load tenants from leases:", e);
+      console.warn("Could not load tenants list:", e);
+      setTenantsList([]);
     }
   };
 
   useEffect(() => {
     loadData();
+    window.addEventListener("storage", loadData);
+    window.addEventListener("focus", loadData);
+    return () => {
+      window.removeEventListener("storage", loadData);
+      window.removeEventListener("focus", loadData);
+    };
   }, []);
 
   // Sync when applications approve or other tabs update localStorage
@@ -99,7 +228,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     if (activeFilter === "All") return true;
     if (activeFilter === "Active") return tenant.status === "active";
     if (activeFilter === "Pending") return tenant.status === "pending" || tenant.leaseStatus?.toLowerCase().includes("pending");
-    if (activeFilter === "Past") return tenant.status === "past" || tenant.status === "inactive";
+    if (activeFilter === "Past") return tenant.status === "past" || tenant.status === "inactive" || tenant.status === "declined";
 
     return true;
   });
@@ -228,47 +357,22 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
   };
 
   // Direct contact helper -> goes to chat tab
-  const handleMessageTenant = (tenantName, tenantAvatar, tenantObj) => {
-    // 1. Check if chat thread exists, if not create it
-    const savedChats = localStorage.getItem("landlordChats");
-    const chatsList = savedChats ? JSON.parse(savedChats) : [];
+  const handleMessageTenant = async (tenantName, tenantAvatar, tenantObj) => {
+    const partnerId = tenantObj?.id || tenantObj?.tenant_id || `tenant-${tenantName.toLowerCase().replace(/\s+/g, '-')}`;
+    try {
+      await chatService.sendMessage(partnerId, `Hello ${tenantName}, direct message initiated from Tenants Directory.`, null, {
+        partner_name: tenantName,
+        partner_avatar: tenantAvatar || ""
+      });
+    } catch (e) { }
 
-    let chat = chatsList.find((c) => c.name === tenantName);
-    if (!chat) {
-      chat = {
-        id: tenantName.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
-        name: tenantName,
-        avatar: tenantAvatar || "",
-        email: tenantObj.email,
-        phone: tenantObj.phone,
-        reliabilityScore: tenantObj.reliabilityScore,
-        occupation: tenantObj.occupation,
-        income: tenantObj.income,
-        notes: tenantObj.notes,
-        leaseStatus: tenantObj.leaseStatus,
-        lastMessage: "Direct message initiated.",
-        time: "Just now",
-        type: "tenant",
-        messages: [
-          {
-            id: 1,
-            sender: "landlord",
-            text: "Hello! Direct message initiated from the Tenants Directory.",
-            time: "Just now"
-          }
-        ]
-      };
-      chatsList.push(chat);
-      localStorage.setItem("landlordChats", JSON.stringify(chatsList));
-    }
-
-    // 2. Select this chat thread as active
-    // We write to localStorage, and LandlordChat can load it on render
+    sessionStorage.setItem("activeChatPartnerId", partnerId);
+    localStorage.setItem("activeChatPartnerId", partnerId);
     localStorage.setItem("activeChatTenantName", tenantName);
     window.dispatchEvent(new Event("storage"));
 
     // 3. Change tab to Chat (Tab index 3)
-    setActiveTab(3);
+    if (setActiveTab) setActiveTab(3);
   };
 
   // End Lease & Rate Action
@@ -432,7 +536,9 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                   </div>
                   <div className="tenant-card-meta">
                     <h4 className="tenant-card-name">{tenant.name}</h4>
-                    <span className="tenant-card-lease-status">{tenant.leaseStatus || "Tenant"}</span>
+                    <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
+                      {tenant.leaseStatus || (tenant.status === 'active' ? "Active Tenant" : "Pending Sign & Pay")}
+                    </span>
                   </div>
                 </div>
 

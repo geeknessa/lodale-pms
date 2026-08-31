@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { MapPin, ExternalLink } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { getEstimatedCoordinates } from "../utils/locationUtils";
 
 // Fix Leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -10,8 +11,6 @@ L.Icon.Default.mergeOptions({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
-
-const DEFAULT_CENTER = [6.5244, 3.3792]; // Lagos, Nigeria
 
 export default function PropertyDetailMap({
   latitude,
@@ -23,49 +22,82 @@ export default function PropertyDetailMap({
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
 
   const lat = parseFloat(latitude);
   const lng = parseFloat(longitude);
   const hasValidCoords = !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
 
-  const centerCoords = hasValidCoords ? [lat, lng] : DEFAULT_CENTER;
   const fullLocationStr = [address, city, state].filter(Boolean).join(", ");
+  const fallbackCoords = getEstimatedCoordinates(address, city, state);
+  const initialCenter = hasValidCoords ? [lat, lng] : fallbackCoords;
 
   const googleMapsUrl = hasValidCoords
     ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullLocationStr || "Lagos, Nigeria")}`;
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullLocationStr || "Nigeria")}`;
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapInstanceRef.current) return;
 
-    const map = L.map(mapContainerRef.current, {
-      center: centerCoords,
-      zoom: hasValidCoords ? 15 : 12,
-      scrollWheelZoom: false
-    });
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        center: initialCenter,
+        zoom: hasValidCoords ? 15 : 13,
+        scrollWheelZoom: false
+      });
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
 
-    const marker = L.marker(centerCoords).addTo(map);
-    marker.bindPopup(`
-      <div style="font-family: sans-serif; padding: 4px;">
-        <strong style="color: #2C4633; font-size: 13px;">${title}</strong><br/>
-        <span style="font-size: 11px; color: #555;">${fullLocationStr || "Property Location"}</span>
-      </div>
-    `);
+      const marker = L.marker(initialCenter).addTo(map);
+      marker.bindPopup(`
+        <div style="font-family: sans-serif; padding: 4px;">
+          <strong style="color: #2C4633; font-size: 13px;">${title}</strong><br/>
+          <span style="font-size: 11px; color: #555;">${fullLocationStr || "Property Location"}</span>
+        </div>
+      `);
 
-    mapInstanceRef.current = map;
+      markerRef.current = marker;
+      mapInstanceRef.current = map;
+    } else {
+      mapInstanceRef.current.setView(initialCenter, hasValidCoords ? 15 : 13);
+      if (markerRef.current) markerRef.current.setLatLng(initialCenter);
+    }
 
+    // If coordinates are missing, attempt dynamic Nominatim geocoding for accurate pin placement
+    if (!hasValidCoords && fullLocationStr) {
+      let isMounted = true;
+      fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullLocationStr)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (isMounted && data && data.length > 0) {
+            const geoLat = parseFloat(data[0].lat);
+            const geoLng = parseFloat(data[0].lon);
+            if (!isNaN(geoLat) && !isNaN(geoLng)) {
+              if (mapInstanceRef.current && markerRef.current) {
+                mapInstanceRef.current.setView([geoLat, geoLng], 14);
+                markerRef.current.setLatLng([geoLat, geoLng]);
+              }
+            }
+          }
+        })
+        .catch(err => console.warn("Geocoding lookup warning:", err));
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [latitude, longitude, address, city, state]);
+
+  useEffect(() => {
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, [latitude, longitude]);
+  }, []);
 
   return (
     <div className="bg-white dark:bg-[#12221C] p-6 rounded-2xl border border-ink-200 dark:border-white/10 shadow-lg space-y-4 text-left">

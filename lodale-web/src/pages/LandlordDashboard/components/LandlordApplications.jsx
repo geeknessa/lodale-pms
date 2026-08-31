@@ -137,8 +137,15 @@ export default function LandlordApplications({ setActiveTab }) {
         triggerToast("Unable to resolve applicant recipient ID.", "error");
         return;
       }
+      const tenantName = `${app.tenant?.firstName || ''} ${app.tenant?.lastName || ''}`.trim() || "Applicant";
       const msg = initialMessage || `Hello ${app.tenant?.firstName || ''}, I am reviewing your application for ${app.propertyTitle}.`;
-      await chatService.sendMessage(recipientId, msg);
+      await chatService.sendMessage(recipientId, msg, app.propertyId, {
+        partner_name: tenantName,
+        partner_avatar: app.tenant?.avatar || ""
+      });
+      sessionStorage.setItem("activeChatPartnerId", recipientId);
+      localStorage.setItem("activeChatPartnerId", recipientId);
+      localStorage.setItem("activeChatTenantName", tenantName);
       triggerToast("Chat initiated with applicant!", "success");
       if (setActiveTab) setActiveTab(3);
     } catch (err) {
@@ -154,9 +161,16 @@ export default function LandlordApplications({ setActiveTab }) {
       triggerToast("Unable to resolve applicant recipient ID.", "error");
       return;
     }
+    const tenantName = `${activeApp.tenant?.firstName || ''} ${activeApp.tenant?.lastName || ''}`.trim() || "Applicant";
     const message = `[LANDLORD REQUEST FOR ${activeApp.propertyTitle}]\nRequesting: ${requestTitle}${requestDetails ? `\nDetails: ${requestDetails}` : ''}\n\nPlease reply or upload the requested documents here.`;
     try {
-      await chatService.sendMessage(recipientId, message);
+      await chatService.sendMessage(recipientId, message, activeApp.propertyId, {
+        partner_name: tenantName,
+        partner_avatar: activeApp.tenant?.avatar || ""
+      });
+      sessionStorage.setItem("activeChatPartnerId", recipientId);
+      localStorage.setItem("activeChatPartnerId", recipientId);
+      localStorage.setItem("activeChatTenantName", tenantName);
       triggerToast(`Request sent to ${activeApp.tenant?.firstName || 'applicant'}!`, "success");
       setShowRequestModal(false);
       setCustomRequestText("");
