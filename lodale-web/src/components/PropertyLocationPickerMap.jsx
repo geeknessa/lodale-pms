@@ -11,7 +11,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-const DEFAULT_CENTER = [6.5244, 3.3792]; // Lagos, Nigeria default
+import { getEstimatedCoordinates } from "../utils/locationUtils";
+
+const DEFAULT_CENTER = [6.5244, 3.3792]; // Fallback default
 
 export default function PropertyLocationPickerMap({
   initialLat,
@@ -35,7 +37,7 @@ export default function PropertyLocationPickerMap({
     if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
       return [lat, lng];
     }
-    return DEFAULT_CENTER;
+    return getEstimatedCoordinates(initialAddress, initialCity, initialState);
   });
 
   const [locationDetails, setLocationDetails] = useState({

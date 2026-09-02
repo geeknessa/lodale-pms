@@ -107,3 +107,25 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error sending message' });
   }
 };
+
+// @desc    Delete conversation with a specific user
+// @route   DELETE /api/chat/:partnerId
+// @access  Private
+export const deleteConversation = async (req, res) => {
+  const userId = req.user.id;
+  const { partnerId } = req.params;
+
+  try {
+    await pool.query(
+      `DELETE FROM chat_messages 
+       WHERE (sender_id = $1 AND receiver_id = $2) 
+          OR (sender_id = $2 AND receiver_id = $1)`,
+      [userId, partnerId]
+    );
+
+    res.json({ success: true, message: 'Conversation deleted successfully' });
+  } catch (error) {
+    console.error('Delete conversation error:', error);
+    res.status(500).json({ success: false, message: 'Server error deleting conversation' });
+  }
+};

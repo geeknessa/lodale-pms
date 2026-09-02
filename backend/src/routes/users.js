@@ -8,5 +8,6 @@ const router = express.Router();
 
 router.get('/me', requireAuth, userController.getMe);
 router.put('/me', requireAuth, validate(updateUserSchema), userController.updateMe);
+router.get('/tenants', requireAuth, userController.getLandlordTenants);
 
 export default router;

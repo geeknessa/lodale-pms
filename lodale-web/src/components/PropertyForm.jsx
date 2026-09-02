@@ -1318,8 +1318,8 @@ export default function PropertyForm({ isStandalone = false, initialEditId = nul
                               type="button"
                               onClick={() => setHouseSubtype(sub.id)}
                               className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer outline-none ${houseSubtype === sub.id
-                                  ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
-                                  : "bg-white dark:bg-[#16241F] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                                ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
+                                : "bg-white dark:bg-[#16241F] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15"
                                 }`}
                             >
                               {sub.label}
@@ -1452,8 +1452,8 @@ export default function PropertyForm({ isStandalone = false, initialEditId = nul
                             type="button"
                             onClick={() => setIsMultiUnit(false)}
                             className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${!isMultiUnit
-                                ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
-                                : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
+                              ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
+                              : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
                               }`}
                           >
                             <div className="font-bold text-sm">1</div>
@@ -1467,8 +1467,8 @@ export default function PropertyForm({ isStandalone = false, initialEditId = nul
                             type="button"
                             onClick={() => setIsMultiUnit(true)}
                             className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${isMultiUnit
-                                ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
-                                : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
+                              ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
+                              : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
                               }`}
                           >
                             <div className="font-bold text-sm">2+</div>
@@ -1745,8 +1745,8 @@ export default function PropertyForm({ isStandalone = false, initialEditId = nul
                                 type="button"
                                 onClick={() => toggleAmenity(amenity)}
                                 className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${isSelected
-                                    ? "bg-[#2C4633] text-white border-transparent dark:bg-[#E5C583] dark:text-[#263b33]"
-                                    : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                                  ? "bg-[#2C4633] text-white border-transparent dark:bg-[#E5C583] dark:text-[#263b33]"
+                                  : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
                                   }`}
                               >
                                 {isSelected ? "✓ " : "+ "}{amenity}
@@ -1895,8 +1895,8 @@ export default function PropertyForm({ isStandalone = false, initialEditId = nul
                             <div
                               key={idx}
                               className={`flex items-center justify-between p-3 rounded-xl border transition-all ${isCover
-                                  ? "bg-[#2C4633]/10 dark:bg-[#E5C583]/10 border-[#2C4633] dark:border-[#E5C583]"
-                                  : "bg-white dark:bg-[#16241F] border-slate-200 dark:border-white/10"
+                                ? "bg-[#2C4633]/10 dark:bg-[#E5C583]/10 border-[#2C4633] dark:border-[#E5C583]"
+                                : "bg-white dark:bg-[#16241F] border-slate-200 dark:border-white/10"
                                 }`}
                             >
                               <div className="flex items-center gap-3 min-w-0 pr-2">
