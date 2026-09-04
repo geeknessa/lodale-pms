@@ -10,20 +10,17 @@ import {
   Wallet,
   Wrench,
   ArrowRight,
-  BookOpen
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import NavBar from "../components/NavBar";
-import Button from "../components/Button";
 import ListingCard from "../components/ListingCard";
 import ListingCardSkeleton from "../components/ListingCardSkeleton";
 import Footer from "../components/Footer";
+import LodaleHero from "../components/LodaleHero";
+import SmoothScroll from "../components/SmoothScroll";
+import EstateSearchSection from "../components/EstateSearchSection";
 import { propertyService } from "../services/propertyService";
-import heroBgDark from "../assets/dark_modern_villa.png";
-import heroBgLight from "../assets/lodale_hero_light.png";
-import heroBg from "../assets/lodale_hero.png";
-import { useTheme } from "../context/ThemeContext";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -32,80 +29,6 @@ const BLOG = [
   { id: 2, tag: "Legal Guide", tagColor: "#2D6A4F", gA: "#1A1A2E", gB: "#2A2A4A", date: "Jul 28, 2026", read: "9 min", title: "Landlord Rights & Tenant Checklist: Nigeria 2026 Edition", excerpt: "A comprehensive breakdown of tenant rights under the Tenancy Law of Lagos State, deposit regulations, and legal eviction procedures." },
   { id: 3, tag: "Spotlight", tagColor: "#2B5F7E", gA: "#1A2A2E", gB: "#2A3A4A", date: "Jul 15, 2026", read: "5 min", title: "What ₦4,000,000/Year Rent Gets You Across Lagos", excerpt: "From Ajah to Ikoyi — we break down exactly what the same budget gets you in 6 different parts of Nigeria's commercial capital." },
 ];
-
-function Pill({ color, borderColor, children }) {
-  return (
-    <div className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-[0.12em]"
-      style={{ background: `${color}18`, border: `1px solid ${borderColor || `${color}35`}`, color }}>
-      {children}
-    </div>
-  );
-}
-
-function HeroSection({ C, isDark }) {
-  const heroRef = useRef(null);
-  const titleRef = useRef(null);
-  const descRef = useRef(null);
-  const btnRef = useRef(null);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.fromTo(titleRef.current, { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 1, delay: 0.15 })
-        .fromTo(descRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 }, "-=0.6")
-        .fromTo(btnRef.current, { scale: 0.85, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.7, ease: "back.out(1.8)" }, "-=0.5");
-    }, heroRef);
-    return () => ctx.revert();
-  }, []);
-
-  const scrollToSection = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  return (
-    <section ref={heroRef} className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden" id="hero">
-      <div className="absolute inset-0 bg-cover bg-center transition-all duration-500" style={{ backgroundImage: `url(${isDark ? heroBg : heroBgLight})` }} />
-      <div className="absolute inset-0 transition-colors duration-300" style={{ background: C.heroOverlay }} />
-      <div className="absolute top-0 right-0 pointer-events-none"
-        style={{
-          width: 700, height: 700,
-          background: isDark
-            ? "radial-gradient(circle,rgba(201,150,62,0.11) 0%,transparent 70%)"
-            : "radial-gradient(circle,rgba(184,130,40,0.14) 0%,transparent 70%)",
-          transform: "translate(22%,-30%)"
-        }} />
-
-
-      <div className="relative z-10 max-w-5xl mx-auto px-5 lg:px-8 pt-48 pb-16 text-center">
-        <h1 ref={titleRef} className="font-bold leading-[1.08] tracking-tight mb-5"
-          style={{ fontFamily: "'Playfair Display',Georgia,serif", fontSize: "clamp(2.2rem,5.5vw,4.2rem)", color: C.textPrimary }}>
-          Find Your Next Lease
-          <br />
-          <em className="not-italic" style={{ color: isDark ? C.goldLight : C.gold }}>with Complete</em>
-          <br />
-          Clarity.
-        </h1>
-
-        <p ref={descRef} className="max-w-xl mx-auto mb-8 leading-relaxed text-sm sm:text-base"
-          style={{ color: C.textMuted }}>
-          Seamless property leasing, verified listings, and transparent management for landlords and tenants across Nigeria.
-        </p>
-
-        <div ref={btnRef} className="flex justify-center items-center">
-          <button
-            onClick={() => scrollToSection("listings")}
-            className="flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold transition-all hover:scale-105 hover:brightness-110 active:scale-95 shadow-xl cursor-pointer"
-            style={{ background: C.btnBg, color: C.btnText }}
-          >
-            <Search className="w-4 h-4" />
-            Browse Listings
-            <ArrowRight className="w-4 h-4 ml-0.5" />
-          </button>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function BlogSection({ C, isDark }) {
   const sectionRef = useRef(null);
@@ -224,25 +147,32 @@ export default function GuestDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [propertyType, setPropertyType] = useState("all");
+  const [bedsFilter, setBedsFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("All Estates");
   const [isLoading, setIsLoading] = useState(true);
   const listingsGridRef = useRef(null);
 
   const [allListings, setAllListings] = useState([]);
 
-  const [fallbackTheme, setFallbackTheme] = useState("dark");
-  
-  let themeState;
-  try {
-    themeState = useTheme();
-  } catch {
-    themeState = {
-      theme: fallbackTheme,
-      isDark: fallbackTheme === "dark",
-      toggleTheme: () => setFallbackTheme(t => t === "dark" ? "light" : "dark")
-    };
-  }
+  const scrollToSection = (id, offset = -80) => {
+    const cleanId = typeof id === "string" ? id.replace("#", "") : id;
+    const el = document.getElementById(cleanId);
+    if (el) {
+      if (window.lenis) {
+        window.lenis.scrollTo(el, { offset, duration: 1.2 });
+      } else {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  };
 
-  const { isDark } = themeState;
+  const handleClearFilters = () => {
+    setSearchQuery("");
+    setPropertyType("all");
+    setBedsFilter("all");
+    setActiveTab("All Estates");
+  };
 
   const darkC = {
     bg: "#07130D",
@@ -257,7 +187,7 @@ export default function GuestDashboard() {
     blue: "#5A8FAF",
     textPrimary: "#FFFFFF",
     textMuted: "rgba(255,255,255,0.62)",
-    textFaint: "rgba(255,255,255,0.38)",
+    textFaint: "rgba(255,255,230,0.38)",
     heroOverlay: "linear-gradient(155deg,rgba(7,19,13,0.9) 0%,rgba(13,31,23,0.83) 50%,rgba(7,19,13,0.94) 100%)",
     navBg: "rgba(7,19,13,0.96)",
     fieldBg: "rgba(255,255,255,0.07)",
@@ -266,31 +196,6 @@ export default function GuestDashboard() {
     btnBg: "#C9963E",
     btnText: "#07130D",
   };
-
-  const lightC = {
-    bg: "#F4F6F6",
-    bgMid: "#F4F6F6",
-    bgCard: "#F4F6F6",
-    border: "rgba(7,19,13,0.08)",
-    gold: "#344E41",
-    goldLight: "#263B33",
-    goldFaint: "rgba(52,78,65,0.12)",
-    green: "#344E41",
-    greenFaint: "rgba(52,78,65,0.08)",
-    blue: "#1D4E6D",
-    textPrimary: "#07130D",
-    textMuted: "#405448",
-    textFaint: "#73887D",
-    heroOverlay: "linear-gradient(to bottom, transparent 0%, transparent 90px, rgba(244,246,246,0.75) 250px, #F4F6F6 100%)",
-    navBg: "rgba(246,248,246,0.96)",
-    fieldBg: "#F4F6F6",
-    fieldBorder: "rgba(7,19,13,0.12)",
-    selectOptionBg: "#F4F6F6",
-    btnBg: "#344E41",
-    btnText: "#FFFFFF",
-  };
-
-  const C = isDark ? darkC : lightC;
 
   useEffect(() => {
     async function fetchPublicListings() {
@@ -303,7 +208,7 @@ export default function GuestDashboard() {
           } else if (apiRes && Array.isArray(apiRes.properties)) {
             apiProps = apiRes.properties;
           }
-        } catch (e) { }
+        } catch { }
 
         const formatted = apiProps.map((item) => {
           if (!item) return null;
@@ -361,11 +266,45 @@ export default function GuestDashboard() {
   }, []);
 
   const filteredListings = allListings.filter((listing) => {
-    const query = searchQuery.toLowerCase();
-    const titleMatch = listing.title?.toLowerCase().includes(query);
-    const locMatch = listing.location?.toLowerCase().includes(query);
-    const landlordMatch = listing.landlord?.name?.toLowerCase().includes(query);
-    return titleMatch || locMatch || landlordMatch;
+    // 1. Keyword search
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      const titleMatch = listing.title?.toLowerCase().includes(query);
+      const locMatch = listing.location?.toLowerCase().includes(query);
+      const landlordMatch = listing.landlord?.name?.toLowerCase().includes(query);
+      if (!titleMatch && !locMatch && !landlordMatch) return false;
+    }
+
+    // 2. Property Type filter
+    if (propertyType !== "all") {
+      const targetType = propertyType.toLowerCase();
+      const itemType = (listing.type || "").toLowerCase();
+      const itemTitle = (listing.title || "").toLowerCase();
+      if (!itemType.includes(targetType) && !itemTitle.includes(targetType)) {
+        return false;
+      }
+    }
+
+    // 3. Bedrooms filter
+    if (bedsFilter !== "all") {
+      const bedsCount = Number(listing.beds) || 0;
+      if (bedsFilter === "4+") {
+        if (bedsCount < 4) return false;
+      } else {
+        if (bedsCount !== Number(bedsFilter)) return false;
+      }
+    }
+
+    // 4. Tab filter (Shortlet, etc.)
+    if (activeTab === "Shortlet") {
+      const itemType = (listing.type || "").toLowerCase();
+      const itemTitle = (listing.title || "").toLowerCase();
+      if (!itemType.includes("shortlet") && !itemTitle.includes("shortlet")) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   function signUpAs(role) {
@@ -399,15 +338,18 @@ export default function GuestDashboard() {
       const element = document.getElementById(id);
       if (element) {
         setTimeout(() => {
-          // Adjust scroll offset to account for the sticky navbar height (approx 80px)
-          const offset = 80;
-          const elementPosition =
-            element.getBoundingClientRect().top + window.pageYOffset;
-          window.scrollTo({
-            top: elementPosition - offset,
-            behavior: "smooth",
-          });
-        }, 100);
+          if (window.lenis) {
+            window.lenis.scrollTo(element, { offset: -80, duration: 1.2 });
+          } else {
+            const offset = 80;
+            const elementPosition =
+              element.getBoundingClientRect().top + window.pageYOffset;
+            window.scrollTo({
+              top: elementPosition - offset,
+              behavior: "smooth",
+            });
+          }
+        }, 120);
       }
     }
   }, [location]);
@@ -465,34 +407,56 @@ export default function GuestDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-theme-bg text-theme-text">
-      <NavBar transparentMode={true} />
+    <SmoothScroll>
+      <div className="min-h-screen bg-theme-bg text-theme-text">
+        <NavBar transparentMode={true} />
 
-      <HeroSection C={C} isDark={isDark} />
+        <LodaleHero
+          onExploreClick={(term) => {
+            if (term && typeof term === "string") setSearchQuery(term);
+            scrollToSection("estate-search");
+          }}
+        />
+
+        {/* ── NEW ESTATE SEARCH SECTION JUST BELOW THE HERO SECTION ── */}
+        <EstateSearchSection
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          propertyType={propertyType}
+          setPropertyType={setPropertyType}
+          bedsFilter={bedsFilter}
+          setBedsFilter={setBedsFilter}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          totalResults={filteredListings.length}
+          onClearFilters={handleClearFilters}
+        />
 
       {/* listings */}
       <section
         id="listings"
-        className="min-h-[100vh] flex flex-col relative z-16 mx-auto max-w-[1400px] px-8 pt-24 pb-32"
+        className="min-h-[100vh] flex flex-col relative z-16 mx-auto max-w-[1400px] px-8 pt-16 pb-32"
       >
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8 border-b border-ink-100 dark:border-white/10 pb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6 border-b border-ink-100 dark:border-white/10 pb-6">
           <div>
             <h2 className="text-3xl md:text-5xl font-normal text-ink-900 dark:text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Browse Listings
+              Curated Listings
             </h2>
-            <p className="text-[14px] md:text-[15px] text-ink-600 dark:text-cream-100/70 mt-4 max-w-md leading-relaxed">
+            <p className="text-[14px] md:text-[15px] text-ink-600 dark:text-cream-100/70 mt-3 max-w-md leading-relaxed">
               Verified homes currently accepting rental applications directly through the Lodale system.
             </p>
           </div>
 
-          <div className="w-full md:w-auto flex-1 max-w-md relative">
-            <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-            <input
-              placeholder="Search by address, area, or landlord..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent border-b border-ink-200 hover:border-ink-400 dark:border-white/20 dark:hover:border-white/40 py-2.5 pl-8 pr-4 text-[13px] md:text-[14px] outline-none focus:border-moss-700 dark:focus:border-[#E5C583] transition-colors text-ink-900 dark:text-white placeholder:text-ink-400 dark:placeholder:text-white/40 rounded-none shadow-none"
-            />
+          <div className="flex items-center gap-3">
+            {(searchQuery || propertyType !== "all" || bedsFilter !== "all" || activeTab !== "All Estates") && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white/5 hover:bg-white/10 text-[#C9963E] border border-[#C9963E]/30 transition-all cursor-pointer"
+              >
+                Reset Search Filters
+              </button>
+            )}
           </div>
         </div>
 
@@ -650,5 +614,6 @@ export default function GuestDashboard() {
       <BlogSection C={darkC} isDark={true} />
       <Footer />
     </div>
-  );
+  </SmoothScroll>
+);
 }

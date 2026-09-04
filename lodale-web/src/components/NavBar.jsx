@@ -18,7 +18,7 @@ export default function NavBar({ transparentMode = false }) {
   const [userRole, setUserRole] = useState(() => {
     return (sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") || "").toLowerCase();
   });
-  const [isAdmin, setIsAdmin] = useState(() => {
+  const [_isAdmin, setIsAdmin] = useState(() => {
     const r = (sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") || "").toLowerCase();
     const email = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "";
     return r === "admin" || email === "admin@lodale.com" || sessionStorage.getItem("adminAuthenticated") === "true";
@@ -86,7 +86,11 @@ export default function NavBar({ transparentMode = false }) {
     setIsOpen(false);
     if (location.pathname === "/explore" || location.pathname === "/") {
       e.preventDefault();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (window.lenis) {
+        window.lenis.scrollTo(0, { duration: 1.2 });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     }
   }
 
@@ -96,14 +100,18 @@ export default function NavBar({ transparentMode = false }) {
       e.preventDefault();
       const elem = document.getElementById(hash.replace("#", ""));
       if (elem) {
-        const offset = 80;
-        const bodyRect = document.body.getBoundingClientRect().top;
-        const elementRect = elem.getBoundingClientRect().top;
-        const elementPosition = elementRect - bodyRect;
-        window.scrollTo({
-          top: elementPosition - offset,
-          behavior: "smooth",
-        });
+        if (window.lenis) {
+          window.lenis.scrollTo(elem, { offset: -80, duration: 1.2 });
+        } else {
+          const offset = 80;
+          const bodyRect = document.body.getBoundingClientRect().top;
+          const elementRect = elem.getBoundingClientRect().top;
+          const elementPosition = elementRect - bodyRect;
+          window.scrollTo({
+            top: elementPosition - offset,
+            behavior: "smooth",
+          });
+        }
       }
     }
   }
@@ -131,20 +139,18 @@ export default function NavBar({ transparentMode = false }) {
   const desktopLinkClass = (path, hash = "") => {
     const isActive = checkIsActive(path, hash);
     const inactiveColor = isActuallyTransparent
-      ? (isDark ? "text-white/90 hover:text-white" : "text-[#405448]/90 hover:text-[#405448]")
+      ? "text-[#DAD7CD]/90 hover:text-white"
       : "text-[#405448] dark:text-cream-100 hover:text-moss-700 dark:hover:text-white";
     const activeColor = isActuallyTransparent
-      ? (isDark ? "text-white font-bold" : "text-[#405448] font-bold")
+      ? "text-white font-bold"
       : "text-[#405448] font-bold dark:text-white";
     const underlineColor = isActuallyTransparent
-      ? (isDark ? "after:bg-white" : "after:bg-[#405448]")
+      ? "after:bg-white"
       : "after:bg-[#405448] dark:after:bg-[#E5C583]";
 
     return `relative transition-colors pb-1 text-[13px] font-medium focus-visible:ring-2 focus-visible:ring-moss-600 outline-none ${isActive ? activeColor : inactiveColor
       } ${isActive ? `after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full ${underlineColor}` : ""}`;
   };
-
-
 
   function handleSignOut() {
     const isCurrentAdmin = sessionStorage.getItem("userRole") === "admin";
@@ -175,10 +181,6 @@ export default function NavBar({ transparentMode = false }) {
     sessionStorage.removeItem("currentUserProfile");
     sessionStorage.removeItem("lodale_token");
     sessionStorage.removeItem("lodale_user");
-
-    sessionStorage.removeItem("isAuthenticated");
-    sessionStorage.removeItem("sessionExpiresAt");
-    sessionStorage.removeItem("userRole");
     
     setIsAuthenticated(false);
     setIsOpen(false);
@@ -187,7 +189,7 @@ export default function NavBar({ transparentMode = false }) {
 
   function handleDashboardNavigate() {
     setIsOpen(false);
-    const role = (sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") || userRole || "tenant").toLowerCase().trim();
+    const role = (sessionStorage.getItem("userRole") || userRole || "tenant").toLowerCase().trim();
     if (role === "admin") {
       navigate("/admin/dashboard");
     } else if (role === "landlord") {
@@ -205,14 +207,14 @@ export default function NavBar({ transparentMode = false }) {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${isActuallyTransparent
-        ? "bg-transparent border-b border-white/20 pt-4 pb-4"
-        : "bg-white/90 dark:bg-[#263b33]/90 backdrop-blur-md border-b border-ink-200/30 py-4 shadow-sm"
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isActuallyTransparent
+        ? "bg-[#133123]/40 backdrop-blur-md border-b border-white/10 pt-4 pb-4"
+        : "bg-white/90 dark:bg-[#133123]/95 backdrop-blur-md border-b border-ink-200/30 py-3.5 shadow-sm"
         }`}
     >
       <div className="mx-auto flex max-w-[1400px] items-center justify-between px-8 md:px-12">
         <Link to="/explore" onClick={handleHomeClick} className="flex-shrink-0">
-          <Logo variant={isActuallyTransparent ? (isDark ? "white" : "moss") : "default"} />
+          <Logo variant={isActuallyTransparent ? "white" : "default"} />
         </Link>
 
         {/* Desktop Navigation Links */}

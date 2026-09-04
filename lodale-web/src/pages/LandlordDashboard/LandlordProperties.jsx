@@ -132,12 +132,30 @@ export default function LandlordProperties() {
       } catch (_e) {}
 
       let apiProps = [];
+      let apiSucceeded = false;
       try {
         apiProps = await propertyService.getLandlordProperties(currentUserId);
+        apiSucceeded = true;
       } catch (err) {
         console.warn("Error fetching landlord properties from API:", err);
       }
 
+      // If the API responded successfully, it is the source of truth.
+      // Clear stale localStorage so deleted/ghost properties don't reappear.
+      if (apiSucceeded) {
+        localStorage.removeItem("landlordProperties");
+        localStorage.removeItem("properties");
+        const propMap = new Map();
+        if (Array.isArray(apiProps)) {
+          apiProps.forEach((p) => {
+            if (p && p.id) propMap.set(p.id, p);
+          });
+        }
+        setProperties(Array.from(propMap.values()));
+        return;
+      }
+
+      // Fallback: API unavailable — use localStorage cache
       let localProps = [];
       try {
         const savedLandlordProps = localStorage.getItem("landlordProperties");
@@ -157,12 +175,6 @@ export default function LandlordProperties() {
       }
 
       const propMap = new Map();
-      if (Array.isArray(apiProps)) {
-        apiProps.forEach((p) => {
-          if (p && p.id) propMap.set(p.id, p);
-        });
-      }
-
       localProps.forEach((p) => {
         if (!p || !p.id) return;
         const currentName = (username || "Tunde Bakare").toLowerCase();
