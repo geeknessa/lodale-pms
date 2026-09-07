@@ -20,5 +20,7 @@ router.post('/properties/:id/reject-suspension', propertyController.rejectProper
 router.get('/users', adminController.getUsers);
 router.patch('/users/:id/status', adminController.updateUserStatus);
 router.delete('/users/:id', adminController.deleteUser);
+router.get('/recycle-bin', adminController.getRecycleBin);
+router.post('/recycle-bin/restore', adminController.restoreRecycleBinItem);
 
 export default router;

@@ -46,8 +46,17 @@ export const authController = {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
-    if ((user.account_status || '').toLowerCase() === 'suspended') {
-      return res.status(403).json({ error: 'Your account has been suspended. Contact support.' });
+    const status = (user.account_status || 'active').toLowerCase();
+    if (status === 'suspended') {
+      return res.status(403).json({ error: 'Your account has been suspended. Contact support for assistance.' });
+    }
+
+    if (status === 'deleted_by_user' || status === 'deactivated' || status === 'archived') {
+      return res.status(403).json({
+        error: 'Your account is deactivated/closed. If you wish to reactivate your account, contact admin for account restoration.',
+        isDeactivated: true,
+        email: user.email
+      });
     }
 
     if (!user.password_hash) {
@@ -61,6 +70,16 @@ export const authController = {
 
     const { password_hash, ...safeUser } = user;
     const token = jwt.sign({ id: user.id, email: user.email, role: user.primary_role, primary_role: user.primary_role }, JWT_SECRET, { expiresIn: '7d' });
+
+    if (status === 'pending_restoration_fee') {
+      return res.status(402).json({
+        error: `Account restoration fee of ₦${Number(user.restoration_fee_amount || 5000).toLocaleString()} is required before accessing your account.`,
+        requiresRestorationFee: true,
+        restorationFeeAmount: Number(user.restoration_fee_amount || 5000),
+        user: safeUser,
+        token
+      });
+    }
 
     res.json({ user: safeUser, token });
   }),

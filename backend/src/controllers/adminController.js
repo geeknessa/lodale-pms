@@ -124,14 +124,21 @@ export const adminController = {
 
   updateUserStatus: asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, reason } = req.body;
 
     const normalizedStatus = (status || '').toLowerCase();
-    if (!['active', 'suspended'].includes(normalizedStatus)) {
-      return res.status(400).json({ error: 'Invalid status. Must be "active" or "suspended".' });
+    const validStatuses = ['active', 'suspended', 'deactivated', 'archived', 'deleted_by_user'];
+    if (!validStatuses.includes(normalizedStatus)) {
+      return res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
     }
 
-    const updatedUser = await UserModel.updateUserStatus(id, normalizedStatus);
+    let updatedUser = null;
+    if (normalizedStatus === 'deactivated' || normalizedStatus === 'deleted_by_user') {
+      updatedUser = await UserModel.softDeleteUser(id, reason || 'Deactivated by Admin');
+    } else {
+      updatedUser = await UserModel.updateUserStatus(id, normalizedStatus);
+    }
+
     if (!updatedUser) {
       return res.status(404).json({ error: 'User not found.' });
     }
@@ -140,6 +147,46 @@ export const adminController = {
       message: `User ${updatedUser.first_name || updatedUser.email} account status updated to ${normalizedStatus}.`,
       user: updatedUser
     });
+  }),
+
+  getRecycleBin: asyncHandler(async (req, res) => {
+    const data = await AdminModel.getDeletedItems();
+    res.json(data);
+  }),
+
+  restoreRecycleBinItem: asyncHandler(async (req, res) => {
+    const { itemType, itemId, restorationFee, isFeePaidManually } = req.body;
+
+    if (!itemType || !itemId) {
+      return res.status(400).json({ error: 'itemType and itemId are required.' });
+    }
+
+    const feeNum = Number(restorationFee) || 0;
+    const isPaid = Boolean(isFeePaidManually);
+
+    if (itemType === 'user') {
+      const restoredUser = await UserModel.restoreUser(itemId, { feeAmount: feeNum, isFeePaid: isPaid });
+      if (!restoredUser) {
+        return res.status(404).json({ error: 'User account not found.' });
+      }
+      return res.json({
+        success: true,
+        message: `Account for ${restoredUser.first_name || restoredUser.email} successfully restored ${feeNum > 0 ? (isPaid ? 'with settled fee' : 'pending online fee payment') : 'without fee'}.`,
+        user: restoredUser
+      });
+    } else if (itemType === 'property') {
+      const restoredProp = await PropertyModel.restoreProperty(itemId, { feeAmount: feeNum, isFeePaid: isPaid });
+      if (!restoredProp) {
+        return res.status(404).json({ error: 'Property listing not found.' });
+      }
+      return res.json({
+        success: true,
+        message: `Property "${restoredProp.title}" successfully restored ${feeNum > 0 ? (isPaid ? 'with settled fee' : 'pending fee payment') : 'to live listing'}.`,
+        property: restoredProp
+      });
+    }
+
+    res.status(400).json({ error: 'Invalid itemType. Must be "user" or "property".' });
   }),
 
   deleteUser: asyncHandler(async (req, res) => {
@@ -151,7 +198,7 @@ export const adminController = {
     }
 
     res.json({
-      message: `User ${deletedUser.first_name || deletedUser.email} deleted successfully from database.`,
+      message: `User ${deletedUser.first_name || deletedUser.email} moved to archive / deleted successfully.`,
       user: deletedUser
     });
   }),

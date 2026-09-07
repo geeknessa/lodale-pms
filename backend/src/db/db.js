@@ -20,6 +20,10 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+pool.on('error', (err, client) => {
+  console.error('[PostgreSQL Pool Error] Unexpected error on idle client:', err.message || err);
+});
+
 // Helper to ensure target database exists before connecting
 async function ensureDatabaseExists() {
   const dbUrlStr = process.env.DATABASE_URL;
@@ -80,11 +84,27 @@ export async function initDb() {
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS images TEXT;
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS latitude NUMERIC(10, 7);
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS longitude NUMERIC(10, 7);
-      ALTER TABLE properties ADD COLUMN IF NOT EXISTS minimum_income_required NUMERIC(20, 2) DEFAULT 0.00;
-      ALTER TABLE properties ADD COLUMN IF NOT EXISTS requires_guarantor BOOLEAN DEFAULT false;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS minimum_income_required TEXT;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS employment_requirement TEXT;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS requires_guarantor BOOLEAN DEFAULT true;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS house_rules TEXT;
       ALTER TABLE properties ALTER COLUMN property_type TYPE TEXT USING property_type::text;
+      ALTER TABLE properties ALTER COLUMN minimum_income_required TYPE TEXT USING minimum_income_required::text;
+      ALTER TABLE properties ALTER COLUMN employment_requirement TYPE TEXT USING employment_requirement::text;
+      ALTER TABLE properties ALTER COLUMN house_rules TYPE TEXT USING house_rules::text;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS account_status VARCHAR(50) DEFAULT 'active';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS deletion_reason TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS restoration_fee_amount NUMERIC(15, 2);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS restoration_fee_status VARCHAR(50) DEFAULT 'none';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS restoration_fee_paid_at TIMESTAMPTZ;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS restoration_payment_reference TEXT;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS deletion_reason TEXT;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS restoration_fee_amount NUMERIC(15, 2);
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS restoration_fee_status VARCHAR(50) DEFAULT 'none';
 
       CREATE TABLE IF NOT EXISTS chat_messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -140,6 +160,11 @@ export async function initDb() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
+      ALTER TABLE property_units ADD COLUMN IF NOT EXISTS description TEXT;
+      ALTER TABLE property_units ADD COLUMN IF NOT EXISTS amenities TEXT;
+      ALTER TABLE property_units ADD COLUMN IF NOT EXISTS rules TEXT;
+      ALTER TABLE property_units ADD COLUMN IF NOT EXISTS images TEXT[] DEFAULT '{}';
+
       ALTER TABLE leases ADD COLUMN IF NOT EXISTS custom_clauses TEXT;
       ALTER TABLE leases ADD COLUMN IF NOT EXISTS include_pets BOOLEAN DEFAULT false;
       ALTER TABLE leases ADD COLUMN IF NOT EXISTS include_smoking BOOLEAN DEFAULT false;
@@ -147,7 +172,10 @@ export async function initDb() {
       -- Avoid ON CONFLICT which fails without a unique constraint
     `);
 
-    const adminCheck = await client.query("SELECT id FROM users WHERE email IN ('admin', 'admin@lodale.com')");
+    // Ensure any legacy 'admin@lodale.com' email is updated to 'admin'
+    await client.query("UPDATE users SET email = 'admin' WHERE LOWER(email) = 'admin@lodale.com'");
+
+    const adminCheck = await client.query("SELECT id FROM users WHERE LOWER(email) = 'admin'");
     if (adminCheck.rowCount === 0) {
       await client.query(`
         INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number)
@@ -155,6 +183,12 @@ export async function initDb() {
           ('System', 'Admin', 'admin', '$2a$10$oGLTVt6pnp30pVGSiVmAmu8FgTjGo/2IYOD/gZhzhaaY/obTdBdlK', 'admin', 'verified', '+234 801 000 0000')
       `);
     }
+
+    // Ensure single admin account in database (remove duplicate admin-role users if any)
+    await client.query(`
+      DELETE FROM users 
+      WHERE primary_role = 'admin' AND LOWER(email) != 'admin'
+    `);
 
     // --- Migration: Role-Specific Profile Tables ---
     await client.query(`
@@ -181,7 +215,7 @@ export async function initDb() {
         occupation VARCHAR(150),
         employer_name VARCHAR(255),
         employment_status VARCHAR(50),
-        monthly_income NUMERIC(15, 2),
+        monthly_income TEXT,
         marital_status VARCHAR(50),
         number_of_dependants SMALLINT DEFAULT 0,
         guarantor_name VARCHAR(255),
@@ -192,10 +226,12 @@ export async function initDb() {
         emergency_contact_phone VARCHAR(50),
         emergency_contact_relationship VARCHAR(100),
         preferred_move_in_date DATE,
-        max_budget NUMERIC(15, 2),
+        max_budget TEXT,
         bio TEXT,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE tenant_profiles ALTER COLUMN monthly_income TYPE TEXT USING monthly_income::text;
 
       CREATE TABLE IF NOT EXISTS support_messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -302,7 +338,7 @@ export async function clearDatabase() {
     console.log('[PostgreSQL] Clearing user accounts and property listings...');
     await client.query(`
       TRUNCATE listing_approval_queue, property_amenities, property_units, property_blocks, properties CASCADE;
-      DELETE FROM users WHERE email != 'admin@lodale.com';
+      DELETE FROM users WHERE LOWER(email) != 'admin';
     `);
     console.log('[PostgreSQL] Database successfully cleared! Users can now register fresh accounts.');
     return { success: true, message: 'Database cleared successfully. System admin preserved.' };

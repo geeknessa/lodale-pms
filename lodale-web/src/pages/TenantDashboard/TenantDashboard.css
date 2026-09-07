@@ -172,6 +172,12 @@ body.dark .tenant-sidebar-tooltip {
   box-sizing: border-box;
 }
 
+@media (max-width: 768px) {
+  .db-main-content {
+    padding: 16px 12px;
+  }
+}
+
 .db-sub-header-row {
   display: flex;
   flex-direction: row;

@@ -21,7 +21,7 @@ export default function NavBar({ transparentMode = false }) {
   const [isAdmin, setIsAdmin] = useState(() => {
     const r = (sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") || "").toLowerCase();
     const email = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "";
-    return r === "admin" || email === "admin@lodale.com" || sessionStorage.getItem("adminAuthenticated") === "true";
+    return r === "admin" || email === "admin" || sessionStorage.getItem("adminAuthenticated") === "true";
   });
   const [activeSection, setActiveSection] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
@@ -36,7 +36,7 @@ export default function NavBar({ transparentMode = false }) {
 
       setIsAuthenticated(auth);
       setUserRole(role);
-      setIsAdmin(role === "admin" || email === "admin@lodale.com" || sessionStorage.getItem("adminAuthenticated") === "true");
+      setIsAdmin(role === "admin" || email === "admin" || sessionStorage.getItem("adminAuthenticated") === "true");
     };
 
     handleAuth();

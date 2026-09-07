@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, Heart } from "lucide-react";
+import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, XCircle, ShieldCheck, Heart, MessageSquare, AlertTriangle, Loader2 } from "lucide-react";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { applicationService } from "../../services/applicationService";
+import { chatService } from "../../services/chatService";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import Avatar from "../../components/Avatar";
+import { INCOME_RANGES, doesIncomeMeetRequirement } from "../../utils/incomeRanges";
 import "./TenantSearch.css";
 
-// formatCurrency imported from formatters.js
+// formatCurrency imported from formatters.js - HMR refreshed
 
 // Helper Property Card Component
 function PropertyCard({ property, onInspect }) {
@@ -32,7 +34,7 @@ function PropertyCard({ property, onInspect }) {
         <div className="property-card-specs">
           <span className="spec-tag">{property.beds} Bed{property.beds > 1 ? "s" : ""}</span>
           <span className="spec-tag">{property.baths} Bath{property.baths > 1 ? "s" : ""}</span>
-          <span className="spec-tag capitalize">{property.type}</span>
+          <span className="spec-tag capitalize">{property.type ? String(property.type).replace(/_/g, " ") : ""}</span>
         </div>
 
         <button
@@ -111,13 +113,20 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
   // View mode & search suggestion states
   const [viewAllListings, setViewAllListings] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(8);
   const searchContainerRef = useRef(null);
+
+  useEffect(() => {
+    setDisplayLimit(8);
+  }, [searchQuery, filterPrice, filterBeds, filterType, filterLandlordTenure]);
 
   // Dynamic approved listings loaded from backend API & localStorage
   const [allListings, setAllListings] = useState([]);
+  const [isLoadingListings, setIsLoadingListings] = useState(true);
 
   useEffect(() => {
     async function loadTenantProperties() {
+      setIsLoadingListings(true);
       try {
         let apiProps = [];
         try {
@@ -159,7 +168,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
             landlord: landlordObj,
             status: item.status,
             isPending: item.isPending,
-            recommendationCategory: item.recommendationCategory || "Popular properties"
+            recommendationCategory: item.recommendationCategory || "Featured properties"
           };
         }).filter(Boolean);
 
@@ -176,10 +185,20 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
         setAllListings(approvedOnly);
       } catch (err) {
         console.warn("Failed to load tenant search listings:", err);
+      } finally {
+        setIsLoadingListings(false);
       }
     }
 
     loadTenantProperties();
+
+    const handlePropertyChange = () => loadTenantProperties();
+    window.addEventListener("storage", handlePropertyChange);
+    window.addEventListener("propertyUpdated", handlePropertyChange);
+    return () => {
+      window.removeEventListener("storage", handlePropertyChange);
+      window.removeEventListener("propertyUpdated", handlePropertyChange);
+    };
   }, []);
 
   // Derive unique landlords dynamically from loaded listings
@@ -225,7 +244,12 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
   // Property Details modal states
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [showPropertyDetailsModal, setShowPropertyDetailsModal] = useState(false);
-  const [showAllPopular, setShowAllPopular] = useState(false);
+  const [showAllFeatured, setShowAllFeatured] = useState(false);
+
+  // Quick Apply Confirmation Modal state
+  const [showQuickApplyConfirmModal, setShowQuickApplyConfirmModal] = useState(false);
+  const [quickApplyProperty, setQuickApplyProperty] = useState(null);
+  const [quickApplyAgreedRules, setQuickApplyAgreedRules] = useState([]);
 
   // Dynamic Last Visited State loaded from localStorage
   const [lastVisitedListings, setLastVisitedListings] = useState(() => {
@@ -449,16 +473,36 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
     return true;
   });
 
-  const userLocationStr = (() => {
+  const getUserLocationStr = () => {
     try {
-      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
+      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+      const raw =
+        sessionStorage.getItem("tenantCurrentProfile") ||
+        sessionStorage.getItem("currentUserProfile") ||
+        (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null);
       if (raw) {
         const prof = JSON.parse(raw);
         return prof.location || "";
       }
     } catch { }
     return "";
-  })();
+  };
+
+  const [userLocationStr, setUserLocationStr] = useState(getUserLocationStr);
+
+  useEffect(() => {
+    const handleLocationUpdate = () => {
+      setUserLocationStr(getUserLocationStr());
+    };
+    window.addEventListener("tenantProfileUpdated", handleLocationUpdate);
+    window.addEventListener("storage", handleLocationUpdate);
+    window.addEventListener("focus", handleLocationUpdate);
+    return () => {
+      window.removeEventListener("tenantProfileUpdated", handleLocationUpdate);
+      window.removeEventListener("storage", handleLocationUpdate);
+      window.removeEventListener("focus", handleLocationUpdate);
+    };
+  }, []);
 
   const allAvailableProperties = (() => {
     const seen = new Set();
@@ -555,17 +599,26 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
     if (locLower) {
       const allTokens = locLower
         .split(/[\s,\-()]+/)
-        .filter(k => k.length > 2 && !["usa", "states", "united", "atlanta", "london", "york"].includes(k));
+        .filter(k => k.length > 2 && !["usa", "states", "united", "atlanta", "london", "york", "nigeria"].includes(k));
 
       // Prefer specific area tokens over generic "lagos", "fct", "state"
       const specificTokens = allTokens.filter(k => !["lagos", "fct", "state"].includes(k));
       const searchTokens = specificTokens.length > 0 ? specificTokens : allTokens;
 
       if (searchTokens.length > 0) {
+        const matches = allAvailableProperties.filter(l => {
+          if (lastVisitedIds.has(l.id)) return false;
+          const propLoc = (l.location || "").toLowerCase();
+          return searchTokens.some(k => propLoc.includes(k));
+        });
+        if (matches.length > 0) return matches;
+      }
+
+      if (allTokens.length > 0) {
         return allAvailableProperties.filter(l => {
           if (lastVisitedIds.has(l.id)) return false;
           const propLoc = (l.location || "").toLowerCase();
-          return searchTokens.every(k => propLoc.includes(k));
+          return allTokens.some(k => propLoc.includes(k));
         });
       }
       return [];
@@ -578,10 +631,9 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
 
   const closeToYouIds = new Set(closeToYouProperties.map(p => p.id));
 
-  const popularProperties = allAvailableProperties.filter(l =>
+  const featuredProperties = allAvailableProperties.filter(l =>
     !lastVisitedIds.has(l.id) &&
-    !closeToYouIds.has(l.id) &&
-    l.recommendationCategory === "Popular properties"
+    !closeToYouIds.has(l.id)
   );
 
   return (
@@ -753,10 +805,44 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
         )}
 
         {/* Initial State / Recommendation Swimlanes */}
-        {!hasActiveFilters && !viewAllListings ? (
+        {isLoadingListings ? (
+          <div className="py-20 flex flex-col items-center justify-center text-center max-w-sm mx-auto">
+            <Loader2 className="h-8 w-8 animate-spin text-moss-700 dark:text-[#E5C583] mb-3" />
+            <p className="text-sm font-semibold text-ink-900 dark:text-white">Loading properties & marketplace...</p>
+            <p className="text-xs text-ink-500 dark:text-cream-100/60 mt-1">Fetching latest listings from server</p>
+          </div>
+        ) : !hasActiveFilters && !viewAllListings ? (
           searchType === "property" ? (
             <div className="recommendations-container text-left tour-search-results">
-              {/* Section 1: Last Visited */}
+              {/* Section 1: Featured Properties & View All Listings (TOP) */}
+              <div className="recommendation-row mb-8" id="featured-properties-section">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+                  <h3 className="recommendation-section-title">Featured properties</h3>
+                  <button
+                    type="button"
+                    onClick={() => setViewAllListings(true)}
+                    className="text-[12.5px] font-bold text-moss-700 dark:text-[#E5C583] hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    View All Listings →
+                  </button>
+                </div>
+
+                {showAllFeatured ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
+                    {featuredProperties.map(p => (
+                      <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="recommendation-cards-scroller">
+                    {featuredProperties.map(p => (
+                      <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Section 2: Last Visited */}
               <div className="recommendation-row mb-8">
                 <h3 className="recommendation-section-title">Last visited</h3>
                 {lastVisitedProperties.length > 0 ? (
@@ -774,7 +860,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 )}
               </div>
 
-              {/* Section 1.5: Saved Properties */}
+              {/* Section 2.5: Saved Properties */}
               {savedPropertiesList.length > 0 && (
                 <div className="recommendation-row mb-8">
                   <h3 className="recommendation-section-title flex items-center gap-2">
@@ -789,7 +875,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 </div>
               )}
 
-              {/* Section 2: Close to You */}
+              {/* Section 3: Close to You */}
               <div className="recommendation-row mb-8">
                 <h3 className="recommendation-section-title">
                   Properties close to you {userLocationStr ? `(${userLocationStr})` : ""}
@@ -842,34 +928,6 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                   </div>
                 )}
               </div>
-
-              {/* Section 3: Popular Properties */}
-              <div className="recommendation-row mb-8" id="popular-properties-section">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="recommendation-section-title">Popular properties</h3>
-                  <button
-                    type="button"
-                    onClick={() => setViewAllListings(true)}
-                    className="text-[12.5px] font-bold text-moss-700 dark:text-[#E5C583] hover:underline cursor-pointer flex items-center gap-1"
-                  >
-                    View All Listings →
-                  </button>
-                </div>
-
-                {showAllPopular ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
-                    {popularProperties.map(p => (
-                      <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="recommendation-cards-scroller">
-                    {popularProperties.map(p => (
-                      <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           ) : (
             <div className="recommendations-container text-left tour-search-results">
@@ -897,7 +955,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
         ) : (
           /* Search Results & All Listings State */
           <div className="search-results-container text-left">
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-4">
               <h3 className="recommendation-section-title">
                 {searchQuery || filterPrice || filterBeds || filterType || filterLandlordTenure
                   ? `Search Results (${searchType === "property" ? filteredListings.length : filteredLandlords.length})`
@@ -955,23 +1013,39 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 )}
               </div>
             ) : (
-              <div className="search-results-grid">
-                {searchType === "property" ? (
-                  filteredListings.map(p => (
-                    <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
-                  ))
-                ) : filteredLandlords.length > 0 ? (
-                  filteredLandlords.map(l => (
-                    <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} />
-                  ))
-                ) : (
-                  <div className="col-span-full p-8 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C]">
-                    <User className="h-8 w-8 text-moss-600 dark:text-[#E5C583] mx-auto mb-3" />
-                    <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">No landlords match your search</h4>
-                    <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Try a different name or clear your filters.</p>
+              <>
+                <div className="search-results-grid">
+                  {searchType === "property" ? (
+                    filteredListings.slice(0, displayLimit).map(p => (
+                      <PropertyCard key={p.id} property={p} onInspect={handleInspectProperty} />
+                    ))
+                  ) : filteredLandlords.length > 0 ? (
+                    filteredLandlords.map(l => (
+                      <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} />
+                    ))
+                  ) : (
+                    <div className="col-span-full p-8 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C]">
+                      <User className="h-8 w-8 text-moss-600 dark:text-[#E5C583] mx-auto mb-3" />
+                      <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">No landlords match your search</h4>
+                      <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Try a different name or clear your filters.</p>
+                    </div>
+                  )}
+                </div>
+
+                {searchType === "property" && filteredListings.length > displayLimit && (
+                  <div className="flex flex-col items-center justify-center pt-8 pb-4">
+                    <button
+                      onClick={() => setDisplayLimit((prev) => prev + 8)}
+                      className="px-6 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs tracking-wide shadow-md transition-all flex items-center gap-2 cursor-pointer border-0"
+                    >
+                      Load More Properties ({filteredListings.length - displayLimit} remaining)
+                    </button>
+                    <span className="text-[11px] text-[#6C6E73] dark:text-[#A3BCA7] mt-2 font-medium">
+                      Showing {Math.min(displayLimit, filteredListings.length)} of {filteredListings.length} properties
+                    </span>
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         )}
@@ -1173,8 +1247,46 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 </div>
               </div>
 
+              {/* Landlord Property Requirements & Qualification Section */}
+              {(() => {
+                const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                const rawProf = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile") || (userEmail ? localStorage.getItem("tenantProfile_" + userEmail) : null);
+                const prof = rawProf ? JSON.parse(rawProf) : {};
+
+                const reqIncome = selectedProperty.minimum_income_required || selectedProperty.minimumIncome || "No Minimum Income";
+                const tenantIncome = prof.income || prof.monthlyIncome || "";
+                const meetsInc = doesIncomeMeetRequirement(tenantIncome, reqIncome);
+
+                return (
+                  <div className="flex flex-col gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-3.5 mb-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[12px] font-bold uppercase tracking-wider text-moss-700 dark:text-[#E5C583]">Required Annual Income Range</span>
+                      <span className="text-[12px] font-bold">{reqIncome}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Your Profile Qualification</span>
+                      {meetsInc ? (
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Meets Requirement
+                        </span>
+                      ) : (
+                        <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                          <XCircle className="h-3 w-3" /> Below Requirement
+                        </span>
+                      )}
+                    </div>
+                    {!meetsInc && (
+                      <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 mt-1">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                        <span>Your annual income ({tenantIncome || 'Not Provided'}) does not meet requirement. Quick Apply is blocked.</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Landlord validation details */}
-              <div className="flex flex-col gap-3 border-t border-neutral-100 dark:border-neutral-800/60 pt-4 mb-2">
+              <div className="flex flex-col gap-3 border-t border-neutral-100 dark:border-neutral-800/60 pt-3 mb-2">
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Landlord / Manager</span>
                   <span className="text-[13px] font-bold">{selectedProperty.landlord.name}</span>
@@ -1203,20 +1315,25 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
               >
                 View Full Listing & Photos
               </Button>
-              <div className="flex gap-3">
+              <div className="flex gap-2.5">
                 <Button
-                  onClick={() => {
-                    const landlordObj = LANDLORDS.find(l => l.name === selectedProperty.landlord.name);
-                    if (landlordObj) {
-                      setSelectedLandlord(landlordObj);
-                      setShowLandlordDetailsModal(true);
-                    }
+                  onClick={async () => {
+                    const landlordName = selectedProperty.landlord?.name || "Landlord";
+                    const landlordId = selectedProperty.landlord?.id || `landlord-${landlordName.toLowerCase().replace(/\s+/g, '-')}`;
+                    await chatService.sendMessage(landlordId, `Hello ${landlordName}, I am inquiring about your property "${selectedProperty.title}".`, selectedProperty.id, {
+                      partner_name: landlordName,
+                      partner_avatar: selectedProperty.landlord?.avatar || ""
+                    });
+                    sessionStorage.setItem("activeChatPartnerId", landlordId);
+                    localStorage.setItem("activeChatPartnerId", landlordId);
                     setShowPropertyDetailsModal(false);
+                    triggerToast(`Opening chat with ${landlordName}...`, "info", "Starting Chat");
+                    if (setActiveTab) setActiveTab(2); // Navigate to Chat tab
                   }}
-                  variant="secondary"
-                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3 text-[12.5px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white"
+                  className="flex-1 bg-moss-600 dark:bg-moss-700 hover:bg-moss-700 text-white font-bold py-3 text-[12.5px] rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all"
                 >
-                  Landlord Profile
+                  <MessageSquare className="h-4 w-4" />
+                  Chat with Landlord
                 </Button>
                 <Button
                   onClick={async () => {
@@ -1232,6 +1349,15 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                       return;
                     }
 
+                    const reqIncome = selectedProperty.minimum_income_required || selectedProperty.minimumIncome || "No Minimum Income";
+                    const tenantIncome = prof.income || prof.monthlyIncome || "";
+                    const meetsInc = doesIncomeMeetRequirement(tenantIncome, reqIncome);
+
+                    if (!meetsInc) {
+                      triggerToast(`Your annual income tier (${tenantIncome || 'Not Provided'}) does not meet the landlord requirement (${reqIncome}). You cannot apply.`, "error", "Qualification Blocked");
+                      return;
+                    }
+
                     try {
                       // Check for existing application first
                       const existingApp = await applicationService.getApplicationForProperty(selectedProperty.id);
@@ -1240,17 +1366,11 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                         return;
                       }
 
-                      await applicationService.apply(selectedProperty.id, "Quick Apply via Tenant Search.");
-                      triggerToast("Application submitted! Your profile has been shared with the landlord.", "success", "Application Sent");
+                      // Navigate to full application form page
                       setShowPropertyDetailsModal(false);
-                      if (setActiveTab) setActiveTab(4); // Navigate to Applications tab
+                      navigate(`/apply/${selectedProperty.id}`);
                     } catch (err) {
-                      const message = err.message || "Failed to submit application.";
-                      if (message.toLowerCase().includes("already")) {
-                        triggerToast("You have already applied for this property.", "info", "Already Applied");
-                      } else {
-                        triggerToast(message, "error", "Application Error");
-                      }
+                      console.error(err);
                     }
                   }}
                   variant="secondary"
@@ -1260,6 +1380,140 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* QUICK APPLY CONFIRMATION MODAL WITH PREFILLED PROFILE & HOUSE RULE CHECKBOXES */}
+      {showQuickApplyConfirmModal && quickApplyProperty && (
+        <div className="tenant-modal-backdrop" onClick={() => setShowQuickApplyConfirmModal(false)}>
+          <div className="tenant-modal-content text-left max-w-lg w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
+              <h3 className="font-bold text-base text-neutral-900 dark:text-white flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" /> Quick Apply to {quickApplyProperty.title}
+              </h3>
+              <button className="text-xl font-bold text-neutral-400 hover:text-neutral-600" onClick={() => setShowQuickApplyConfirmModal(false)}>&times;</button>
+            </div>
+
+            {(() => {
+              const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+              const raw = sessionStorage.getItem("tenantCurrentProfile") || (userEmail ? localStorage.getItem("tenantProfile_" + userEmail) : null) || "{}";
+              const prof = JSON.parse(raw);
+
+              const rulesList = Array.isArray(quickApplyProperty.house_rules) 
+                ? quickApplyProperty.house_rules 
+                : (typeof quickApplyProperty.rules === 'string' && quickApplyProperty.rules ? quickApplyProperty.rules.split(',').map(r => r.trim()) : []);
+
+              return (
+                <div className="space-y-4">
+                  {/* Prefilled Profile Summary Card */}
+                  <div className="p-4 rounded-xl bg-neutral-50 dark:bg-[#16241F] border border-neutral-200 dark:border-neutral-800 space-y-2 text-xs">
+                    <div className="flex justify-between items-center border-b border-neutral-200/60 dark:border-neutral-800 pb-2">
+                      <span className="font-bold uppercase tracking-wider text-moss-700 dark:text-[#E5C583]">Your Prefilled Profile</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Income Qualified
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <div>
+                        <span className="text-neutral-400 block font-medium">Annual Income</span>
+                        <p className="font-bold text-neutral-900 dark:text-white">{prof.income || prof.monthlyIncome || "Not Provided"}</p>
+                      </div>
+                      <div>
+                        <span className="text-neutral-400 block font-medium">Employment</span>
+                        <p className="font-bold text-neutral-900 dark:text-white">{prof.employmentStatus || prof.employment_status || "Employed"}</p>
+                      </div>
+                      <div>
+                        <span className="text-neutral-400 block font-medium">Occupation</span>
+                        <p className="font-bold text-neutral-900 dark:text-white">{prof.occupation || "N/A"}</p>
+                      </div>
+                      <div>
+                        <span className="text-neutral-400 block font-medium">Guarantor</span>
+                        <p className="font-bold text-neutral-900 dark:text-white">{prof.guarantorName || prof.guarantor_name || "Provided"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* House Rules Checkboxes */}
+                  {rulesList.length > 0 && (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-bold text-neutral-900 dark:text-white">
+                        Confirm House Rules Compliance (Tick all to enable submit):
+                      </label>
+                      <div className="space-y-2">
+                        {rulesList.map((rule) => {
+                          const isAgreed = quickApplyAgreedRules.includes(rule);
+                          return (
+                            <label
+                              key={rule}
+                              className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                                isAgreed 
+                                  ? 'bg-moss-50 border-moss-300 text-moss-900 dark:bg-moss-950/40 dark:border-moss-800 dark:text-cream-100' 
+                                  : 'bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-neutral-800 text-neutral-800 dark:text-neutral-200'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isAgreed}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setQuickApplyAgreedRules(prev => [...prev, rule]);
+                                  } else {
+                                    setQuickApplyAgreedRules(prev => prev.filter(r => r !== rule));
+                                  }
+                                }}
+                                className="h-4 w-4 accent-moss-600 rounded cursor-pointer"
+                              />
+                              <span>I confirm compliance with rule: <strong>{rule}</strong></span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => setShowQuickApplyConfirmModal(false)}
+                      className="flex-1 py-2.5 text-xs font-bold rounded-xl border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          await applicationService.apply(quickApplyProperty.id, {
+                            notes: "Quick Apply via Tenant Search.",
+                            monthlyIncome: prof.income || prof.monthlyIncome || prof.monthly_income || null,
+                            employmentStatus: prof.employmentStatus || prof.employment_status || "Employed",
+                            employerName: prof.employerName || prof.employer_name || prof.employer || null,
+                            occupation: prof.occupation || null,
+                            maritalStatus: prof.maritalStatus || prof.marital_status || "Single",
+                            dependants: prof.dependants || prof.number_of_dependants || 0,
+                            guarantorName: prof.guarantorName || prof.guarantor_name || null,
+                            guarantorPhone: prof.guarantorPhone || prof.guarantor_phone || null,
+                            guarantorRelationship: prof.guarantorRelationship || prof.guarantor_relationship || null,
+                            guarantorEmail: prof.guarantorEmail || prof.guarantor_email || null
+                          });
+                          triggerToast("Application submitted successfully! Shared with landlord.", "success", "Application Sent");
+                          setShowQuickApplyConfirmModal(false);
+                          setShowPropertyDetailsModal(false);
+                          if (setActiveTab) setActiveTab(4); // Navigate to Applications tab
+                        } catch (err) {
+                          const message = err.message || "Failed to submit application.";
+                          triggerToast(message, "error", "Application Error");
+                        }
+                      }}
+                      disabled={rulesList.length > 0 && quickApplyAgreedRules.length < rulesList.length}
+                      className="flex-1 py-2.5 text-xs font-bold rounded-xl bg-moss-600 hover:bg-moss-700 dark:bg-[#E5C583] dark:hover:bg-[#d4b371] text-white dark:text-[#263b33] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Confirm & Submit
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

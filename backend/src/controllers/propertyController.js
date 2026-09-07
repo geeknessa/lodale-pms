@@ -167,8 +167,9 @@ export const propertyController = {
     const data = req.body;
     
     // Quick sanitization of price from rent string to number if needed, but only if rent_amount isn't explicitly provided
-    if (data.price && !data.rent_amount) {
-      data.rent_amount = Number(String(data.price).replace(/[^0-9]/g, "")) || 0;
+    if (data.price && (data.rent_amount === undefined || data.rent_amount === null || data.rent_amount === "")) {
+      const firstPart = String(data.price).split('-')[0].replace(/[^0-9.]/g, "");
+      data.rent_amount = parseFloat(firstPart) || 0;
     }
 
     const updated = await PropertyModel.updateProperty(id, data);
