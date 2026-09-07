@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Lock, CheckCircle2, AlertTriangle, Loader2, SlidersHorizontal, Image, Plus, Trash2, Shield, Info, Send, Upload } from "lucide-react";
+import { X, Lock, CheckCircle2, AlertTriangle, Loader2, SlidersHorizontal, Image, Plus, Trash2, Shield, Info, Send, Upload, ShieldCheck } from "lucide-react";
 import Button from "./Button";
 import { propertyService } from "../services/propertyService";
 import { triggerToast } from "../context/ToastContext";
 import { COMMON_AMENITIES } from "../utils/propertyUtils";
+import { INCOME_RANGES, PRESET_HOUSE_RULES } from "../utils/incomeRanges";
 
 export default function QuickEditPropertyModal({ isOpen, onClose, property, onSaveSuccess }) {
   if (!isOpen || !property) return null;
@@ -11,6 +12,21 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
   const [title, setTitle] = useState(property.title || "");
   const [description, setDescription] = useState(property.description || "");
   const [rules, setRules] = useState(property.rules || "");
+
+  // Landlord Tenant Qualification & Property Rules State
+  const [minimumIncome, setMinimumIncome] = useState(property.minimum_income_required || property.minimumIncome || "No Minimum Income");
+  const [employmentRequirement, setEmploymentRequirement] = useState(property.employment_requirement || property.employmentRequirement || "Any Employment");
+  const [requiresGuarantor, setRequiresGuarantor] = useState(property.requires_guarantor ?? property.requiresGuarantor ?? true);
+
+  const [selectedHouseRules, setSelectedHouseRules] = useState(() => {
+    if (Array.isArray(property.house_rules)) return property.house_rules;
+    if (typeof property.rules === "string" && property.rules) {
+      return property.rules.split(",").map(r => r.trim()).filter(Boolean);
+    }
+    return [];
+  });
+  const [customRuleInput, setCustomRuleInput] = useState("");
+
   const [selectedAmenities, setSelectedAmenities] = useState(() => {
     if (!property.amenities) return [];
     if (Array.isArray(property.amenities)) {
@@ -41,6 +57,16 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
       setTitle(property.title || "");
       setDescription(property.description || "");
       setRules(property.rules || "");
+      setMinimumIncome(property.minimum_income_required || property.minimumIncome || "No Minimum Income");
+      setEmploymentRequirement(property.employment_requirement || property.employmentRequirement || "Any Employment");
+      setRequiresGuarantor(property.requires_guarantor ?? property.requiresGuarantor ?? true);
+
+      if (Array.isArray(property.house_rules)) {
+        setSelectedHouseRules(property.house_rules);
+      } else if (typeof property.rules === "string" && property.rules) {
+        setSelectedHouseRules(property.rules.split(",").map(r => r.trim()).filter(Boolean));
+      }
+
       if (Array.isArray(property.amenities)) {
         setSelectedAmenities(property.amenities.map(a => (typeof a === "string" ? a : a.name || a.title)));
       }
@@ -125,26 +151,46 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
 
     setSubmitting(true);
     try {
+      const finalRulesList = selectedHouseRules.length > 0 ? selectedHouseRules : (rules ? rules.split(",").map(r => r.trim()) : []);
+
       const payload = {
         title: title.trim(),
         description: description.trim(),
         cover_image: coverImage || images[0] || "",
         images: images,
         amenities: selectedAmenities,
-        rules: rules
+        minimum_income_required: minimumIncome,
+        minimumIncome: minimumIncome,
+        employment_requirement: employmentRequirement,
+        employmentRequirement: employmentRequirement,
+        requires_guarantor: requiresGuarantor,
+        requiresGuarantor: requiresGuarantor,
+        house_rules: finalRulesList,
+        rules: finalRulesList.join(", ")
       };
 
       const updated = await propertyService.updateProperty(property.id, payload);
 
-      // Update local storage if present
+      // Update local storage caches and notify all tenant components
       try {
-        const savedLandlord = JSON.parse(localStorage.getItem("landlordProperties") || "[]");
+        const fullUpdated = updated || { ...property, ...payload };
+
+        const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
+        const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+        const userKey = "landlord_properties_" + (currentUserId || userEmail);
+
+        const savedLandlord = JSON.parse(sessionStorage.getItem(userKey) || "[]");
         const idx = savedLandlord.findIndex(p => String(p.id) === String(property.id));
         if (idx !== -1) {
-          savedLandlord[idx] = { ...savedLandlord[idx], ...payload };
-          localStorage.setItem("landlordProperties", JSON.stringify(savedLandlord));
+          savedLandlord[idx] = { ...savedLandlord[idx], ...payload, ...fullUpdated };
+          sessionStorage.setItem(userKey, JSON.stringify(savedLandlord));
         }
-      } catch (e) {}
+
+        window.dispatchEvent(new Event("storage"));
+        window.dispatchEvent(new CustomEvent("propertyUpdated", { detail: { propertyId: property.id, updatedProperty: fullUpdated } }));
+      } catch (e) {
+        console.warn("Could not sync local property cache:", e);
+      }
 
       triggerToast("Property display details updated successfully!", "success", "Saved");
       if (onSaveSuccess) onSaveSuccess(updated || payload);
@@ -371,18 +417,119 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
             </div>
           </div>
 
-          {/* House Rules */}
-          <div className="space-y-3 pt-4 border-t border-ink-100 dark:border-white/10">
+          {/* Tenant Qualification & Property Rules */}
+          <div className="space-y-4 pt-4 border-t border-ink-100 dark:border-white/10">
             <label className="block text-xs font-bold text-moss-700 dark:text-[#E5C583] uppercase tracking-wider flex items-center gap-2">
-              <Shield className="h-4 w-4" /> House Rules & Guidelines
+              <ShieldCheck className="h-4 w-4" /> Tenant Qualification & Property Rules
             </label>
-            <textarea
-              rows={3}
-              value={rules}
-              onChange={(e) => setRules(e.target.value)}
-              placeholder="e.g. No noise after 10 PM, Pets allowed with deposit..."
-              className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-white/5 p-3 text-sm text-ink-900 dark:text-white outline-none focus:border-moss-600 dark:focus:border-[#E5C583] resize-none"
-            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+              <div>
+                <label className="block font-bold text-ink-800 dark:text-cream-100/80 mb-1">
+                  Minimum Required Annual Income Tier
+                </label>
+                <select
+                  value={minimumIncome}
+                  onChange={(e) => setMinimumIncome(e.target.value)}
+                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-[#12221C] p-2.5 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 font-medium"
+                >
+                  <option value="No Minimum Income">No Minimum Income Required</option>
+                  {INCOME_RANGES.map((range) => (
+                    <option key={range} value={range}>{range}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-ink-800 dark:text-cream-100/80 mb-1">
+                  Employment Requirement
+                </label>
+                <select
+                  value={employmentRequirement}
+                  onChange={(e) => setEmploymentRequirement(e.target.value)}
+                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-[#12221C] p-2.5 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 font-medium"
+                >
+                  <option value="Any Employment">Any Employment / Flexible</option>
+                  <option value="Employed Only">Employed / Salary Earners Only</option>
+                  <option value="Self-Employed / Business Owners">Self-Employed / Business Owners</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                id="quickEditRequiresGuarantor"
+                checked={requiresGuarantor}
+                onChange={(e) => setRequiresGuarantor(e.target.checked)}
+                className="h-4 w-4 rounded accent-moss-600 dark:accent-[#E5C583] cursor-pointer"
+              />
+              <label htmlFor="quickEditRequiresGuarantor" className="text-xs font-bold text-ink-800 dark:text-cream-100 cursor-pointer">
+                Mandatory Guarantor Required for Applicants
+              </label>
+            </div>
+
+            {/* House Rules Checklist */}
+            <div className="space-y-2 pt-2 border-t border-ink-100 dark:border-white/10">
+              <label className="block text-xs font-bold text-ink-800 dark:text-cream-100/80">
+                House Rules Checklist (Tenants must confirm compliance before applying)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {PRESET_HOUSE_RULES.map((rule) => {
+                  const isSelected = selectedHouseRules.includes(rule);
+                  return (
+                    <button
+                      key={rule}
+                      type="button"
+                      onClick={() => {
+                        setSelectedHouseRules(prev =>
+                          prev.includes(rule) ? prev.filter(r => r !== rule) : [...prev, rule]
+                        );
+                      }}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-moss-700 text-white border-transparent dark:bg-[#E5C583] dark:text-[#263b33]"
+                          : "bg-cream-50 dark:bg-white/5 text-ink-700 dark:text-cream-100 border-ink-200 dark:border-white/10 hover:bg-cream-100 dark:hover:bg-white/10"
+                      }`}
+                    >
+                      {isSelected ? "✓ " : "+ "}{rule}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom House Rule Input */}
+              <div className="flex gap-2 pt-1">
+                <input
+                  type="text"
+                  value={customRuleInput}
+                  onChange={(e) => setCustomRuleInput(e.target.value)}
+                  placeholder="Add custom rule (e.g. No Students, No Noise after 10 PM)..."
+                  className="flex-1 rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-white/5 px-3.5 py-2 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 dark:focus:border-[#E5C583]"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (customRuleInput.trim() && !selectedHouseRules.includes(customRuleInput.trim())) {
+                        setSelectedHouseRules(prev => [...prev, customRuleInput.trim()]);
+                        setCustomRuleInput("");
+                      }
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customRuleInput.trim() && !selectedHouseRules.includes(customRuleInput.trim())) {
+                      setSelectedHouseRules(prev => [...prev, customRuleInput.trim()]);
+                      setCustomRuleInput("");
+                    }
+                  }}
+                  className="px-3.5 py-2 bg-ink-100 hover:bg-ink-200 dark:bg-white/10 dark:hover:bg-white/20 text-ink-800 dark:text-white font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  + Add Rule
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Actions */}

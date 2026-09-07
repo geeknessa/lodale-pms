@@ -4,7 +4,7 @@ export const PropertyModel = {
   async getProperties(queryParams) {
     const { city, search, propertyType } = queryParams;
 
-    let query = "SELECT * FROM properties WHERE status::text IN ('active_vacant', 'approved', 'live', 'active', 'occupied', 'active_occupied')";
+    let query = "SELECT * FROM properties WHERE (is_deleted IS FALSE OR is_deleted IS NULL) AND status::text IN ('active_vacant', 'approved', 'live', 'active', 'occupied', 'active_occupied')";
     const params = [];
 
     if (city) {
@@ -32,7 +32,7 @@ export const PropertyModel = {
 
   async getPropertiesByLandlord(landlordId) {
     const res = await pool.query(
-      'SELECT * FROM properties WHERE landlord_id::text = $1 ORDER BY created_at DESC',
+      'SELECT * FROM properties WHERE landlord_id::text = $1 AND (is_deleted IS FALSE OR is_deleted IS NULL) ORDER BY created_at DESC',
       [landlordId]
     );
     return res.rows;
@@ -71,27 +71,57 @@ export const PropertyModel = {
     const safeLeaseStart = (lease_start_date && typeof lease_start_date === 'string' && lease_start_date.trim() !== "") ? lease_start_date : null;
     const safeAvailableFrom = (available_from && typeof available_from === 'string' && available_from.trim() !== "") ? available_from : null;
 
-    const insertRes = await pool.query(`
-      INSERT INTO properties (
-        landlord_id, title, slug, description, property_type, address_line1, city, state, 
-        bedrooms, bathrooms, rent_amount, status, ownership_doc, ownership_doc_url, 
-        ownership_doc_type, latitude, longitude, rules, images, cover_image,
-        is_occupied, tenant_name, tenant_contact, lease_start_date, available_from
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
-      RETURNING *
-    `, [
-      effectiveLandlordId, title, slug, description || '',
-      sanitizedPropertyType, address_line1, city || 'Lagos', state || 'Lagos',
-      Number(bedrooms) || 1, Number(bathrooms) || 1, Number(rent_amount) || 0, status || 'pending_review',
-      ownership_doc || null, ownership_doc_url || null, ownership_doc_type || null,
-      latitude ? Number(latitude) : null, longitude ? Number(longitude) : null,
-      rules || null,
-      images ? JSON.stringify(images) : '[]', cover_image || null,
-      is_occupied || false, tenant_name || null, tenant_contact || null, safeLeaseStart, safeAvailableFrom
-    ]);
+    // Deduplication check: check if same landlord already created a property with matching title & address
+    let property = null;
+    const existingCheck = await pool.query(
+      `SELECT * FROM properties WHERE landlord_id = $1 AND LOWER(TRIM(title)) = LOWER(TRIM($2)) AND LOWER(TRIM(address_line1)) = LOWER(TRIM($3)) LIMIT 1`,
+      [effectiveLandlordId, title, address_line1]
+    );
 
-    const property = insertRes.rows[0];
+    if (existingCheck.rows.length > 0) {
+      const existingProp = existingCheck.rows[0];
+      const updateRes = await pool.query(`
+        UPDATE properties SET
+          description = $1, property_type = $2, city = $3, state = $4,
+          bedrooms = $5, bathrooms = $6, rent_amount = $7, status = $8,
+          ownership_doc = $9, ownership_doc_url = $10, ownership_doc_type = $11,
+          latitude = $12, longitude = $13, rules = $14, images = $15, cover_image = $16,
+          is_occupied = $17, tenant_name = $18, tenant_contact = $19, lease_start_date = $20, available_from = $21,
+          updated_at = NOW()
+        WHERE id = $22
+        RETURNING *
+      `, [
+        description || '', sanitizedPropertyType, city || 'Lagos', state || 'Lagos',
+        Number(bedrooms) || 1, Number(bathrooms) || 1, Number(rent_amount) || 0, status || 'pending_review',
+        ownership_doc || null, ownership_doc_url || null, ownership_doc_type || null,
+        latitude ? Number(latitude) : null, longitude ? Number(longitude) : null,
+        rules || null, images ? JSON.stringify(images) : '[]', cover_image || null,
+        is_occupied || false, tenant_name || null, tenant_contact || null, safeLeaseStart, safeAvailableFrom,
+        existingProp.id
+      ]);
+      property = updateRes.rows[0];
+    } else {
+      const insertRes = await pool.query(`
+        INSERT INTO properties (
+          landlord_id, title, slug, description, property_type, address_line1, city, state, 
+          bedrooms, bathrooms, rent_amount, status, ownership_doc, ownership_doc_url, 
+          ownership_doc_type, latitude, longitude, rules, images, cover_image,
+          is_occupied, tenant_name, tenant_contact, lease_start_date, available_from
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+        RETURNING *
+      `, [
+        effectiveLandlordId, title, slug, description || '',
+        sanitizedPropertyType, address_line1, city || 'Lagos', state || 'Lagos',
+        Number(bedrooms) || 1, Number(bathrooms) || 1, Number(rent_amount) || 0, status || 'pending_review',
+        ownership_doc || null, ownership_doc_url || null, ownership_doc_type || null,
+        latitude ? Number(latitude) : null, longitude ? Number(longitude) : null,
+        rules || null,
+        images ? JSON.stringify(images) : '[]', cover_image || null,
+        is_occupied || false, tenant_name || null, tenant_contact || null, safeLeaseStart, safeAvailableFrom
+      ]);
+      property = insertRes.rows[0];
+    }
 
     // Map of block name -> block UUID
     const blockIdMap = {};
@@ -112,9 +142,10 @@ export const PropertyModel = {
       for (const u of units) {
         if (!u.unit_name || !u.unit_name.trim()) continue;
         const bId = u.block_name && blockIdMap[u.block_name.trim()] ? blockIdMap[u.block_name.trim()] : null;
+        const unitImgs = Array.isArray(u.images) ? u.images : (Array.isArray(u.photos) ? u.photos : []);
         await pool.query(`
-          INSERT INTO property_units (property_id, block_id, unit_name, bedrooms, bathrooms, rent_amount, rent_period, status)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          INSERT INTO property_units (property_id, block_id, unit_name, bedrooms, bathrooms, rent_amount, rent_period, status, description, amenities, rules, images)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         `, [
           property.id,
           bId,
@@ -123,7 +154,11 @@ export const PropertyModel = {
           Number(u.bathrooms) || Number(bathrooms) || 1,
           Number(u.rent_amount) || Number(rent_amount) || 0,
           u.rent_period || 'annually',
-          u.status || 'vacant'
+          u.status || 'vacant',
+          u.description || '',
+          u.amenities || '',
+          u.rules || '',
+          unitImgs
         ]);
       }
     } else {
@@ -195,19 +230,44 @@ export const PropertyModel = {
 
   async updateProperty(id, data) {
     const { 
-      title, description, rent_amount, beds, baths, 
+      title, description, rent_amount, price, beds, bedrooms, baths, bathrooms,
       address_line1, city, state, property_type, cover_image, rules, images, amenities,
-      is_occupied, tenant_name, tenant_contact, lease_start_date, available_from
+      is_occupied, tenant_name, tenant_contact, lease_start_date, available_from,
+      minimum_income_required, minimumIncome,
+      employment_requirement, employmentRequirement,
+      requires_guarantor, requiresGuarantor,
+      house_rules
     } = data;
+
+    const parseNumeric = (val) => {
+      if (val === undefined || val === null || val === "") return null;
+      if (typeof val === 'number') return isNaN(val) ? null : val;
+      const str = String(val).trim();
+      const cleaned = str.split('-')[0].replace(/[^0-9.]/g, "");
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? null : parsed;
+    };
     
     // Convert undefined to null for COALESCE to work properly
-    // Convert empty strings to null for numeric fields to prevent PostgreSQL syntax errors
-    const safeRent = (rent_amount !== undefined && rent_amount !== "") ? Number(rent_amount) : null;
-    const safeBeds = (beds !== undefined && beds !== "") ? Number(beds) : null;
-    const safeBaths = (baths !== undefined && baths !== "") ? Number(baths) : null;
+    // Convert formatted price / rent strings safely without throwing NaN
+    const rawRent = rent_amount !== undefined ? rent_amount : price;
+    const safeRent = parseNumeric(rawRent);
+    const safeBeds = parseNumeric(beds !== undefined ? beds : bedrooms);
+    const safeBaths = parseNumeric(baths !== undefined ? baths : bathrooms);
     
     const safeLeaseStart = (lease_start_date && typeof lease_start_date === 'string' && lease_start_date.trim() !== "") ? lease_start_date : null;
     const safeAvailableFrom = (available_from && typeof available_from === 'string' && available_from.trim() !== "") ? available_from : null;
+
+    const finalMinIncome = minimum_income_required || minimumIncome || null;
+    const finalEmpReq = employment_requirement || employmentRequirement || null;
+    const finalReqGuarantor = requires_guarantor !== undefined ? requires_guarantor : (requiresGuarantor !== undefined ? requiresGuarantor : null);
+
+    let finalHouseRules = null;
+    if (Array.isArray(house_rules)) {
+      finalHouseRules = JSON.stringify(house_rules);
+    } else if (typeof house_rules === 'string') {
+      finalHouseRules = house_rules;
+    }
 
     const res = await pool.query(`
       UPDATE properties 
@@ -230,8 +290,12 @@ export const PropertyModel = {
         lease_start_date = $16,
         available_from = $17,
         rent_period = COALESCE($18, rent_period),
+        minimum_income_required = COALESCE($19, minimum_income_required),
+        employment_requirement = COALESCE($20, employment_requirement),
+        requires_guarantor = COALESCE($21, requires_guarantor),
+        house_rules = COALESCE($22, house_rules),
         updated_at = NOW()
-      WHERE id = $19
+      WHERE id = $23
       RETURNING *
     `, [
       title || null, 
@@ -252,6 +316,10 @@ export const PropertyModel = {
       safeLeaseStart,
       safeAvailableFrom,
       data.rent_period || null,
+      finalMinIncome,
+      finalEmpReq,
+      finalReqGuarantor,
+      finalHouseRules,
       id
     ]);
     
@@ -268,8 +336,41 @@ export const PropertyModel = {
     return res.rows[0];
   },
 
-  async deleteProperty(id) {
-    await pool.query('DELETE FROM properties WHERE id = $1', [id]);
+  async deleteProperty(id, reason = 'Landlord requested deletion') {
+    try {
+      const res = await pool.query(`
+        UPDATE properties 
+        SET is_deleted = TRUE,
+            deleted_at = NOW(),
+            deletion_reason = $2,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING *
+      `, [id, reason]);
+      return res.rows[0];
+    } catch (e) {
+      await pool.query('DELETE FROM properties WHERE id = $1', [id]);
+    }
+  },
+
+  async restoreProperty(id, { feeAmount = 0, isFeePaid = true } = {}) {
+    const numFee = Number(feeAmount) || 0;
+    const feeStatus = numFee === 0 ? 'none' : (isFeePaid ? 'paid' : 'pending');
+
+    const res = await pool.query(`
+      UPDATE properties 
+      SET is_deleted = FALSE,
+          deleted_at = NULL,
+          deletion_reason = NULL,
+          status = COALESCE(status, 'active_vacant'),
+          restoration_fee_amount = $2,
+          restoration_fee_status = $3,
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `, [id, numFee, feeStatus]);
+
+    return res.rows[0];
   },
 
   async updatePropertyStatus(id, status) {

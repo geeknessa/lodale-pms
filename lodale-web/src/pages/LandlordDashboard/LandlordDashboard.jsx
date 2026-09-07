@@ -29,9 +29,13 @@ import {
   X,
   Trash2,
   BellOff,
-  ClipboardList
+  ClipboardList,
+  Menu,
+  FileText,
+  Upload,
+  CreditCard
 } from "lucide-react";
-import { Logo } from "../../components/Logo";
+import { Logo, LogoMark } from "../../components/Logo";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { applicationService } from "../../services/applicationService";
@@ -40,6 +44,8 @@ import UserInfo from "./components/UserInfo";
 import RequestInfo from "./components/RequestInfo";
 import LandlordChat from "./components/Landllordchat";
 import LandlordApplications from "./components/LandlordApplications";
+import LandlordReportModal from "./components/LandlordReportModal";
+import UploadProofModal from "./components/UploadProofModal";
 import SettingsTab from "./Settings";
 import Tenants from "./Tenants";
 import { leaseService } from "../../services/leaseService";
@@ -171,6 +177,7 @@ const TOUR_STEPS = [
 
 export default function LandlordDashboard() {
   const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Retrieve username with per-tab sessionStorage priority & localStorage fallback
   const [username, setUsername] = useState(() => {
@@ -247,6 +254,7 @@ export default function LandlordDashboard() {
   const [selectedRequestForDetails, setSelectedRequestForDetails] = useState(null);
   const [showLandlordProfileModal, setShowLandlordProfileModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Onboarding welcome overlay states
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
@@ -730,82 +738,90 @@ export default function LandlordDashboard() {
   // Filter listings where landlord name matches the username, or fallback to general listings list
   const [displayProperties, setDisplayProperties] = useState([]);
   const [selectedFeedbackProperty, setSelectedFeedbackProperty] = useState(null);
+  const [selectedProofProperty, setSelectedProofProperty] = useState(null);
 
   useEffect(() => {
     async function loadProperties() {
-      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
+      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
+      const currentName = (username || "").toLowerCase();
+      const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+
       let apiProps = [];
-      try {
-        apiProps = await propertyService.getLandlordProperties(currentUserId);
-      } catch (err) {
-        console.warn("Error fetching landlord properties from API:", err);
+      if (currentUserId) {
+        try {
+          apiProps = await propertyService.getLandlordProperties(currentUserId);
+        } catch (err) {
+          console.warn("Error fetching landlord properties from API:", err);
+        }
       }
 
+      // Per-user session storage cache for active landlord ONLY
       let localProps = [];
       try {
-        const savedLandlordProps = localStorage.getItem("landlordProperties");
-        if (savedLandlordProps) {
-          const parsed = JSON.parse(savedLandlordProps);
-          if (Array.isArray(parsed)) localProps.push(...parsed);
-        }
-        const savedGeneralProps = localStorage.getItem("properties");
-        if (savedGeneralProps) {
-          const parsedG = JSON.parse(savedGeneralProps);
-          if (Array.isArray(parsedG)) {
-            localProps.push(...parsedG);
-          }
+        const userKey = "landlord_properties_" + (currentUserId || userEmail);
+        const savedSessionProps = sessionStorage.getItem(userKey);
+        if (savedSessionProps) {
+          const parsed = JSON.parse(savedSessionProps);
+          if (Array.isArray(parsed) && parsed.length > 0) localProps.push(...parsed);
         }
       } catch (err) {
         console.warn("Error reading local landlord properties:", err);
       }
 
       const propMap = new Map();
-      if (Array.isArray(apiProps)) {
-        apiProps.forEach((p) => {
-          if (p && p.id) propMap.set(p.id, p);
+      const seenSignatures = new Set();
+
+      const addUniqueProp = (p) => {
+        if (!p || !p.id) return;
+
+        // Strict landlord ownership validation: do NOT load another landlord's property!
+        const pLandlordId = String(p.landlord_id || p.landlordId || p.landlord?.id || "").trim();
+        const pLandlordName = String(p.landlord?.name || p.landlordName || p.landlord || "").trim().toLowerCase();
+
+        if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) {
+          return;
+        }
+        if (currentName && pLandlordName && !pLandlordName.includes(currentName) && !currentName.includes(pLandlordName)) {
+          return;
+        }
+
+        const sig = `${(p.title || "").trim().toLowerCase()}|${(p.address_line1 || p.address || p.location || "").trim().toLowerCase()}`;
+        if (propMap.has(p.id)) {
+          const existing = propMap.get(p.id);
+          propMap.set(p.id, { ...existing, ...p });
+          return;
+        }
+
+        if (sig.length > 1 && seenSignatures.has(sig)) {
+          return;
+        }
+
+        propMap.set(p.id, {
+          ...p,
+          price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
+          location: p.location || `${p.city || "Lagos"}, ${p.state || "Lagos"}`
         });
+        if (sig.length > 1) seenSignatures.add(sig);
+      };
+
+      if (Array.isArray(apiProps)) {
+        apiProps.forEach(addUniqueProp);
       }
 
-      localProps.forEach((p) => {
-        if (!p || !p.id) return;
-        const currentName = (username || "Tunde Bakare").toLowerCase();
-        const pLandlordName = (p.landlord?.name || p.landlord || "").toLowerCase();
-        const isMatch = !p.landlord || pLandlordName.includes(currentName) || currentName.includes(pLandlordName) || p.landlordId === currentUserId;
+      localProps.forEach(addUniqueProp);
 
-        if (isMatch || !propMap.has(p.id)) {
-          // Sync status from general properties if approved in admin
-          const generalPropsStr = localStorage.getItem("properties");
-          if (generalPropsStr) {
-            try {
-              const genProps = JSON.parse(generalPropsStr);
-              const matchedGen = genProps.find((gp) => gp.id === p.id);
-              if (matchedGen && matchedGen.status) {
-                p.status = matchedGen.status;
-                if (matchedGen.status === "active_vacant" || matchedGen.status === "live" || matchedGen.status === "approved") {
-                  p.isPending = false;
-                }
-              }
-            } catch (_e) { }
-          }
-
-          propMap.set(p.id, {
-            ...p,
-            price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
-            location: p.location || `${p.city || "Abuja"}, ${p.state || "FCT"}`
-          });
-        }
-      });
-
-      setDisplayProperties(Array.from(propMap.values()));
+      const finalProperties = Array.from(propMap.values());
+      setDisplayProperties(finalProperties);
     }
 
     loadProperties();
 
-    window.addEventListener("storage", loadProperties);
-    window.addEventListener("focus", loadProperties);
+    const handleSilentRefresh = () => loadProperties(true);
+    window.addEventListener("storage", handleSilentRefresh);
+    window.addEventListener("focus", handleSilentRefresh);
     return () => {
-      window.removeEventListener("storage", loadProperties);
-      window.removeEventListener("focus", loadProperties);
+      window.removeEventListener("storage", handleSilentRefresh);
+      window.removeEventListener("focus", handleSilentRefresh);
     };
   }, [username]);
 
@@ -900,8 +916,23 @@ export default function LandlordDashboard() {
       {/* HEADER BAR */}
       <header className="db-header">
         <div className="db-header-left">
-          <div className="cursor-pointer hover:opacity-85 transition-opacity" onClick={() => navigate("/explore")} title="Go to Public Guest Dashboard">
-            <Logo variant="moss" />
+          <button
+            className="md:hidden p-2 rounded-xl text-ink-700 dark:text-white hover:bg-ink-50 dark:hover:bg-white/10 transition-colors cursor-pointer mr-1 shrink-0 border-none bg-transparent outline-none flex items-center justify-center"
+            onClick={() => setSidebarOpen(prev => !prev)}
+            aria-label="Toggle navigation menu"
+            title="Toggle sidebar menu"
+          >
+            <Menu className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" />
+          </button>
+
+          <div className="cursor-pointer hover:opacity-85 transition-opacity flex items-center" onClick={() => navigate("/explore")} title="Go to Public Guest Dashboard">
+            <div className="hidden sm:block">
+              <Logo variant="moss" />
+            </div>
+            <div className="block sm:hidden flex items-center gap-1.5">
+              <LogoMark size={28} variant="moss" />
+              <span className="font-extrabold text-base text-moss-800 dark:text-[#E5C583] tracking-tight">Lodale</span>
+            </div>
           </div>
 
           {/* Top category nav pills */}
@@ -924,100 +955,7 @@ export default function LandlordDashboard() {
             </nav>
 
             {activePill === "Applications" && null /* Rendered as a separate page now */}
-
-            {activePill === "Payments" && (
-              <div className="db-applications-popup db-payments-popup">
-                <div className="db-popup-header">
-                  <h3>Rent Payments History</h3>
-                  <button
-                    className="db-popup-close-btn"
-                    onClick={() => {
-                      setActivePill("Overview");
-                    }}
-                  >
-                    &times;
-                  </button>
-                </div>
-                <div className="db-popup-body">
-                  <div className="db-popup-stats-summary">
-                    <div style={{ flex: 1 }}>
-                      <span className="db-popup-stats-lbl">Collected (Month)</span>
-                      <span className="db-popup-stats-val">₦{collectedAmount.toLocaleString()}</span>
-                    </div>
-                    <div style={{ flex: 1, borderLeft: "1.5px solid var(--border-light)", paddingLeft: "16px" }}>
-                      <span className="db-popup-stats-lbl">Outstanding</span>
-                      <span className="db-popup-stats-val overdue">₦{outstandingAmount.toLocaleString()}</span>
-                    </div>
-                  </div>
-
-                  {/* Paid/Outstanding Toggle Subtabs */}
-                  <div className="payment-subtab-container">
-                    <button
-                      className={`payment-subtab-btn ${paymentSubTab === "Paid" ? "active" : ""}`}
-                      onClick={() => setPaymentSubTab("Paid")}
-                    >
-                      Paid ({paidTenants.length})
-                    </button>
-                    <button
-                      className={`payment-subtab-btn ${paymentSubTab === "Outstanding" ? "active" : ""}`}
-                      onClick={() => setPaymentSubTab("Outstanding")}
-                    >
-                      Outstanding ({overdueTenants.length})
-                    </button>
-                  </div>
-
-                  <div className="db-popup-list">
-                    {paymentSubTab === "Paid" ? (
-                      paidTenants.length === 0 ? (
-                        <div className="p-6 text-center text-ink-400 dark:text-cream-100/60">
-                          <p className="text-xs font-semibold">No collected rent payments recorded.</p>
-                          <p className="text-[11px] mt-1 opacity-70">Payments will appear here when active tenants pay rent.</p>
-                        </div>
-                      ) : (
-                        paidTenants.map((t, idx) => {
-                          const amount = parseTenantRent(t);
-                          return (
-                            <div key={t.id || idx} className="db-popup-item">
-                              <div className="db-popup-info">
-                                <div className="db-popup-name-row">
-                                  <span className="db-popup-name">{t.name || t.tenantName}</span>
-                                  <span className="db-popup-status-text paid">+₦{amount.toLocaleString()}</span>
-                                </div>
-                                <p className="db-popup-property">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
-                                <span className="db-popup-date">Paid • {t.dueDate || "Monthly Rent"}</span>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )
-                    ) : (
-                      overdueTenants.length === 0 ? (
-                        <div className="p-6 text-center text-ink-400 dark:text-cream-100/60">
-                          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">All tenant payments are up to date! 🎉</p>
-                          <p className="text-[11px] mt-1 opacity-70">No outstanding rent balances currently.</p>
-                        </div>
-                      ) : (
-                        overdueTenants.map((t, idx) => {
-                          const amount = parseTenantRent(t);
-                          return (
-                            <div key={t.id || idx} className="db-popup-item">
-                              <div className="db-popup-info">
-                                <div className="db-popup-name-row">
-                                  <span className="db-popup-name">{t.name || t.tenantName}</span>
-                                  <span className="db-popup-status-text overdue">₦{amount.toLocaleString()}</span>
-                                </div>
-                                <p className="db-popup-property">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
-                                <span className="db-popup-date overdue">Rent Outstanding</span>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+            {activePill === "Payments" && null /* Rendered as a full dashboard section now */}
           </div>
         </div>
 
@@ -1070,9 +1008,11 @@ export default function LandlordDashboard() {
 
           <Button
             onClick={() => navigate("/dashboard/landlord/add-property")}
-            className="flex items-center gap-1.5 bg-moss-700 hover:bg-forest-600 px-4 py-2 text-[12.5px] transition-all duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer tour-add-property"
+            className="flex items-center gap-1.5 bg-moss-700 hover:bg-forest-600 px-3 sm:px-4 py-2 text-[12.5px] transition-all duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer tour-add-property shrink-0"
+            title="Add Property"
           >
-            <Plus className="h-3.5 w-3.5" /> Add Property
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Add Property</span>
           </Button>
 
           {/* Quick Notification Tools */}
@@ -1175,6 +1115,21 @@ export default function LandlordDashboard() {
                               <span className="font-bold text-[12.5px] text-ink-900 dark:text-white truncate">{notif.title}</span>
                             </div>
                             <p className="text-[11.5px] leading-relaxed text-ink-600 dark:text-cream-100/70 mt-1">{notif.message}</p>
+                            
+                            {(notif.title?.includes("Proof") || notif.message?.includes("proof") || notif.title?.includes("Ownership")) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowNotifications(false);
+                                  const target = displayProperties.find(p => notif.message?.includes(p.title) || notif.title?.includes(p.title)) || displayProperties.find(p => (p.status || "").toLowerCase().includes("info") || (p.status || "").toLowerCase().includes("proof")) || displayProperties[0];
+                                  if (target) setSelectedProofProperty(target);
+                                }}
+                                className="mt-2 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                              >
+                                <Upload className="h-3.5 w-3.5" /> Upload Document Now &rarr;
+                              </button>
+                            )}
+
                             <span className="text-[10px] font-semibold text-ink-400 dark:text-cream-100/50 block mt-1.5">{notif.time || "Just now"}</span>
                           </div>
 
@@ -1229,11 +1184,19 @@ export default function LandlordDashboard() {
         </div>
       </header>
 
+      {/* Mobile Sidebar Backdrop Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-[140] bg-black/50 backdrop-blur-xs md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* DASHBOARD CONTAINER */}
-      <div className="db-container">
+      <div className="db-container relative">
 
         {/* LEFT SIDEBAR NAVIGATION */}
-        <aside className="db-sidebar">
+        <aside className={`db-sidebar ${sidebarOpen ? "mobile-open" : ""}`}>
           <div className="db-sidebar-nav">
             {sidebarItems.map((item, index) => {
               const Icon = item.icon;
@@ -1243,10 +1206,13 @@ export default function LandlordDashboard() {
               return (
                 <button
                   key={item.id}
-                  onClick={item.action}
+                  onClick={() => {
+                    item.action();
+                    setSidebarOpen(false);
+                  }}
                   className={`db-sidebar-btn ${isActive ? "active" : ""} tour-nav-${index}`}
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className="h-5 w-5 shrink-0" />
                   <span className="db-sidebar-tooltip">{item.label}</span>
                 </button>
               );
@@ -1258,18 +1224,22 @@ export default function LandlordDashboard() {
               onClick={() => {
                 setTourStep(0);
                 setRunTour(true);
+                setSidebarOpen(false);
               }}
               className="db-sidebar-btn"
               title="Start Interactive Tour"
             >
-              <HelpCircle className="h-5 w-5" />
+              <HelpCircle className="h-5 w-5 shrink-0" />
               <span className="db-sidebar-tooltip">Take a Tour</span>
             </button>
             <button
-              onClick={handleSignOut}
+              onClick={() => {
+                setSidebarOpen(false);
+                handleSignOut();
+              }}
               className="db-sidebar-btn logout-btn"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-5 w-5 shrink-0" />
               <span className="db-sidebar-tooltip">Log Out</span>
             </button>
           </div>
@@ -1314,7 +1284,7 @@ export default function LandlordDashboard() {
 
                   <Button
                     variant="secondary"
-                    onClick={() => triggerToast("Generating property portfolio financial report...", "info", "Report Generator")}
+                    onClick={() => setShowReportModal(true)}
                     className="px-4 py-2 bg-white text-[12.5px]"
                   >
                     Create Report
@@ -1323,15 +1293,199 @@ export default function LandlordDashboard() {
               )}
             </div>
           )}
-
           {activeTab === 0 ? (
             activePill === "Applications" ? (
               <div className="mt-2">
                 <LandlordApplications setActiveTab={setActiveTab} />
               </div>
+            ) : activePill === "Payments" ? (
+              <div className="mt-4 space-y-6 animate-in fade-in duration-300">
+                {/* RENT PAYMENTS & REVENUE HISTORY FULL SECTION */}
+                <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-6 sm:p-8 border border-ink-100 dark:border-white/10 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-ink-100 dark:border-white/10">
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-3">
+                        <CreditCard className="h-7 w-7 text-moss-600 dark:text-[#E5C583]" />
+                        Rent Payments & Revenue History
+                      </h2>
+                      <p className="text-xs sm:text-sm text-ink-500 dark:text-cream-100/70 mt-1">
+                        Track rent collections, pending payouts, and tenant payment statuses in real-time.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setActivePill("Overview")}
+                        className="px-4 py-2 bg-ink-100 dark:bg-white/10 hover:bg-ink-200 dark:hover:bg-white/20 text-ink-800 dark:text-cream-100 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                      >
+                        Back to Overview
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* STAT CARDS */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40">
+                      <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 block mb-1">Collected Rent (This Month)</span>
+                      <span className="text-2xl font-black text-emerald-900 dark:text-emerald-200">₦{collectedAmount.toLocaleString()}</span>
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400 block mt-1">From {paidTenants.length} paid lease contract{paidTenants.length === 1 ? '' : 's'}</span>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40">
+                      <span className="text-xs font-semibold text-rose-800 dark:text-rose-300 block mb-1">Outstanding Balance</span>
+                      <span className="text-2xl font-black text-rose-900 dark:text-rose-200">₦{outstandingAmount.toLocaleString()}</span>
+                      <span className="text-[11px] text-rose-700 dark:text-rose-400 block mt-1">{overdueTenants.length} tenant{overdueTenants.length === 1 ? '' : 's'} currently pending payment</span>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/40">
+                      <span className="text-xs font-semibold text-indigo-800 dark:text-indigo-300 block mb-1">Available Payout Balance</span>
+                      <span className="text-2xl font-black text-indigo-900 dark:text-indigo-200">₦{availablePayoutBalance.toLocaleString()}</span>
+                      <button
+                        onClick={() => setShowWithdrawModal(true)}
+                        className="mt-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        Request Payout &rarr;
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* FILTER TABS */}
+                  <div className="flex items-center justify-between gap-4 mb-6 border-b border-ink-100 dark:border-white/10 pb-4">
+                    <div className="flex items-center gap-2">
+                      <button
+                        className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                          paymentSubTab === "Paid"
+                            ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
+                            : "bg-ink-100 dark:bg-white/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
+                        }`}
+                        onClick={() => setPaymentSubTab("Paid")}
+                      >
+                        Collected Payments ({paidTenants.length})
+                      </button>
+                      <button
+                        className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
+                          paymentSubTab === "Outstanding"
+                            ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
+                            : "bg-ink-100 dark:bg-white/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
+                        }`}
+                        onClick={() => setPaymentSubTab("Outstanding")}
+                      >
+                        Outstanding ({overdueTenants.length})
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* PAYMENT RECORDS LIST */}
+                  <div className="space-y-3">
+                    {paymentSubTab === "Paid" ? (
+                      paidTenants.length === 0 ? (
+                        <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-ink-50 dark:bg-white/5 rounded-2xl border border-dashed border-ink-200 dark:border-white/10">
+                          <CreditCard className="h-10 w-10 mx-auto text-ink-300 dark:text-white/20 mb-3" />
+                          <p className="text-sm font-semibold">No collected rent payments recorded yet.</p>
+                          <p className="text-xs mt-1 opacity-70">When active tenants pay their rent, full payment records will appear here.</p>
+                        </div>
+                      ) : (
+                        paidTenants.map((t, idx) => {
+                          const amount = parseTenantRent(t);
+                          return (
+                            <div key={t.id || idx} className="p-4 rounded-2xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-500/30 transition-all">
+                              <div className="flex items-center gap-3.5">
+                                <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl font-black text-sm">
+                                  ✓
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-sm text-ink-900 dark:text-white">{t.name || t.tenantName}</h4>
+                                  <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between sm:justify-end gap-6">
+                                <div className="text-left sm:text-right">
+                                  <span className="font-black text-base text-emerald-600 dark:text-emerald-400 block">+₦{amount.toLocaleString()}</span>
+                                  <span className="text-[11px] font-semibold text-ink-400 dark:text-cream-100/60 block">Paid • {t.dueDate || "Monthly Rent"}</span>
+                                </div>
+                                <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] rounded-full border border-emerald-300 dark:border-emerald-800">
+                                  Completed
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )
+                    ) : (
+                      overdueTenants.length === 0 ? (
+                        <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-dashed border-emerald-200 dark:border-emerald-800/30">
+                          <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500 mb-3" />
+                          <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">All tenant payments are up to date! 🎉</p>
+                          <p className="text-xs mt-1 text-emerald-600 dark:text-emerald-400 opacity-80">There are currently no overdue or outstanding rent balances.</p>
+                        </div>
+                      ) : (
+                        overdueTenants.map((t, idx) => {
+                          const amount = parseTenantRent(t);
+                          return (
+                            <div key={t.id || idx} className="p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <div className="flex items-center gap-3.5">
+                                <div className="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl font-black text-sm">
+                                  !
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-sm text-ink-900 dark:text-white">{t.name || t.tenantName}</h4>
+                                  <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between sm:justify-end gap-6">
+                                <div className="text-left sm:text-right">
+                                  <span className="font-black text-base text-rose-600 dark:text-rose-400 block">₦{amount.toLocaleString()}</span>
+                                  <span className="text-[11px] font-semibold text-rose-500 dark:text-rose-400 block">Rent Outstanding</span>
+                                </div>
+                                <span className="px-3 py-1 bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-bold text-[11px] rounded-full border border-rose-300 dark:border-rose-800">
+                                  Overdue
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
             ) : (
               /* DASHBOARD CONTENT GRID */
               <div className="space-y-6">
+
+                {/* PROOF OF OWNERSHIP REQUIRED BANNER */}
+                {(() => {
+                  const needingProof = displayProperties.filter(p => {
+                    const st = (p.status || "").toLowerCase();
+                    return st.includes("info") || st.includes("proof");
+                  });
+
+                  if (needingProof.length === 0) return null;
+
+                  return (
+                    <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md animate-in slide-in-from-top duration-200">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-amber-500 text-white rounded-xl shrink-0">
+                          <AlertTriangle className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <h4 className="font-extrabold text-sm text-amber-950 dark:text-amber-200">
+                            Proof of Ownership Required for "{needingProof[0].title}"
+                          </h4>
+                          <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
+                            {needingProof[0].admin_notes || "Admin requested additional title documents (Certificate of Occupancy, Deed of Assignment, or Land Receipt) to verify property ownership before listing approval."}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedProofProperty(needingProof[0])}
+                        className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm cursor-pointer shrink-0 transition-all flex items-center gap-2"
+                      >
+                        <Upload className="h-4 w-4" /> Upload Proof Document Now
+                      </button>
+                    </div>
+                  );
+                })()}
+
                 {/* TOP ROW GRID */}
                 <div className="db-grid">
 
@@ -1431,28 +1585,102 @@ export default function LandlordDashboard() {
                     </section>
                   </div>
 
-                  {/* COLUMN 3: PAYOUT ACCOUNT */}
+                  {/* COLUMN 3: RENT PAYMENTS HISTORY */}
                   <div className="db-col">
-                    {/* Payout Account Visa Mock Card */}
-                    <div className="visa-card-mock tour-vault">
-                      <div className="visa-card-highlight" />
-
-                      <div className="visa-card-header">
-                        <div>
-                          <p className="visa-card-brand">Available Payouts</p>
-                          <p className="visa-card-holder">{username}</p>
+                    <div className="db-card p-3.5 sm:p-4 rounded-3xl bg-white dark:bg-[#1E1E1E] border border-ink-100 dark:border-white/10 shadow-sm flex flex-col justify-between h-[240px] min-h-[240px] max-h-[240px] box-border tour-vault overflow-hidden">
+                      <div>
+                        {/* Header with top Full History link */}
+                        <div className="flex items-center justify-between gap-2 mb-2 pb-1 border-b border-ink-100 dark:border-white/10">
+                          <h3 className="text-xs sm:text-sm font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-1.5">
+                            <CreditCard className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" />
+                            Rent Payments History
+                          </h3>
+                          <button
+                            onClick={() => setActivePill("Payments")}
+                            className="text-[11px] font-extrabold text-moss-700 dark:text-[#E5C583] hover:underline cursor-pointer shrink-0"
+                          >
+                            Full History →
+                          </button>
                         </div>
-                        <span className="visa-card-logo">L.</span>
-                      </div>
 
-                      <div className="visa-card-body">
-                        <p className="visa-card-lbl">Available Balance</p>
-                        <p className="visa-card-amount">₦{availablePayoutBalance.toLocaleString()}</p>
-                      </div>
+                        {/* Side-by-Side Stats Summary Box */}
+                        <div className="db-popup-stats-summary" style={{ margin: "0 0 8px 0", padding: "8px 10px", borderRadius: "10px" }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <span className="db-popup-stats-lbl" style={{ fontSize: "9px", marginBottom: "2px" }}>Collected (Month)</span>
+                            <span className="db-popup-stats-val text-emerald-600 dark:text-emerald-400" style={{ fontSize: "14px" }}>₦{collectedAmount.toLocaleString()}</span>
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0, borderLeft: "1.5px solid var(--border-light)", paddingLeft: "10px" }}>
+                            <span className="db-popup-stats-lbl" style={{ fontSize: "9px", marginBottom: "2px" }}>Outstanding</span>
+                            <span className="db-popup-stats-val overdue" style={{ fontSize: "14px" }}>₦{outstandingAmount.toLocaleString()}</span>
+                          </div>
+                        </div>
 
-                      <div className="visa-card-footer">
-                        <span>•••• 8802</span>
-                        <span>EXP 09/29</span>
+                        {/* Paid / Outstanding Toggle Subtabs */}
+                        <div className="payment-subtab-container" style={{ margin: "0 0 8px 0", padding: "2px", borderRadius: "8px" }}>
+                          <button
+                            className={`payment-subtab-btn ${paymentSubTab === "Paid" ? "active" : ""}`}
+                            onClick={() => setPaymentSubTab("Paid")}
+                            style={{ padding: "3.5px 6px", fontSize: "10.5px" }}
+                          >
+                            Paid ({paidTenants.length})
+                          </button>
+                          <button
+                            className={`payment-subtab-btn ${paymentSubTab === "Outstanding" ? "active" : ""}`}
+                            onClick={() => setPaymentSubTab("Outstanding")}
+                            style={{ padding: "3.5px 6px", fontSize: "10.5px" }}
+                          >
+                            Outstanding ({overdueTenants.length})
+                          </button>
+                        </div>
+
+                        {/* Payment List Preview */}
+                        <div className="db-popup-list">
+                          {paymentSubTab === "Paid" ? (
+                            paidTenants.length === 0 ? (
+                              <div className="py-2 text-center text-ink-400 dark:text-cream-100/60">
+                                <p className="text-[10.5px] font-semibold">No collected rent payments recorded.</p>
+                              </div>
+                            ) : (
+                              paidTenants.slice(0, 1).map((t, idx) => {
+                                const amount = parseTenantRent(t);
+                                return (
+                                  <div key={t.id || idx} className="db-popup-item" style={{ padding: "4px 2px" }}>
+                                    <div className="db-popup-info">
+                                      <div className="db-popup-name-row">
+                                        <span className="db-popup-name" style={{ fontSize: "11.5px" }}>{t.name || t.tenantName}</span>
+                                        <span className="db-popup-status-text paid" style={{ fontSize: "11.5px" }}>+₦{amount.toLocaleString()}</span>
+                                      </div>
+                                      <p className="db-popup-property" style={{ fontSize: "10px", margin: "0 0 1px 0" }}>{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
+                                      <span className="db-popup-date" style={{ fontSize: "9px" }}>Paid • {t.dueDate || "Monthly Rent"}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )
+                          ) : (
+                            overdueTenants.length === 0 ? (
+                              <div className="py-2 text-center text-ink-400 dark:text-cream-100/60">
+                                <p className="text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">All tenant payments are up to date! 🎉</p>
+                              </div>
+                            ) : (
+                              overdueTenants.slice(0, 1).map((t, idx) => {
+                                const amount = parseTenantRent(t);
+                                return (
+                                  <div key={t.id || idx} className="db-popup-item" style={{ padding: "4px 2px" }}>
+                                    <div className="db-popup-info">
+                                      <div className="db-popup-name-row">
+                                        <span className="db-popup-name" style={{ fontSize: "11.5px" }}>{t.name || t.tenantName}</span>
+                                        <span className="db-popup-status-text overdue" style={{ fontSize: "11.5px" }}>₦{amount.toLocaleString()}</span>
+                                      </div>
+                                      <p className="db-popup-property" style={{ fontSize: "10px", margin: "0 0 1px 0" }}>{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
+                                      <span className="db-popup-date overdue" style={{ fontSize: "9px" }}>Rent Outstanding</span>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1795,8 +2023,8 @@ export default function LandlordDashboard() {
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Account Rating</span>
                 <span className="text-ink-900 dark:text-white font-semibold flex items-center gap-1">
                   {(() => {
-                    let score = "5.0";
-                    let count = 1;
+                    let score = "New";
+                    let count = 0;
                     try {
                       const savedReviews = localStorage.getItem("landlordReviews");
                       if (savedReviews) {
@@ -1807,6 +2035,15 @@ export default function LandlordDashboard() {
                         }
                       }
                     } catch (e) { }
+
+                    if (count === 0) {
+                      return (
+                        <span className="text-ink-500 dark:text-cream-100/60 font-normal text-xs">
+                          New (No reviews yet)
+                        </span>
+                      );
+                    }
+
                     return (
                       <>
                         <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> {score}{" "}
@@ -2003,17 +2240,47 @@ export default function LandlordDashboard() {
             <div className="pt-2 flex justify-end gap-2">
               <button
                 onClick={() => {
+                  const target = selectedFeedbackProperty;
+                  setSelectedFeedbackProperty(null);
+                  setSelectedProofProperty(target);
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm"
+              >
+                <Upload className="h-3.5 w-3.5" /> Upload Proof of Ownership
+              </button>
+              <button
+                onClick={() => {
                   setSelectedFeedbackProperty(null);
                   navigate("/dashboard/landlord/add-property");
                 }}
-                className="px-4 py-2 text-xs font-bold text-white bg-[#3A5A40] hover:bg-[#344E41] rounded-xl cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 rounded-xl cursor-pointer"
               >
-                Re-submit Property with Papers
+                Full Re-submission
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Upload Proof of Ownership Modal */}
+      <UploadProofModal
+        isOpen={!!selectedProofProperty}
+        onClose={() => setSelectedProofProperty(null)}
+        property={selectedProofProperty}
+        onSuccess={(updated) => {
+          setDisplayProperties(prev => prev.map(p => String(p.id) === String(updated.id) ? { ...p, ...updated } : p));
+        }}
+      />
+
+      {/* Landlord Portfolio Executive Statement Report Modal */}
+      <LandlordReportModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        username={username}
+        properties={displayProperties}
+        leases={leases}
+        invoices={invoices}
+      />
     </div>
   );
 }

@@ -13,7 +13,7 @@ describe('Admin API Endpoints', () => {
   beforeAll(async () => {
     // Generate admin token
     adminToken = jwt.sign(
-      { id: 'constant_admin_id', email: 'admin@lodale.com', role: 'admin' },
+      { id: 'constant_admin_id', email: 'admin', role: 'admin' },
       JWT_SECRET,
       { expiresIn: '1h' }
     );

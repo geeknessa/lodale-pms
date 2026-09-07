@@ -151,11 +151,12 @@ function AdminProtectedRoute({ children }) {
     const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
     const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true";
     const expires = sessionStorage.getItem("sessionExpiresAt");
+    const token = sessionStorage.getItem("lodale_token");
 
-    if (!auth || !adminAuth || (expires && Date.now() > Number(expires))) {
+    if ((!auth && !adminAuth && !token) || (expires && Date.now() > Number(expires))) {
       return { isValid: false, reason: "expired_or_logged_out" };
     }
-    if (role !== "admin") {
+    if (role && role !== "admin" && !adminAuth) {
       return { isValid: false, reason: "wrong_role" };
     }
     return { isValid: true };
@@ -270,28 +271,11 @@ function TenantProtectedRoute({ children }) {
 
 export default function App() {
   useEffect(() => {
-    const saved = localStorage.getItem("properties");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        let changed = false;
-        const updated = parsed.map((item) => {
-          if (item.price && item.price.endsWith("/yr")) {
-            changed = true;
-            return {
-              ...item,
-              price: item.price.replace("/yr", "/mo"),
-            };
-          }
-          return item;
-        });
-        if (changed) {
-          localStorage.setItem("properties", JSON.stringify(updated));
-        }
-      } catch (err) {
-        console.error("Failed to migrate properties storage:", err);
-      }
-    }
+    // Purge legacy un-scoped localStorage property stores to prevent cross-account leakage
+    try {
+      localStorage.removeItem("properties");
+      localStorage.removeItem("landlordProperties");
+    } catch (err) {}
   }, []);
 
   return (

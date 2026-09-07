@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS tenant_profiles (
     occupation VARCHAR(150),
     employer_name VARCHAR(255),
     employment_status VARCHAR(50),               -- e.g. 'employed', 'self_employed', 'student', 'unemployed'
-    monthly_income NUMERIC(15, 2),
+    monthly_income TEXT,
     marital_status VARCHAR(50),                  -- e.g. 'single', 'married', 'divorced'
     number_of_dependants SMALLINT DEFAULT 0,
     guarantor_name VARCHAR(255),

@@ -50,7 +50,8 @@ import {
   Shield,
   Laptop,
   Smartphone,
-  Monitor
+  Monitor,
+  Loader2
 } from "lucide-react";
 
 // --- INITIAL DATA ---
@@ -73,6 +74,7 @@ export default function AdminDashboard() {
 
   // Mobile sidebar drawer state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLoadingAdminData, setIsLoadingAdminData] = useState(true);
 
   // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings' | 'profile' | 'support'
   const [activeTab, setActiveTab] = useState("overview");
@@ -95,11 +97,12 @@ export default function AdminDashboard() {
 
   const handleAdminSignOut = () => {
     sessionStorage.clear();
-    sessionStorage.removeItem("isAuthenticated");
-    sessionStorage.removeItem("userRole");
-    sessionStorage.removeItem("adminAuthenticated");
-    sessionStorage.removeItem("sessionExpiresAt");
-    sessionStorage.removeItem("lodale_token");
+    localStorage.removeItem("lodale_token");
+    localStorage.removeItem("lodale_user");
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("adminAuthenticated");
+    localStorage.removeItem("userRole");
+    localStorage.removeItem("sessionExpiresAt");
     localStorage.setItem("explicitAdminSignOut", "true");
     navigate("/admin/login", { replace: true });
   };
@@ -111,81 +114,117 @@ export default function AdminDashboard() {
   const [selectedDocViewer, setSelectedDocViewer] = useState(null);
   const [propertyRequests, setPropertyRequests] = useState([]);
 
+  // Recycle Bin & Restoration Fee State
+  const [deletedUsers, setDeletedUsers] = useState([]);
+  const [deletedProperties, setDeletedProperties] = useState([]);
+  const [recycleSubTab, setRecycleSubTab] = useState("users");
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [selectedRestoreItem, setSelectedRestoreItem] = useState(null);
+  const [restorationFeeInput, setRestorationFeeInput] = useState("5000");
+  const [isFeePaidManually, setIsFeePaidManually] = useState(true);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const loadRecycleBin = async () => {
+    try {
+      const data = await adminService.getRecycleBinItems();
+      setDeletedUsers(data.deletedUsers || []);
+      setDeletedProperties(data.deletedProperties || []);
+    } catch (err) {
+      console.warn("Failed to fetch recycle bin items:", err);
+    }
+  };
+
   useEffect(() => {
-    async function loadAdminData() {
-      // 1. Load Registered Users from Backend API
-      try {
-        const apiUsers = await adminService.getUsers();
-        if (Array.isArray(apiUsers)) {
-          setUsers(apiUsers);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch admin users:", err);
+    loadRecycleBin();
+  }, [activeTab]);
+
+  useEffect(() => {
+    async function loadAdminData(isSilent = false) {
+      if (!isSilent && users.length === 0 && listings.length === 0) {
+        setIsLoadingAdminData(true);
       }
-
-      // Load logged in Admin Profile
       try {
-        const stored = JSON.parse(sessionStorage.getItem('lodale_user') || localStorage.getItem('lodale_user') || '{}');
-        const currentUser = await authService.getCurrentUser() || stored;
-        if (currentUser && (currentUser.email || currentUser.first_name)) {
-          setProfileForm(prev => ({
-            ...prev,
-            name: `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || currentUser.email || prev.name,
-            username: currentUser.email ? currentUser.email.split('@')[0] : prev.username,
-            email: currentUser.email || prev.email,
-            phone: currentUser.phone_number || currentUser.phone || prev.phone,
-            avatarPreview: currentUser.avatar_url || prev.avatarPreview
-          }));
-        }
-      } catch (_e) { }
-
-      // 2. Load Property Listings from Backend API (Both Pending & Public Listings)
-      let apiPending = [];
-      let apiAll = [];
-      try {
-        apiPending = await adminService.getPendingProperties();
-      } catch (err) {
-        console.warn("Backend API offline fallback:", err);
-      }
-
-      try {
-        apiAll = await propertyService.getProperties();
-      } catch (err) {
-        console.warn("Backend API all properties fallback:", err);
-      }
-
-      try {
-        const reqs = await adminService.getPendingRequests();
-        setPropertyRequests(reqs);
-      } catch (err) {
-        console.warn("Failed to load property requests:", err);
-      }
-
-      const combinedApiProperties = [...(Array.isArray(apiPending) ? apiPending : []), ...(Array.isArray(apiAll) ? apiAll : [])];
-
-      setListings(() => {
-        const map = new Map();
-
-        // Add API properties
-        combinedApiProperties.forEach((p) => {
-          if (!p || (!p.id && !p.title)) return;
-          const key = String(p.id || p.title);
-          const rawS = (p.rawStatus || p.status || "").toLowerCase();
-          let sLabel = "Pending Approval";
-          if (rawS === "active_vacant" || rawS === "approved" || rawS === "live" || rawS === "active" || p.status === "Live") {
-            sLabel = "Live";
-          } else if (rawS === "inactive" || rawS === "rejected" || p.status === "Rejected") {
-            sLabel = "Rejected";
-          } else if (rawS === "pending_review" || rawS === "pending" || rawS === "draft" || p.status === "Pending Approval" || p.status === "Info Requested") {
-            sLabel = p.queue_status === "under_review" || p.status === "Info Requested" ? "Info Requested" : "Pending Approval";
+        // 1. Load Registered Users from Backend API
+        try {
+          const apiUsers = await adminService.getUsers();
+          if (Array.isArray(apiUsers)) {
+            setUsers(apiUsers);
           }
+        } catch (err) {
+          console.warn("Failed to fetch admin users:", err);
+        }
 
-          const rawPeriod = String(p.rent_period || p.rentPeriod || '').toLowerCase();
-          const suffix = rawPeriod.includes('month') ? '/mo' : (rawPeriod.includes('week') ? '/wk' : (rawPeriod.includes('night') || rawPeriod.includes('day') ? '/night' : '/yr'));
-          const numVal = Number(String(p.rent_amount || p.rent || p.price || 0).replace(/[^0-9.]/g, '')) || 0;
-          const formattedPrice = numVal > 0 ? `₦${numVal.toLocaleString()}${suffix}` : (p.price || `₦0${suffix}`);
+        // Load logged in Admin Profile
+        try {
+          const stored = JSON.parse(sessionStorage.getItem('lodale_user') || '{}');
+          const currentUser = await authService.getCurrentUser() || stored;
+          if (currentUser && (currentUser.email || currentUser.first_name)) {
+            setProfileForm(prev => ({
+              ...prev,
+              name: `${currentUser.first_name || ''} ${currentUser.last_name || ''}`.trim() || currentUser.email || prev.name,
+              username: currentUser.email ? currentUser.email.split('@')[0] : prev.username,
+              email: currentUser.email || prev.email,
+              phone: currentUser.phone_number || currentUser.phone || prev.phone,
+              avatarPreview: currentUser.avatar_url || prev.avatarPreview
+            }));
+          }
+        } catch (_e) { }
 
-          if (!map.has(key)) {
+        // 2. Load Property Listings & Requests from Backend API concurrently
+        let apiPending = [];
+        let apiAll = [];
+        try {
+          const [pendingRes, allRes, reqsRes] = await Promise.allSettled([
+            adminService.getPendingProperties(),
+            propertyService.getProperties(),
+            adminService.getPendingRequests()
+          ]);
+
+          if (pendingRes.status === "fulfilled" && Array.isArray(pendingRes.value)) {
+            apiPending = pendingRes.value;
+          }
+          if (allRes.status === "fulfilled" && Array.isArray(allRes.value)) {
+            apiAll = allRes.value;
+          }
+          if (reqsRes.status === "fulfilled" && Array.isArray(reqsRes.value)) {
+            setPropertyRequests(reqsRes.value);
+          }
+        } catch (err) {
+          console.warn("Backend API loading error:", err);
+        }
+
+        const combinedApiProperties = [...(Array.isArray(apiPending) ? apiPending : []), ...(Array.isArray(apiAll) ? apiAll : [])];
+
+        setListings(() => {
+          const map = new Map();
+          const seenSignatures = new Set();
+
+          const addUniqueListing = (p) => {
+            if (!p || (!p.id && !p.title)) return;
+            const key = String(p.id || p.title);
+            const sig = `${(p.title || p.name || "").trim().toLowerCase()}|${(p.address_line1 || p.address || p.location || "").trim().toLowerCase()}`;
+
+            if (map.has(key) || (sig.length > 1 && seenSignatures.has(sig))) {
+              return;
+            }
+
+            const rawS = (p.rawStatus || p.status || "").toLowerCase();
+            let sLabel = "Pending Approval";
+            if (rawS === "active_vacant" || rawS === "approved" || rawS === "live" || rawS === "active" || p.status === "Live") {
+              sLabel = "Live";
+            } else if (rawS === "inactive" || rawS === "rejected" || p.status === "Rejected") {
+              sLabel = "Rejected";
+            } else if (rawS.includes("info") || p.status === "Info Requested" || p.queue_status === "under_review" || rawS === "pending_review" || rawS === "pending" || rawS === "draft") {
+              sLabel = rawS.includes("info") || p.status === "Info Requested" ? "Info Requested" : "Pending Approval";
+            }
+
+            const isApprovedLive = sLabel === "Live";
+
+            const rawPeriod = String(p.rent_period || p.rentPeriod || '').toLowerCase();
+            const suffix = rawPeriod.includes('month') ? '/mo' : (rawPeriod.includes('week') ? '/wk' : (rawPeriod.includes('night') || rawPeriod.includes('day') ? '/night' : '/yr'));
+            const numVal = Number(String(p.rent_amount || p.rent || p.price || 0).replace(/[^0-9.]/g, '')) || 0;
+            const formattedPrice = numVal > 0 ? `₦${numVal.toLocaleString()}${suffix}` : (p.price || `₦0${suffix}`);
+
             map.set(key, {
               ...p,
               id: p.id || key,
@@ -193,85 +232,39 @@ export default function AdminDashboard() {
               location: p.location || `${p.address_line1 || p.address || 'Lagos'}, ${p.city || 'Lagos'}`,
               price: formattedPrice,
               status: sLabel,
-              rawStatus: rawS || "active_vacant",
+              rawStatus: rawS || (isApprovedLive ? "active_vacant" : sLabel === "Info Requested" ? "info_requested" : "pending_review"),
               ownershipDoc: p.ownershipDoc || p.ownership_doc || 'Deed of Assignment',
               ownershipDocUrl: p.ownershipDocUrl || p.ownership_doc_url,
               docName: p.docName || p.ownership_doc || 'Legal_Document.pdf',
               docDataUrl: p.docDataUrl || p.ownership_doc_url,
-              deedVerified: true,
+              deedVerified: isApprovedLive,
               type: p.type || p.property_type || 'Apartment',
               rent: formattedPrice,
-              landlord: p.landlord || { name: 'Verified Landlord', score: 5.0, reviews: 1 }
+              landlord: p.landlord || { name: p.landlordName || 'Verified Landlord', score: 5.0, reviews: 1 }
             });
-          }
+
+            if (sig.length > 1) seenSignatures.add(sig);
+          };
+
+          // Add API properties
+          combinedApiProperties.forEach(addUniqueListing);
+
+          return Array.from(map.values());
         });
-
-        // Add local storage properties (from "properties" and "landlordProperties")
-        const localPropsSources = ["properties", "landlordProperties"];
-        localPropsSources.forEach((srcKey) => {
-          try {
-            const raw = localStorage.getItem(srcKey);
-            if (raw) {
-              const list = JSON.parse(raw);
-              if (Array.isArray(list)) {
-                list.forEach((lp) => {
-                  if (!lp || (!lp.id && !lp.title)) return;
-                  const key = String(lp.id || lp.title);
-                  const rawS = (lp.status || "").toLowerCase();
-                  let sLabel = "Pending Approval";
-                  if (rawS === "active_vacant" || rawS === "approved" || rawS === "live" || rawS === "active" || lp.status === "Live") {
-                    sLabel = "Live";
-                  } else if (rawS === "inactive" || rawS === "rejected" || lp.status === "Rejected") {
-                    sLabel = "Rejected";
-                  }
-
-                  const lpRawPeriod = String(lp.rent_period || lp.rentPeriod || '').toLowerCase();
-                  const lpSuffix = lpRawPeriod.includes('month') ? '/mo' : (lpRawPeriod.includes('week') ? '/wk' : (lpRawPeriod.includes('night') || lpRawPeriod.includes('day') ? '/night' : '/yr'));
-                  const lpNumVal = Number(String(lp.rent_amount || lp.rent || lp.price || 0).replace(/[^0-9.]/g, '')) || 0;
-                  const lpFormattedPrice = lpNumVal > 0 ? `₦${lpNumVal.toLocaleString()}${lpSuffix}` : (lp.price || `₦0${lpSuffix}`);
-
-                  if (!map.has(key)) {
-                    map.set(key, {
-                      id: lp.id || key,
-                      title: lp.title || lp.name || "Property Listing",
-                      location: lp.location || `${lp.address_line1 || lp.address || 'Lagos'}, ${lp.city || 'Lagos'}`,
-                      price: lpFormattedPrice,
-                      type: lp.type || lp.property_type || "Apartment",
-                      status: sLabel,
-                      rawStatus: lp.status || "pending_review",
-                      submittedAt: lp.submittedAt || lp.created_at || new Date().toISOString(),
-                      landlord: lp.landlord || { name: lp.landlordName || "Verified Landlord", score: 5.0, reviews: 1 },
-                      description: lp.description || "",
-                      amenities: lp.amenities || [],
-                      blocks: lp.blocks || [],
-                      units: lp.units || [],
-                      ownershipDoc: lp.ownershipDoc || lp.ownership_doc || "Deed of Assignment",
-                      ownershipDocUrl: lp.ownershipDocUrl || lp.ownership_doc_url,
-                      deedVerified: true
-                    });
-                  } else {
-                    const existing = map.get(key);
-                    if (sLabel === "Live" && existing.status !== "Live") {
-                      existing.status = "Live";
-                      existing.rawStatus = "active_vacant";
-                    }
-                  }
-                });
-              }
-            }
-          } catch (_e) { }
-        });
-
-        return Array.from(map.values());
-      });
+      } catch (err) {
+        console.warn("Error loading admin data:", err);
+      } finally {
+        setIsLoadingAdminData(false);
+      }
     }
 
     loadAdminData();
-    window.addEventListener("storage", loadAdminData);
-    window.addEventListener("focus", loadAdminData);
+    const handleSilentRefresh = () => loadAdminData(true);
+    window.addEventListener("storage", handleSilentRefresh);
+    window.addEventListener("focus", handleSilentRefresh);
     return () => {
-      window.removeEventListener("storage", loadAdminData);
-      window.removeEventListener("focus", loadAdminData);
+      window.removeEventListener("storage", handleSilentRefresh);
+      window.removeEventListener("focus", handleSilentRefresh);
     };
   }, []);
 
@@ -305,9 +298,9 @@ export default function AdminDashboard() {
 
   // --- SETTINGS FORM STATES ---
   const [profileForm, setProfileForm] = useState({
-    name: "Admin User",
+    name: "System Admin",
     username: "admin",
-    email: "admin@lodale.com",
+    email: "admin",
     phone: "+234 800 000 0000",
     avatarPreview: null,
   });
@@ -429,7 +422,7 @@ export default function AdminDashboard() {
       setListings((prev) =>
         prev.map((l) => {
           if (l.id === listingId) {
-            return { ...l, status: "Live", rawStatus: "active_vacant" };
+            return { ...l, status: "Live", rawStatus: "active_vacant", deedVerified: true };
           }
           return l;
         })
@@ -440,24 +433,7 @@ export default function AdminDashboard() {
       return;
     }
 
-    const localKeys = ["properties", "landlordProperties"];
-    localKeys.forEach((key) => {
-      try {
-        const saved = localStorage.getItem(key);
-        if (saved) {
-          const localProps = JSON.parse(saved);
-          if (Array.isArray(localProps)) {
-            const updated = localProps.map((p) => {
-              if (p.id === listingId || p.title === propertyTitle || (p.name && p.name === propertyTitle)) {
-                return { ...p, status: "active_vacant", rawStatus: "active_vacant" };
-              }
-              return p;
-            });
-            localStorage.setItem(key, JSON.stringify(updated));
-          }
-        }
-      } catch (_err) { }
-    });
+
 
     // Send notification to landlord
     try {
@@ -498,16 +474,7 @@ export default function AdminDashboard() {
     const item = listings.find((l) => l.id === listingId);
     const propertyTitle = item?.title || "Property";
 
-    try {
-      const saved = localStorage.getItem("properties");
-      if (saved) {
-        const localProps = JSON.parse(saved);
-        const updated = localProps.map((p) =>
-          p.id === listingId ? { ...p, status: "rejected", admin_notes: reason } : p
-        );
-        localStorage.setItem("properties", JSON.stringify(updated));
-      }
-    } catch (_err) { }
+
 
     // Send notification to landlord
     try {
@@ -541,28 +508,20 @@ export default function AdminDashboard() {
     } catch (e) {
       console.warn("API request info warning:", e);
     }
-    setListings((prev) =>
-      prev.map((l) => {
-        if (l.id === listingId) {
-          return { ...l, status: "Info Requested" };
-        }
-        return l;
-      })
-    );
+      setListings((prev) =>
+        prev.map((l) => {
+          if (String(l.id) === String(listingId)) {
+            return { ...l, status: "Info Requested", rawStatus: "info_requested", deedVerified: false, admin_notes: "Additional proof of ownership required." };
+          }
+          return l;
+        })
+      );
 
-    const item = listings.find((l) => l.id === listingId);
+    const item = listings.find((l) => String(l.id) === String(listingId));
     const propertyTitle = item?.title || "Property";
+    const updatePayload = { status: "info_requested", admin_notes: "Additional proof of ownership required." };
 
-    try {
-      const saved = localStorage.getItem("properties");
-      if (saved) {
-        const localProps = JSON.parse(saved);
-        const updated = localProps.map((p) =>
-          p.id === listingId ? { ...p, status: "info_requested", admin_notes: "Additional proof of ownership required." } : p
-        );
-        localStorage.setItem("properties", JSON.stringify(updated));
-      }
-    } catch (_err) { }
+
 
     // Send notification to landlord
     try {
@@ -577,29 +536,43 @@ export default function AdminDashboard() {
         read: false
       };
       localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
-      window.dispatchEvent(new Event("storage"));
     } catch (_err) { }
+
+    window.dispatchEvent(new Event("storage"));
+    window.dispatchEvent(new CustomEvent("propertyUpdated", { detail: { id: listingId, status: "info_requested" } }));
 
     showToast(`Requested more info for "${propertyTitle}".`);
     if (selectedListing?.id === listingId) {
       setSelectedListing((prev) =>
-        prev ? { ...prev, status: "Info Requested" } : null
+        prev ? { ...prev, status: "Info Requested", admin_notes: "Additional proof of ownership required." } : null
       );
     }
   };
 
   const handleRemoveListing = async (listingId) => {
     const item = listings.find((l) => l.id === listingId);
+    const itemTitle = item?.title || "";
     if (
       window.confirm(
-        `Remove listing "${item?.title}" from platform and database?`
+        `Remove listing "${itemTitle}" from platform and database?`
       )
     ) {
       try {
-        await propertyService.deleteProperty(listingId);
+        if (listingId) {
+          try {
+            await propertyService.deleteProperty(listingId);
+          } catch (err) {
+            console.warn("Backend property delete error:", err);
+          }
+        }
+
+
+
         setListings((prev) => prev.filter((l) => l.id !== listingId));
-        showToast(`Listing "${item?.title}" removed successfully.`);
+        showToast(`Listing "${itemTitle}" removed successfully.`);
         if (selectedListing?.id === listingId) setSelectedListing(null);
+
+        window.dispatchEvent(new Event("storage"));
       } catch (err) {
         console.error("Failed to delete property listing:", err);
         showToast(`Failed to remove listing: ${err.message || "Server error"}`);
@@ -640,6 +613,17 @@ export default function AdminDashboard() {
     });
   }, [users, userSearch, userRoleFilter, userStatusFilter]);
 
+  const [userDisplayLimit, setUserDisplayLimit] = useState(10);
+  const [listingDisplayLimit, setListingDisplayLimit] = useState(10);
+
+  useEffect(() => {
+    setUserDisplayLimit(10);
+  }, [userSearch, userRoleFilter, userStatusFilter]);
+
+  useEffect(() => {
+    setListingDisplayLimit(10);
+  }, [listingSearch, listingFilter]);
+
   const filteredListings = useMemo(() => {
     return listings.filter((l) => {
       const searchStr = (listingSearch || "").toLowerCase().trim();
@@ -660,9 +644,9 @@ export default function AdminDashboard() {
       if (listingFilter === "All") {
         matchesStatus = true;
       } else if (listingFilter === "Live") {
-        matchesStatus = status === "Live" || rawStatus === "active_vacant" || rawStatus === "approved" || rawStatus === "live" || rawStatus === "active";
+        matchesStatus = (status === "Live" || rawStatus === "active_vacant" || rawStatus === "approved" || rawStatus === "live" || rawStatus === "active") && status !== "Info Requested" && rawStatus !== "info_requested" && rawStatus !== "info requested";
       } else if (listingFilter === "Pending Approval") {
-        matchesStatus = status === "Pending Approval" || status === "Info Requested" || rawStatus === "pending_review" || rawStatus === "pending" || rawStatus === "draft";
+        matchesStatus = status === "Pending Approval" || status === "Info Requested" || rawStatus === "pending_review" || rawStatus === "pending" || rawStatus === "draft" || rawStatus === "info_requested" || rawStatus === "info requested";
       } else if (listingFilter === "Rejected") {
         matchesStatus = status === "Rejected" || rawStatus === "inactive" || rawStatus === "rejected";
       }
@@ -717,7 +701,31 @@ export default function AdminDashboard() {
     );
   }, [listings, reviews]);
 
-
+  const handleRestoreSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedRestoreItem) return;
+    setIsRestoring(true);
+    try {
+      const feeNum = Number(restorationFeeInput) || 0;
+      const res = await adminService.restoreRecycleBinItem(
+        selectedRestoreItem.itemType,
+        selectedRestoreItem.item.id,
+        feeNum,
+        isFeePaidManually
+      );
+      showToast(res.message || "Item restored successfully!");
+      setShowRestoreModal(false);
+      setSelectedRestoreItem(null);
+      await loadRecycleBin();
+      const apiUsers = await adminService.getUsers();
+      if (Array.isArray(apiUsers)) setUsers(apiUsers);
+    } catch (err) {
+      console.error("Failed to restore item:", err);
+      showToast(err.message || "Failed to restore item.");
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   return (
     <div className="h-screen overflow-hidden bg-[#DAD7CD] dark:bg-[#262626] text-[#262626] dark:text-[#DAD7CD] font-sans flex flex-col antialiased selection:bg-[#3A5A40] selection:text-white transition-colors duration-200">
@@ -862,6 +870,28 @@ export default function AdminDashboard() {
                 {propertyRequests.length > 0 && (
                   <span className="text-[11px] bg-amber-500 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
                     {propertyRequests.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Recycle Bin / Archived Trash */}
+              <button
+                onClick={() => {
+                  setActiveTab("recycle_bin");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "recycle_bin"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Trash2 className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">Recycle Bin / Trash</span>
+                </div>
+                {(deletedUsers.length + deletedProperties.length) > 0 && (
+                  <span className="text-[11px] bg-rose-600 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
+                    {deletedUsers.length + deletedProperties.length}
                   </span>
                 )}
               </button>
@@ -1243,14 +1273,24 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#DAD7CD] dark:divide-[#233B31] text-sm">
-                    {filteredUsers.length === 0 ? (
+                    {isLoadingAdminData ? (
+                      <tr>
+                        <td colSpan={5} className="py-16 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-[#3A5A40] dark:text-[#E5C583] mb-3" />
+                            <span className="text-sm font-semibold text-[#262626] dark:text-[#F0F5F2]">Loading user accounts...</span>
+                            <span className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70 mt-1">Fetching user profiles from database</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filteredUsers.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="py-8 text-center text-[#262626]/60 dark:text-[#A3BCA7]/70 text-xs">
                           No users found matching filters.
                         </td>
                       </tr>
                     ) : (
-                      filteredUsers.map((user) => (
+                      filteredUsers.slice(0, userDisplayLimit).map((user) => (
                         <tr key={user.id} className="hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] transition-colors">
                           <td className="py-3.5 px-4">
                             <div className="font-medium text-[#262626] dark:text-[#F0F5F2]">{user.name}</div>
@@ -1291,35 +1331,31 @@ export default function AdminDashboard() {
                               </span>
                             )}
                           </td>
-                          <td className="py-3.5 px-4 text-right space-x-2">
-                            <button
-                              onClick={() => setSelectedUser(user)}
-                              className="p-1.5 text-[#344E41] dark:text-[#E5C583] hover:bg-[#DAD7CD] dark:hover:bg-[#233B31] rounded transition-colors"
-                              title="View Profile"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleToggleUserStatus(user.id)}
-                              className={`p-1.5 rounded transition-colors ${user.status === "Active"
-                                ? "text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60"
-                                : "text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-950/60"
-                                }`}
-                              title={user.status === "Active" ? "Suspend Account" : "Activate Account"}
-                            >
-                              {user.status === "Active" ? (
-                                <UserX className="h-4 w-4" />
-                              ) : (
-                                <UserCheck className="h-4 w-4" />
-                              )}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteUser(user.id)}
-                              className="p-1.5 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 rounded transition-colors"
-                              title="Delete Account"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => setSelectedUser(user)}
+                                className="px-2.5 py-1 text-xs font-medium text-[#344E41] dark:text-[#E4EBE6] bg-[#DAD7CD] dark:bg-[#233B31] hover:bg-[#DAD7CD]/80 dark:hover:bg-[#2E4D40] rounded transition-colors"
+                              >
+                                View Profile
+                              </button>
+                              <button
+                                onClick={() => handleToggleUserStatus(user.id)}
+                                className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${user.status === "Active"
+                                  ? "bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 hover:bg-rose-200"
+                                  : "bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200"
+                                  }`}
+                              >
+                                {user.status === "Active" ? "Suspend" : "Activate"}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user.id)}
+                                className="p-1 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded transition-colors"
+                                title="Delete user"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1327,6 +1363,20 @@ export default function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {filteredUsers.length > userDisplayLimit && (
+                <div className="flex flex-col items-center justify-center pt-2 pb-2">
+                  <button
+                    onClick={() => setUserDisplayLimit((prev) => prev + 10)}
+                    className="px-6 py-2 rounded-xl bg-[#344E41] hover:bg-[#2A3E34] dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    Load More Users ({filteredUsers.length - userDisplayLimit} remaining)
+                  </button>
+                  <span className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70 mt-1.5 font-medium">
+                    Showing {Math.min(userDisplayLimit, filteredUsers.length)} of {filteredUsers.length} users
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -1373,12 +1423,18 @@ export default function AdminDashboard() {
 
               {/* Listings Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredListings.length === 0 ? (
+                {isLoadingAdminData ? (
+                  <div className="col-span-2 py-16 flex flex-col items-center justify-center text-center bg-white/60 dark:bg-[#16241F] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#3A5A40] dark:text-[#E5C583] mb-3" />
+                    <p className="text-sm font-semibold text-[#262626] dark:text-[#F0F5F2]">Loading property listings...</p>
+                    <p className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70 mt-1">Fetching property submissions from backend API</p>
+                  </div>
+                ) : filteredListings.length === 0 ? (
                   <div className="col-span-2 py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
                     No listings found for the selected filter.
                   </div>
                 ) : (
-                  filteredListings.map((lst) => (
+                  filteredListings.slice(0, listingDisplayLimit).map((lst) => (
                     <div
                       key={lst.id}
                       className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col justify-between space-y-4 shadow-sm"
@@ -1433,11 +1489,11 @@ export default function AdminDashboard() {
                         </button>
 
                         <div className="flex flex-wrap items-center gap-1.5">
-                          {lst.status === "Pending Approval" && (
+                          {(lst.status === "Pending Approval" || lst.status === "Info Requested") && (
                             <>
                               <button
                                 onClick={() => handleApproveListing(lst.id)}
-                                className="px-2.5 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors"
+                                className="px-2.5 py-1.5 text-xs font-medium text-white bg-[#3A5A40] hover:bg-[#344E41] dark:bg-emerald-700 dark:hover:bg-emerald-800 rounded transition-colors cursor-pointer"
                               >
                                 Approve
                               </button>
@@ -1446,11 +1502,19 @@ export default function AdminDashboard() {
                                   setSelectedListing(lst);
                                   setIsRejectingModalOpen(true);
                                 }}
-                                className="px-2.5 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors"
+                                className="px-2.5 py-1.5 text-xs font-medium text-rose-800 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded transition-colors cursor-pointer"
                               >
                                 Reject
                               </button>
                             </>
+                          )}
+                          {lst.status === "Pending Approval" && (
+                            <button
+                              onClick={() => handleRequestMoreInfo(lst.id)}
+                              className="px-2.5 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70 hover:bg-amber-200 dark:hover:bg-amber-900/60 rounded transition-colors cursor-pointer"
+                            >
+                              Request Info
+                            </button>
                           )}
                           <button
                             onClick={() => handleRemoveListing(lst.id)}
@@ -1465,6 +1529,20 @@ export default function AdminDashboard() {
                   ))
                 )}
               </div>
+
+              {filteredListings.length > listingDisplayLimit && (
+                <div className="flex flex-col items-center justify-center pt-4 pb-2">
+                  <button
+                    onClick={() => setListingDisplayLimit((prev) => prev + 10)}
+                    className="px-6 py-2 rounded-xl bg-[#344E41] hover:bg-[#2A3E34] dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    Load More Listings ({filteredListings.length - listingDisplayLimit} remaining)
+                  </button>
+                  <span className="text-[11px] text-[#262626]/60 dark:text-[#A3BCA7]/70 mt-1.5 font-medium">
+                    Showing {Math.min(listingDisplayLimit, filteredListings.length)} of {filteredListings.length} listings
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
@@ -1517,7 +1595,12 @@ export default function AdminDashboard() {
 
               {/* Reviews Feed */}
               <div className="space-y-4">
-                {filteredReviews.length === 0 ? (
+                {isLoadingAdminData ? (
+                  <div className="py-16 flex flex-col items-center justify-center text-center bg-white/60 dark:bg-[#16241F] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#3A5A40] dark:text-[#E5C583] mb-3" />
+                    <p className="text-sm font-semibold text-[#262626] dark:text-[#F0F5F2]">Loading review moderation data...</p>
+                  </div>
+                ) : filteredReviews.length === 0 ? (
                   <div className="py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
                     No reviews match your current view.
                   </div>
@@ -1607,7 +1690,12 @@ export default function AdminDashboard() {
                 </p>
               </div>
 
-              {propertyRequests.length === 0 ? (
+              {isLoadingAdminData ? (
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-2xl p-12 text-center flex flex-col items-center justify-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#3A5A40] dark:text-[#E5C583] mb-3" />
+                  <h3 className="text-sm font-bold text-ink-900 dark:text-white">Loading Property Requests...</h3>
+                </div>
+              ) : propertyRequests.length === 0 ? (
                 <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-2xl p-12 text-center">
                   <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-3" />
                   <h3 className="text-base font-bold text-ink-900 dark:text-white">No Pending Requests</h3>
@@ -1685,6 +1773,168 @@ export default function AdminDashboard() {
                       </div>
                     );
                   })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* --- RECYCLE BIN / ARCHIVED TRASH TAB --- */}
+          {activeTab === "recycle_bin" && (
+            <div className="space-y-6 animate-fade-in">
+              <div>
+                <h1 className="font-serif text-2xl font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
+                  <Trash2 className="h-6 w-6 text-rose-600 dark:text-rose-400" />
+                  Recycle Bin / Archived Trash
+                </h1>
+                <p className="text-sm text-[#262626]/70 dark:text-[#A3BCA7] mt-1">
+                  Soft-deleted user accounts and property listings. View, audit, or restore items with an optional restoration fee.
+                </p>
+              </div>
+
+              {/* Sub Tab Switcher */}
+              <div className="flex items-center gap-3 border-b border-[#3A5A40]/20 dark:border-[#263D33] pb-3">
+                <button
+                  onClick={() => setRecycleSubTab("users")}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 ${recycleSubTab === "users"
+                    ? "bg-[#3A5A40] text-white shadow"
+                    : "bg-white/60 dark:bg-[#16241F] text-[#262626] dark:text-[#A3BCA7] hover:bg-[#DAD7CD]/50"
+                    }`}
+                >
+                  <Users className="h-4 w-4" />
+                  Deleted Accounts ({deletedUsers.length})
+                </button>
+
+                <button
+                  onClick={() => setRecycleSubTab("properties")}
+                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 ${recycleSubTab === "properties"
+                    ? "bg-[#3A5A40] text-white shadow"
+                    : "bg-white/60 dark:bg-[#16241F] text-[#262626] dark:text-[#A3BCA7] hover:bg-[#DAD7CD]/50"
+                    }`}
+                >
+                  <Building2 className="h-4 w-4" />
+                  Deleted Properties ({deletedProperties.length})
+                </button>
+              </div>
+
+              {/* SUB TAB 1: DELETED USERS */}
+              {recycleSubTab === "users" && (
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-[#344E41] dark:bg-[#1A2E26] text-white text-xs font-semibold uppercase tracking-wider">
+                        <th className="py-3 px-4">User</th>
+                        <th className="py-3 px-4">Role</th>
+                        <th className="py-3 px-4">Deletion Reason</th>
+                        <th className="py-3 px-4">Status / Fee</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#DAD7CD] dark:divide-[#233B31] text-sm">
+                      {deletedUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-[#262626]/60 dark:text-[#A3BCA7]/70 text-xs">
+                            Recycle Bin is empty. No deleted or deactivated user accounts.
+                          </td>
+                        </tr>
+                      ) : (
+                        deletedUsers.map((u) => (
+                          <tr key={u.id} className="hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] transition-colors">
+                            <td className="py-3.5 px-4">
+                              <div className="font-medium text-[#262626] dark:text-[#F0F5F2]">{`${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email}</div>
+                              <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">{u.email}</div>
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span className="text-xs px-2 py-0.5 rounded font-semibold bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 uppercase">
+                                {u.primary_role || 'user'}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 text-xs text-[#262626]/80 dark:text-[#A3BCA7]">
+                              {u.deletion_reason || u.account_status || "Requested Deletion"}
+                            </td>
+                            <td className="py-3.5 px-4 text-xs">
+                              {u.account_status === "pending_restoration_fee" ? (
+                                <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
+                                  <Clock className="h-3.5 w-3.5" /> ₦{Number(u.restoration_fee_amount || 5000).toLocaleString()} (Pending Fee)
+                                </span>
+                              ) : (
+                                <span className="text-rose-600 dark:text-rose-400 font-semibold">
+                                  Deactivated / Soft-Deleted
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <button
+                                onClick={() => {
+                                  setSelectedRestoreItem({ itemType: 'user', item: u });
+                                  setRestorationFeeInput(String(u.restoration_fee_amount || 5000));
+                                  setShowRestoreModal(true);
+                                }}
+                                className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 ml-auto cursor-pointer"
+                              >
+                                <UserCheck className="h-3.5 w-3.5" /> Restore Account
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* SUB TAB 2: DELETED PROPERTIES */}
+              {recycleSubTab === "properties" && (
+                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-[#344E41] dark:bg-[#1A2E26] text-white text-xs font-semibold uppercase tracking-wider">
+                        <th className="py-3 px-4">Property Title</th>
+                        <th className="py-3 px-4">Landlord</th>
+                        <th className="py-3 px-4">Reason</th>
+                        <th className="py-3 px-4">Deleted At</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#DAD7CD] dark:divide-[#233B31] text-sm">
+                      {deletedProperties.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-[#262626]/60 dark:text-[#A3BCA7]/70 text-xs">
+                            Recycle Bin is empty. No deleted properties found.
+                          </td>
+                        </tr>
+                      ) : (
+                        deletedProperties.map((p) => (
+                          <tr key={p.id} className="hover:bg-[#DAD7CD]/20 dark:hover:bg-[#1D3029] transition-colors">
+                            <td className="py-3.5 px-4">
+                              <div className="font-medium text-[#262626] dark:text-[#F0F5F2]">{p.title}</div>
+                              <div className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">{p.city || p.address_line1}</div>
+                            </td>
+                            <td className="py-3.5 px-4 text-xs font-medium">
+                              {`${p.landlord_first_name || ''} ${p.landlord_last_name || ''}`.trim() || p.landlord_email || 'Landlord'}
+                            </td>
+                            <td className="py-3.5 px-4 text-xs text-[#262626]/80 dark:text-[#A3BCA7]">
+                              {p.deletion_reason || "Landlord Deletion"}
+                            </td>
+                            <td className="py-3.5 px-4 text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                              {p.deleted_at ? new Date(p.deleted_at).toLocaleDateString() : "Recently"}
+                            </td>
+                            <td className="py-3.5 px-4 text-right">
+                              <button
+                                onClick={() => {
+                                  setSelectedRestoreItem({ itemType: 'property', item: p });
+                                  setRestorationFeeInput(String(p.restoration_fee_amount || 0));
+                                  setShowRestoreModal(true);
+                                }}
+                                className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors shadow-sm flex items-center gap-1.5 ml-auto cursor-pointer"
+                              >
+                                <Check className="h-3.5 w-3.5" /> Restore Property
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -2443,6 +2693,108 @@ export default function AdminDashboard() {
                 Close Viewer
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESTORE RECYCLE BIN ITEM MODAL */}
+      {showRestoreModal && selectedRestoreItem && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#16241F] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-[#DAD7CD] dark:border-[#233B31] pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="font-serif font-bold text-[#262626] dark:text-[#F0F5F2] text-lg">
+                  Restore {selectedRestoreItem.itemType === 'user' ? 'User Account' : 'Property Listing'}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowRestoreModal(false);
+                  setSelectedRestoreItem(null);
+                }}
+                className="text-gray-400 hover:text-gray-700 dark:hover:text-white text-xl font-bold cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <p className="text-xs text-[#262626]/80 dark:text-[#A3BCA7] leading-relaxed">
+              You are restoring <strong>{selectedRestoreItem.item.name || `${selectedRestoreItem.item.first_name || ''} ${selectedRestoreItem.item.last_name || ''}`.trim() || selectedRestoreItem.item.title || selectedRestoreItem.item.email}</strong>. Configure an optional restoration fee and choose settlement mode below.
+            </p>
+
+            <form onSubmit={handleRestoreSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#262626] dark:text-[#F0F5F2] mb-1">
+                  Restoration Fee Amount (₦)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="500"
+                  value={restorationFeeInput}
+                  onChange={(e) => setRestorationFeeInput(e.target.value)}
+                  className="w-full px-3 py-2 text-xs bg-[#DAD7CD]/30 dark:bg-[#1B2C25] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-lg text-[#262626] dark:text-[#F0F5F2] focus:outline-none focus:border-[#3A5A40]"
+                  placeholder="Enter fee amount (e.g. 5000) or 0 for free"
+                />
+              </div>
+
+              {Number(restorationFeeInput) > 0 && (
+                <div className="space-y-2 pt-1 border-t border-[#DAD7CD] dark:border-[#233B31]">
+                  <label className="block text-xs font-bold text-[#262626] dark:text-[#F0F5F2]">
+                    Restoration Fee Payment Option
+                  </label>
+
+                  <label className="flex items-center gap-2.5 p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] cursor-pointer">
+                    <input
+                      type="radio"
+                      name="feeOption"
+                      checked={isFeePaidManually}
+                      onChange={() => setIsFeePaidManually(true)}
+                      className="accent-[#3A5A40]"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold text-[#262626] dark:text-[#F0F5F2] block">Option 1: Mark Fee Paid (Offline Bank Transfer / Settled)</span>
+                      <span className="text-[#262626]/70 dark:text-[#A3BCA7]">Restores account/property immediately to fully Active state.</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-center gap-2.5 p-3 rounded-lg border border-[#3A5A40]/20 dark:border-[#263D33] bg-[#DAD7CD]/20 dark:bg-[#1B2C25] cursor-pointer">
+                    <input
+                      type="radio"
+                      name="feeOption"
+                      checked={!isFeePaidManually}
+                      onChange={() => setIsFeePaidManually(false)}
+                      className="accent-[#3A5A40]"
+                    />
+                    <div className="text-xs">
+                      <span className="font-bold text-[#262626] dark:text-[#F0F5F2] block">Option 2: Require Online Payment via Gateway on Sign In</span>
+                      <span className="text-[#262626]/70 dark:text-[#A3BCA7]">User must pay ₦{Number(restorationFeeInput).toLocaleString()} online when they log in to activate account.</span>
+                    </div>
+                  </label>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRestoreModal(false);
+                    setSelectedRestoreItem(null);
+                  }}
+                  className="flex-1 py-2 text-xs font-semibold text-[#262626] dark:text-[#A3BCA7] bg-[#DAD7CD]/50 dark:bg-[#1B2C25] hover:bg-[#DAD7CD] rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRestoring}
+                  className="flex-1 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg transition-colors shadow flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  {isRestoring ? "Restoring..." : "Confirm & Restore"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -26,7 +26,7 @@ export const applyForProperty = async (req, res) => {
 
   try {
     // 1. Upsert Tenant Profile details if provided
-    const safeIncome = (monthlyIncome !== undefined && monthlyIncome !== "") ? Number(monthlyIncome) : null;
+    const safeIncome = (monthlyIncome !== undefined && monthlyIncome !== null && monthlyIncome !== "") ? String(monthlyIncome) : null;
     const safeDependants = (dependants !== undefined && dependants !== "") ? Number(dependants) : null;
 
     await pool.query(
@@ -162,7 +162,8 @@ export const getLandlordApplications = async (req, res) => {
          tp.number_of_dependants,
          tp.guarantor_name,
          tp.guarantor_phone,
-         tp.guarantor_relationship
+         tp.guarantor_relationship,
+         tp.guarantor_email
        FROM property_applications a
        JOIN properties p ON a.property_id = p.id
        JOIN users u ON a.tenant_id = u.id
@@ -172,38 +173,64 @@ export const getLandlordApplications = async (req, res) => {
       [landlordId]
     );
     
-    const formattedApps = apps.rows.map(app => ({
-      id: app.id,
-      propertyId: app.property_id,
-      propertyTitle: app.property_title,
-      propertyRentAmount: app.property_rent_amount,
-      propertyRentPeriod: app.property_rent_period,
-      tenantId: app.tenant_id,
-      status: app.status,
-      notes: app.notes,
-      rejectionReason: app.rejection_reason,
-      createdAt: app.created_at,
-      date: new Date(app.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }),
-      propertyRequirements: {
-        minimumIncome: parseFloat(app.minimum_income_required) || 0,
-        requiresGuarantor: app.requires_guarantor
-      },
-      tenant: {
-        firstName: app.first_name,
-        lastName: app.last_name,
-        name: `${app.first_name} ${app.last_name}`,
-        email: app.email,
-        avatar: app.avatar_url,
-        occupation: app.occupation,
-        employerName: app.employer_name,
-        employmentStatus: app.employment_status,
-        monthlyIncome: parseFloat(app.monthly_income) || 0,
-        maritalStatus: app.marital_status,
-        dependants: app.number_of_dependants,
-        guarantorName: app.guarantor_name,
-        guarantorPhone: app.guarantor_phone,
-        guarantorRelationship: app.guarantor_relationship
+    const formattedApps = await Promise.all(apps.rows.map(async (app) => {
+      let activeLease = null;
+      try {
+        const leaseQuery = await pool.query(
+          `SELECT l.id, l.end_date, l.status, p.title as property_title 
+           FROM leases l 
+           JOIN properties p ON l.property_id = p.id 
+           WHERE l.tenant_id = $1 AND l.status::text IN ('active', 'leased', 'signed') 
+           ORDER BY l.end_date DESC LIMIT 1`,
+          [app.tenant_id]
+        );
+        if (leaseQuery.rows.length > 0) {
+          const l = leaseQuery.rows[0];
+          activeLease = {
+            propertyTitle: l.property_title,
+            endDate: l.end_date,
+            formattedEndDate: l.end_date ? new Date(l.end_date).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'
+          };
+        }
+      } catch (e) {
+        console.error("Error looking up active lease for applicant:", e);
       }
+
+      return {
+        id: app.id,
+        propertyId: app.property_id,
+        propertyTitle: app.property_title,
+        propertyRentAmount: app.property_rent_amount,
+        propertyRentPeriod: app.property_rent_period,
+        tenantId: app.tenant_id,
+        status: app.status,
+        notes: app.notes,
+        rejectionReason: app.rejection_reason,
+        createdAt: app.created_at,
+        date: new Date(app.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }),
+        activeLease,
+        propertyRequirements: {
+          minimumIncome: app.minimum_income_required || "No Minimum Income",
+          requiresGuarantor: app.requires_guarantor
+        },
+        tenant: {
+          firstName: app.first_name,
+          lastName: app.last_name,
+          name: `${app.first_name} ${app.last_name}`,
+          email: app.email,
+          avatar: app.avatar_url,
+          occupation: app.occupation,
+          employerName: app.employer_name,
+          employmentStatus: app.employment_status,
+          monthlyIncome: app.monthly_income || "Not Provided",
+          maritalStatus: app.marital_status,
+          dependants: app.number_of_dependants,
+          guarantorName: app.guarantor_name,
+          guarantorPhone: app.guarantor_phone,
+          guarantorRelationship: app.guarantor_relationship,
+          guarantorEmail: app.guarantor_email
+        }
+      };
     }));
 
     res.json({ success: true, applications: formattedApps });
@@ -228,7 +255,7 @@ export const updateApplicationStatus = async (req, res) => {
   try {
     // Verify the landlord owns the property this application is for
     const checkOwnership = await pool.query(
-      `SELECT p.landlord_id 
+      `SELECT p.landlord_id, a.tenant_id, a.property_id
        FROM property_applications a
        JOIN properties p ON a.property_id = p.id
        WHERE a.id = $1`,
@@ -241,6 +268,26 @@ export const updateApplicationStatus = async (req, res) => {
 
     if (checkOwnership.rows[0].landlord_id !== landlordId) {
       return res.status(403).json({ success: false, message: 'Not authorized to update this application' });
+    }
+
+    // Single active lease policy: Check if tenant already has an active lease on another property
+    if (status === 'leased' || status === 'active' || status === 'Leased') {
+      const { tenant_id, property_id } = checkOwnership.rows[0];
+      const existingLeaseCheck = await pool.query(
+        `SELECT l.id, l.end_date, p.title as property_title 
+         FROM leases l 
+         JOIN properties p ON l.property_id = p.id 
+         WHERE l.tenant_id = $1 AND l.status IN ('active', 'leased') AND l.property_id != $2`,
+        [tenant_id, property_id]
+      );
+      if (existingLeaseCheck.rows.length > 0) {
+        const existingLease = existingLeaseCheck.rows[0];
+        const formattedEnd = existingLease.end_date ? new Date(existingLease.end_date).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+        return res.status(400).json({ 
+          success: false, 
+          message: `Tenant already holds an active lease for "${existingLease.property_title}" ending on ${formattedEnd}. A tenant cannot have two active leased properties simultaneously.` 
+        });
+      }
     }
 
     const updatedApp = await pool.query(
@@ -263,21 +310,55 @@ export const updateApplicationStatus = async (req, res) => {
 // @access  Private (Tenant)
 export const withdrawApplication = async (req, res) => {
   const { id } = req.params;
+  const { reason } = req.body || {};
   const tenantId = req.user.id;
 
   try {
     const appCheck = await pool.query(
-      'SELECT id, status FROM property_applications WHERE id = $1 AND tenant_id = $2',
+      `SELECT pa.id, pa.status, pa.property_id, p.landlord_id, p.title as property_title, 
+              u.first_name, u.last_name 
+       FROM property_applications pa
+       JOIN properties p ON pa.property_id = p.id
+       LEFT JOIN users u ON pa.tenant_id = u.id
+       WHERE pa.id = $1 AND pa.tenant_id = $2`,
       [id, tenantId]
     );
 
-    if (appCheck.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Application not found or not owned by you' });
+    let app = appCheck.rows[0];
+    if (!app) {
+      const simpleCheck = await pool.query('SELECT id, status FROM property_applications WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+      if (simpleCheck.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Application not found or not owned by you' });
+      }
+      app = simpleCheck.rows[0];
     }
 
-    const app = appCheck.rows[0];
-    if (app.status === 'leased' || app.status === 'active') {
-      return res.status(400).json({ success: false, message: 'Cannot withdraw an application for an active tenancy.' });
+    // Leased / active tenancies cannot be withdrawn
+    if (app.status === 'leased' || app.status === 'active' || app.status === 'Leased') {
+      return res.status(400).json({ success: false, message: 'Cannot withdraw an application for an active tenancy/leased property.' });
+    }
+
+    // Auto-create notification message in landlord chat thread if landlord ID is present
+    if (app.landlord_id) {
+      try {
+        const tenantName = `${app.first_name || ''} ${app.last_name || ''}`.trim() || 'Tenant';
+        const withdrawalMsg = `[APPLICATION WITHDRAWN]\nProperty: ${app.property_title || 'Listing'}\nTenant: ${tenantName}\nReason for Withdrawal: ${reason || 'No specific reason provided.'}`;
+
+        await pool.query(
+          `INSERT INTO chat_messages (sender_id, receiver_id, property_id, message)
+           VALUES ($1, $2, $3, $4)`,
+          [tenantId, app.landlord_id, app.property_id, withdrawalMsg]
+        );
+      } catch (msgErr) {
+        console.warn('Could not auto-insert withdrawal message:', msgErr.message);
+      }
+    }
+
+    // Unlink any leases referencing this application before deleting
+    try {
+      await pool.query('UPDATE leases SET application_id = NULL WHERE application_id = $1', [id]);
+    } catch (lErr) {
+      console.warn('Could not unlink lease application_id:', lErr.message);
     }
 
     // Delete application
@@ -286,6 +367,52 @@ export const withdrawApplication = async (req, res) => {
     res.json({ success: true, message: 'Application withdrawn successfully.' });
   } catch (error) {
     console.error('Withdraw application error:', error);
-    res.status(500).json({ success: false, message: 'Server error withdrawing application' });
+    res.status(500).json({ success: false, message: 'Server error withdrawing application: ' + (error.message || '') });
+  }
+};
+
+// @desc    Delete application (landlord only, e.g. for declined/withdrawn apps)
+// @route   DELETE /api/applications/landlord/:id
+// @access  Private (Landlord)
+export const deleteLandlordApplication = async (req, res) => {
+  const { id } = req.params;
+  const landlordId = req.user.id;
+
+  try {
+    const checkApp = await pool.query(
+      `SELECT a.id, a.status 
+       FROM property_applications a
+       JOIN properties p ON a.property_id = p.id
+       WHERE a.id = $1 AND p.landlord_id = $2`,
+      [id, landlordId]
+    );
+
+    let app = checkApp.rows[0];
+    if (!app) {
+      const simpleCheck = await pool.query('SELECT id, status FROM property_applications WHERE id = $1', [id]);
+      if (simpleCheck.rows.length === 0) {
+        return res.json({ success: true, message: 'Application already removed.' });
+      }
+      app = simpleCheck.rows[0];
+    }
+
+    if (app && (app.status === 'leased' || app.status === 'active')) {
+      return res.status(400).json({ success: false, message: 'Cannot delete an application with an active lease.' });
+    }
+
+    // 1. Unlink any leases referencing this application
+    try {
+      await pool.query('UPDATE leases SET application_id = NULL WHERE application_id = $1', [id]);
+    } catch (lErr) {
+      console.warn('Could not unlink lease application_id:', lErr.message);
+    }
+
+    // 2. Delete application
+    await pool.query('DELETE FROM property_applications WHERE id = $1', [id]);
+
+    res.json({ success: true, message: 'Application deleted successfully.' });
+  } catch (error) {
+    console.error('Delete landlord application error:', error);
+    res.status(500).json({ success: false, message: 'Server error deleting application: ' + (error.message || '') });
   }
 };

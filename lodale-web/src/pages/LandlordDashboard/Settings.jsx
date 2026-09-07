@@ -471,13 +471,18 @@ export default function Settings() {
                   />
                 </div>
 
-                {/* Banking & Payout Details */}
-                <div className="full pt-6 mt-4 border-t border-neutral-200 dark:border-white/10">
-                  <h3 className="text-sm font-bold text-ink-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                    🏦 Banking Details (For Rent Payouts)
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
+                {/* Banking & Payout Details (Default Account for Rent Invoices) */}
+                <div className="set-ref-input-group full pt-6 mt-4 border-t border-neutral-200 dark:border-white/10">
+                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                    <h3 className="text-sm font-bold text-ink-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      🏦 Banking Details (Default Account for Invoices)
+                    </h3>
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      ★ Auto-prefilled on Digital Invoices
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+                    <div className="set-ref-input-group">
                       <label className="set-ref-lbl">Bank Name</label>
                       <input
                         type="text"
@@ -487,7 +492,7 @@ export default function Settings() {
                         className="set-ref-input"
                       />
                     </div>
-                    <div>
+                    <div className="set-ref-input-group">
                       <label className="set-ref-lbl">Account Number</label>
                       <input
                         type="text"
@@ -498,7 +503,7 @@ export default function Settings() {
                         className="set-ref-input"
                       />
                     </div>
-                    <div>
+                    <div className="set-ref-input-group">
                       <label className="set-ref-lbl">Account Name</label>
                       <input
                         type="text"

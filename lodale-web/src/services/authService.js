@@ -42,7 +42,6 @@ export const authService = {
   async signOut() {
     sessionStorage.removeItem('lodale_token');
     sessionStorage.removeItem('lodale_user');
-    localStorage.removeItem('lodale_user');
   },
 
   /**
@@ -58,7 +57,6 @@ export const authService = {
     } catch {
       sessionStorage.removeItem('lodale_token');
       sessionStorage.removeItem('lodale_user');
-      localStorage.removeItem('lodale_user');
       return null;
     }
   },
