@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle, Zap, User } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle, User } from "lucide-react";
 import { Logo } from "../components/Logo";
 import Button from "../components/Button";
 import heroBg from "../assets/modern_villa.png";
@@ -48,14 +48,11 @@ export default function Login() {
   });
   const [resetMessage, setResetMessage] = useState("");
 
-  // Failed login tracking
-  const [failedAttempts, setFailedAttempts] = useState(() => {
-    return Number(localStorage.getItem("failedLoginAttempts") || "0");
-  });
-  const [lockoutTime, setLockoutTime] = useState(() => {
-    const raw = localStorage.getItem("loginLockoutUntil");
-    return raw ? Number(raw) : null;
-  });
+  // Clear any stale lockout attempts from localStorage on mount
+  useEffect(() => {
+    localStorage.removeItem("failedLoginAttempts");
+    localStorage.removeItem("loginLockoutUntil");
+  }, []);
 
   // Refs for focusing and GSAP animations
   const passwordRef = useRef(null);
@@ -104,7 +101,6 @@ export default function Login() {
       );
       return;
     }
-
     // Admin login — authenticate via API
     if (isAdminMode) {
       const cleanUsername = email.trim().toLowerCase();
@@ -158,11 +154,13 @@ export default function Login() {
         sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
         sessionStorage.setItem("username", userFullName);
         sessionStorage.setItem("db_user_id", res.user.id);
+        sessionStorage.setItem("lodale_user", JSON.stringify(res.user));
         sessionStorage.setItem("sessionExpiresAt", expiresAt);
         if (res.token) sessionStorage.setItem("lodale_token", res.token);
 
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
+        localStorage.removeItem("landlordProperties");
         sessionStorage.setItem("isAuthenticated", "true");
         sessionStorage.setItem("userRole", userRole);
         sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
@@ -217,8 +215,9 @@ export default function Login() {
         });
         return;
       }
-      if (apiErr.response?.data?.error || apiErr.error) {
-        setInlineError(apiErr.response?.data?.error || apiErr.error || "Authentication failed.");
+      const errorMsg = apiErr?.response?.data?.error || apiErr?.error || apiErr?.message;
+      if (errorMsg) {
+        setInlineError(errorMsg);
         return;
       }
 
@@ -238,7 +237,6 @@ export default function Login() {
       }
       return;
     }
-
   }
 
   function handleForgotPassword() {
@@ -306,8 +304,6 @@ export default function Login() {
                 : "Access your properties, tenants, payments, and maintenance requests."}
             </p>
           </div>
-
-
 
           {/* Security / Session warnings */}
           {sessionWarning && (
@@ -410,10 +406,7 @@ export default function Login() {
             </div>
 
             {/* Prompt recovery utility */}
-            <div className="flex justify-between items-center text-[11px] sm:text-[12px]">
-              <span className="text-ink-700/65 dark:text-[#A3BCA7]/65">
-                {failedAttempts > 0 && `${failedAttempts}/10 attempts`}
-              </span>
+            <div className="flex justify-end items-center text-[11px] sm:text-[12px]">
               <button
                 type="button"
                 onClick={handleForgotPassword}

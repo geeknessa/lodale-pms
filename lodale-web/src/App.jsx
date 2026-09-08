@@ -271,11 +271,25 @@ function TenantProtectedRoute({ children }) {
 
 export default function App() {
   useEffect(() => {
-    // Purge legacy un-scoped localStorage property stores to prevent cross-account leakage
-    try {
-      localStorage.removeItem("properties");
-      localStorage.removeItem("landlordProperties");
-    } catch (err) {}
+    // Cleanly purge cached property data from localStorage so the user starts fresh with DB
+    if (!localStorage.getItem("lodale_props_purged_v1")) {
+      const propertyKeys = [
+        "properties",
+        "landlordProperties",
+        "propertyTenants",
+        "savedProperties",
+        "lastVisitedListings",
+        "pendingQuickApplyPropertyId",
+        "propertyApplications",
+        "tenantRequests"
+      ];
+      propertyKeys.forEach((key) => {
+        try {
+          localStorage.removeItem(key);
+        } catch (_err) {}
+      });
+      localStorage.setItem("lodale_props_purged_v1", "true");
+    }
   }, []);
 
   return (

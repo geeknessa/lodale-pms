@@ -5,7 +5,13 @@ const CONSTANT_ADMIN_UUID = '00000000-0000-0000-0000-000000000001';
 
 export const UserModel = {
   async findByEmail(email) {
-    const res = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    if (!email) return null;
+    const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail === 'admin' || cleanEmail === 'admin@lodale.com') {
+      const res = await pool.query("SELECT * FROM users WHERE LOWER(email) IN ('admin', 'admin@lodale.com') LIMIT 1");
+      return res.rows[0] || null;
+    }
+    const res = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1', [cleanEmail]);
     return res.rows[0] || null;
   },
 

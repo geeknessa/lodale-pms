@@ -681,7 +681,7 @@ export default function AdminDashboard() {
           type: "listing",
           id: l.id,
           title: l.title,
-          sub: `${l.location} • Submitted by ${l.landlord.name}`,
+          sub: `${l.location} • Submitted by ${l.landlord?.name || 'Verified Landlord'}`,
           timestamp: l.submittedAt,
           raw: l,
         })),
@@ -1468,7 +1468,7 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="mt-2 pt-2 border-t border-[#DAD7CD] dark:border-[#233B31] text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                          <span>Landlord: <strong className="text-[#262626] dark:text-[#F0F5F2]">{lst.landlord.name}</strong></span>
+                          <span>Landlord: <strong className="text-[#262626] dark:text-[#F0F5F2]">{lst.landlord?.name || 'Verified Landlord'}</strong></span>
                           <span>Deed Verified: {lst.deedVerified ? "Yes" : "No"}</span>
                         </div>
 

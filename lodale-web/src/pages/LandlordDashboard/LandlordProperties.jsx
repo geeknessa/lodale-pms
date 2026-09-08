@@ -472,7 +472,15 @@ export default function LandlordProperties() {
         setIsLoading(true);
       }
       try {
-        const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
+        let currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "";
+        try {
+          const uStr = sessionStorage.getItem("lodale_user") || localStorage.getItem("lodale_user");
+          if (uStr) {
+            const uObj = JSON.parse(uStr);
+            if (uObj.id && !currentUserId) currentUserId = uObj.id;
+          }
+        } catch (_e) {}
+
         const currentName = (username || "").toLowerCase();
         const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
 
@@ -484,6 +492,11 @@ export default function LandlordProperties() {
           if (savedSessionProps) {
             const parsed = JSON.parse(savedSessionProps);
             if (Array.isArray(parsed) && parsed.length > 0) localProps.push(...parsed);
+          }
+          const savedLandlordProps = localStorage.getItem("landlordProperties");
+          if (savedLandlordProps) {
+            const parsed = JSON.parse(savedLandlordProps);
+            if (Array.isArray(parsed)) localProps.push(...parsed);
           }
         } catch (err) {}
 
@@ -532,6 +545,20 @@ export default function LandlordProperties() {
 
           if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) return;
           if (currentName && pLandlordName && !pLandlordName.includes(currentName) && !currentName.includes(pLandlordName)) return;
+
+          const generalPropsStr = localStorage.getItem("properties");
+          if (generalPropsStr) {
+            try {
+              const genProps = JSON.parse(generalPropsStr);
+              const matchedGen = genProps.find((gp) => gp.id === p.id);
+              if (matchedGen && matchedGen.status) {
+                p.status = matchedGen.status;
+                if (matchedGen.status === "active_vacant" || matchedGen.status === "live" || matchedGen.status === "approved") {
+                  p.isPending = false;
+                }
+              }
+            } catch (_e) { }
+          }
 
           addUniqueProp(p);
         });
@@ -591,13 +618,18 @@ export default function LandlordProperties() {
 
   // Filter items
   const filteredProperties = properties.filter((item) => {
+    if (!item) return false;
+    const titleStr = (item.title || "").toLowerCase();
+    const locationStr = (item.location || `${item.address_line1 || ""}, ${item.city || ""}`).toLowerCase();
+
     // Search filter
     const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchQuery.toLowerCase());
+      !searchQuery ||
+      titleStr.includes(searchQuery.toLowerCase()) ||
+      locationStr.includes(searchQuery.toLowerCase());
 
     // Rent price filtering (numeric check)
-    const rawPrice = Number(item.price.replace(/[^0-9]/g, ""));
+    const rawPrice = Number(String(item.price || item.rent_amount || 0).replace(/[^0-9]/g, "")) || 0;
     let matchesRent = true;
     if (rentFilter === "under-200") {
       matchesRent = rawPrice < 200000;
@@ -610,18 +642,19 @@ export default function LandlordProperties() {
     // Location filter
     let matchesLocation = true;
     if (locationFilter !== "all") {
-      matchesLocation = item.location.toLowerCase().includes(locationFilter.toLowerCase());
+      matchesLocation = locationStr.includes(locationFilter.toLowerCase());
     }
 
     // Type filter
     let matchesType = true;
     if (typeFilter !== "all") {
-      const isApartment = item.title.toLowerCase().includes("apartment") || item.title.toLowerCase().includes("flat");
-      const isResidency = item.title.toLowerCase().includes("residency") || item.title.toLowerCase().includes("gardens");
+      const typeStr = (item.property_type || item.type || "").toLowerCase();
+      const isApartment = typeStr.includes("apartment") || typeStr.includes("flat") || titleStr.includes("apartment") || titleStr.includes("flat");
+      const isHouse = typeStr.includes("house") || typeStr.includes("villa") || typeStr.includes("duplex") || titleStr.includes("residency") || titleStr.includes("gardens") || titleStr.includes("house") || titleStr.includes("villa");
       if (typeFilter === "apartment") {
         matchesType = isApartment;
       } else if (typeFilter === "house") {
-        matchesType = !isApartment && isResidency;
+        matchesType = isHouse;
       }
     }
 

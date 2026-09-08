@@ -117,7 +117,8 @@ export const propertyController = {
       title, description, address_line1, city, state, rent_amount, 
       bedrooms, bathrooms, property_type, amenities, 
       ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
-      rules, images, cover_image, blocks, units 
+      rules, images, cover_image, blocks, units,
+      is_occupied, tenant_name, tenant_contact, lease_start_date, available_from 
     } = req.body;
 
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
@@ -131,7 +132,8 @@ export const propertyController = {
       effectiveLandlordId, title, slug, description, sanitizedPropertyType, 
       address_line1, city, state, bedrooms, bathrooms, rent_amount, status: 'pending_review', 
       ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
-      rules, images, cover_image, blocks, units
+      rules, images, cover_image, blocks, units,
+      is_occupied, tenant_name, tenant_contact, lease_start_date, available_from
     });
 
     if (Array.isArray(amenities) && amenities.length > 0) {

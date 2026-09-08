@@ -24,16 +24,7 @@ const PORT = process.env.PORT || 5000;
 
 // Security Middlewares
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https://images.unsplash.com"],
-      connectSrc: ["'self'", process.env.CORS_ORIGIN || "http://localhost:5173"],
-    },
-  },
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
 }));
 
@@ -46,19 +37,34 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
-// Allowed origins for CORS
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(o => o.trim());
+// Allowed origins for CORS (supports localhost/127.0.0.1 on any port in dev, plus explicit origins)
+const configuredOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000')
+  .split(',')
+  .map(o => o.trim());
 
-app.use(cors({
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (configuredOrigins.includes(origin)) return true;
+  // Match any localhost or 127.0.0.1 on any port (e.g. :5173, :5174, etc.)
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  return false;
+};
+
+const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Blocked by CORS policy'));
+      callback(new Error(`Origin ${origin} is blocked by CORS policy`));
     }
   },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -100,11 +106,21 @@ app.get('/api/health', (req, res) => {
 app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`=================================================`);
     console.log(` Lodale Express Backend running on http://localhost:${PORT}`);
     console.log(` Health check: http://localhost:${PORT}/api/health`);
     console.log(`=================================================`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[Error] Port ${PORT} is already in use by another running instance.`);
+      console.error(`Close the existing process on port ${PORT} before starting a new server.`);
+      process.exit(1);
+    } else {
+      throw err;
+    }
   });
 }
 

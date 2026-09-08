@@ -742,7 +742,15 @@ export default function LandlordDashboard() {
 
   useEffect(() => {
     async function loadProperties() {
-      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
+      let currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "";
+      try {
+        const uStr = sessionStorage.getItem("lodale_user") || localStorage.getItem("lodale_user");
+        if (uStr) {
+          const uObj = JSON.parse(uStr);
+          if (uObj.id && !currentUserId) currentUserId = uObj.id;
+        }
+      } catch (_e) {}
+
       const currentName = (username || "").toLowerCase();
       const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
 
@@ -763,6 +771,11 @@ export default function LandlordDashboard() {
         if (savedSessionProps) {
           const parsed = JSON.parse(savedSessionProps);
           if (Array.isArray(parsed) && parsed.length > 0) localProps.push(...parsed);
+        }
+        const savedLandlordProps = localStorage.getItem("landlordProperties");
+        if (savedLandlordProps) {
+          const parsed = JSON.parse(savedLandlordProps);
+          if (Array.isArray(parsed)) localProps.push(...parsed);
         }
       } catch (err) {
         console.warn("Error reading local landlord properties:", err);
@@ -808,7 +821,23 @@ export default function LandlordDashboard() {
         apiProps.forEach(addUniqueProp);
       }
 
-      localProps.forEach(addUniqueProp);
+      localProps.forEach((p) => {
+        if (!p || !p.id) return;
+        const generalPropsStr = localStorage.getItem("properties");
+        if (generalPropsStr) {
+          try {
+            const genProps = JSON.parse(generalPropsStr);
+            const matchedGen = genProps.find((gp) => gp.id === p.id);
+            if (matchedGen && matchedGen.status) {
+              p.status = matchedGen.status;
+              if (matchedGen.status === "active_vacant" || matchedGen.status === "live" || matchedGen.status === "approved") {
+                p.isPending = false;
+              }
+            }
+          } catch (_e) { }
+        }
+        addUniqueProp(p);
+      });
 
       const finalProperties = Array.from(propMap.values());
       setDisplayProperties(finalProperties);

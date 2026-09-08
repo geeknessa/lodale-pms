@@ -180,7 +180,7 @@ export async function initDb() {
       await client.query(`
         INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number)
         VALUES 
-          ('System', 'Admin', 'admin', '$2a$10$oGLTVt6pnp30pVGSiVmAmu8FgTjGo/2IYOD/gZhzhaaY/obTdBdlK', 'admin', 'verified', '+234 801 000 0000')
+          ('System', 'Admin', 'admin', '$2a$10$iBI8JFj4y6yRwLbQFxl7L..9FQyNx/hShsLwmaosp5URHWH/aPWRy', 'admin', 'verified', '+234 801 000 0000')
       `);
     }
 

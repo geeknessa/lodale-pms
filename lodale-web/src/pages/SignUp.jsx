@@ -172,8 +172,6 @@ export default function SignUp() {
           setLoadingStep(0);
         }
       },
-      onComplete: () => {
-        setIsVerifying(false);
         // Retrieve identity record full name from NIMC simulation
         const nameIdx = Math.abs(parseInt(nin.slice(-2) || "0", 10)) % MOCK_NIN_NAMES.length;
         const pulled = MOCK_NIN_NAMES[nameIdx] || "Chukwudi Emmanuel Abubakar";
@@ -289,6 +287,16 @@ export default function SignUp() {
       });
       if (res && res.user) {
         sessionStorage.setItem("db_user_id", res.user.id);
+        if (res.token) {
+          sessionStorage.setItem("lodale_token", res.token);
+          localStorage.setItem("lodale_token", res.token);
+        }
+        sessionStorage.setItem("lodale_user", JSON.stringify(res.user));
+        sessionStorage.setItem("isAuthenticated", "true");
+        sessionStorage.setItem("userRole", res.user.primary_role || role);
+        sessionStorage.setItem("username", `${res.user.first_name || firstName} ${res.user.last_name || lastName}`.trim());
+        localStorage.removeItem("properties");
+        localStorage.removeItem("landlordProperties");
       }
     } catch (dbErr) {
       console.warn("Database user persist warning:", dbErr);

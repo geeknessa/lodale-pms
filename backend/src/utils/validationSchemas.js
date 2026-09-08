@@ -76,6 +76,12 @@ export const createPropertySchema = z.object({
   rules: z.string().optional(),
   cover_image: z.string().optional(),
   images: z.array(z.string()).optional(),
+  is_occupied: z.boolean().optional(),
+  tenant_name: z.string().nullable().optional(),
+  tenant_contact: z.string().nullable().optional(),
+  lease_start_date: z.string().nullable().optional(),
+  available_from: z.string().nullable().optional(),
+  landlord_id: z.string().optional(),
   blocks: z.array(z.object({
     id: z.string().optional(),
     name: z.string(),
