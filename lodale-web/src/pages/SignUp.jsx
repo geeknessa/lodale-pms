@@ -172,6 +172,8 @@ export default function SignUp() {
           setLoadingStep(0);
         }
       },
+      onComplete: () => {
+        setIsVerifying(false);
         // Retrieve identity record full name from NIMC simulation
         const nameIdx = Math.abs(parseInt(nin.slice(-2) || "0", 10)) % MOCK_NIN_NAMES.length;
         const pulled = MOCK_NIN_NAMES[nameIdx] || "Chukwudi Emmanuel Abubakar";

@@ -250,11 +250,11 @@ export default function AdminDashboard() {
           combinedApiProperties.forEach(addUniqueListing);
 
           return Array.from(map.values());
+        });
       } catch (err) {
         console.warn("Error loading admin data:", err);
       } finally {
         setIsLoadingAdminData(false);
-      }
       }
     }
 
