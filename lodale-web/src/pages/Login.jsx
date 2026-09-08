@@ -16,9 +16,25 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // State for account restoration fee payment modal
   const [restorationFeeInfo, setRestorationFeeInfo] = useState(null);
   const [isPayingRestorationFee, setIsPayingRestorationFee] = useState(false);
+
+  // Failed login attempts and lockout state
+  const [failedAttempts, setFailedAttempts] = useState(() => {
+    try {
+      return Number(localStorage.getItem("failedLoginAttempts") || 0);
+    } catch {
+      return 0;
+    }
+  });
+  const [lockoutTime, setLockoutTime] = useState(() => {
+    try {
+      const until = localStorage.getItem("loginLockoutUntil");
+      return until ? Number(until) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // State to toggle between User and Admin login modes
   const [isAdminMode] = useState(() => {
