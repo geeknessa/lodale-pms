@@ -11,5 +11,8 @@ router.put('/me', requireAuth, validate(updateUserSchema), userController.update
 router.get('/tenants', requireAuth, userController.getLandlordTenants);
 router.post('/me/deactivate', requireAuth, userController.deactivateMyAccount);
 router.post('/me/pay-restoration-fee', requireAuth, userController.payRestorationFee);
+router.put('/me/change-password', requireAuth, userController.changePassword);
+router.post('/me/request-email-change', requireAuth, userController.requestEmailChange);
+router.post('/me/verify-email-change', requireAuth, userController.verifyEmailChange);
 
 export default router;

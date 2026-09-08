@@ -30,5 +30,26 @@ export const userService = {
       method: 'POST',
       body: { paymentReference },
     });
+  },
+
+  async changePassword(currentPassword, newPassword) {
+    return await apiClient('/users/me/change-password', {
+      method: 'PUT',
+      body: { currentPassword, newPassword },
+    });
+  },
+
+  async requestEmailChange(newEmail) {
+    return await apiClient('/users/me/request-email-change', {
+      method: 'POST',
+      body: { newEmail },
+    });
+  },
+
+  async verifyEmailChange(newEmail, code) {
+    return await apiClient('/users/me/verify-email-change', {
+      method: 'POST',
+      body: { newEmail, code },
+    });
   }
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle, Zap, User } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle, Zap, User, Loader2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import Button from "../components/Button";
 import heroBg from "../assets/modern_villa.png";
@@ -24,6 +24,8 @@ export default function Login() {
   const [isAdminMode] = useState(() => {
     return location.pathname === "/admin/login" || location.search.includes("role=admin");
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Pre-fill email only (never passwords) from previous session
   const [email, setEmail] = useState(() => {
@@ -92,6 +94,8 @@ export default function Login() {
 
   async function handleLoginSubmit(e) {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setInlineError("");
     setResetMessage("");
     setSessionWarning("");
@@ -200,9 +204,16 @@ export default function Login() {
           avatar_url: res.user.avatar_url || savedProfile.avatar_url || savedProfile.avatar || ""
         };
         sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
         sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
         sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
+
+        // Signal dashboard to show profile completeness guidance banner and open Settings tab
+        sessionStorage.setItem("justSignedInToCompleteProfile", "true");
+        if (userRole === "tenant") {
+          localStorage.setItem("tenantActiveTab", "3");
+        } else if (userRole === "landlord") {
+          localStorage.setItem("landlordActiveTab", "4");
+        }
 
         navigate(userRole === "admin" ? "/admin/dashboard" : `/dashboard/${userRole}`);
         return;
@@ -237,8 +248,9 @@ export default function Login() {
         setInlineError("Invalid email or password. Please try again.");
       }
       return;
+    } finally {
+      setIsSubmitting(false);
     }
-
   }
 
   function handleForgotPassword() {
@@ -425,9 +437,17 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 hover:scale-[1.015] active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer"
+              disabled={isSubmitting}
+              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isAdminMode ? "Log In as Admin" : "Log In"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                  <span>{isAdminMode ? "Authenticating Admin..." : "Signing in..."}</span>
+                </>
+              ) : (
+                isAdminMode ? "Log In as Admin" : "Log In"
+              )}
             </Button>
           </form>
 

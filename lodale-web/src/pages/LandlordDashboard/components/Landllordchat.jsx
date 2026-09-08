@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Search, Phone, Video, Send, Paperclip,
-  Building2, ArrowLeft, Trash2
+  Building2, ArrowLeft, Trash2, Loader2
 } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
 import { supportService } from "../../../services/supportService";
@@ -18,6 +18,9 @@ export default function LandlordChat() {
   const [applications, setApplications] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [newMessage, setNewMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [loadingThread, setLoadingThread] = useState(false);
   const [mobileShowSidebar, setMobileShowSidebar] = useState(true);
 
   const [supportMessages, setSupportMessages] = useState([]);
@@ -39,12 +42,29 @@ export default function LandlordChat() {
 
   // Initial Data Fetching
   const fetchChatData = async () => {
-    const [convos, apps] = await Promise.all([
-      chatService.getConversations(),
-      applicationService.getLandlordApplications()
-    ]);
-    setApplications(apps);
-    setChats([supportThread, ...convos]);
+    try {
+      const [convos, apps] = await Promise.all([
+        chatService.getConversations(),
+        applicationService.getLandlordApplications()
+      ]);
+      setApplications(apps || []);
+
+      const seen = new Set();
+      const uniqueConvos = [];
+      const allConvos = [supportThread, ...(convos || [])];
+      for (const c of allConvos) {
+        const pId = String(c.partner_id || c.id || "lodale-support");
+        if (!seen.has(pId)) {
+          seen.add(pId);
+          uniqueConvos.push(c);
+        }
+      }
+      setChats(uniqueConvos);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoadingData(false);
+    }
   };
 
   useEffect(() => {
@@ -79,13 +99,20 @@ export default function LandlordChat() {
     }
 
     const fetchThread = async () => {
-      const msgs = await chatService.getMessages(activeChatId);
-      setThreadMessages(msgs.map(m => ({
-        id: m.id,
-        isMine: m.sender_id !== activeChatId,
-        text: m.message,
-        time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      })));
+      setLoadingThread(true);
+      try {
+        const msgs = await chatService.getMessages(activeChatId);
+        setThreadMessages(msgs.map(m => ({
+          id: m.id,
+          isMine: m.sender_id !== activeChatId,
+          text: m.message,
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        })));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingThread(false);
+      }
     };
 
     fetchThread();
@@ -178,8 +205,9 @@ export default function LandlordChat() {
 
   const handleSendMessage = async (e) => {
     if (e) e.preventDefault();
-    if (!newMessage.trim() || !activeChatId) return;
+    if (!newMessage.trim() || !activeChatId || isSending) return;
 
+    setIsSending(true);
     if (activeChatId === "lodale-support") {
       try {
         const sent = await supportService.sendMessage(newMessage);
@@ -188,6 +216,8 @@ export default function LandlordChat() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       } catch (err) {
         triggerToast("Failed to send message to Lodale Admin", "error");
+      } finally {
+        setIsSending(false);
       }
       return;
     }
@@ -204,6 +234,8 @@ export default function LandlordChat() {
       })));
     } catch (err) {
       triggerToast("Failed to send message", "error");
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -326,8 +358,13 @@ export default function LandlordChat() {
 
         {/* Chat Thread Cards */}
         <div className="lc-list-stack" ref={chatListRef}>
-          {filteredChats.length > 0 ? (
-            filteredChats.map((chat) => {
+          {isLoadingData ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center space-y-3">
+              <Loader2 className="h-6 w-6 animate-spin text-moss-700 dark:text-[#E5C583]" />
+              <span className="text-xs font-bold text-ink-700 dark:text-cream-100">Syncing conversations...</span>
+            </div>
+          ) : filteredChats.length > 0 ? (
+            filteredChats.map((chat, idx) => {
               const isActive = chat.partner_id === activeChatId;
               const name = chat.isSupport ? "Lodale Admin" : `${chat.first_name || ''} ${chat.last_name || ''}`.trim() || "Contact";
 
@@ -341,7 +378,7 @@ export default function LandlordChat() {
 
               return (
                 <div
-                  key={chat.partner_id}
+                  key={chat.partner_id ? `chat-${chat.partner_id}-${idx}` : `chat-idx-${idx}`}
                   className={`lc-chat-card ${isActive ? "active" : ""}`}
                   onClick={() => {
                     setActiveChatId(chat.partner_id);
@@ -426,7 +463,12 @@ export default function LandlordChat() {
               <span>Today</span>
             </div>
 
-            {threadMessages.length === 0 ? (
+            {loadingThread ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center space-y-3 my-auto">
+                <Loader2 className="h-7 w-7 animate-spin text-moss-700 dark:text-[#E5C583]" />
+                <span className="text-xs font-bold text-ink-600 dark:text-cream-100/70">Syncing conversation messages...</span>
+              </div>
+            ) : threadMessages.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", color: "var(--text-muted)", textAlign: "center" }}>
                 <span style={{ fontSize: "28px" }}>💬</span>
                 <p style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-primary)", margin: "12px 0 4px 0" }}>No Messages Yet</p>
@@ -436,7 +478,7 @@ export default function LandlordChat() {
               threadMessages.map((msg, index) => {
                 const isMine = msg.isMine;
                 return (
-                  <div key={msg.id || index} className={`lc-bubble-wrapper ${isMine ? "outgoing" : "incoming"}`}>
+                  <div key={msg.id ? `msg-${msg.id}-${index}` : `msg-idx-${index}`} className={`lc-bubble-wrapper ${isMine ? "outgoing" : "incoming"}`}>
                     {!isMine && (
                       <Avatar
                         src={activeChat.avatar_url}
@@ -474,8 +516,17 @@ export default function LandlordChat() {
               className="lc-input-field text-[13.5px]"
             />
 
-            <button type="submit" className="lc-send-btn" title="Send Message">
-              <Send className="h-4.5 w-4.5 text-white" />
+            <button
+              type="submit"
+              disabled={isSending || !newMessage.trim()}
+              className="lc-send-btn disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer"
+              title="Send Message"
+            >
+              {isSending ? (
+                <Loader2 className="h-4.5 w-4.5 animate-spin text-white shrink-0" />
+              ) : (
+                <Send className="h-4.5 w-4.5 text-white" />
+              )}
             </button>
           </form>
         </div>

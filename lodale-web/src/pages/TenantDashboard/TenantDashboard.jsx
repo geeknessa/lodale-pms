@@ -29,6 +29,7 @@ import {
   Flame,
   ShieldCheck,
   Award,
+  Loader2
 } from "lucide-react";
 import gsap from "gsap";
 import { Logo, LogoMark } from "../../components/Logo";
@@ -664,8 +665,13 @@ export default function TenantDashboard() {
   const fetchAllData = async () => {
     try {
       setLoadingData(true);
-      // Fetch active lease
-      const leases = await leaseService.getMyLeases();
+      const [leasesRes, invsRes, reqsRes] = await Promise.all([
+        leaseService.getMyLeases().catch(() => []),
+        rentService.getMyInvoices().catch(() => []),
+        maintenanceService.getMyRequests().catch(() => [])
+      ]);
+
+      const leases = Array.isArray(leasesRes) ? leasesRes : [];
       const active = leases.find(l => l.status === 'active' || l.tenant_signed_at || l.status === 'draft' || l.status === 'pending_tenant');
       if (active) {
         setActiveLease({
@@ -679,8 +685,7 @@ export default function TenantDashboard() {
         setActiveLease(null);
       }
 
-      // Fetch invoices
-      const invs = await rentService.getMyInvoices();
+      const invs = Array.isArray(invsRes) ? invsRes : [];
       setInvoices(invs);
 
       const unpaid = invs.find(i => i.status === 'unpaid');
@@ -698,8 +703,7 @@ export default function TenantDashboard() {
         }));
       setPayments(formattedPayments);
 
-      // Fetch requests
-      const reqs = await maintenanceService.getMyRequests();
+      const reqs = Array.isArray(reqsRes) ? reqsRes : [];
       const statusMap = {
         open: 'Pending',
         pending: 'Pending',
@@ -1827,7 +1831,16 @@ export default function TenantDashboard() {
                   <span>→</span>
                   <span className="db-breadcrumb-active">Dashboard</span>
                 </div>
-                <h1 className="db-title">Welcome, {firstName}!</h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="db-title">Welcome, {firstName}!</h1>
+
+                  {loadingData && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-[#E5C583] text-[11.5px] font-extrabold animate-pulse shadow-xs shrink-0">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-[#E5C583]" />
+                      <span>Loading lease & ledgers...</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="db-controls-group">

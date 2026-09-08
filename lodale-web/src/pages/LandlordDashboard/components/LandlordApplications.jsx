@@ -12,7 +12,7 @@ import InvoiceBuilderModal from "../../../components/InvoiceBuilderModal";
 import { 
   CheckCircle2, XCircle, FileText, 
   Wallet, ShieldCheck, Mail, Phone, Calendar, 
-  MessageSquare, AlertTriangle, Star, Trash2, X, Search, ArrowLeft, ChevronRight, Key
+  MessageSquare, AlertTriangle, Star, Trash2, X, Search, ArrowLeft, ChevronRight, Key, Loader2
 } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
 import { doesIncomeMeetRequirement } from "../../../utils/incomeRanges";
@@ -559,7 +559,12 @@ export default function LandlordApplications({ setActiveTab }) {
         </div>
 
         {/* APPLICANT CARDS GRID */}
-        {filteredApplications.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center p-16 text-center space-y-3 bg-white dark:bg-[#101F1A] rounded-3xl border border-ink-200/80 dark:border-white/10">
+            <Loader2 className="h-8 w-8 animate-spin text-moss-700 dark:text-[#E5C583]" />
+            <span className="text-xs font-extrabold text-ink-900 dark:text-white">Syncing applicant profiles & documents...</span>
+          </div>
+        ) : filteredApplications.length === 0 ? (
           <div className="p-12 text-center rounded-3xl border border-dashed border-ink-200 dark:border-white/10 bg-white dark:bg-[#101F1A]">
             <FileText className="h-10 w-10 text-ink-300 dark:text-cream-100/40 mx-auto mb-2" />
             <h3 className="font-extrabold text-sm text-ink-900 dark:text-white">No Matching Applications Found</h3>

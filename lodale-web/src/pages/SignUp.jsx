@@ -17,6 +17,7 @@ import {
   Minus,
   CheckCircle2,
   HelpCircle,
+  Loader2,
 } from "lucide-react";
 import { Logo, VerifiedBadge } from "../components/Logo";
 import Button from "../components/Button";
@@ -68,6 +69,8 @@ export default function SignUp() {
   const { state } = useLocation();
   const navigate = useNavigate();
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const cardRef = useRef(null);
   const logoRef = useRef(null);
   const stepContainerRef = useRef(null);
@@ -111,6 +114,7 @@ export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   // Validation / Error alerts
   const [inlineError, setInlineError] = useState("");
@@ -216,12 +220,23 @@ export default function SignUp() {
   // Submit Sign-Up Form (Step 3)
   async function handleCompleteSignUp(e) {
     if (e) e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setInlineError("");
+
+    if (!agreeToTerms) {
+      setInlineError(
+        "Please accept the Terms of Service & Privacy Policy to create your account."
+      );
+      setIsSubmitting(false);
+      return;
+    }
 
     if (!email.trim() || !password) {
       setInlineError(
         "Missing Information: Please enter your email address and password to complete registration."
       );
+      setIsSubmitting(false);
       return;
     }
 
@@ -229,6 +244,7 @@ export default function SignUp() {
       setInlineError(
         "Invalid Email Address: Please enter a valid email address (e.g. name@example.com)."
       );
+      setIsSubmitting(false);
       return;
     }
 
@@ -967,9 +983,17 @@ export default function SignUp() {
                 <Button
                   type="button"
                   onClick={handleCompleteSignUp}
-                  className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2.5 sm:py-3 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
+                  disabled={isSubmitting}
+                  className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2.5 sm:py-3 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Complete Sign Up
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                      <span>Creating Account...</span>
+                    </>
+                  ) : (
+                    "Complete Sign Up"
+                  )}
                 </Button>
 
                 {/* Separator */}

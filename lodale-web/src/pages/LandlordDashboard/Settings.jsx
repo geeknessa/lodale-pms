@@ -1,20 +1,25 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
-import { User, Lock, Sun, Moon, Calendar, LogOut, Pencil, FileText, CheckCircle2 } from "lucide-react";
+import { User, Lock, Sun, Moon, Calendar, LogOut, Pencil, FileText, CheckCircle2, ShieldCheck, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
 import { profileService } from "../../services/profileService";
 import { leaseService } from "../../services/leaseService";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
+import EmailVerificationModal from "../../components/EmailVerificationModal";
 import "./Settings.css";
 
-export default function Settings() {
+export default function Settings({ onShowReportModal }) {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
   const [activeTab, setActiveTab] = useState("profile"); // profile | password
   const [gender, setGender] = useState("male"); // male | female
+
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isSigningLease, setIsSigningLease] = useState(false);
 
   // Landlord Name splitting with per-tab sessionStorage priority
   const [userProfile, setUserProfile] = useState({
@@ -177,6 +182,8 @@ export default function Settings() {
       triggerToast("Please provide your signature and check the confirmation box.", "warning");
       return;
     }
+    if (isSigningLease) return;
+    setIsSigningLease(true);
     try {
       await leaseService.signLease(selectedLeaseToSign.id);
       triggerToast("Lease signed successfully!", "success");
@@ -186,12 +193,16 @@ export default function Settings() {
       fetchLeases();
     } catch (err) {
       triggerToast(err.response?.data?.error || "Failed to sign lease", "error");
+    } finally {
+      setIsSigningLease(false);
     }
   };
 
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    if (isSavingProfile) return;
+    setIsSavingProfile(true);
     try {
       const updatedName = `${firstName.trim()} ${lastName.trim()}`.trim();
       const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
@@ -255,19 +266,39 @@ export default function Settings() {
       }, 3000);
     } catch (err) {
       triggerToast("Failed to save profile.", "error", "Error");
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
-  const handleSavePassword = (e) => {
+  const handleSavePassword = async (e) => {
     e.preventDefault();
+    if (isSavingPassword) return;
+    if (!currPassword) {
+      triggerToast("Please enter your current password.", "warning");
+      return;
+    }
     if (newPassword !== confirmPassword) {
       triggerToast("New password and confirmation do not match.", "error", "Password Mismatch");
       return;
     }
-    triggerToast("Security password updated successfully!", "success", "Password Changed");
-    setCurrPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    if (newPassword.length < 6) {
+      triggerToast("Password must be at least 6 characters long.", "warning");
+      return;
+    }
+
+    setIsSavingPassword(true);
+    try {
+      await userService.changePassword(currPassword, newPassword);
+      triggerToast("Security password updated successfully!", "success", "Password Changed");
+      setCurrPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      triggerToast(err.message || err.error || "Failed to update password", "error");
+    } finally {
+      setIsSavingPassword(false);
+    }
   };
 
   const handleDiscardProfile = () => {
@@ -298,6 +329,26 @@ export default function Settings() {
           <span>{toastMessage || "Profile changes saved successfully!"}</span>
         </div>
       )}
+
+      {/* Landlord Profile Completeness Guidance Banner */}
+      <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-moss-900 to-moss-800 text-white shadow-md border border-moss-600/40 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
+              <ShieldCheck className="w-5 h-5 text-[#E5C583]" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-[#E5C583] flex items-center gap-2">
+                Landlord Settings & Portfolio Verification
+              </h4>
+              <p className="text-xs text-cream-100/90 mt-1 leading-relaxed max-w-2xl">
+                You can always return to <strong>Settings</strong> anytime to update your account details. 
+                Please note: <strong>You must complete your required profile fields to manage listings and receive tenant applications.</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="set-ref-layout">
 
@@ -358,6 +409,15 @@ export default function Settings() {
 
             <button
               type="button"
+              className={`set-ref-menu-item ${activeTab === "reports" ? "active" : ""}`}
+              onClick={() => setActiveTab("reports")}
+            >
+              <Calendar className="h-4.5 w-4.5" />
+              <span>Portfolio Reports</span>
+            </button>
+
+            <button
+              type="button"
               className="set-ref-menu-item logout"
               onClick={handleSignOut}
             >
@@ -369,7 +429,37 @@ export default function Settings() {
 
         {/* RIGHT COLUMN - DETAIL FORM CARD */}
         <div className="set-ref-right">
-          {activeTab === "profile" ? (
+          {activeTab === "reports" ? (
+            <div className="set-ref-form space-y-6">
+              <div>
+                <h1 className="set-ref-title">Portfolio Reports</h1>
+                <p className="text-xs text-neutral-500 dark:text-cream-100/70 mt-1">
+                  Generate and download printable property summaries, tenant payment tracking reports, and financial performance statements.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-cream-50/60 dark:bg-white/5 border border-moss-700/20 dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+                <div className="space-y-1">
+                  <h3 className="font-extrabold text-sm text-ink-900 dark:text-white flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" />
+                    Export Portfolio Report
+                  </h3>
+                  <p className="text-xs text-ink-500 dark:text-cream-100/60 max-w-md leading-relaxed">
+                    Create customized PDF statements for rent receipts, occupied units, active leases, and overdue payments.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onShowReportModal && onShowReportModal()}
+                  className="px-5 py-2.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d4b371] text-white dark:text-[#0B1512] font-extrabold text-xs rounded-xl shadow-md cursor-pointer transition-all flex items-center gap-2 shrink-0 active:scale-95"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Create & Export Report</span>
+                </button>
+              </div>
+            </div>
+          ) : activeTab === "profile" ? (
             <form onSubmit={handleSaveProfile} className="set-ref-form">
               <h1 className="set-ref-title">Personal Information</h1>
 
@@ -600,9 +690,17 @@ export default function Settings() {
                 </button>
                 <button
                   type="submit"
-                  className="set-ref-btn-filled"
+                  disabled={isSavingProfile}
+                  className="set-ref-btn-filled flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Save Changes
+                  {isSavingProfile ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                      <span>Saving Profile...</span>
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
 
@@ -666,9 +764,17 @@ export default function Settings() {
                 </button>
                 <button
                   type="submit"
-                  className="set-ref-btn-filled"
+                  disabled={isSavingPassword}
+                  className="set-ref-btn-filled flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Save Changes
+                  {isSavingPassword ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                      <span>Updating Password...</span>
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
             </form>
@@ -762,10 +868,17 @@ export default function Settings() {
                 </button>
                 <button
                   onClick={handleSignLease}
-                  disabled={!signatureInput.trim() || !confirmCheck}
-                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg disabled:opacity-50"
+                  disabled={!signatureInput.trim() || !confirmCheck || isSigningLease}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg disabled:opacity-50 flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
                 >
-                  Sign Document
+                  {isSigningLease ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                      <span>Signing Document...</span>
+                    </>
+                  ) : (
+                    "Sign Document"
+                  )}
                 </button>
               </div>
             </div>

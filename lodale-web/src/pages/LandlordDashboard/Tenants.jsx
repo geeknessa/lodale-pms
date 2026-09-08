@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2 } from "lucide-react";
+import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2, Bell } from "lucide-react";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
 import { leaseService } from "../../services/leaseService";
 import { applicationService } from "../../services/applicationService";
 import { chatService } from "../../services/chatService";
+import { reminderService } from "../../services/reminderService";
 import { apiClient } from "../../lib/apiClient";
 import Avatar from "../../components/Avatar";
 import "./Tenants.css";
@@ -816,6 +817,17 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                     title="Open Chat"
                   >
                     <MessageSquare className="h-3.5 w-3.5" /> Chat
+                  </button>
+
+                  <button
+                    className="tenant-action-btn hover:text-emerald-600 hover:border-emerald-600 dark:hover:text-emerald-400"
+                    onClick={() => {
+                      reminderService.dispatchRentReminder(tenant, "Manual Request", true);
+                      triggerToast(`Rent reminder sent to ${tenant.name || "tenant"}!`, "info");
+                    }}
+                    title="Send Rent Due Reminder"
+                  >
+                    <Bell className="h-3.5 w-3.5 text-emerald-500" /> Remind
                   </button>
 
                   <button

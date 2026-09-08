@@ -21,6 +21,7 @@ import {
 import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import SearchableOccupationSelect from "../../components/SearchableOccupationSelect";
+import EmailVerificationModal from "../../components/EmailVerificationModal";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
 import { profileService } from "../../services/profileService";
@@ -407,11 +408,23 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         triggerToast("Password must be at least 6 characters long.", "warning", "Security");
         return;
       }
-      setFeedbackMessage({ type: "success", text: "Password updated successfully!" });
-      triggerToast("Password updated successfully!", "success", "Password Changed");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+
+      setIsSaving(true);
+      try {
+        await userService.changePassword(currentPassword, newPassword);
+        setIsSaving(false);
+        setSaveSuccess(true);
+        setFeedbackMessage({ type: "success", text: "Password updated successfully in database!" });
+        triggerToast("Password updated successfully!", "success", "Password Changed");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setTimeout(() => setSaveSuccess(false), 3500);
+      } catch (err) {
+        setIsSaving(false);
+        setFeedbackMessage({ type: "error", text: err.message || err.error || "Failed to update password." });
+        triggerToast(err.message || err.error || "Failed to update password", "error", "Error");
+      }
     }
   };
 

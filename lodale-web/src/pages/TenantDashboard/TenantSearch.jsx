@@ -4,6 +4,7 @@ import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, XC
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { applicationService } from "../../services/applicationService";
+import { profileService } from "../../services/profileService";
 import { chatService } from "../../services/chatService";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
@@ -1359,6 +1360,21 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                     }
 
                     try {
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                      let userProf = null;
+                      try {
+                        const raw = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null);
+                        if (raw) userProf = JSON.parse(raw);
+                      } catch (e) { }
+
+                      const completeness = profileService.checkProfileCompleteness(userProf);
+                      if (!completeness.isComplete) {
+                        triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) in Settings before applying for a property.`, "error", "Profile Incomplete");
+                        if (setActiveTab) setActiveTab(3);
+                        setShowPropertyDetailsModal(false);
+                        return;
+                      }
+
                       // Check for existing application first
                       const existingApp = await applicationService.getApplicationForProperty(selectedProperty.id);
                       if (existingApp) {

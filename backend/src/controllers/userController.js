@@ -1,6 +1,9 @@
+import bcrypt from 'bcryptjs';
 import { UserModel } from '../models/userModel.js';
 import { pool } from '../db/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+
+const emailVerificationCodes = new Map();
 
 export const userController = {
   getMe: asyncHandler(async (req, res) => {
@@ -192,6 +195,79 @@ export const userController = {
       success: true,
       message: 'Restoration fee paid successfully! Your account is now fully active.',
       user: restored
+    });
+  }),
+
+  changePassword: asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Both current and new passwords are required.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+    }
+
+    const userWithHash = await pool.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+    const hash = userWithHash.rows[0]?.password_hash;
+    if (!hash) {
+      return res.status(404).json({ error: 'User account not found.' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, hash);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Current password is incorrect.' });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await UserModel.updatePassword(userId, newHash);
+
+    res.json({ success: true, message: 'Password updated successfully!' });
+  }),
+
+  requestEmailChange: asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { newEmail } = req.body;
+    if (!newEmail || !newEmail.includes('@')) {
+      return res.status(400).json({ error: 'Please provide a valid new email address.' });
+    }
+
+    const existing = await UserModel.findByEmail(newEmail);
+    if (existing && existing.id !== userId) {
+      return res.status(400).json({ error: 'An account with this email address already exists.' });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    emailVerificationCodes.set(userId, { newEmail: newEmail.toLowerCase(), code, expiresAt: Date.now() + 10 * 60 * 1000 });
+
+    res.json({
+      success: true,
+      message: `Verification code sent to ${newEmail}`,
+      demoCode: code
+    });
+  }),
+
+  verifyEmailChange: asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { newEmail, code } = req.body;
+
+    const record = emailVerificationCodes.get(userId);
+    if (!record || record.expiresAt < Date.now()) {
+      return res.status(400).json({ error: 'Verification code has expired or was not requested. Please request a new code.' });
+    }
+
+    if (record.code !== String(code).trim() || record.newEmail !== String(newEmail).trim().toLowerCase()) {
+      return res.status(400).json({ error: 'Invalid verification code.' });
+    }
+
+    const updatedUser = await UserModel.updateEmail(userId, record.newEmail);
+    emailVerificationCodes.delete(userId);
+
+    res.json({
+      success: true,
+      message: 'Email address updated successfully!',
+      user: updatedUser
     });
   })
 };

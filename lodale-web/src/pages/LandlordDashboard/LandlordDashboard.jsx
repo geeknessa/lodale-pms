@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { triggerToast } from "../../context/ToastContext";
 import gsap from "gsap";
@@ -15,6 +15,10 @@ import {
   SlidersHorizontal,
   Calendar,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen,
   TrendingUp,
   HelpCircle,
   LogOut,
@@ -33,7 +37,8 @@ import {
   Menu,
   FileText,
   Upload,
-  CreditCard
+  CreditCard,
+  Loader2
 } from "lucide-react";
 import { Logo, LogoMark } from "../../components/Logo";
 import Button from "../../components/Button";
@@ -46,11 +51,14 @@ import LandlordChat from "./components/Landllordchat";
 import LandlordApplications from "./components/LandlordApplications";
 import LandlordReportModal from "./components/LandlordReportModal";
 import UploadProofModal from "./components/UploadProofModal";
+import LandlordRemindersPage from "./components/LandlordRemindersPage";
 import SettingsTab from "./Settings";
 import Tenants from "./Tenants";
 import { leaseService } from "../../services/leaseService";
 import { rentService } from "../../services/rentService";
 import { maintenanceService } from "../../services/maintenanceService";
+import { reminderService } from "../../services/reminderService";
+import AutomatedRemindersModal from "../../components/AutomatedRemindersModal";
 import "./LandlordDashboard.css";
 
 const TOUR_STEPS = [
@@ -352,6 +360,18 @@ export default function LandlordDashboard() {
     ];
   });
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  const [isRemindersModalOpen, setIsRemindersModalOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("landlord_sidebar_collapsed") === "true";
+  });
+
+  const toggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem("landlord_sidebar_collapsed", String(next));
+      return next;
+    });
+  };
 
   // Sync username & notifications if changed in storage
   useEffect(() => {
@@ -731,6 +751,7 @@ export default function LandlordDashboard() {
     { id: "properties", icon: Building2, label: "Properties", tabIndex: 1, action: () => setActiveTab(1) },
     { id: "tenants", icon: Users, label: "Tenants", tabIndex: 2, action: () => setActiveTab(2) },
     { id: "applications", icon: ClipboardList, label: "Applications", tabIndex: 0, action: () => { setActiveTab(0); setActivePill("Applications"); } },
+    { id: "reminders", icon: Bell, label: "Reminders", tabIndex: 5, action: () => setActiveTab(5) },
     { id: "chat", icon: MessageSquare, label: "Chat", tabIndex: 3, action: () => setActiveTab(3) },
     { id: "settings", icon: Settings, label: "Settings", tabIndex: 4, action: () => setActiveTab(4) },
   ];
@@ -740,90 +761,91 @@ export default function LandlordDashboard() {
   const [selectedFeedbackProperty, setSelectedFeedbackProperty] = useState(null);
   const [selectedProofProperty, setSelectedProofProperty] = useState(null);
 
-  useEffect(() => {
-    async function loadProperties() {
-      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
-      const currentName = (username || "").toLowerCase();
-      const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+  const loadProperties = useCallback(async () => {
+    const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
+    const currentName = (username || "").toLowerCase();
+    const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
 
-      let apiProps = [];
-      if (currentUserId) {
-        try {
-          apiProps = await propertyService.getLandlordProperties(currentUserId);
-        } catch (err) {
-          console.warn("Error fetching landlord properties from API:", err);
-        }
-      }
-
-      // Per-user session storage cache for active landlord ONLY
-      let localProps = [];
+    let apiProps = [];
+    if (currentUserId) {
       try {
-        const userKey = "landlord_properties_" + (currentUserId || userEmail);
-        const savedSessionProps = sessionStorage.getItem(userKey);
-        if (savedSessionProps) {
-          const parsed = JSON.parse(savedSessionProps);
-          if (Array.isArray(parsed) && parsed.length > 0) localProps.push(...parsed);
-        }
+        apiProps = await propertyService.getLandlordProperties(currentUserId);
       } catch (err) {
-        console.warn("Error reading local landlord properties:", err);
+        console.warn("Error fetching landlord properties from API:", err);
       }
-
-      const propMap = new Map();
-      const seenSignatures = new Set();
-
-      const addUniqueProp = (p) => {
-        if (!p || !p.id) return;
-
-        // Strict landlord ownership validation: do NOT load another landlord's property!
-        const pLandlordId = String(p.landlord_id || p.landlordId || p.landlord?.id || "").trim();
-        const pLandlordName = String(p.landlord?.name || p.landlordName || p.landlord || "").trim().toLowerCase();
-
-        if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) {
-          return;
-        }
-        if (currentName && pLandlordName && !pLandlordName.includes(currentName) && !currentName.includes(pLandlordName)) {
-          return;
-        }
-
-        const sig = `${(p.title || "").trim().toLowerCase()}|${(p.address_line1 || p.address || p.location || "").trim().toLowerCase()}`;
-        if (propMap.has(p.id)) {
-          const existing = propMap.get(p.id);
-          propMap.set(p.id, { ...existing, ...p });
-          return;
-        }
-
-        if (sig.length > 1 && seenSignatures.has(sig)) {
-          return;
-        }
-
-        propMap.set(p.id, {
-          ...p,
-          price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
-          location: p.location || `${p.city || "Lagos"}, ${p.state || "Lagos"}`
-        });
-        if (sig.length > 1) seenSignatures.add(sig);
-      };
-
-      if (Array.isArray(apiProps)) {
-        apiProps.forEach(addUniqueProp);
-      }
-
-      localProps.forEach(addUniqueProp);
-
-      const finalProperties = Array.from(propMap.values());
-      setDisplayProperties(finalProperties);
     }
 
+    // Per-user session storage cache for active landlord ONLY
+    let localProps = [];
+    try {
+      const userKey = "landlord_properties_" + (currentUserId || userEmail);
+      const savedSessionProps = sessionStorage.getItem(userKey);
+      if (savedSessionProps) {
+        const parsed = JSON.parse(savedSessionProps);
+        if (Array.isArray(parsed) && parsed.length > 0) localProps.push(...parsed);
+      }
+    } catch (err) {
+      console.warn("Error reading local landlord properties:", err);
+    }
+
+    const propMap = new Map();
+    const seenSignatures = new Set();
+
+    const addUniqueProp = (p) => {
+      if (!p || !p.id) return;
+
+      // Strict landlord ownership validation: do NOT load another landlord's property!
+      const pLandlordId = String(p.landlord_id || p.landlordId || p.landlord?.id || "").trim();
+      const pLandlordName = String(p.landlord?.name || p.landlordName || p.landlord || "").trim().toLowerCase();
+
+      if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) {
+        return;
+      }
+      if (currentName && pLandlordName && !pLandlordName.includes(currentName) && !currentName.includes(pLandlordName)) {
+        return;
+      }
+
+      const sig = `${(p.title || "").trim().toLowerCase()}|${(p.address_line1 || p.address || p.location || "").trim().toLowerCase()}`;
+      if (propMap.has(p.id)) {
+        const existing = propMap.get(p.id);
+        propMap.set(p.id, { ...existing, ...p });
+        return;
+      }
+
+      if (sig.length > 1 && seenSignatures.has(sig)) {
+        return;
+      }
+
+      propMap.set(p.id, {
+        ...p,
+        price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
+        location: p.location || `${p.city || "Lagos"}, ${p.state || "Lagos"}`
+      });
+      if (sig.length > 1) seenSignatures.add(sig);
+    };
+
+    if (Array.isArray(apiProps)) {
+      apiProps.forEach(addUniqueProp);
+    }
+
+    localProps.forEach(addUniqueProp);
+
+    const finalProperties = Array.from(propMap.values());
+    setDisplayProperties(finalProperties);
+    return finalProperties;
+  }, [username]);
+
+  useEffect(() => {
     loadProperties();
 
-    const handleSilentRefresh = () => loadProperties(true);
+    const handleSilentRefresh = () => loadProperties();
     window.addEventListener("storage", handleSilentRefresh);
     window.addEventListener("focus", handleSilentRefresh);
     return () => {
       window.removeEventListener("storage", handleSilentRefresh);
       window.removeEventListener("focus", handleSilentRefresh);
     };
-  }, [username]);
+  }, [loadProperties]);
 
   // Dynamic calculation for dashboard numbers & activity
   const activeTenantsList = getActiveTenantsList();
@@ -845,6 +867,16 @@ export default function LandlordDashboard() {
 
   const paidTenants = activeTenantsList.filter(t => t.paymentStatus === "Paid" || !t.paymentStatus || t.paymentStatus?.toLowerCase() === "paid");
   const overdueTenants = activeTenantsList.filter(t => t.paymentStatus === "Overdue" || t.paymentStatus === "Outstanding");
+
+  useEffect(() => {
+    if (activeTenantsList && activeTenantsList.length > 0) {
+      try {
+        reminderService.checkAndDispatchReminders(activeTenantsList);
+      } catch (e) {
+        console.error("Error evaluating automated reminders:", e);
+      }
+    }
+  }, [activeTenantsList.length]);
 
   const collectedAmount = paidTenants.reduce((sum, t) => sum + parseTenantRent(t), 0);
   const outstandingAmount = overdueTenants.reduce((sum, t) => sum + parseTenantRent(t), 0);
@@ -868,16 +900,18 @@ export default function LandlordDashboard() {
   const fetchAllData = async () => {
     try {
       setLoadingData(true);
-      // Fetch leases
-      const allLeases = await leaseService.getMyLeases();
+      const [allLeases, invs, reqs, apps] = await Promise.all([
+        leaseService.getMyLeases().catch(() => []),
+        rentService.getMyInvoices().catch(() => []),
+        maintenanceService.getMyRequests().catch(() => []),
+        applicationService.getLandlordApplications().catch(() => []),
+        loadProperties().catch(() => [])
+      ]);
+
       setLeases(allLeases);
-
-      // Fetch invoices
-      const invs = await rentService.getMyInvoices();
       setInvoices(invs);
+      setApplications(Array.isArray(apps) ? apps : []);
 
-      // Fetch requests
-      const reqs = await maintenanceService.getMyRequests();
       const statusMap = {
         open: 'Pending',
         pending: 'Pending',
@@ -915,7 +949,7 @@ export default function LandlordDashboard() {
 
       {/* HEADER BAR */}
       <header className="db-header">
-        <div className="db-header-left">
+        <div className="db-header-left flex items-center gap-3">
           <button
             className="md:hidden p-2 rounded-xl text-ink-700 dark:text-white hover:bg-ink-50 dark:hover:bg-white/10 transition-colors cursor-pointer mr-1 shrink-0 border-none bg-transparent outline-none flex items-center justify-center"
             onClick={() => setSidebarOpen(prev => !prev)}
@@ -929,91 +963,88 @@ export default function LandlordDashboard() {
             <div className="hidden sm:block">
               <Logo variant="moss" />
             </div>
-            <div className="block sm:hidden flex items-center gap-1.5">
+            <div className="block sm:hidden flex items-center">
               <LogoMark size={28} variant="moss" />
-              <span className="font-extrabold text-base text-moss-800 dark:text-[#E5C583] tracking-tight">Lodale</span>
             </div>
           </div>
 
-          {/* Top category nav pills */}
-          <div className="relative">
-            <nav className="db-nav-pills tour-pills">
-              {["Overview", "Payments", "Applications"].map((pill) => (
-                <button
-                  key={pill}
-                  onClick={() => {
-                    setActivePill(pill);
-                  }}
-                  className={`db-nav-pill ${activePill === pill ? "active" : ""} flex items-center gap-1.5`}
-                >
-                  {pill}
-                  {pill === "Applications" && applications.length > 0 && (
-                    <span className="db-pill-badge">{applications.length}</span>
-                  )}
-                </button>
-              ))}
-            </nav>
-
-            {activePill === "Applications" && null /* Rendered as a separate page now */}
-            {activePill === "Payments" && null /* Rendered as a full dashboard section now */}
-          </div>
+          {/* Navigation Category Pills in Top Navigation Bar */}
+          <nav className="db-nav-pills tour-pills hidden md:flex items-center gap-1.5 ml-4">
+            {["Overview", "Payments", "Applications"].map((pill) => (
+              <button
+                key={pill}
+                onClick={() => {
+                  setActiveTab(0);
+                  setActivePill(pill);
+                }}
+                className={`db-nav-pill ${activeTab === 0 && activePill === pill ? "active" : ""} flex items-center gap-1.5`}
+              >
+                {pill}
+                {pill === "Applications" && applications.length > 0 && (
+                  <span className="db-pill-badge">{applications.length}</span>
+                )}
+              </button>
+            ))}
+          </nav>
         </div>
 
-        <div className="db-header-right">
-          {/* Active Tenants Avatar Stack */}
+        <div className="db-header-right flex items-center gap-3">
+          {/* Active Tenants Avatar Stack & Plus Property Icon */}
           {(() => {
             const activeTenants = getActiveTenantsList();
             const displayTenants = activeTenants.slice(0, 2);
 
             return (
-              <div
-                className="db-avatar-group cursor-pointer flex items-center -space-x-2"
-                onClick={() => setActiveTab(2)}
-                title="View Tenants List"
-              >
-                {displayTenants.length > 0 ? (
-                  displayTenants.map((t, idx) =>
-                    t.avatar ? (
-                      <img
-                        key={t.id || idx}
-                        src={t.avatar}
-                        alt={t.name || "Tenant"}
-                        className="w-7 h-7 rounded-full object-cover border-2 border-white dark:border-[#0B1512]"
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
-                      />
-                    ) : (
-                      <div
-                        key={t.id || idx}
-                        className={`w-7 h-7 rounded-full ${idx % 2 === 0 ? "bg-moss-700" : "bg-amber-600"} text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]`}
-                      >
+              <div className="flex items-center gap-2">
+                <div
+                  className="db-avatar-group cursor-pointer flex items-center -space-x-2"
+                  onClick={() => setActiveTab(2)}
+                  title="View Tenants List"
+                >
+                  {displayTenants.length > 0 ? (
+                    displayTenants.map((t, idx) =>
+                      t.avatar ? (
+                        <img
+                          key={t.id ? `nav-av-${t.id}-${idx}` : `nav-av-${idx}`}
+                          src={t.avatar}
+                          alt={t.name || "Tenant"}
+                          className="w-7 h-7 rounded-full object-cover border-2 border-white dark:border-[#0B1512]"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div
+                          key={t.id ? `nav-av-${t.id}-${idx}` : `nav-av-${idx}`}
+                          className={`w-7 h-7 rounded-full ${idx % 2 === 0 ? "bg-moss-700" : "bg-amber-600"} text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]`}
+                        >
+                          <User className="h-3.5 w-3.5" />
+                        </div>
+                      )
+                    )
+                  ) : (
+                    <>
+                      <div className="w-7 h-7 rounded-full bg-moss-700 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]">
                         <User className="h-3.5 w-3.5" />
                       </div>
-                    )
-                  )
-                ) : (
-                  <>
-                    <div className="w-7 h-7 rounded-full bg-moss-700 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]">
-                      <User className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]">
-                      <User className="h-3.5 w-3.5" />
-                    </div>
-                  </>
-                )}
+                      <div className="w-7 h-7 rounded-full bg-amber-600 text-white flex items-center justify-center text-xs font-bold border-2 border-white dark:border-[#0B1512]">
+                        <User className="h-3.5 w-3.5" />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Plus Icon Button beside Tenant Icon */}
+                <button
+                  onClick={() => navigate("/dashboard/landlord/add-property")}
+                  className="w-7 h-7 rounded-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d4b371] text-white dark:text-[#0B1512] flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95 cursor-pointer shadow-xs border-none outline-none shrink-0"
+                  title="Add New Property"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
               </div>
             );
           })()}
-
-          <Button
-            onClick={() => navigate("/dashboard/landlord/add-property")}
-            className="flex items-center gap-1.5 bg-moss-700 hover:bg-forest-600 px-3 sm:px-4 py-2 text-[12.5px] transition-all duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer tour-add-property shrink-0"
-            title="Add Property"
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Property</span>
-          </Button>
 
           {/* Quick Notification Tools */}
           <div className="db-icon-btn-group relative">
@@ -1115,7 +1146,7 @@ export default function LandlordDashboard() {
                               <span className="font-bold text-[12.5px] text-ink-900 dark:text-white truncate">{notif.title}</span>
                             </div>
                             <p className="text-[11.5px] leading-relaxed text-ink-600 dark:text-cream-100/70 mt-1">{notif.message}</p>
-                            
+
                             {(notif.title?.includes("Proof") || notif.message?.includes("proof") || notif.title?.includes("Ownership")) && (
                               <button
                                 onClick={(e) => {
@@ -1196,13 +1227,13 @@ export default function LandlordDashboard() {
       <div className="db-container relative">
 
         {/* LEFT SIDEBAR NAVIGATION */}
-        <aside className={`db-sidebar ${sidebarOpen ? "mobile-open" : ""}`}>
+        <aside className={`db-sidebar ${isSidebarCollapsed ? "collapsed" : "expanded"} ${sidebarOpen ? "mobile-open" : ""}`}>
           <div className="db-sidebar-nav">
             {sidebarItems.map((item, index) => {
               const Icon = item.icon;
-              const isActive = item.id === "dashboard" ? activeTab === 0 && activePill !== "Applications" 
-                             : item.id === "applications" ? activeTab === 0 && activePill === "Applications"
-                             : activeTab === item.tabIndex;
+              const isActive = item.id === "dashboard" ? activeTab === 0 && activePill !== "Applications"
+                : item.id === "applications" ? activeTab === 0 && activePill === "Applications"
+                  : activeTab === item.tabIndex;
               return (
                 <button
                   key={item.id}
@@ -1211,9 +1242,11 @@ export default function LandlordDashboard() {
                     setSidebarOpen(false);
                   }}
                   className={`db-sidebar-btn ${isActive ? "active" : ""} tour-nav-${index}`}
+                  title={isSidebarCollapsed ? item.label : undefined}
                 >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  <span className="db-sidebar-tooltip">{item.label}</span>
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="db-sidebar-label">{item.label}</span>
+                  {isSidebarCollapsed && <span className="db-sidebar-tooltip">{item.label}</span>}
                 </button>
               );
             })}
@@ -1229,8 +1262,9 @@ export default function LandlordDashboard() {
               className="db-sidebar-btn"
               title="Start Interactive Tour"
             >
-              <HelpCircle className="h-5 w-5 shrink-0" />
-              <span className="db-sidebar-tooltip">Take a Tour</span>
+              <HelpCircle className="h-4 w-4 shrink-0" />
+              <span className="db-sidebar-label">Take a Tour</span>
+              {isSidebarCollapsed && <span className="db-sidebar-tooltip">Take a Tour</span>}
             </button>
             <button
               onClick={() => {
@@ -1239,8 +1273,9 @@ export default function LandlordDashboard() {
               }}
               className="db-sidebar-btn logout-btn"
             >
-              <LogOut className="h-5 w-5 shrink-0" />
-              <span className="db-sidebar-tooltip">Log Out</span>
+              <LogOut className="h-4 w-4 shrink-0" />
+              <span className="db-sidebar-label">Log Out</span>
+              {isSidebarCollapsed && <span className="db-sidebar-tooltip">Log Out</span>}
             </button>
           </div>
         </aside>
@@ -1249,50 +1284,37 @@ export default function LandlordDashboard() {
         <main className={`db-main-content ${activeTab === 3 ? "chat-tab-active" : ""}`}>
 
           {/* Main Area Sub-Header */}
-          {activeTab !== 3 && (
-            <div className="db-sub-header-row">
-              <div className="db-page-header tour-welcome">
-                {/* Breadcrumb */}
-                <div className="db-breadcrumb">
-                  <span
-                    className="cursor-pointer hover:underline hover:opacity-80 transition-all text-moss-700 dark:text-[#E5C583]"
-                    onClick={() => navigate("/explore")}
-                    title="Go to Public Guest Dashboard"
-                  >
-                    Home Page
-                  </span>
-                  <span>→</span>
-                  <span className="db-breadcrumb-active">
-                    {activeTab === 0 ? "Dashboard" : activeTab === 1 ? "Properties" : activeTab === 2 ? "Tenants" : activeTab === 4 ? "Settings" : "Section"}
-                  </span>
-                </div>
+          {activeTab !== 3 && activePill !== "Applications" && (
+            <div className="mb-6">
+              <div className="db-sub-header-row">
+                <div className="db-page-header tour-welcome">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="db-title">
+                      {activeTab === 0
+                        ? (activePill === "Payments" ? "Rent Payments" : "Overview")
+                        : activeTab === 1
+                        ? "My Properties"
+                        : activeTab === 2
+                        ? "Tenants Directory"
+                        : activeTab === 4
+                        ? "Settings"
+                        : activeTab === 5
+                        ? "Automated Reminders"
+                        : "Section"}
+                    </h1>
 
-                {/* Heading: Welcome or Section Title */}
-                <h1 className="db-title">
-                  {activeTab === 0 ? `Welcome, ${username}!` : activeTab === 1 ? "My Properties" : activeTab === 2 ? "Tenants Directory" : activeTab === 4 ? "Settings" : "Section"}
-                </h1>
-              </div>
-
-              {activeTab === 0 && (
-                /* Filter, search and stats widgets */
-                <div className="db-controls-group">
-                  {/* Current Date Display */}
-                  <div className="db-date-selector">
-                    <Calendar className="h-3.5 w-3.5 text-moss-600" />
-                    <span>{currentDateStr}</span>
+                    {loadingData && (
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-[#E5C583] text-[11.5px] font-extrabold animate-pulse shadow-xs shrink-0">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-[#E5C583]" />
+                        <span>Syncing portfolio data...</span>
+                      </div>
+                    )}
                   </div>
-
-                  <Button
-                    variant="secondary"
-                    onClick={() => setShowReportModal(true)}
-                    className="px-4 py-2 bg-white text-[12.5px]"
-                  >
-                    Create Report
-                  </Button>
                 </div>
-              )}
+              </div>
             </div>
           )}
+
           {activeTab === 0 ? (
             activePill === "Applications" ? (
               <div className="mt-2">
@@ -1352,21 +1374,19 @@ export default function LandlordDashboard() {
                   <div className="flex items-center justify-between gap-4 mb-6 border-b border-ink-100 dark:border-white/10 pb-4">
                     <div className="flex items-center gap-2">
                       <button
-                        className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                          paymentSubTab === "Paid"
-                            ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
-                            : "bg-ink-100 dark:bg-white/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
-                        }`}
+                        className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${paymentSubTab === "Paid"
+                          ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
+                          : "bg-ink-100 dark:bg-white/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
+                          }`}
                         onClick={() => setPaymentSubTab("Paid")}
                       >
                         Collected Payments ({paidTenants.length})
                       </button>
                       <button
-                        className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                          paymentSubTab === "Outstanding"
-                            ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
-                            : "bg-ink-100 dark:bg-white/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
-                        }`}
+                        className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${paymentSubTab === "Outstanding"
+                          ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
+                          : "bg-ink-100 dark:bg-white/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
+                          }`}
                         onClick={() => setPaymentSubTab("Outstanding")}
                       >
                         Outstanding ({overdueTenants.length})
@@ -1564,8 +1584,8 @@ export default function LandlordDashboard() {
                               return d && ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()] === day;
                             }).length;
 
-                            const barHeight = dayReqs > 0 
-                              ? `${Math.min(100, dayReqs * 35)}%` 
+                            const barHeight = dayReqs > 0
+                              ? `${Math.min(100, dayReqs * 35)}%`
                               : (isToday && occupancyRate > 0 ? "30%" : "8%");
 
                             return (
@@ -1588,99 +1608,42 @@ export default function LandlordDashboard() {
                   {/* COLUMN 3: RENT PAYMENTS HISTORY */}
                   <div className="db-col">
                     <div className="db-card p-3.5 sm:p-4 rounded-3xl bg-white dark:bg-[#1E1E1E] border border-ink-100 dark:border-white/10 shadow-sm flex flex-col justify-between h-[240px] min-h-[240px] max-h-[240px] box-border tour-vault overflow-hidden">
-                      <div>
-                        {/* Header with top Full History link */}
-                        <div className="flex items-center justify-between gap-2 mb-2 pb-1 border-b border-ink-100 dark:border-white/10">
-                          <h3 className="text-xs sm:text-sm font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-1.5">
-                            <CreditCard className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" />
-                            Rent Payments History
-                          </h3>
-                          <button
-                            onClick={() => setActivePill("Payments")}
-                            className="text-[11px] font-extrabold text-moss-700 dark:text-[#E5C583] hover:underline cursor-pointer shrink-0"
-                          >
-                            Full History →
-                          </button>
-                        </div>
-
-                        {/* Side-by-Side Stats Summary Box */}
-                        <div className="db-popup-stats-summary" style={{ margin: "0 0 8px 0", padding: "8px 10px", borderRadius: "10px" }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <span className="db-popup-stats-lbl" style={{ fontSize: "9px", marginBottom: "2px" }}>Collected (Month)</span>
-                            <span className="db-popup-stats-val text-emerald-600 dark:text-emerald-400" style={{ fontSize: "14px" }}>₦{collectedAmount.toLocaleString()}</span>
+                      <div className="flex flex-col h-full justify-between">
+                        <div>
+                          {/* Header with top Full History link */}
+                          <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-ink-100 dark:border-white/10">
+                            <h3 className="text-xs sm:text-sm font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-1.5">
+                              <CreditCard className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" />
+                              Rent Payments History
+                            </h3>
+                            <button
+                              onClick={() => setActivePill("Payments")}
+                              className="text-[11px] font-extrabold text-moss-700 dark:text-[#E5C583] hover:underline cursor-pointer shrink-0"
+                            >
+                              Full History →
+                            </button>
                           </div>
-                          <div style={{ flex: 1, minWidth: 0, borderLeft: "1.5px solid var(--border-light)", paddingLeft: "10px" }}>
-                            <span className="db-popup-stats-lbl" style={{ fontSize: "9px", marginBottom: "2px" }}>Outstanding</span>
-                            <span className="db-popup-stats-val overdue" style={{ fontSize: "14px" }}>₦{outstandingAmount.toLocaleString()}</span>
+
+                          {/* Side-by-Side Stats Summary Box */}
+                          <div className="db-popup-stats-summary" style={{ margin: "0 0 12px 0", padding: "12px 14px", borderRadius: "12px" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <span className="db-popup-stats-lbl" style={{ fontSize: "10px", marginBottom: "4px", display: "block" }}>Collected Rent</span>
+                              <span className="db-popup-stats-val text-emerald-600 dark:text-emerald-400" style={{ fontSize: "16px", fontWeight: "800" }}>₦{collectedAmount.toLocaleString()}</span>
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0, borderLeft: "1.5px solid var(--border-light)", paddingLeft: "14px" }}>
+                              <span className="db-popup-stats-lbl" style={{ fontSize: "10px", marginBottom: "4px", display: "block" }}>Outstanding</span>
+                              <span className="db-popup-stats-val overdue" style={{ fontSize: "16px", fontWeight: "800" }}>₦{outstandingAmount.toLocaleString()}</span>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Paid / Outstanding Toggle Subtabs */}
-                        <div className="payment-subtab-container" style={{ margin: "0 0 8px 0", padding: "2px", borderRadius: "8px" }}>
-                          <button
-                            className={`payment-subtab-btn ${paymentSubTab === "Paid" ? "active" : ""}`}
-                            onClick={() => setPaymentSubTab("Paid")}
-                            style={{ padding: "3.5px 6px", fontSize: "10.5px" }}
-                          >
-                            Paid ({paidTenants.length})
-                          </button>
-                          <button
-                            className={`payment-subtab-btn ${paymentSubTab === "Outstanding" ? "active" : ""}`}
-                            onClick={() => setPaymentSubTab("Outstanding")}
-                            style={{ padding: "3.5px 6px", fontSize: "10.5px" }}
-                          >
-                            Outstanding ({overdueTenants.length})
-                          </button>
-                        </div>
-
-                        {/* Payment List Preview */}
-                        <div className="db-popup-list">
-                          {paymentSubTab === "Paid" ? (
-                            paidTenants.length === 0 ? (
-                              <div className="py-2 text-center text-ink-400 dark:text-cream-100/60">
-                                <p className="text-[10.5px] font-semibold">No collected rent payments recorded.</p>
-                              </div>
-                            ) : (
-                              paidTenants.slice(0, 1).map((t, idx) => {
-                                const amount = parseTenantRent(t);
-                                return (
-                                  <div key={t.id || idx} className="db-popup-item" style={{ padding: "4px 2px" }}>
-                                    <div className="db-popup-info">
-                                      <div className="db-popup-name-row">
-                                        <span className="db-popup-name" style={{ fontSize: "11.5px" }}>{t.name || t.tenantName}</span>
-                                        <span className="db-popup-status-text paid" style={{ fontSize: "11.5px" }}>+₦{amount.toLocaleString()}</span>
-                                      </div>
-                                      <p className="db-popup-property" style={{ fontSize: "10px", margin: "0 0 1px 0" }}>{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
-                                      <span className="db-popup-date" style={{ fontSize: "9px" }}>Paid • {t.dueDate || "Monthly Rent"}</span>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )
-                          ) : (
-                            overdueTenants.length === 0 ? (
-                              <div className="py-2 text-center text-ink-400 dark:text-cream-100/60">
-                                <p className="text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">All tenant payments are up to date! 🎉</p>
-                              </div>
-                            ) : (
-                              overdueTenants.slice(0, 1).map((t, idx) => {
-                                const amount = parseTenantRent(t);
-                                return (
-                                  <div key={t.id || idx} className="db-popup-item" style={{ padding: "4px 2px" }}>
-                                    <div className="db-popup-info">
-                                      <div className="db-popup-name-row">
-                                        <span className="db-popup-name" style={{ fontSize: "11.5px" }}>{t.name || t.tenantName}</span>
-                                        <span className="db-popup-status-text overdue" style={{ fontSize: "11.5px" }}>₦{amount.toLocaleString()}</span>
-                                      </div>
-                                      <p className="db-popup-property" style={{ fontSize: "10px", margin: "0 0 1px 0" }}>{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
-                                      <span className="db-popup-date overdue" style={{ fontSize: "9px" }}>Rent Outstanding</span>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )
-                          )}
-                        </div>
+                        {/* Action Button at Bottom of Card */}
+                        <button
+                          onClick={() => setActivePill("Payments")}
+                          className="w-full py-2.5 px-3 rounded-xl bg-ink-50 dark:bg-white/5 hover:bg-ink-100 dark:hover:bg-white/10 border border-ink-100 dark:border-white/10 text-xs font-bold text-ink-800 dark:text-cream-100 flex items-center justify-center gap-2 transition-all cursor-pointer mt-auto"
+                        >
+                          View Payment Details →
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1721,6 +1684,14 @@ export default function LandlordDashboard() {
                         });
 
                         if (liveAndOccupiedProps.length === 0) {
+                          if (loadingData) {
+                            return (
+                              <div className="py-10 text-center text-ink-400 dark:text-cream-100/60 space-y-2">
+                                <Loader2 className="h-6 w-6 mx-auto animate-spin text-emerald-600 dark:text-[#E5C583]" />
+                                <p className="text-xs font-bold text-ink-600 dark:text-cream-100/80">Fetching property records...</p>
+                              </div>
+                            );
+                          }
                           return (
                             <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--text-muted)", fontSize: "13px", fontWeight: "600" }}>
                               No live or occupied properties available.
@@ -1779,15 +1750,22 @@ export default function LandlordDashboard() {
 
                     <div className="requests-list">
                       {tenantRequests.length === 0 ? (
-                        <div className="requests-empty-state">
-                          <div className="requests-empty-icon">📋</div>
-                          <h4 className="requests-empty-title">No tenant requests</h4>
-                          <p className="requests-empty-desc">
-                            {activeTenantsCount === 0
-                              ? "Approve tenant applications to receive tenancy and maintenance requests."
-                              : "Maintenance requests will appear here once active tenants submit them."}
-                          </p>
-                        </div>
+                        loadingData ? (
+                          <div className="py-10 text-center text-ink-400 dark:text-cream-100/60 space-y-2">
+                            <Loader2 className="h-6 w-6 mx-auto animate-spin text-emerald-600 dark:text-[#E5C583]" />
+                            <p className="text-xs font-bold text-ink-600 dark:text-cream-100/80">Loading tenant requests...</p>
+                          </div>
+                        ) : (
+                          <div className="requests-empty-state">
+                            <div className="requests-empty-icon">📋</div>
+                            <h4 className="requests-empty-title">No tenant requests</h4>
+                            <p className="requests-empty-desc">
+                              {activeTenantsCount === 0
+                                ? "Approve tenant applications to receive tenancy and maintenance requests."
+                                : "Maintenance requests will appear here once active tenants submit them."}
+                            </p>
+                          </div>
+                        )
                       ) : (
                         displayRequests.map((req) => {
                           const unitName = req.leaseStatus
@@ -1875,7 +1853,9 @@ export default function LandlordDashboard() {
           ) : activeTab === 3 ? (
             <LandlordChat />
           ) : activeTab === 4 ? (
-            <SettingsTab />
+            <SettingsTab onShowReportModal={() => setShowReportModal(true)} />
+          ) : activeTab === 5 ? (
+            <LandlordRemindersPage activeTenants={getActiveTenantsList()} />
           ) : (
             <div className="db-card" style={{ padding: "40px", textAlign: "center", borderRadius: "24px" }}>
               <h3 style={{ fontSize: "20px", fontWeight: "800", color: "var(--text-primary)" }}>Tab Coming Soon</h3>
@@ -2280,6 +2260,14 @@ export default function LandlordDashboard() {
         properties={displayProperties}
         leases={leases}
         invoices={invoices}
+      />
+
+      {/* Landlord Automated Reminders Modal */}
+      <AutomatedRemindersModal
+        isOpen={isRemindersModalOpen}
+        onClose={() => setIsRemindersModalOpen(false)}
+        activeTenants={paidTenants.concat(overdueTenants)}
+        onShowToast={(msg) => triggerToast(msg, "info")}
       />
     </div>
   );

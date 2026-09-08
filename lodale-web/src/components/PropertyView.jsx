@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { propertyService } from '../services/propertyService';
+import { profileService } from '../services/profileService';
 import { triggerToast } from '../context/ToastContext';
 import Button from './Button';
 import { Logo } from './Logo';
@@ -202,6 +203,20 @@ export function PropertyDetailView() {
                   } else if (!meetsIncome) {
                     triggerToast(`Your annual income tier (${tenantIncome || 'Not Provided'}) does not meet the landlord's requirement (${requiredIncome}). You cannot apply.`, "error", "Qualification Blocked");
                   } else {
+                    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                    let userProf = null;
+                    try {
+                      const raw = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null);
+                      if (raw) userProf = JSON.parse(raw);
+                    } catch (e) { }
+
+                    const completeness = profileService.checkProfileCompleteness(userProf);
+                    if (!completeness.isComplete) {
+                      triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) in Settings before applying for a property.`, "error", "Profile Incomplete");
+                      localStorage.setItem("tenantActiveTab", "3");
+                      navigate("/dashboard/tenant");
+                      return;
+                    }
                     navigate(`/apply/${property.id}`);
                   }
                 }}
