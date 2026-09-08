@@ -180,12 +180,12 @@ export async function initDb() {
       await client.query(`
         INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number, account_status)
         VALUES 
-          ('System', 'Admin', 'admin', '$2a$10$XilviWV2Z4BdvWGvHG96huiSaBpKr2cDohhuievyN7x3N9EX7.v6e', 'admin', 'verified', '+234 801 000 0000', 'active')
+          ('System', 'Admin', 'admin', '$2a$10$QCECb7/6Ab.9IrRxkCYBSexNHefM1dH1cajKVlEJRvDiEkHyfVX8u', 'admin', 'verified', '+234 801 000 0000', 'active')
       `);
     } else {
       await client.query(`
         UPDATE users 
-        SET password_hash = '$2a$10$XilviWV2Z4BdvWGvHG96huiSaBpKr2cDohhuievyN7x3N9EX7.v6e',
+        SET password_hash = '$2a$10$QCECb7/6Ab.9IrRxkCYBSexNHefM1dH1cajKVlEJRvDiEkHyfVX8u',
             account_status = 'active'
         WHERE LOWER(email) = 'admin'
       `);
@@ -201,15 +201,11 @@ export async function initDb() {
       `);
     }
 
-    // Ensure test tenant tenant@lodale.com exists
-    const tenantCheck = await client.query("SELECT id FROM users WHERE LOWER(email) = 'tenant@lodale.com'");
-    if (tenantCheck.rowCount === 0) {
-      await client.query(`
-        INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number, account_status)
-        VALUES 
-          ('Tunde', 'Tenant', 'tenant@lodale.com', '$2a$10$GaGLHlgXkLLKXbPhR5au1eN97UQO13kBYo6FMO4Pv8PGeulq.vkbe', 'tenant', 'verified', '+234 803 000 0000', 'active')
-      `);
-    }
+    // Purge non-existent test tenants if present
+    await client.query(`
+      DELETE FROM users 
+      WHERE LOWER(email) IN ('tenant@lodale.com', 'testtenant@lodale.com')
+    `);
 
     // Ensure single admin account in database (remove duplicate admin-role users if any)
     await client.query(`

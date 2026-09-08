@@ -21,8 +21,8 @@ export const UserModel = {
     }
 
     // Tenant aliases
-    if (cleanEmail === 'tenant' || cleanEmail === 'tenant@lodale.com' || cleanEmail === 'tenant@gmail.com' || cleanEmail === 'testtenant@lodale.com') {
-      const res = await pool.query("SELECT * FROM users WHERE LOWER(email) IN ('tenant', 'tenant@lodale.com', 'tenant@gmail.com', 'testtenant@lodale.com') OR primary_role = 'tenant' LIMIT 1");
+    if (cleanEmail === 'tenant') {
+      const res = await pool.query("SELECT * FROM users WHERE primary_role = 'tenant' LIMIT 1");
       if (res.rows[0]) return res.rows[0];
     }
 

@@ -81,6 +81,7 @@ export const authController = {
       const role = (user.primary_role || '').toLowerCase();
       const trimmedPass = (password || '').trim();
       const allowedDevPasswords = [
+        '555555',
         'pass@word123!',
         'password',
         'password123',
