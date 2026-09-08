@@ -29,6 +29,22 @@ export const generateLease = async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized or property not found' });
     }
 
+    // Check if tenant already has an active lease on another property
+    const existingLeaseCheck = await pool.query(
+      `SELECT l.id, l.end_date, p.title as property_title 
+       FROM leases l 
+       JOIN properties p ON l.property_id = p.id 
+       WHERE l.tenant_id = $1 AND l.status IN ('active', 'leased') AND l.property_id != $2`,
+      [tenantId, propertyId]
+    );
+    if (existingLeaseCheck.rows.length > 0) {
+      const existingLease = existingLeaseCheck.rows[0];
+      const formattedEnd = existingLease.end_date ? new Date(existingLease.end_date).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+      return res.status(400).json({ 
+        error: `Tenant already has an active lease for "${existingLease.property_title}" ending on ${formattedEnd}. A tenant cannot have two active leased properties simultaneously.` 
+      });
+    }
+
     // Begin transaction
     const client = await pool.connect();
     try {

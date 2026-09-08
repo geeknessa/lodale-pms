@@ -8,10 +8,17 @@ import heroBg from "../assets/modern_villa.png";
 import { useTheme } from "../context/ThemeContext";
 import { authService } from "../services/authService";
 
+import { userService } from "../services/userService";
+import { triggerToast } from "../context/ToastContext";
+
 export default function Login() {
   useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // State for account restoration fee payment modal
+  const [restorationFeeInfo, setRestorationFeeInfo] = useState(null);
+  const [isPayingRestorationFee, setIsPayingRestorationFee] = useState(false);
 
   // State to toggle between User and Admin login modes
   const [isAdminMode] = useState(() => {
@@ -93,7 +100,7 @@ export default function Login() {
     if (lockoutTime && Date.now() < lockoutTime) {
       const minutesRemaining = Math.ceil((lockoutTime - Date.now()) / 60000);
       setInlineError(
-        `Too many failed login attempts. Please try again in ${minutesRemaining} minutes or reset your password.`
+        `Too many failed login attempts. Account temporarily locked. Please try again in ${minutesRemaining} minute(s).`
       );
       return;
     }
@@ -112,17 +119,13 @@ export default function Login() {
           sessionStorage.setItem("userRole", "admin");
           sessionStorage.setItem("adminAuthenticated", "true");
           sessionStorage.setItem("lastLoggedInEmail", cleanUsername);
-          sessionStorage.setItem("username", `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "Admin");
+          sessionStorage.setItem("username", `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "System Admin");
           sessionStorage.setItem("sessionExpiresAt", expiresAt);
           sessionStorage.setItem("db_user_id", res.user.id);
-          if (res.token) sessionStorage.setItem("lodale_token", res.token);
-
-          sessionStorage.setItem("isAuthenticated", "true");
-          sessionStorage.setItem("userRole", "admin");
-          sessionStorage.setItem("adminAuthenticated", "true");
-          sessionStorage.setItem("lastLoggedInEmail", cleanUsername);
-          sessionStorage.setItem("sessionExpiresAt", expiresAt);
-          if (res.token) sessionStorage.setItem("lodale_token", res.token);
+          if (res.token) {
+            sessionStorage.setItem("lodale_token", res.token);
+            localStorage.setItem("lodale_token", res.token);
+          }
           localStorage.removeItem("explicitAdminSignOut");
 
           navigate("/admin/dashboard");
@@ -205,6 +208,20 @@ export default function Login() {
         return;
       }
     } catch (apiErr) {
+      if (apiErr.response?.data?.requiresRestorationFee || apiErr.requiresRestorationFee) {
+        const d = apiErr.response?.data || apiErr;
+        setRestorationFeeInfo({
+          feeAmount: d.restorationFeeAmount || 5000,
+          user: d.user,
+          token: d.token
+        });
+        return;
+      }
+      if (apiErr.response?.data?.error || apiErr.error) {
+        setInlineError(apiErr.response?.data?.error || apiErr.error || "Authentication failed.");
+        return;
+      }
+
       const newAttempts = failedAttempts + 1;
       setFailedAttempts(newAttempts);
       localStorage.setItem("failedLoginAttempts", newAttempts.toString());
@@ -214,7 +231,7 @@ export default function Login() {
         setLockoutTime(lockDuration);
         localStorage.setItem("loginLockoutUntil", lockDuration.toString());
         setInlineError(
-          "Too many failed login attempts. Please try again in 15 minutes or reset your password."
+          "Too many failed login attempts. Account temporarily locked for 15 minutes."
         );
       } else {
         setInlineError("Invalid email or password. Please try again.");
@@ -227,17 +244,21 @@ export default function Login() {
   function handleForgotPassword() {
     setInlineError("");
     setSessionWarning("");
+    setResetMessage("");
+
+    // Check if account is currently locked out due to rate limiting
+    if (lockoutTime && Date.now() < lockoutTime) {
+      const minutesRemaining = Math.ceil((lockoutTime - Date.now()) / 60000);
+      setInlineError(
+        `Account temporarily locked due to too many failed login attempts. Please wait ${minutesRemaining} minute(s) before requesting a password reset.`
+      );
+      return;
+    }
 
     if (!email) {
       setInlineError("Please enter your email address to reset your password.");
       return;
     }
-
-    // Reset attempts and clear lockout
-    setFailedAttempts(0);
-    setLockoutTime(null);
-    localStorage.removeItem("failedLoginAttempts");
-    localStorage.removeItem("loginLockoutUntil");
 
     setResetMessage(`Password reset link has been sent to ${email}.`);
   }
@@ -423,6 +444,84 @@ export default function Login() {
           )}
         </div>
       </div>
+
+      {/* ONLINE ACCOUNT RESTORATION FEE PAYMENT MODAL */}
+      {restorationFeeInfo && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                  <Zap className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-ink-900 dark:text-white text-base">Account Restoration Fee</h3>
+                  <p className="text-xs text-ink-500 dark:text-cream-100/60">Pending Fee Settlement Required</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setRestorationFeeInfo(null)}
+                className="text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold cursor-pointer"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-2">
+              <p>
+                An admin has approved your account restoration. To reactivate access, an account restoration fee of <strong>₦{Number(restorationFeeInfo.feeAmount).toLocaleString()}</strong> is required.
+              </p>
+              <p className="font-semibold text-amber-800 dark:text-amber-300">
+                Settle your restoration fee online via payment gateway below to instantly restore full access.
+              </p>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <Button
+                onClick={async () => {
+                  setIsPayingRestorationFee(true);
+                  try {
+                    if (restorationFeeInfo.token) {
+                      sessionStorage.setItem("lodale_token", restorationFeeInfo.token);
+                    }
+                    await userService.payRestorationFee(`GATEWAY-REF-${Date.now()}`);
+                    triggerToast("Restoration fee paid successfully! Account is active.", "success");
+                    
+                    const resUser = restorationFeeInfo.user || {};
+                    const userRole = resUser.primary_role || "tenant";
+                    const userFullName = `${resUser.first_name || ""} ${resUser.last_name || ""}`.trim() || "User";
+                    
+                    sessionStorage.setItem("isAuthenticated", "true");
+                    sessionStorage.setItem("userRole", userRole);
+                    sessionStorage.setItem("lastLoggedInEmail", resUser.email || email);
+                    sessionStorage.setItem("username", userFullName);
+                    sessionStorage.setItem("db_user_id", resUser.id);
+                    
+                    navigate(userRole === "admin" ? "/admin/dashboard" : `/dashboard/${userRole}`);
+                  } catch (err) {
+                    console.error("Failed to pay restoration fee:", err);
+                    setInlineError(err.message || "Failed to process restoration fee payment.");
+                  } finally {
+                    setIsPayingRestorationFee(false);
+                    setRestorationFeeInfo(null);
+                  }
+                }}
+                disabled={isPayingRestorationFee}
+                className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] font-bold py-3 rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-2"
+              >
+                {isPayingRestorationFee ? "Processing Gateway Payment..." : `Pay ₦${Number(restorationFeeInfo.feeAmount).toLocaleString()} & Reactivate Account`}
+              </Button>
+
+              <button
+                onClick={() => setRestorationFeeInfo(null)}
+                className="w-full py-2 text-xs text-ink-500 dark:text-cream-100/60 hover:underline cursor-pointer"
+              >
+                Cancel / Settle Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

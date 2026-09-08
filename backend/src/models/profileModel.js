@@ -93,10 +93,10 @@ export const ProfileModel = {
       ON CONFLICT (user_id) DO UPDATE SET
         date_of_birth                  = COALESCE(EXCLUDED.date_of_birth, tenant_profiles.date_of_birth),
         nationality                    = COALESCE(EXCLUDED.nationality, tenant_profiles.nationality),
-        occupation                     = COALESCE(EXCLUDED.occupation, tenant_profiles.occupation),
+        occupation                     = EXCLUDED.occupation,
         employer_name                  = COALESCE(EXCLUDED.employer_name, tenant_profiles.employer_name),
-        employment_status              = COALESCE(EXCLUDED.employment_status, tenant_profiles.employment_status),
-        monthly_income                 = COALESCE(EXCLUDED.monthly_income, tenant_profiles.monthly_income),
+        employment_status              = EXCLUDED.employment_status,
+        monthly_income                 = EXCLUDED.monthly_income,
         marital_status                 = COALESCE(EXCLUDED.marital_status, tenant_profiles.marital_status),
         number_of_dependants           = COALESCE(EXCLUDED.number_of_dependants, tenant_profiles.number_of_dependants),
         guarantor_name                 = COALESCE(EXCLUDED.guarantor_name, tenant_profiles.guarantor_name),
@@ -113,11 +113,11 @@ export const ProfileModel = {
       RETURNING *
     `, [
       userId, date_of_birth ?? null, nationality, occupation,
-      employer_name, employment_status, monthly_income ?? null,
+      employer_name, employment_status, monthly_income ? String(monthly_income) : null,
       marital_status, number_of_dependants ?? null,
       guarantor_name, guarantor_phone, guarantor_email, guarantor_relationship,
       emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
-      preferred_move_in_date ?? null, max_budget ?? null, bio
+      preferred_move_in_date ?? null, max_budget ? String(max_budget) : null, bio
     ]);
     return res.rows[0];
   },

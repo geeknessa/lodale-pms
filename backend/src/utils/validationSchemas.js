@@ -89,7 +89,11 @@ export const createPropertySchema = z.object({
     bathrooms: z.number().min(0).optional().or(z.string().transform(Number).optional()),
     rent_amount: z.number().nonnegative().optional().or(z.string().transform(Number).optional()),
     rent_period: z.string().optional(),
-    status: z.string().optional()
+    status: z.string().optional(),
+    description: z.string().optional(),
+    amenities: z.string().optional(),
+    rules: z.string().optional(),
+    images: z.array(z.string()).optional()
   })).optional()
 });
 

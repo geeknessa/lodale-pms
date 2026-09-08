@@ -4,10 +4,28 @@ export default function Input({
   type = "text",
   light = false,
   multiline = false,
-  rows = 2,
+  rows = 1,
   className = "",
+  onChange,
+  onInput,
   ...props
 }) {
+  const autoResize = (e) => {
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(44, Math.min(el.scrollHeight, 300))}px`;
+  };
+
+  const handleChange = (e) => {
+    autoResize(e);
+    if (onChange) onChange(e);
+  };
+
+  const handleInput = (e) => {
+    autoResize(e);
+    if (onInput) onInput(e);
+  };
+
   const baseClasses = `w-full rounded-xl border ${
     light
       ? "border-white/20 bg-white/10 text-white placeholder:text-white/45 focus:border-white/40"
@@ -27,7 +45,9 @@ export default function Input({
         <textarea
           id={id}
           rows={rows}
-          className={`${baseClasses} resize-none min-h-[42px] leading-relaxed`}
+          className={`${baseClasses} resize-none min-h-[44px] overflow-hidden leading-relaxed`}
+          onChange={handleChange}
+          onInput={handleInput}
           {...props}
         />
       ) : (
@@ -35,6 +55,8 @@ export default function Input({
           id={id}
           type={type}
           className={`${baseClasses} h-[42px]`}
+          onChange={onChange}
+          onInput={onInput}
           {...props}
         />
       )}

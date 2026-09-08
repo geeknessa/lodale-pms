@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, PenTool } from 'lucide-react';
+import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, PenTool, AlertTriangle } from 'lucide-react';
 import Button from './Button';
 import { leaseService } from '../services/leaseService';
 import { triggerToast } from '../context/ToastContext';
 
 export default function LeaseBuilderModal({ isOpen, onClose, application, property, tenant, onSuccess }) {
-  if (!isOpen || !application) return null;
-
   const initialRent = property?.rent_amount || property?.price || 0;
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -27,10 +25,17 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
   const [signature, setSignature] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  if (!isOpen || !application) return null;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!signature.trim()) {
       triggerToast('Please type your full name signature to generate and execute the lease draft.', 'warning', 'Signature Required');
+      return;
+    }
+
+    if (application.activeLease) {
+      triggerToast(`Tenant currently holds an active lease for "${application.activeLease.propertyTitle}" ending on ${application.activeLease.formattedEndDate || 'N/A'}. A tenant cannot hold two active leases simultaneously.`, 'error', 'Lease Blocked');
       return;
     }
 
@@ -85,6 +90,19 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+          {/* Active Lease Warning */}
+          {application.activeLease && (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5 font-medium">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-sm text-amber-700 dark:text-amber-300">Tenant Holds Active Lease</span>
+                <p className="mt-0.5 leading-relaxed">
+                  Tenant currently holds an active tenancy for <strong>{application.activeLease.propertyTitle}</strong> expiring on <strong>{application.activeLease.formattedEndDate || 'N/A'}</strong>. A tenant cannot have two active leased properties simultaneously.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Lease Dates */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-moss-700 dark:text-[#E5C583] uppercase tracking-wider flex items-center gap-2">

@@ -128,5 +128,70 @@ export const userController = {
     });
 
     res.json({ success: true, tenants });
+  }),
+
+  deactivateMyAccount: asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { reason } = req.body;
+
+    // Check if user has active leases as tenant
+    const activeLease = await pool.query(
+      `SELECT id FROM leases WHERE tenant_id = $1 AND status::text IN ('active', 'leased', 'signed') LIMIT 1`,
+      [userId]
+    );
+    if (activeLease.rows.length > 0) {
+      return res.status(400).json({
+        error: "Account closure blocked: You currently hold an active tenancy lease. You cannot delete or deactivate your account while a lease is active."
+      });
+    }
+
+    // Check if user has pending applications as tenant
+    const pendingApp = await pool.query(
+      `SELECT id FROM property_applications WHERE tenant_id = $1 AND status::text IN ('pending', 'under_review', 'lease_generated') LIMIT 1`,
+      [userId]
+    );
+    if (pendingApp.rows.length > 0) {
+      return res.status(400).json({
+        error: "Account closure blocked: You have pending property applications. Please withdraw your applications before closing your account."
+      });
+    }
+
+    // Check if user is landlord with active occupied properties
+    const occupiedProp = await pool.query(
+      `SELECT id FROM properties WHERE landlord_id = $1 AND is_occupied = TRUE LIMIT 1`,
+      [userId]
+    );
+    if (occupiedProp.rows.length > 0) {
+      return res.status(400).json({
+        error: "Account closure blocked: You have properties with active tenants. You cannot deactivate your account while tenants occupy your property."
+      });
+    }
+
+    const softDeleted = await UserModel.softDeleteUser(userId, reason || 'Self-service account deletion request');
+    if (!softDeleted) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Your account has been deactivated/closed. If you ever wish to restore your account, contact Admin.',
+      user: softDeleted
+    });
+  }),
+
+  payRestorationFee: asyncHandler(async (req, res) => {
+    const userId = req.user.id;
+    const { paymentReference } = req.body;
+
+    const restored = await UserModel.payRestorationFee(userId, paymentReference || 'PAY-FEE-' + Date.now());
+    if (!restored) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Restoration fee paid successfully! Your account is now fully active.',
+      user: restored
+    });
   })
 };
