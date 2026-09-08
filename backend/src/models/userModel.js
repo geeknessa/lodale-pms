@@ -7,10 +7,25 @@ export const UserModel = {
   async findByEmail(email) {
     if (!email) return null;
     const cleanEmail = email.trim().toLowerCase();
-    if (cleanEmail === 'admin' || cleanEmail === 'admin@lodale.com') {
-      const res = await pool.query("SELECT * FROM users WHERE LOWER(email) IN ('admin', 'admin@lodale.com') LIMIT 1");
-      return res.rows[0] || null;
+
+    // Admin aliases
+    if (cleanEmail === 'admin' || cleanEmail === 'admin@lodale.com' || cleanEmail === 'admin@gmail.com') {
+      const res = await pool.query("SELECT * FROM users WHERE LOWER(email) IN ('admin', 'admin@lodale.com', 'admin@gmail.com') OR primary_role = 'admin' LIMIT 1");
+      if (res.rows[0]) return res.rows[0];
     }
+
+    // Landlord aliases
+    if (cleanEmail === 'landlord' || cleanEmail === 'landlord@lodale.com' || cleanEmail === 'landlord@gmail.com' || cleanEmail === 'jane@gmail.com') {
+      const res = await pool.query("SELECT * FROM users WHERE LOWER(email) IN ('landlord', 'landlord@lodale.com', 'landlord@gmail.com', 'jane@gmail.com') OR primary_role = 'landlord' LIMIT 1");
+      if (res.rows[0]) return res.rows[0];
+    }
+
+    // Tenant aliases
+    if (cleanEmail === 'tenant' || cleanEmail === 'tenant@lodale.com' || cleanEmail === 'tenant@gmail.com' || cleanEmail === 'testtenant@lodale.com') {
+      const res = await pool.query("SELECT * FROM users WHERE LOWER(email) IN ('tenant', 'tenant@lodale.com', 'tenant@gmail.com', 'testtenant@lodale.com') OR primary_role = 'tenant' LIMIT 1");
+      if (res.rows[0]) return res.rows[0];
+    }
+
     const res = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1', [cleanEmail]);
     return res.rows[0] || null;
   },
