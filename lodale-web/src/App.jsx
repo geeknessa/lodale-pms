@@ -147,11 +147,11 @@ function ProtectedRoute({ children }) {
 
 function AdminProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
-    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true";
-    const expires = sessionStorage.getItem("sessionExpiresAt");
-    const token = sessionStorage.getItem("lodale_token");
+    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true" || localStorage.getItem("adminAuthenticated") === "true";
+    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
 
     if ((!auth && !adminAuth && !token) || (expires && Date.now() > Number(expires))) {
       return { isValid: false, reason: "expired_or_logged_out" };
@@ -181,14 +181,15 @@ function AdminProtectedRoute({ children }) {
 
 function LandlordProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
-    const expires = sessionStorage.getItem("sessionExpiresAt");
+    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
 
-    if (!auth || (expires && Date.now() > Number(expires))) {
+    if ((!auth && !token) || (expires && Date.now() > Number(expires))) {
       return { isValid: false, reason: "expired_or_logged_out" };
     }
-    if (role !== "landlord") {
+    if (role !== "landlord" && role !== "admin") {
       return { isValid: false, reason: "wrong_role" };
     }
     return { isValid: true };
@@ -206,7 +207,7 @@ function LandlordProtectedRoute({ children }) {
       return <Navigate to="/access-denied" replace />;
     }
 
-    const expires = sessionStorage.getItem("sessionExpiresAt");
+    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
     const wasSessionExpired = expires && Date.now() > Number(expires);
 
     return (
@@ -226,14 +227,15 @@ function LandlordProtectedRoute({ children }) {
 
 function TenantProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
-    const expires = sessionStorage.getItem("sessionExpiresAt");
+    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+    const expires = sessionStorage.getItem("sessionExpiresAt") || localStorage.getItem("sessionExpiresAt");
+    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
 
-    if (!auth || (expires && Date.now() > Number(expires))) {
+    if ((!auth && !token) || (expires && Date.now() > Number(expires))) {
       return { isValid: false, reason: "expired_or_logged_out" };
     }
-    if (role !== "tenant") {
+    if (role !== "tenant" && role !== "admin") {
       return { isValid: false, reason: "wrong_role" };
     }
     return { isValid: true };

@@ -178,9 +178,36 @@ export async function initDb() {
     const adminCheck = await client.query("SELECT id FROM users WHERE LOWER(email) = 'admin'");
     if (adminCheck.rowCount === 0) {
       await client.query(`
-        INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number)
+        INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number, account_status)
         VALUES 
-          ('System', 'Admin', 'admin', '$2a$10$iBI8JFj4y6yRwLbQFxl7L..9FQyNx/hShsLwmaosp5URHWH/aPWRy', 'admin', 'verified', '+234 801 000 0000')
+          ('System', 'Admin', 'admin', '$2a$10$XilviWV2Z4BdvWGvHG96huiSaBpKr2cDohhuievyN7x3N9EX7.v6e', 'admin', 'verified', '+234 801 000 0000', 'active')
+      `);
+    } else {
+      await client.query(`
+        UPDATE users 
+        SET password_hash = '$2a$10$XilviWV2Z4BdvWGvHG96huiSaBpKr2cDohhuievyN7x3N9EX7.v6e',
+            account_status = 'active'
+        WHERE LOWER(email) = 'admin'
+      `);
+    }
+
+    // Ensure test landlord jane@gmail.com exists
+    const landlordCheck = await client.query("SELECT id FROM users WHERE LOWER(email) = 'jane@gmail.com'");
+    if (landlordCheck.rowCount === 0) {
+      await client.query(`
+        INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number, account_status)
+        VALUES 
+          ('Jane', 'Landlord', 'jane@gmail.com', '$2a$10$GaGLHlgXkLLKXbPhR5au1eN97UQO13kBYo6FMO4Pv8PGeulq.vkbe', 'landlord', 'verified', '+234 802 000 0000', 'active')
+      `);
+    }
+
+    // Ensure test tenant tenant@lodale.com exists
+    const tenantCheck = await client.query("SELECT id FROM users WHERE LOWER(email) = 'tenant@lodale.com'");
+    if (tenantCheck.rowCount === 0) {
+      await client.query(`
+        INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number, account_status)
+        VALUES 
+          ('Tunde', 'Tenant', 'tenant@lodale.com', '$2a$10$GaGLHlgXkLLKXbPhR5au1eN97UQO13kBYo6FMO4Pv8PGeulq.vkbe', 'tenant', 'verified', '+234 803 000 0000', 'active')
       `);
     }
 

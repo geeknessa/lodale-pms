@@ -156,20 +156,27 @@ export default function Login() {
         sessionStorage.setItem("db_user_id", res.user.id);
         sessionStorage.setItem("lodale_user", JSON.stringify(res.user));
         sessionStorage.setItem("sessionExpiresAt", expiresAt);
-        if (res.token) sessionStorage.setItem("lodale_token", res.token);
+        if (res.token) {
+          sessionStorage.setItem("lodale_token", res.token);
+          localStorage.setItem("lodale_token", res.token);
+        }
+
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userRole", userRole);
+        localStorage.setItem("lastLoggedInEmail", cleanEmail);
+        localStorage.setItem("username", userFullName);
+        localStorage.setItem("db_user_id", res.user.id);
+        localStorage.setItem("lodale_user", JSON.stringify(res.user));
+        localStorage.setItem("sessionExpiresAt", expiresAt);
 
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
         localStorage.removeItem("landlordProperties");
-        sessionStorage.setItem("isAuthenticated", "true");
-        sessionStorage.setItem("userRole", userRole);
-        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
-        sessionStorage.setItem("sessionExpiresAt", expiresAt);
         sessionStorage.setItem("username_" + cleanEmail, userFullName);
 
         if (userRole === "admin") {
           sessionStorage.setItem("adminAuthenticated", "true");
-          sessionStorage.setItem("adminAuthenticated", "true");
+          localStorage.setItem("adminAuthenticated", "true");
           localStorage.removeItem("explicitAdminSignOut");
         }
 
@@ -350,9 +357,10 @@ export default function Login() {
                     id="email"
                     name={isAdminMode ? "username" : "email"}
                     autoComplete={isAdminMode ? "username" : "email"}
-                    type={isAdminMode || email.toLowerCase() === "admin" ? "text" : "email"}
+                    type="text"
+                    inputMode="email"
                     maxLength={100}
-                    placeholder={isAdminMode ? "admin" : "ada@example.com"}
+                    placeholder={isAdminMode ? "admin" : "jane@gmail.com"}
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
