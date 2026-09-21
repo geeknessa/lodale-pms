@@ -15,6 +15,8 @@ import chatRoutes from './routes/chat.js';
 import leaseRoutes from './routes/leases.js';
 import rentRoutes from './routes/rent.js';
 import maintenanceRoutes from './routes/maintenance.js';
+import notificationRoutes from './routes/notifications.js';
+import inspectionRoutes from './routes/inspections.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
@@ -31,7 +33,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https://images.unsplash.com"],
-      connectSrc: ["'self'", process.env.CORS_ORIGIN || "http://localhost:5173"],
+      connectSrc: ["'self'", "*"],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -47,11 +49,13 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // Allowed origins for CORS
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173').split(',').map(o => o.trim());
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000').split(',').map(o => o.trim());
+
+const isLocalhostOrigin = (origin) => /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin) || isLocalhostOrigin(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Blocked by CORS policy'));
@@ -86,6 +90,8 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/leases', leaseRoutes);
 app.use('/api/rent', rentRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/inspections', inspectionRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

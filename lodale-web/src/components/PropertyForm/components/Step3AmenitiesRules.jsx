@@ -37,7 +37,7 @@ export default function Step3AmenitiesRules({
     <div className="space-y-6 animate-in fade-in">
       {/* INFORMATIONAL CALLOUT BANNER FOR COMPOUND FACILITIES (Show only when bulk generated) */}
       {wasBulkGenerated && safeUnits.length > 0 && (
-        <div className="p-3.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
+        <div className="p-3.5 rounded-xl bg-emerald-50/90 dark:bg-[#07130D]merald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
           <Info className="h-4 w-4 shrink-0 text-emerald-700 dark:text-[#E5C583] mt-0.5" />
           <div>
             <span className="font-bold">Compound & Shared Facilities: </span>
@@ -60,7 +60,7 @@ export default function Step3AmenitiesRules({
             e.target.style.height = `${Math.max(44, Math.min(e.target.scrollHeight, 300))}px`;
           }}
           placeholder="Describe compound highlights, floor layout, security details, or neighborhood features (max 1000 chars)..."
-          className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none resize-none leading-relaxed break-words"
+          className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none resize-none leading-relaxed break-words"
         />
       </div>
 
@@ -79,7 +79,7 @@ export default function Step3AmenitiesRules({
                     className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                       isSelected
                         ? "bg-[#2C4633] text-white border-transparent dark:bg-[#E5C583] dark:text-[#263b33]"
-                        : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                        : "bg-white dark:bg-[#07130D] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
                     }`}
                   >
                     {isSelected ? "✓ " : "+ "}{amenity}
@@ -130,7 +130,7 @@ export default function Step3AmenitiesRules({
               onChange={(e) => setCustomAmenityInput(e.target.value)}
               maxLength={500}
               placeholder="e.g. Smart Door Lock, Private Swimming Pool..."
-              className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none"
+              className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -163,7 +163,7 @@ export default function Step3AmenitiesRules({
             <select
               value={requiredIncomeRange}
               onChange={(e) => setRequiredIncomeRange(e.target.value)}
-              className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none font-medium"
+              className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
             >
               <option value="No Minimum Income">No Minimum Income Required</option>
               {(INCOME_RANGES || []).map((range) => (
@@ -179,7 +179,7 @@ export default function Step3AmenitiesRules({
             <select
               value={employmentRequirement}
               onChange={(e) => setEmploymentRequirement(e.target.value)}
-              className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none font-medium"
+              className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
             >
               <option value="Any Employment">Any Employment / Flexible</option>
               <option value="Employed Only">Employed / Salary Earners Only</option>
@@ -188,18 +188,6 @@ export default function Step3AmenitiesRules({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 pt-1">
-          <input
-            type="checkbox"
-            id="formRequiresGuarantor"
-            checked={requiresGuarantor}
-            onChange={(e) => setRequiresGuarantor(e.target.checked)}
-            className="h-4 w-4 rounded accent-[#2C4633] dark:accent-[#E5C583] cursor-pointer"
-          />
-          <label htmlFor="formRequiresGuarantor" className="text-xs font-bold text-slate-900 dark:text-white cursor-pointer">
-            Mandatory Guarantor Required for Applicants
-          </label>
-        </div>
 
         {/* House Rules Checklist */}
         <div className="pt-3 border-t border-slate-200 dark:border-white/10">
@@ -221,7 +209,7 @@ export default function Step3AmenitiesRules({
                   className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                     isSelected
                       ? "bg-[#2C4633] text-white border-transparent dark:bg-[#E5C583] dark:text-[#263b33]"
-                      : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                      : "bg-white dark:bg-[#07130D] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
                   }`}
                 >
                   {isSelected ? "✓ " : "+ "}{rule}
@@ -237,7 +225,7 @@ export default function Step3AmenitiesRules({
               value={customRuleInput}
               onChange={(e) => setCustomRuleInput(e.target.value)}
               placeholder="Add custom rule (e.g. No Single Women, Single Occupancy Only)..."
-              className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none"
+              className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -275,7 +263,7 @@ export default function Step3AmenitiesRules({
           value={safeRules}
           onChange={(e) => setRules(e.target.value)}
           placeholder="Additional instructions or notes (max 500 chars)..."
-          className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none resize-none leading-relaxed break-words"
+          className="w-full p-3 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none resize-none leading-relaxed break-words"
         />
       </div>
     </div>

@@ -4,11 +4,11 @@ import { chatService } from "../../../services/chatService";
 import { leaseService } from "../../../services/leaseService";
 import { invoiceService } from "../../../services/invoiceService";
 import { inspectionService } from "../../../services/inspectionService";
-import InspectionCalendarModal from "../../../components/InspectionCalendarModal";
 import MoveInSetupModal from "../../../components/MoveInSetupModal";
 import Avatar from "../../../components/Avatar";
 import LeaseBuilderModal from "../../../components/LeaseBuilderModal";
 import InvoiceBuilderModal from "../../../components/InvoiceBuilderModal";
+import InspectionCalendarModal from "../../../components/InspectionCalendarModal";
 import { 
   CheckCircle2, XCircle, FileText, 
   Wallet, ShieldCheck, Mail, Phone, Calendar, 
@@ -85,7 +85,6 @@ export default function LandlordApplications({ setActiveTab }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const [showReliabilityDetails, setShowReliabilityDetails] = useState(false);
-  const [showCalendarModal, setShowCalendarModal] = useState(false);
 
   // Modal states for actions
   const [showDeclineModal, setShowDeclineModal] = useState(false);
@@ -102,6 +101,9 @@ export default function LandlordApplications({ setActiveTab }) {
   // Request Modal State
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [customRequestText, setCustomRequestText] = useState("");
+  
+  // Calendar Modal State
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
 
   // Inspection Scheduling Modal State
   const [showScheduleInspectionModal, setShowScheduleInspectionModal] = useState(false);
@@ -126,9 +128,21 @@ export default function LandlordApplications({ setActiveTab }) {
     includeLateFee: true
   });
 
+  const [inspections, setInspections] = useState([]);
+
   useEffect(() => {
     fetchApplications();
   }, []);
+
+  useEffect(() => {
+    async function loadInspections() {
+      if (typeof inspectionService.getAllInspections === 'function') {
+        const data = await inspectionService.getAllInspections();
+        setInspections(data || []);
+      }
+    }
+    loadInspections();
+  }, [applications]);
 
   const activeApp = applications.find(a => a.id === activeApplicantId);
 
@@ -171,9 +185,13 @@ export default function LandlordApplications({ setActiveTab }) {
       const apps = await applicationService.getLandlordApplications();
       const deletedIds = JSON.parse(localStorage.getItem("deletedLandlordAppIds") || "[]");
       const validApps = (apps || []).filter(app => !deletedIds.includes(String(app.id)));
-      setApplications(validApps);
-      if (validApps.length > 0 && !activeApplicantId) {
-        setActiveApplicantId(validApps[0].id);
+      
+      // Deduplicate by ID to prevent React duplicate key errors from backend joins
+      const uniqueApps = Array.from(new Map(validApps.map(app => [app.id, app])).values());
+      
+      setApplications(uniqueApps);
+      if (uniqueApps.length > 0 && !activeApplicantId) {
+        setActiveApplicantId(uniqueApps[0].id);
       }
     } catch (err) {
       console.error(err);
@@ -229,12 +247,6 @@ export default function LandlordApplications({ setActiveTab }) {
     setIsSubmitting(true);
     try {
       await applicationService.deleteLandlordApplication(appId);
-      
-      const deletedIds = JSON.parse(localStorage.getItem("deletedLandlordAppIds") || "[]");
-      if (!deletedIds.includes(String(appId))) {
-        deletedIds.push(String(appId));
-        localStorage.setItem("deletedLandlordAppIds", JSON.stringify(deletedIds));
-      }
 
       triggerToast("Application deleted successfully.", "info", "Application Deleted");
       const updated = applications.filter(a => String(a.id) !== String(appId));
@@ -267,8 +279,6 @@ export default function LandlordApplications({ setActiveTab }) {
         partner_avatar: tProf.avatar || ""
       });
       sessionStorage.setItem("activeChatPartnerId", recipientId);
-      localStorage.setItem("activeChatPartnerId", recipientId);
-      localStorage.setItem("activeChatTenantName", tProf.fullName);
       triggerToast("Chat initiated with applicant!", "success");
       if (setActiveTab) setActiveTab(3);
     } catch (err) {
@@ -292,8 +302,6 @@ export default function LandlordApplications({ setActiveTab }) {
         partner_avatar: tProf.avatar || ""
       });
       sessionStorage.setItem("activeChatPartnerId", recipientId);
-      localStorage.setItem("activeChatPartnerId", recipientId);
-      localStorage.setItem("activeChatTenantName", tProf.fullName);
       triggerToast(`Request sent to ${tProf.firstName}!`, "success");
       setShowRequestModal(false);
       setCustomRequestText("");
@@ -310,7 +318,7 @@ export default function LandlordApplications({ setActiveTab }) {
     setIsSubmitting(true);
     try {
       const tProf = getTenantProfile(activeApp);
-      inspectionService.saveInspection(activeApp.id, {
+      await inspectionService.saveInspection(activeApp.id, {
         propertyId: activeApp.propertyId,
         propertyTitle: activeApp.propertyTitle,
         landlordId: activeApp.landlordId || "landlord",
@@ -324,6 +332,10 @@ export default function LandlordApplications({ setActiveTab }) {
         status: "Scheduled",
         createdBy: "landlord"
       });
+
+      // Refresh inspections
+      const data = await inspectionService.getAllInspections();
+      setInspections(data || []);
 
       const recipientId = activeApp.tenantId || activeApp.tenant_id || activeApp.tenant?.id;
       if (recipientId) {
@@ -394,24 +406,24 @@ export default function LandlordApplications({ setActiveTab }) {
 
   // Dynamic Action Bar with Lifecycle Progressive Primary Button
   const renderActionBar = () => (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-[#13221C] rounded-2xl border border-ink-200/80 dark:border-[#23372B]/60 shadow-xs">
+    <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-[#07130D] rounded-2xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
       <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
         <button 
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs sm:text-sm rounded-xl border border-indigo-200 dark:border-indigo-800/40 transition-all cursor-pointer shadow-xs"
+          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-white/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
           onClick={() => initiateChat(activeApp)}
         >
-          <MessageSquare className="h-4 w-4" /> Message Applicant
+          <MessageSquare className="h-4 w-4" /> Message
         </button>
 
         <button
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 font-bold text-xs sm:text-sm rounded-xl border border-amber-200 dark:border-amber-800/40 transition-all cursor-pointer shadow-xs"
+          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-white/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
           onClick={() => setShowRequestModal(true)}
         >
-          <FileText className="h-4 w-4 text-amber-600 dark:text-amber-400" /> Request Documents
+          <FileText className="h-4 w-4" /> Request Docs
         </button>
 
         <button
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-moss-50 hover:bg-moss-100 dark:bg-moss-950/50 dark:hover:bg-moss-900/60 text-moss-800 dark:text-[#E5C583] font-bold text-xs sm:text-sm rounded-xl border border-moss-200 dark:border-moss-800/40 transition-all cursor-pointer shadow-xs"
+          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-white/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
           onClick={() => {
             setInspectionForm({
               date: new Date().toISOString().split("T")[0],
@@ -422,22 +434,22 @@ export default function LandlordApplications({ setActiveTab }) {
             setShowScheduleInspectionModal(true);
           }}
         >
-          <Calendar className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" /> Schedule Inspection
+          <Calendar className="h-4 w-4" /> Schedule
         </button>
       </div>
 
       <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-end">
         {(activeApp.status === 'declined' || activeApp.status === 'Rejected') ? (
           <button 
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs sm:text-sm rounded-xl transition-all cursor-pointer shadow-xs disabled:opacity-50"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 font-semibold text-sm rounded-xl border border-red-200 dark:border-red-900/40 transition-all cursor-pointer shadow-sm disabled:opacity-50"
             onClick={() => handleDeleteApplication(activeApp.id)}
             disabled={isSubmitting}
           >
-            <Trash2 className="h-4 w-4" /> Delete Application
+            <Trash2 className="h-4 w-4" /> Delete
           </button>
         ) : (
           <button 
-            className="flex-1 sm:flex-none px-4 py-2.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 font-bold text-xs sm:text-sm rounded-xl border border-rose-200 dark:border-rose-800/40 transition-all cursor-pointer disabled:opacity-50"
+            className="flex-1 sm:flex-none flex items-center justify-center px-5 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 font-semibold text-sm rounded-xl border border-red-200 dark:border-red-900/40 transition-all cursor-pointer shadow-sm disabled:opacity-50"
             onClick={() => setShowDeclineModal(true)}
             disabled={isSubmitting}
           >
@@ -448,53 +460,53 @@ export default function LandlordApplications({ setActiveTab }) {
         {/* DYNAMIC PROGRESSIVE PRIMARY ACTION BUTTON */}
         {!activeInvoice ? (
           <button 
-            className="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-800 hover:bg-emerald-900 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] font-extrabold text-xs sm:text-sm rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 sm:flex-none px-6 py-2.5 bg-moss-700 hover:bg-moss-800 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
             onClick={() => setShowInvoiceModal(true)}
             disabled={activeApp.status === 'declined' || isSubmitting}
           >
-            <FileText className="h-4 w-4" /> Issue Digital Rent Invoice &rarr;
+            <FileText className="h-4 w-4" /> Create Invoice
           </button>
         ) : isPaymentProofUploaded ? (
           <button 
-            className="flex-1 sm:flex-none px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+            className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
             onClick={handleVerifyPayment}
             disabled={isSubmitting}
           >
-            <CheckCircle2 className="h-4 w-4" /> Verify Payment Receipt & Confirm &rarr;
+            <CheckCircle2 className="h-4 w-4" /> Verify Payment
           </button>
         ) : !isInvoicePaid ? (
           <button 
-            className="flex-1 sm:flex-none px-4 py-2.5 bg-amber-500/20 text-amber-900 dark:text-amber-200 font-bold text-xs sm:text-sm rounded-xl border border-amber-400/40 cursor-pointer flex items-center gap-2"
+            className="flex-1 sm:flex-none px-6 py-2.5 bg-amber-50 dark:bg-[#07130D]mber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-semibold text-sm rounded-xl border border-amber-200 dark:border-amber-800/40 transition-all cursor-pointer shadow-sm flex items-center gap-2"
             onClick={() => setShowInvoiceModal(true)}
           >
-            <FileText className="h-4 w-4 text-amber-600" /> View Issued Invoice (Awaiting Payment ⏳)
+            <FileText className="h-4 w-4" /> Awaiting Payment
           </button>
         ) : !activeLease ? (
           <button 
-            className="flex-1 sm:flex-none px-5 py-2.5 bg-moss-700 hover:bg-forest-600 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+            className="flex-1 sm:flex-none px-6 py-2.5 bg-moss-700 hover:bg-moss-800 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
             onClick={openLeaseSetup}
             disabled={isSubmitting}
           >
-            <FileText className="h-4 w-4" /> Draft & Send Lease Agreement &rarr;
+            <FileText className="h-4 w-4" /> Draft Lease
           </button>
         ) : !isLeaseSigned ? (
           <button 
-            className="flex-1 sm:flex-none px-4 py-2.5 bg-indigo-50 text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 font-bold text-xs sm:text-sm rounded-xl border border-indigo-200 cursor-pointer flex items-center gap-2"
+            className="flex-1 sm:flex-none px-6 py-2.5 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300 font-semibold text-sm rounded-xl border border-indigo-200 dark:border-indigo-800/40 transition-all cursor-pointer shadow-sm flex items-center gap-2"
             onClick={openLeaseSetup}
           >
-            <FileText className="h-4 w-4 text-indigo-600" /> View Issued Lease (Awaiting Signature ⏳)
+            <FileText className="h-4 w-4" /> Awaiting Signature
           </button>
         ) : !isMoveInSet ? (
           <button 
-            className="flex-1 sm:flex-none px-5 py-2.5 bg-moss-800 hover:bg-moss-900 text-white font-extrabold text-xs sm:text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+            className="flex-1 sm:flex-none px-6 py-2.5 bg-moss-700 hover:bg-moss-800 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
             onClick={() => setShowMoveInModal(true)}
             disabled={isSubmitting}
           >
-            <Key className="h-4 w-4 text-[#E5C583]" /> Send Move-in Rules & Key Pickup &rarr;
+            <Key className="h-4 w-4" /> Finalize Move-in
           </button>
         ) : (
-          <span className="px-4 py-2.5 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 font-extrabold text-xs sm:text-sm rounded-xl border border-emerald-500/30 flex items-center gap-1.5">
-            <CheckCircle2 className="h-4.5 w-4.5 text-emerald-600" /> Tenant Fully Onboarded & Leased ✓
+          <span className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-50 dark:bg-[#07130D]merald-900/20 text-emerald-800 dark:text-emerald-300 font-semibold text-sm rounded-xl border border-emerald-200 dark:border-emerald-800/40 flex items-center justify-center gap-2 shadow-sm">
+            <CheckCircle2 className="h-4 w-4" /> Completed
           </span>
         )}
       </div>
@@ -506,7 +518,7 @@ export default function LandlordApplications({ setActiveTab }) {
     return (
       <div className="space-y-6 animate-in fade-in duration-200 text-left">
         {/* HEADER BAR */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#101F1A] p-6 rounded-3xl border border-ink-200/80 dark:border-[#23372B]/60 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#07130D] p-6 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-black text-ink-900 dark:text-white tracking-tight">Rental Applications</h1>
@@ -536,7 +548,7 @@ export default function LandlordApplications({ setActiveTab }) {
               placeholder="Search by applicant name, email, or property..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#101F1A] text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 shadow-xs"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#07130D] text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 shadow-xs"
             />
           </div>
 
@@ -549,7 +561,7 @@ export default function LandlordApplications({ setActiveTab }) {
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${
                   statusFilter === statusKey
                     ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-[#263b33] shadow-xs"
-                    : "bg-white dark:bg-[#101F1A] text-ink-600 dark:text-cream-100/70 border border-ink-200/80 dark:border-white/10 hover:bg-neutral-50"
+                    : "bg-white dark:bg-[#07130D] text-ink-600 dark:text-cream-100/70 border border-ink-200/80 dark:border-white/10 hover:bg-neutral-50"
                 }`}
               >
                 {statusKey}
@@ -560,12 +572,12 @@ export default function LandlordApplications({ setActiveTab }) {
 
         {/* APPLICANT CARDS GRID */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center p-16 text-center space-y-3 bg-white dark:bg-[#101F1A] rounded-3xl border border-ink-200/80 dark:border-white/10">
+          <div className="flex flex-col items-center justify-center p-16 text-center space-y-3 bg-white dark:bg-[#07130D] rounded-3xl border border-ink-200/80 dark:border-white/10">
             <Loader2 className="h-8 w-8 animate-spin text-moss-700 dark:text-[#E5C583]" />
             <span className="text-xs font-extrabold text-ink-900 dark:text-white">Syncing applicant profiles & documents...</span>
           </div>
         ) : filteredApplications.length === 0 ? (
-          <div className="p-12 text-center rounded-3xl border border-dashed border-ink-200 dark:border-white/10 bg-white dark:bg-[#101F1A]">
+          <div className="p-12 text-center rounded-3xl border border-dashed border-ink-200 dark:border-white/10 bg-white dark:bg-[#07130D]">
             <FileText className="h-10 w-10 text-ink-300 dark:text-cream-100/40 mx-auto mb-2" />
             <h3 className="font-extrabold text-sm text-ink-900 dark:text-white">No Matching Applications Found</h3>
             <p className="text-xs text-ink-500 dark:text-cream-100/60 mt-1">Try adjusting your search terms or filters.</p>
@@ -574,7 +586,7 @@ export default function LandlordApplications({ setActiveTab }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredApplications.map(app => {
               const prof = getTenantProfile(app);
-              const insp = inspectionService.getInspection(app.id);
+              const insp = inspections.find(i => String(i.applicationId || i.application_id) === String(app.id));
 
               return (
                 <div 
@@ -583,7 +595,7 @@ export default function LandlordApplications({ setActiveTab }) {
                     setActiveApplicantId(app.id);
                     setViewMode("detail");
                   }}
-                  className="bg-white dark:bg-[#101F1A] p-5 rounded-3xl border border-ink-200/80 dark:border-[#23372B]/60 shadow-sm hover:shadow-md hover:border-moss-500/50 transition-all cursor-pointer flex flex-col justify-between group"
+                  className="bg-white dark:bg-[#07130D] p-5 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-sm hover:shadow-md hover:border-moss-500/50 transition-all cursor-pointer flex flex-col justify-between group"
                 >
                   <div className="space-y-4">
                     {/* TOP ROW: AVATAR, NAME, STATUS */}
@@ -620,7 +632,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
                     {/* INSPECTION BADGE IF SCHEDULED */}
                     {insp && (
-                      <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 text-[11px] text-amber-900 dark:text-amber-200 flex items-center justify-between">
+                      <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200/80 text-[11px] text-amber-900 dark:text-amber-200 flex items-center justify-between">
                         <span className="font-bold flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-amber-600" /> {insp.status}: {insp.date}
                         </span>
@@ -660,7 +672,7 @@ export default function LandlordApplications({ setActiveTab }) {
     <div className="space-y-6 animate-in fade-in duration-200 text-left">
       
       {/* TOP DETAIL BREADCRUMB & BACK NAVIGATION */}
-      <div className="flex items-center justify-between bg-white dark:bg-[#101F1A] p-4 sm:p-5 rounded-3xl border border-ink-200/80 dark:border-[#23372B]/60 shadow-xs">
+      <div className="flex items-center justify-between bg-white dark:bg-[#07130D] p-4 sm:p-5 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setViewMode("list")}
@@ -684,7 +696,7 @@ export default function LandlordApplications({ setActiveTab }) {
       </div>
 
       {/* STAGE PROGRESS TRACKER BAR */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#101F1A] border border-ink-200/80 dark:border-[#23372B]/60 shadow-xs space-y-3">
+      <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-extrabold text-ink-400 dark:text-cream-100/60 uppercase tracking-wider">
             Application Onboarding Progress Tracker
@@ -697,7 +709,7 @@ export default function LandlordApplications({ setActiveTab }) {
         <div className="grid grid-cols-4 gap-2 text-center text-xs">
           {/* Step 1 */}
           <div className={`p-2.5 rounded-xl border transition-all ${
-            activeInvoice ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : "bg-moss-50 dark:bg-white/5 border-moss-300 dark:border-white/10 text-moss-800 font-bold"
+            activeInvoice ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : "bg-moss-50 dark:bg-white/5 border-moss-300 dark:border-white/10 text-moss-800 font-bold"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">1. Invoice</span>
             <span className="truncate block mt-0.5">{activeInvoice ? (isInvoicePaid ? "Paid ✓" : "Issued ⏳") : "Review"}</span>
@@ -705,7 +717,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
           {/* Step 2 */}
           <div className={`p-2.5 rounded-xl border transition-all ${
-            isInvoicePaid ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : isPaymentProofUploaded ? "bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-amber-900 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
+            isInvoicePaid ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : isPaymentProofUploaded ? "bg-amber-50 dark:bg-[#07130D]mber-950/30 border-amber-300 text-amber-900 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">2. Payment</span>
             <span className="truncate block mt-0.5">{isInvoicePaid ? "Verified ✓" : isPaymentProofUploaded ? "Receipt Uploaded!" : "Pending"}</span>
@@ -713,7 +725,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
           {/* Step 3 */}
           <div className={`p-2.5 rounded-xl border transition-all ${
-            isLeaseSigned ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : activeLease ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 text-indigo-900 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
+            isLeaseSigned ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : activeLease ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 text-indigo-900 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">3. Lease</span>
             <span className="truncate block mt-0.5">{isLeaseSigned ? "Signed ✓" : activeLease ? "Awaiting Signature" : "Pending"}</span>
@@ -721,7 +733,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
           {/* Step 4 */}
           <div className={`p-2.5 rounded-xl border transition-all ${
-            isMoveInSet ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
+            isMoveInSet ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">4. Move-in</span>
             <span className="truncate block mt-0.5">{isMoveInSet ? "Rules Issued ✓" : "Pending"}</span>
@@ -730,7 +742,7 @@ export default function LandlordApplications({ setActiveTab }) {
       </div>
 
       {/* HEADER: APPLICANT & PROPERTY BANNER */}
-      <div className="bg-white dark:bg-[#101F1A] p-6 rounded-3xl border border-ink-200/80 dark:border-[#23372B]/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+      <div className="bg-white dark:bg-[#07130D] p-6 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
         <div className="flex items-center gap-4">
           <div className="relative">
             <Avatar src={tProf.avatar} name={tProf.fullName} className="h-16 w-16 sm:h-20 sm:w-20 rounded-full text-2xl font-bold border-2 border-moss-700/20 dark:border-[#E5C583]/30 object-cover shadow-sm" />
@@ -784,7 +796,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
       {/* DYNAMIC STAGE BANNER */}
       {isPaymentProofUploaded ? (
-        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/50 text-amber-900 dark:text-amber-200 flex items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-300 dark:border-amber-700/50 text-amber-900 dark:text-amber-200 flex items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="h-6 w-6 text-amber-600 shrink-0" />
             <div>
@@ -800,7 +812,7 @@ export default function LandlordApplications({ setActiveTab }) {
           </button>
         </div>
       ) : isInvoicePaid && !activeLease ? (
-        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
             <div>
@@ -816,7 +828,7 @@ export default function LandlordApplications({ setActiveTab }) {
           </button>
         </div>
       ) : isLeaseSigned && !isMoveInSet ? (
-        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
             <div>
@@ -835,16 +847,16 @@ export default function LandlordApplications({ setActiveTab }) {
 
       {/* UPCOMING INSPECTION BANNER */}
       {(() => {
-        const currentInspection = activeApp ? inspectionService.getInspection(activeApp.id) : null;
+        const currentInspection = activeApp ? inspections.find(i => String(i.applicationId || i.application_id) === String(activeApp.id)) : null;
         if (!currentInspection) return null;
         return (
-          <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 flex items-start justify-between gap-3 text-xs shadow-xs">
+          <div className="p-4 rounded-2xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 flex items-start justify-between gap-3 text-xs shadow-xs">
             <div className="flex items-start gap-3">
               <Calendar className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm">Property Inspection Appointment ({currentInspection.status})</span>
-                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 text-[10.5px] font-bold uppercase">
+                  <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-900/60 dark:text-amber-300 text-[10.5px] font-bold uppercase">
                     {currentInspection.date} at {currentInspection.time}
                   </span>
                 </div>
@@ -868,9 +880,9 @@ export default function LandlordApplications({ setActiveTab }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* LEFT COLUMN: PERSONAL DETAILS CARD */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#101F1A] border border-ink-200/80 dark:border-[#23372B]/60 rounded-3xl p-6 flex flex-col shadow-xs">
+        <div className="lg:col-span-4 bg-white dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 rounded-3xl p-6 flex flex-col shadow-xs">
           <div className="flex flex-col items-center text-center pb-5 border-b border-ink-100 dark:border-white/10">
-            <Avatar src={tProf.avatar} name={tProf.fullName} className="w-20 h-20 rounded-full border-4 border-cream-50 dark:border-[#1C3328] shadow-md object-cover mb-3" />
+            <Avatar src={tProf.avatar} name={tProf.fullName} className="w-20 h-20 rounded-full border-4 border-cream-50 dark:border-[#07130D] shadow-md object-cover mb-3" />
             <h3 className="text-base font-extrabold text-ink-900 dark:text-white">{tProf.fullName}</h3>
             <span className="text-xs font-bold px-3 py-0.5 bg-moss-700/10 text-moss-700 dark:bg-[#E5C583]/20 dark:text-[#E5C583] rounded-full mt-1 capitalize">
               {activeApp.status.replace('_', ' ')}
@@ -913,7 +925,7 @@ export default function LandlordApplications({ setActiveTab }) {
         </div>
 
         {/* RIGHT COLUMN: TABBED INFORMATION CONTAINER */}
-        <div className="lg:col-span-8 bg-white dark:bg-[#101F1A] border border-ink-200/80 dark:border-[#23372B]/60 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
+        <div className="lg:col-span-8 bg-white dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
           <div>
             {/* TAB NAVIGATION HEADER */}
             <div className="flex items-center gap-5 border-b border-ink-100 dark:border-white/10 pb-3 mb-6 overflow-x-auto">
@@ -1153,11 +1165,11 @@ export default function LandlordApplications({ setActiveTab }) {
                   </div>
                 ) : (
                   tProf.rentalHistory.map((item, idx) => (
-                    <div key={idx} className="p-4 rounded-xl bg-white dark:bg-[#13221C] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-4 shadow-xs">
+                    <div key={idx} className="p-4 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-4 shadow-xs">
                       <div>
                         <h4 className="font-bold text-sm text-ink-900 dark:text-white">{item.title}</h4>
                         <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">Lease Term: {item.period}</p>
-                        <span className="inline-block mt-2 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/40 px-2.5 py-0.5 rounded-full capitalize">
+                        <span className="inline-block mt-2 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-[#07130D]merald-950/60 border border-emerald-200 dark:border-emerald-800/40 px-2.5 py-0.5 rounded-full capitalize">
                           {item.status}
                         </span>
                       </div>
@@ -1177,7 +1189,7 @@ export default function LandlordApplications({ setActiveTab }) {
                   </div>
                 ) : (
                   tProf.documents.map((doc, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl bg-white dark:bg-[#13221C] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-3 shadow-xs">
+                    <div key={idx} className="p-3.5 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-3 shadow-xs">
                       <div className="flex items-center gap-3">
                         <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                         <div>
@@ -1195,7 +1207,7 @@ export default function LandlordApplications({ setActiveTab }) {
             {/* TAB 5: NOTES & COMMENTS */}
             {activeDetailTab === "notes" && (
               <div className="p-5 sm:p-6 rounded-2xl bg-cream-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in duration-200">
-                <div className="p-4 rounded-xl bg-white dark:bg-[#13221C] border border-ink-100 dark:border-white/10 shadow-xs">
+                <div className="p-4 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 shadow-xs">
                   <h4 className="font-bold text-xs uppercase tracking-wider text-ink-400 dark:text-cream-100/60 mb-2 flex items-center gap-1.5">
                     <FileText className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" /> Note from Applicant
                   </h4>
@@ -1242,8 +1254,8 @@ export default function LandlordApplications({ setActiveTab }) {
 
       {/* RELIABILITY BREAKDOWN SUB-MODAL */}
       {showReliabilityDetails && (
-        <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowReliabilityDetails(false)}>
-          <div className="w-full max-w-md bg-white dark:bg-[#16241F] rounded-3xl p-6 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[85vh] overflow-y-auto relative animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowReliabilityDetails(false)}>
+          <div className="w-full max-w-md bg-white dark:bg-[#07130D] rounded-3xl p-6 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[85vh] overflow-y-auto relative animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-white/10 mb-4">
               <h3 className="font-extrabold text-base text-ink-900 dark:text-white">Reliability Breakdown</h3>
               <button 
@@ -1286,8 +1298,8 @@ export default function LandlordApplications({ setActiveTab }) {
 
       {/* SCHEDULE INSPECTION MODAL */}
       {showScheduleInspectionModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-ink-100 dark:border-white/10 space-y-4 text-left">
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-ink-100 dark:border-white/10 space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-3">
               <h3 className="font-bold text-base text-ink-900 dark:text-white flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" /> Schedule Property Inspection
@@ -1372,18 +1384,10 @@ export default function LandlordApplications({ setActiveTab }) {
         </div>
       )}
 
-      {/* SCHEDULE CALENDAR MODAL */}
-      <InspectionCalendarModal
-        isOpen={showCalendarModal}
-        onClose={() => setShowCalendarModal(false)}
-        userRole="landlord"
-        setActiveTab={setActiveTab}
-      />
-
       {/* REQUEST DOCUMENTS MODAL */}
       {showRequestModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-md w-full p-6 shadow-xl border border-ink-200 dark:border-white/10 space-y-4">
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-md w-full p-6 shadow-xl border border-ink-200 dark:border-white/10 space-y-4">
             <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-3">
               <h3 className="font-bold text-base text-ink-900 dark:text-white flex items-center gap-2">
                 <FileText className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" /> Request Information from Tenant
@@ -1444,8 +1448,8 @@ export default function LandlordApplications({ setActiveTab }) {
 
       {/* DECLINE MODAL */}
       {showDeclineModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-md w-full p-6 shadow-xl border border-ink-100 dark:border-white/10 space-y-4">
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-md w-full p-6 shadow-xl border border-ink-100 dark:border-white/10 space-y-4">
             <h3 className="font-bold text-lg text-ink-900 dark:text-white">Decline Application</h3>
             <p className="text-xs text-ink-600 dark:text-cream-100/70">
               Are you sure you want to decline <strong>{tProf.fullName}</strong>'s application for <strong>{activeApp.propertyTitle}</strong>?

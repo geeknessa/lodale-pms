@@ -8,10 +8,10 @@ export const adminController = {
   getPendingProperties: asyncHandler(async (req, res) => {
     const properties = await AdminModel.getAllProperties();
 
-    const formatted = await Promise.all(properties.map(async p => {
-      const amenities = await PropertyModel.getAmenities(p.id);
-      const blocks = await PropertyModel.getBlocks(p.id);
-      const units = await PropertyModel.getUnits(p.id);
+    const formatted = properties.map(p => {
+      const amenities = Array.isArray(p.fetched_amenities) && p.fetched_amenities.length > 0 && p.fetched_amenities[0] !== null ? p.fetched_amenities : [];
+      const blocks = Array.isArray(p.fetched_blocks) && p.fetched_blocks.length > 0 && p.fetched_blocks[0] !== null ? p.fetched_blocks : [];
+      const units = Array.isArray(p.fetched_units) && p.fetched_units.length > 0 && p.fetched_units[0] !== null ? p.fetched_units : [];
 
       let statusLabel = 'Pending Approval';
       const s = (p.status || '').toString().toLowerCase();
@@ -52,7 +52,7 @@ export const adminController = {
         latitude: p.latitude,
         longitude: p.longitude,
       };
-    }));
+    });
 
     res.json(formatted);
   }),

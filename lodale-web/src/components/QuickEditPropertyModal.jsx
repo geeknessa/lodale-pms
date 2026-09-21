@@ -225,11 +225,11 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/65 dark:bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-8 text-left text-ink-900 dark:text-white font-sans">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/65 dark:bg-black/80 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-2xl bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-8 text-left text-ink-900 dark:text-white font-sans">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#162721]">
+        <div className="flex items-center justify-between p-6 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#07130D]">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-moss-100 text-moss-700 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
               <SlidersHorizontal className="h-6 w-6" />
@@ -247,7 +247,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
         </div>
 
         {/* Locked Fields Notice */}
-        <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start justify-between gap-3">
+        <div className="p-4 bg-amber-50 dark:bg-[#07130D]mber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start justify-between gap-3">
           <div className="flex items-start gap-2">
             <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
@@ -258,7 +258,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
           <button
             type="button"
             onClick={() => setShowAdminRequest(true)}
-            className="px-2.5 py-1.5 bg-amber-200 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-bold text-[11px] rounded-lg transition-colors shrink-0 cursor-pointer border border-amber-300 dark:border-amber-800"
+            className="px-2.5 py-1.5 bg-amber-200 hover:bg-amber-300 dark:bg-[#07130D]mber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-bold text-[11px] rounded-lg transition-colors shrink-0 cursor-pointer border border-amber-300 dark:border-amber-800"
           >
             Request Admin Change
           </button>
@@ -349,7 +349,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3.5 py-2 bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#d4b371] dark:text-[#0B1512] font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs shrink-0"
+                className="px-3.5 py-2 bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#d4b371] dark:text-[#09090b] font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-xs shrink-0"
               >
                 <Upload className="h-3.5 w-3.5" /> Upload File
               </button>
@@ -431,7 +431,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
                 <select
                   value={minimumIncome}
                   onChange={(e) => setMinimumIncome(e.target.value)}
-                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-[#12221C] p-2.5 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 font-medium"
+                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-[#07130D] p-2.5 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 font-medium"
                 >
                   <option value="No Minimum Income">No Minimum Income Required</option>
                   {INCOME_RANGES.map((range) => (
@@ -447,7 +447,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
                 <select
                   value={employmentRequirement}
                   onChange={(e) => setEmploymentRequirement(e.target.value)}
-                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-[#12221C] p-2.5 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 font-medium"
+                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-[#07130D] p-2.5 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 font-medium"
                 >
                   <option value="Any Employment">Any Employment / Flexible</option>
                   <option value="Employed Only">Employed / Salary Earners Only</option>
@@ -545,7 +545,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#d4b371] dark:text-[#0B1512] font-bold text-xs px-6 py-2.5 flex items-center gap-2 rounded-xl shadow-md cursor-pointer"
+              className="bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#d4b371] dark:text-[#09090b] font-bold text-xs px-6 py-2.5 flex items-center gap-2 rounded-xl shadow-md cursor-pointer"
             >
               {submitting ? (
                 <>
@@ -563,8 +563,8 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
 
       {/* Admin Change Request Sub-Modal */}
       {showAdminRequest && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="bg-white dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-left">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-ink-900 dark:text-white flex items-center gap-2">
                 <Lock className="h-5 w-5 text-amber-500" /> Request Admin Change

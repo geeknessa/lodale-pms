@@ -30,7 +30,17 @@ export default function AutomatedRemindersModal({ isOpen, onClose, activeTenants
 
   const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming' | 'settings'
   const [settings, setSettings] = useState(() => reminderService.getSettings());
-  const [inspections, setInspections] = useState(() => inspectionService.getAllInspections());
+  const [inspections, setInspections] = useState([]);
+
+  React.useEffect(() => {
+    async function fetchInspections() {
+      if (typeof inspectionService.getAllInspections === 'function') {
+        const data = await inspectionService.getAllInspections();
+        setInspections(data || []);
+      }
+    }
+    fetchInspections();
+  }, []);
   const [manualDispatchingId, setManualDispatchingId] = useState(null);
 
   // Toggle lead day in setting array
@@ -146,7 +156,7 @@ export default function AutomatedRemindersModal({ isOpen, onClose, activeTenants
             <div>
               <h2 className="text-lg font-black tracking-tight flex items-center gap-2">
                 Automated Reminders
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-emerald-100 dark:bg-[#07130D]merald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300">
                   {settings.autoRentRemindersEnabled ? 'Active' : 'Paused'}
                 </span>
               </h2>
@@ -269,10 +279,10 @@ export default function AutomatedRemindersModal({ isOpen, onClose, activeTenants
                                 key={i}
                                 className={`px-2 py-0.5 rounded-full font-bold border shrink-0 ${
                                   trig.isToday
-                                    ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300'
+                                    ? 'bg-amber-100 dark:bg-[#07130D]mber-950 text-amber-800 dark:text-amber-300 border-amber-300'
                                     : trig.isPast
                                     ? 'bg-ink-100 dark:bg-white/10 text-ink-400 border-transparent'
-                                    : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                                    : 'bg-emerald-50 dark:bg-[#07130D]merald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
                                 }`}
                               >
                                 {trig.leadDay === 0 ? 'On Due Date' : `${trig.leadDay}d Before`} ({trig.dateStr})

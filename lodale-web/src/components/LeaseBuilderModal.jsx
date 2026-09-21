@@ -34,11 +34,6 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
       return;
     }
 
-    if (application.activeLease) {
-      triggerToast(`Tenant currently holds an active lease for "${application.activeLease.propertyTitle}" ending on ${application.activeLease.formattedEndDate || 'N/A'}. A tenant cannot hold two active leases simultaneously.`, 'error', 'Lease Blocked');
-      return;
-    }
-
     setSubmitting(true);
     try {
       await leaseService.generateLease({
@@ -68,10 +63,10 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-8 text-left text-ink-900 dark:text-white font-sans">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-2xl bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-8 text-left text-ink-900 dark:text-white font-sans">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#162721]">
+        <div className="flex items-center justify-between p-6 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#07130D]">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-moss-100 text-moss-700 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
               <FileText className="h-6 w-6" />
@@ -90,18 +85,7 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
-          {/* Active Lease Warning */}
-          {application.activeLease && (
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5 font-medium">
-              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-sm text-amber-700 dark:text-amber-300">Tenant Holds Active Lease</span>
-                <p className="mt-0.5 leading-relaxed">
-                  Tenant currently holds an active tenancy for <strong>{application.activeLease.propertyTitle}</strong> expiring on <strong>{application.activeLease.formattedEndDate || 'N/A'}</strong>. A tenant cannot have two active leased properties simultaneously.
-                </p>
-              </div>
-            </div>
-          )}
+
 
           {/* Lease Dates */}
           <div className="space-y-3">
@@ -256,7 +240,7 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
             <Button
               type="submit"
               disabled={submitting}
-              className="bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#d4b371] dark:text-[#0B1512] font-bold text-xs px-6 py-2.5 flex items-center gap-2 rounded-xl shadow-md"
+              className="bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#d4b371] dark:text-[#09090b] font-bold text-xs px-6 py-2.5 flex items-center gap-2 rounded-xl shadow-md"
             >
               {submitting ? (
                 <>

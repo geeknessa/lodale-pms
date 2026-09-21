@@ -163,37 +163,34 @@ export const getLandlordApplications = async (req, res) => {
          tp.guarantor_name,
          tp.guarantor_phone,
          tp.guarantor_relationship,
-         tp.guarantor_email
+         tp.guarantor_email,
+         al.active_lease_end_date,
+         al.active_lease_property_title
        FROM property_applications a
        JOIN properties p ON a.property_id = p.id
        JOIN users u ON a.tenant_id = u.id
        LEFT JOIN tenant_profiles tp ON u.id = tp.user_id
+       LEFT JOIN LATERAL (
+         SELECT l.end_date as active_lease_end_date, lp.title as active_lease_property_title
+         FROM leases l
+         JOIN properties lp ON l.property_id = lp.id
+         WHERE l.tenant_id = a.tenant_id AND l.status IN ('active', 'leased', 'signed')
+         ORDER BY l.end_date DESC
+         LIMIT 1
+       ) al ON true
        WHERE p.landlord_id = $1
        ORDER BY a.created_at DESC`,
       [landlordId]
     );
     
-    const formattedApps = await Promise.all(apps.rows.map(async (app) => {
+    const formattedApps = apps.rows.map((app) => {
       let activeLease = null;
-      try {
-        const leaseQuery = await pool.query(
-          `SELECT l.id, l.end_date, l.status, p.title as property_title 
-           FROM leases l 
-           JOIN properties p ON l.property_id = p.id 
-           WHERE l.tenant_id = $1 AND l.status::text IN ('active', 'leased', 'signed') 
-           ORDER BY l.end_date DESC LIMIT 1`,
-          [app.tenant_id]
-        );
-        if (leaseQuery.rows.length > 0) {
-          const l = leaseQuery.rows[0];
-          activeLease = {
-            propertyTitle: l.property_title,
-            endDate: l.end_date,
-            formattedEndDate: l.end_date ? new Date(l.end_date).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'
-          };
-        }
-      } catch (e) {
-        console.error("Error looking up active lease for applicant:", e);
+      if (app.active_lease_property_title) {
+        activeLease = {
+          propertyTitle: app.active_lease_property_title,
+          endDate: app.active_lease_end_date,
+          formattedEndDate: app.active_lease_end_date ? new Date(app.active_lease_end_date).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'
+        };
       }
 
       return {
@@ -231,7 +228,7 @@ export const getLandlordApplications = async (req, res) => {
           guarantorEmail: app.guarantor_email
         }
       };
-    }));
+    });
 
     res.json({ success: true, applications: formattedApps });
   } catch (error) {
@@ -270,25 +267,7 @@ export const updateApplicationStatus = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to update this application' });
     }
 
-    // Single active lease policy: Check if tenant already has an active lease on another property
-    if (status === 'leased' || status === 'active' || status === 'Leased') {
-      const { tenant_id, property_id } = checkOwnership.rows[0];
-      const existingLeaseCheck = await pool.query(
-        `SELECT l.id, l.end_date, p.title as property_title 
-         FROM leases l 
-         JOIN properties p ON l.property_id = p.id 
-         WHERE l.tenant_id = $1 AND l.status IN ('active', 'leased') AND l.property_id != $2`,
-        [tenant_id, property_id]
-      );
-      if (existingLeaseCheck.rows.length > 0) {
-        const existingLease = existingLeaseCheck.rows[0];
-        const formattedEnd = existingLease.end_date ? new Date(existingLease.end_date).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
-        return res.status(400).json({ 
-          success: false, 
-          message: `Tenant already holds an active lease for "${existingLease.property_title}" ending on ${formattedEnd}. A tenant cannot have two active leased properties simultaneously.` 
-        });
-      }
-    }
+
 
     const updatedApp = await pool.query(
       `UPDATE property_applications 

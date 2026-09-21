@@ -152,35 +152,19 @@ export default function Footer() {
             <ul className="space-y-2.5 text-[13px]">
               <li>
                 <a
-                  href="#"
+                  href="mailto:support@lodale.com"
                   className="text-zinc-400 hover:text-white transition-colors"
                 >
                   Help Center
                 </a>
               </li>
               <li>
-                <a
-                  href="#"
+                <Link
+                  to="/how-it-works"
                   className="text-zinc-400 hover:text-white transition-colors"
                 >
                   Safety Guides
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-zinc-400 hover:text-white transition-colors"
-                >
-                  Terms of Service
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="text-zinc-400 hover:text-white transition-colors"
-                >
-                  Privacy Policy
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

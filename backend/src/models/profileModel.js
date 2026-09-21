@@ -78,7 +78,7 @@ export const ProfileModel = {
       marital_status, number_of_dependants,
       guarantor_name, guarantor_phone, guarantor_email, guarantor_relationship,
       emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
-      preferred_move_in_date, max_budget, bio
+      preferred_move_in_date, max_budget, gender, address, location, postal_code, bio
     } = data;
 
     const res = await pool.query(`
@@ -88,8 +88,8 @@ export const ProfileModel = {
         marital_status, number_of_dependants,
         guarantor_name, guarantor_phone, guarantor_email, guarantor_relationship,
         emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
-        preferred_move_in_date, max_budget, bio, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19, NOW())
+        preferred_move_in_date, max_budget, gender, address, location, postal_code, bio, updated_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23, NOW())
       ON CONFLICT (user_id) DO UPDATE SET
         date_of_birth                  = COALESCE(EXCLUDED.date_of_birth, tenant_profiles.date_of_birth),
         nationality                    = COALESCE(EXCLUDED.nationality, tenant_profiles.nationality),
@@ -108,6 +108,10 @@ export const ProfileModel = {
         emergency_contact_relationship = COALESCE(EXCLUDED.emergency_contact_relationship, tenant_profiles.emergency_contact_relationship),
         preferred_move_in_date         = COALESCE(EXCLUDED.preferred_move_in_date, tenant_profiles.preferred_move_in_date),
         max_budget                     = COALESCE(EXCLUDED.max_budget, tenant_profiles.max_budget),
+        gender                         = COALESCE(EXCLUDED.gender, tenant_profiles.gender),
+        address                        = COALESCE(EXCLUDED.address, tenant_profiles.address),
+        location                       = COALESCE(EXCLUDED.location, tenant_profiles.location),
+        postal_code                    = COALESCE(EXCLUDED.postal_code, tenant_profiles.postal_code),
         bio                            = COALESCE(EXCLUDED.bio, tenant_profiles.bio),
         updated_at                     = NOW()
       RETURNING *
@@ -117,7 +121,8 @@ export const ProfileModel = {
       marital_status, number_of_dependants ?? null,
       guarantor_name, guarantor_phone, guarantor_email, guarantor_relationship,
       emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
-      preferred_move_in_date ?? null, max_budget ? String(max_budget) : null, bio
+      preferred_move_in_date ?? null, max_budget ? String(max_budget) : null,
+      gender, address, location, postal_code, bio
     ]);
     return res.rows[0];
   },

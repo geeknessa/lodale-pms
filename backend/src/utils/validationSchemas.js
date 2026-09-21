@@ -102,3 +102,93 @@ export const reviewPropertySchema = z.object({
   reason: z.string().optional(),
   notes: z.string().optional()
 });
+
+export const idParamSchema = z.object({
+  id: z.string().min(1, "ID is required")
+});
+
+export const updateApplicationStatusSchema = z.object({
+  status: z.string().min(1, "Status is required"),
+  notes: z.string().optional()
+});
+
+export const createMaintenanceSchema = z.object({
+  propertyId: z.string().min(1, "Property ID is required"),
+  unitId: z.string().optional().nullable(),
+  issueType: z.string().min(1, "Issue type is required"),
+  description: z.string().min(1, "Description is required"),
+  priority: z.string().optional(),
+  photos: z.array(z.string().url("Must be a valid URL")).optional()
+});
+
+export const updateMaintenanceStatusSchema = z.object({
+  status: z.string().min(1, "Status is required"),
+  notes: z.string().optional()
+});
+
+export const createInvoiceSchema = z.object({
+  propertyId: z.string().min(1, "Property ID is required"),
+  leaseId: z.string().optional().nullable(),
+  tenantId: z.string().min(1, "Tenant ID is required"),
+  amount: z.number().positive("Amount must be positive").or(z.string().transform(Number)),
+  dueDate: z.string().min(1, "Due date is required"),
+  description: z.string().optional()
+});
+
+export const recordPaymentSchema = z.object({
+  amount: z.number().positive("Amount must be positive").or(z.string().transform(Number)),
+  paymentDate: z.string().min(1, "Payment date is required"),
+  paymentMethod: z.string().min(1, "Payment method is required"),
+  reference: z.string().optional(),
+  notes: z.string().optional()
+});
+
+export const propertyActionSchema = z.object({
+  reason: z.string().optional(),
+  notes: z.string().optional()
+});
+
+export const createNotificationSchema = z.object({
+  userId: z.string().min(1, "User ID is required"),
+  type: z.string().min(1, "Type is required"),
+  title: z.string().optional(),
+  message: z.string().min(1, "Message is required"),
+  read: z.boolean().optional()
+});
+
+export const updateUserStatusSchema = z.object({
+  status: z.string().min(1, "Status is required"),
+  reason: z.string().optional()
+});
+
+export const supportTicketSchema = z.object({
+  subject: z.string().min(1, "Subject is required"),
+  message: z.string().min(1, "Message is required"),
+  category: z.string().optional(),
+  priority: z.string().optional()
+});
+
+export const supportReplySchema = z.object({
+  ticketId: z.string().min(1, "Ticket ID is required"),
+  message: z.string().min(1, "Message is required")
+});
+export const payRestorationFeeSchema = z.object({
+  paymentReference: z.string().optional()
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters")
+});
+
+export const requestEmailChangeSchema = z.object({
+  newEmail: z.string().email("Invalid email format")
+});
+
+export const verifyEmailChangeSchema = z.object({
+  code: z.string().min(1, "Verification code is required")
+});
+
+export const deactivateAccountSchema = z.object({
+  reason: z.string().optional()
+});

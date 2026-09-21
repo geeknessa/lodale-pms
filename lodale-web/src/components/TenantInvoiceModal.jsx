@@ -78,10 +78,10 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
   const isPaid = invoice.status === 'paid';
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white dark:bg-[#12221C] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 text-left text-slate-900 dark:text-white font-sans">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-3xl bg-white dark:bg-[#07130D] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 text-left text-slate-900 dark:text-white font-sans">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#162721]">
+        <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07130D]">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-800 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
               <FileText className="h-6 w-6" />
@@ -143,7 +143,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
           </div>
 
           {/* Itemized Table */}
-          <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden bg-white dark:bg-[#12221C]">
+          <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden bg-white dark:bg-[#07130D]">
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-white/10">
@@ -187,7 +187,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
           </div>
 
           {/* Payment Details with 1-Click Copy Buttons */}
-          <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-3 text-xs">
+          <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-[#07130D]merald-950/20 space-y-3 text-xs">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                 <Building2 className="h-4 w-4 text-emerald-600 dark:text-[#E5C583]" />
@@ -203,7 +203,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-              <div className="p-3 rounded-xl bg-white dark:bg-[#12221C] border border-emerald-500/30 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-white dark:bg-[#07130D] border border-emerald-500/30 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] text-slate-400 block font-medium">Account Number</span>
                   <span className="font-mono font-extrabold text-slate-900 dark:text-white text-base">{invoice.bankAccountNumber || '0123456789'}</span>
@@ -211,14 +211,14 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
                 <button
                   type="button"
                   onClick={() => copyToClipboard(invoice.bankAccountNumber, 'Account Number')}
-                  className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
+                  className="p-2 rounded-lg bg-emerald-50 dark:bg-[#07130D]merald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
                   title="Copy Account Number"
                 >
                   {copiedField === 'Account Number' ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                 </button>
               </div>
 
-              <div className="p-3 rounded-xl bg-white dark:bg-[#12221C] border border-emerald-500/30 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-white dark:bg-[#07130D] border border-emerald-500/30 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] text-slate-400 block font-medium">Bank Name</span>
                   <span className="font-bold text-slate-900 dark:text-white text-sm">{invoice.bankName || 'GTBank'}</span>
@@ -226,14 +226,14 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
                 <button
                   type="button"
                   onClick={() => copyToClipboard(invoice.bankName, 'Bank Name')}
-                  className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
+                  className="p-2 rounded-lg bg-emerald-50 dark:bg-[#07130D]merald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
                   title="Copy Bank Name"
                 >
                   {copiedField === 'Bank Name' ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                 </button>
               </div>
 
-              <div className="p-3 rounded-xl bg-white dark:bg-[#12221C] border border-emerald-500/30 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-white dark:bg-[#07130D] border border-emerald-500/30 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] text-slate-400 block font-medium">Account Name</span>
                   <span className="font-bold text-slate-900 dark:text-white text-sm truncate max-w-[130px] block">{invoice.bankAccountName || invoice.landlordName}</span>
@@ -241,7 +241,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
                 <button
                   type="button"
                   onClick={() => copyToClipboard(invoice.bankAccountName || invoice.landlordName, 'Account Name')}
-                  className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
+                  className="p-2 rounded-lg bg-emerald-50 dark:bg-[#07130D]merald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
                   title="Copy Account Name"
                 >
                   {copiedField === 'Account Name' ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
@@ -267,7 +267,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
                   value={paymentRef}
                   onChange={(e) => setPaymentRef(e.target.value)}
                   required
-                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none font-bold"
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-bold"
                 />
               </div>
 
@@ -284,7 +284,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
               </div>
 
               {receiptFileName && (
-                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-xs text-emerald-900 dark:text-emerald-300 font-semibold truncate">
+                <div className="p-2.5 bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-xs text-emerald-900 dark:text-emerald-300 font-semibold truncate">
                   Attached Proof: <strong>{receiptFileName}</strong>
                 </div>
               )}

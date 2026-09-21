@@ -1,5 +1,4 @@
 import { apiClient } from '../lib/apiClient';
-import { chatService } from './chatService';
 
 export const leaseService = {
   /**
@@ -7,67 +6,21 @@ export const leaseService = {
    * @param {object} payload - propertyId, tenantId, applicationId, startDate, endDate, rentAmount, rentPeriod, securityDeposit, customClauses, includePets, includeSmoking, includeLateFee
    */
   async generateLease(payload) {
-    let lease = null;
     try {
       const data = await apiClient('/leases/generate', {
         method: 'POST',
         body: payload,
       });
-      lease = data?.lease;
+      return data?.lease || null;
     } catch (err) {
-      console.warn("Backend generate lease API unavailable, using local session store:", err);
+      console.error("Backend generate lease error:", err);
+      return null;
     }
-
-    if (!lease) {
-      lease = {
-        id: "lease-" + Date.now(),
-        ...payload,
-        status: "drafted",
-        createdAt: new Date().toISOString()
-      };
-    }
-
-    const appIdStr = String(payload.applicationId);
-
-    // Persist generated lease into tenantLeases in localStorage
-    const localLeases = JSON.parse(localStorage.getItem("tenantLeases") || "[]");
-    const existingIdx = localLeases.findIndex(l => String(l.applicationId || l.application_id) === appIdStr);
-    const leaseObj = {
-      ...lease,
-      applicationId: appIdStr,
-      status: "drafted"
-    };
-
-    if (existingIdx >= 0) {
-      localLeases[existingIdx] = leaseObj;
-    } else {
-      localLeases.push(leaseObj);
-    }
-    localStorage.setItem("tenantLeases", JSON.stringify(localLeases));
-
-    // Update sentLeaseAppIds list
-    const sentLeaseIds = JSON.parse(localStorage.getItem("sentLeaseAppIds") || "[]");
-    if (!sentLeaseIds.includes(appIdStr)) {
-      sentLeaseIds.push(appIdStr);
-      localStorage.setItem("sentLeaseAppIds", JSON.stringify(sentLeaseIds));
-    }
-
-    // Send chat notification to tenant candidate
-    const tenantId = payload.tenantId || payload.tenant_id;
-    if (tenantId) {
-      try {
-        const msg = `[RESIDENTIAL LEASE AGREEMENT ISSUED]\nYour landlord has generated your official Residential Lease Agreement.\nStart Date: ${payload.startDate}\nEnd Date: ${payload.endDate}\nRent: ₦${Number(payload.rentAmount || 0).toLocaleString()} / ${payload.rentPeriod || 'year'}\n\nPlease visit your dashboard to review and submit your digital signature.`;
-        await chatService.sendMessage(tenantId, msg, payload.propertyId);
-      } catch (chatErr) {
-        console.warn("Failed to send chat notification for lease generation:", chatErr);
-      }
-    }
-
-    return leaseObj;
   },
 
   /**
    * Get lease agreement by application ID.
+   * (We fetch all leases and filter by applicationId. Alternatively, the backend could have a dedicated endpoint)
    * @param {string|number} applicationId
    */
   async getLeaseByApplicationId(applicationId) {
@@ -77,13 +30,11 @@ export const leaseService = {
     try {
       const leases = await this.getMyLeases();
       const match = (leases || []).find(l => String(l.applicationId || l.application_id) === appIdStr);
-      if (match) return match;
+      return match || null;
     } catch (e) {
-      console.warn("Backend getLeaseByApplicationId error, checking localStorage:", e);
+      console.error("Backend getLeaseByApplicationId error:", e);
+      return null;
     }
-
-    const localLeases = JSON.parse(localStorage.getItem("tenantLeases") || "[]");
-    return localLeases.find(l => String(l.applicationId || l.application_id) === appIdStr) || null;
   },
 
   /**
@@ -95,10 +46,10 @@ export const leaseService = {
       const data = await apiClient(`/leases/${leaseId}/sign`, {
         method: 'PATCH',
       });
-      return data.lease;
+      return data?.lease || null;
     } catch (e) {
-      console.warn("Backend signLease API error, using local fallback:", e);
-      return { id: leaseId, status: "signed", signedByTenant: true };
+      console.error("Backend signLease API error:", e);
+      return null;
     }
   },
 
@@ -108,9 +59,27 @@ export const leaseService = {
   async getMyLeases() {
     try {
       const data = await apiClient('/leases/me');
-      return data.leases || [];
+      return data?.leases || [];
     } catch (e) {
-      return JSON.parse(localStorage.getItem("tenantLeases") || "[]");
+      console.error("Backend getMyLeases API error:", e);
+      return [];
+    }
+  },
+
+  /**
+   * End a lease agreement.
+   * @param {string} leaseId - The UUID of the lease.
+   */
+  async endLease(leaseId) {
+    try {
+      const data = await apiClient(`/leases/${leaseId}`, {
+        method: 'PATCH',
+        body: { status: 'ended' }
+      });
+      return data?.lease || null;
+    } catch (e) {
+      console.error("Backend endLease API error:", e);
+      throw e;
     }
   },
 
@@ -119,13 +88,13 @@ export const leaseService = {
    * @param {string} leaseId
    */
   async getLeaseById(leaseId) {
+    if (!leaseId) return null;
     try {
       const data = await apiClient(`/leases/${leaseId}`);
-      return data.lease;
+      return data?.lease || null;
     } catch (e) {
-      const localLeases = JSON.parse(localStorage.getItem("tenantLeases") || "[]");
-      return localLeases.find(l => String(l.id) === String(leaseId)) || null;
+      console.error("Backend getLeaseById API error:", e);
+      return null;
     }
   }
 };
-

@@ -90,6 +90,10 @@ CREATE TABLE IF NOT EXISTS tenant_profiles (
     emergency_contact_relationship VARCHAR(100),
     preferred_move_in_date DATE,
     max_budget NUMERIC(15, 2),
+    gender VARCHAR(50),
+    address TEXT,
+    location VARCHAR(255),
+    postal_code VARCHAR(50),
     bio TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

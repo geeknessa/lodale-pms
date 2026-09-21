@@ -24,6 +24,7 @@ import Button from "../components/Button";
 import { authService } from "../services/authService";
 import heroBg from "../assets/modern_villa.png";
 import { useTheme } from "../context/ThemeContext";
+import { useSignUpForm } from "../hooks/useSignUpForm";
 
 const ROLES = [
   {
@@ -44,39 +45,32 @@ const LOADING_MESSAGES = [
   "Synchronizing digital identity trace profile...",
 ];
 
-const MOCK_NIN_NAMES = [
-  "Chukwudi Emmanuel Abubakar",
-  "Amina Aisha Bello",
-  "Oluwaseun David Adebayo",
-  "Chioma Grace Okonkwo",
-  "Babajide Funsho Ogundipe",
-  "Fatima Zahra Ibrahim",
-];
-
-// Helper to extract First Name (first word) and Last Name (last word), ignoring middle names
-function extractFirstAndLastName(fullName) {
-  if (!fullName) return { first: "", last: "" };
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return { first: "", last: "" };
-  if (parts.length === 1) return { first: parts[0], last: "" };
-  const first = parts[0];
-  const last = parts[parts.length - 1];
-  return { first, last };
-}
-
 export default function SignUp() {
   useTheme();
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { state: formState, actions: formActions } = useSignUpForm(state || {});
+  
+  const {
+    role, step, isSubmitting, nin, isVerifying, progress, loadingStep,
+    pulledFullName, showIdentityConfirmation, verified, firstName, lastName,
+    email, password, showPassword, agreeToTerms, inlineError, googleLoading,
+    hasMinLength, hasUppercase, hasNumber, hasSpecialChar, isPasswordValid, isEmailValid
+  } = formState;
+
+  const {
+    setRole, setStep, setNin, setShowPassword, setFirstName, setLastName,
+    setEmail, setPassword, setAgreeToTerms, setInlineError, setShowIdentityConfirmation,
+    handleVerify, handleConfirmIdentity, handleRejectIdentity,
+    handleGoogleSignUp, handleCompleteSignUp
+  } = formActions;
 
   const cardRef = useRef(null);
   const logoRef = useRef(null);
   const stepContainerRef = useRef(null);
 
   useEffect(() => {
-    // GSAP entry animations for card and logo branding
     gsap.fromTo(
       cardRef.current,
       { opacity: 0, y: 20 },
@@ -89,40 +83,6 @@ export default function SignUp() {
     );
   }, []);
 
-  const presetRole = state?.presetRole ?? "tenant";
-  const skipRolePicker = state?.skipRolePicker ?? false;
-  const skipWelcome = state?.skipWelcome ?? false;
-  const listingId = state?.listingId;
-
-  const [role, setRole] = useState(presetRole);
-
-  // Sign up workflow: Step 1 (Who are you?) -> Step 2 (Verify ID) -> Step 3 (Your details)
-  const [step, setStep] = useState(skipRolePicker ? 2 : 1);
-
-  // Step 2 NIN Verification States
-  const [nin, setNin] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [loadingStep, setLoadingStep] = useState(0);
-  const [pulledFullName, setPulledFullName] = useState("");
-  const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
-  const [verified, setVerified] = useState(false);
-
-  // Step 3 Form States (First Name and Last Name prefilled via NIN)
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [agreeToTerms, setAgreeToTerms] = useState(false);
-
-  // Validation / Error alerts
-  const [inlineError, setInlineError] = useState("");
-
-  // Google sign up simulation state
-  const [googleLoading, setGoogleLoading] = useState(false);
-
-  // GSAP slide transition when step changes or confirmation view toggles
   useEffect(() => {
     if (stepContainerRef.current) {
       gsap.killTweensOf(stepContainerRef.current);
@@ -133,243 +93,6 @@ export default function SignUp() {
       );
     }
   }, [step, showIdentityConfirmation]);
-
-  // Password validation requirements
-  const hasMinLength = password.length >= 8;
-  const hasUppercase = /[A-Z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
-  const isPasswordValid =
-    hasMinLength && hasUppercase && hasNumber && hasSpecialChar;
-  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-
-  // Trigger NIN Verification Progress Animation (Step 2)
-  function handleVerify(e) {
-    if (e) e.preventDefault();
-    setInlineError("");
-
-    if (nin.length !== 11) {
-      setInlineError(
-        "Invalid NIN: Please enter your complete 11-digit National Identification Number to verify your identity."
-      );
-      return;
-    }
-
-    setIsVerifying(true);
-    setProgress(0);
-    setLoadingStep(0);
-
-    const targetObj = { val: 0 };
-    gsap.to(targetObj, {
-      val: 100,
-      duration: 2.5,
-      ease: "power1.inOut",
-      onUpdate: () => {
-        const currentProgress = Math.round(targetObj.val);
-        setProgress(currentProgress);
-
-        if (currentProgress > 72) {
-          setLoadingStep(2);
-        } else if (currentProgress > 36) {
-          setLoadingStep(1);
-        } else {
-          setLoadingStep(0);
-        }
-      },
-      onComplete: () => {
-        setIsVerifying(false);
-        // Retrieve identity record full name from NIMC simulation
-        const nameIdx = Math.abs(parseInt(nin.slice(-2) || "0", 10)) % MOCK_NIN_NAMES.length;
-        const pulled = MOCK_NIN_NAMES[nameIdx] || "Chukwudi Emmanuel Abubakar";
-        setPulledFullName(pulled);
-        setShowIdentityConfirmation(true);
-      },
-    });
-  }
-
-  // User confirms "Is this you?" -> Yes, this is me
-  function handleConfirmIdentity() {
-    const { first, last } = extractFirstAndLastName(pulledFullName);
-    setFirstName(first);
-    setLastName(last);
-    setVerified(true);
-    setShowIdentityConfirmation(false);
-    setStep(3); // Advance to Step 3: Your details
-  }
-
-  // User rejects "Is this you?" -> No, try again
-  function handleRejectIdentity() {
-    setShowIdentityConfirmation(false);
-    setVerified(false);
-    setNin("");
-    setInlineError("Verification reset. Please re-enter your 11-digit NIN.");
-  }
-
-  // Handle Google Sign Up Simulation
-  function handleGoogleSignUp() {
-    setGoogleLoading(true);
-    setInlineError("");
-
-    setTimeout(() => {
-      setGoogleLoading(false);
-      setEmail("google.user@example.com");
-      setPassword("Pass@word123!");
-    }, 1000);
-  }
-
-  // Submit Sign-Up Form (Step 3)
-  async function handleCompleteSignUp(e) {
-    if (e) e.preventDefault();
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    setInlineError("");
-
-    if (!agreeToTerms) {
-      setInlineError(
-        "Please accept the Terms of Service & Privacy Policy to create your account."
-      );
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!email.trim() || !password) {
-      setInlineError(
-        "Missing Information: Please enter your email address and password to complete registration."
-      );
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!isEmailValid) {
-      setInlineError(
-        "Invalid Email Address: Please enter a valid email address (e.g. name@example.com)."
-      );
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (!isPasswordValid) {
-      setInlineError(
-        "Password Not Secure Enough: It needs to include at least 8 characters, an uppercase letter, a number, and a special symbol."
-      );
-      return;
-    }
-
-    if (email.trim().toLowerCase() === "user@example.com") {
-      setInlineError(
-        'Email Already Registered: An account was previously created using this email address. Please try signing in.'
-      );
-      return;
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
-    const cleanName = `${firstName.trim()} ${lastName.trim()}`;
-
-    sessionStorage.setItem("isAuthenticated", "true");
-    sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
-    sessionStorage.setItem("username", cleanName);
-    sessionStorage.setItem("userRole", role);
-    sessionStorage.setItem(
-      "sessionExpiresAt",
-      (Date.now() + 24 * 60 * 60 * 1000).toString()
-    );
-
-    sessionStorage.setItem("username_" + cleanEmail, cleanName);
-    localStorage.setItem("isNewSignUp", "true");
-
-    const profileObj = {
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: cleanEmail,
-      phone: "",
-      role,
-      address: "",
-      dob: "",
-      location: "",
-      postalCode: "",
-      nin: nin || ""
-    };
-    sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-    sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
-
-    // Persist user to PostgreSQL Database via authService
-    try {
-      const res = await authService.signUp({
-        email: cleanEmail,
-        password: cleanPassword,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        role: role,
-        phone: ""
-      });
-      if (res && res.user) {
-        sessionStorage.setItem("db_user_id", res.user.id);
-      }
-    } catch (dbErr) {
-      console.warn("Database user persist warning:", dbErr);
-    }
-
-    // Check if this tenant had a pending invitation in propertyTenants
-    try {
-      const rawPropTenants = localStorage.getItem("propertyTenants");
-      if (rawPropTenants) {
-        const tenantsMap = JSON.parse(rawPropTenants);
-        let updatedAny = false;
-        let matchedTenantName = cleanName;
-
-        Object.keys(tenantsMap).forEach((pId) => {
-          if (Array.isArray(tenantsMap[pId])) {
-            tenantsMap[pId] = tenantsMap[pId].map((t) => {
-              if (!t) return t;
-              const isEmailMatch = t.email && t.email.toLowerCase() === cleanEmail.toLowerCase();
-              const isNameMatch = t.name && t.name.toLowerCase() === cleanName.toLowerCase();
-              const isPending = t.status === "pending" || (t.leaseStatus && t.leaseStatus.toLowerCase().includes("pending"));
-
-              if ((isEmailMatch || isNameMatch) && isPending) {
-                updatedAny = true;
-                matchedTenantName = t.name || cleanName;
-                return {
-                  ...t,
-                  status: "active",
-                  leaseStatus: "Active Tenant",
-                  email: cleanEmail,
-                  onboardedAt: new Date().toISOString()
-                };
-              }
-              return t;
-            });
-          }
-        });
-
-        if (updatedAny) {
-          localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
-
-          // Notify Landlord via landlordNotifications
-          const savedNotifs = localStorage.getItem("landlordNotifications");
-          const notifList = savedNotifs ? JSON.parse(savedNotifs) : [];
-          notifList.unshift({
-            id: "notif-tenant-joined-" + Date.now(),
-            title: "Tenant Joined App",
-            message: `Your tenant ${matchedTenantName} has accepted the invitation and joined the app!`,
-            time: "Just now",
-            type: "success",
-            read: false
-          });
-          localStorage.setItem("landlordNotifications", JSON.stringify(notifList));
-          window.dispatchEvent(new Event("storage"));
-        }
-      }
-    } catch (e) {
-      console.warn("Tenant invitation onboarding update error:", e);
-    }
-
-    if (skipWelcome && listingId) {
-      navigate(`/apply/${listingId}`);
-    } else {
-      navigate(`/dashboard/${role}`);
-    }
-  }
 
   return (
     <div
@@ -383,7 +106,7 @@ export default function SignUp() {
     >
       {/* Background Overlay */}
       <div className="absolute inset-0 bg-[#FAF8F6]/55 dark:bg-[#263b33]/90 transition-colors duration-200" />
-      
+
       {/* Floating Back Button */}
       <button
         type="button"
@@ -411,11 +134,11 @@ export default function SignUp() {
         </div>
 
         {/* Glassmorphic Form Card */}
-        <div ref={cardRef} className="w-full bg-[#FAF8F6]/75 dark:bg-[#101F1A]/70 backdrop-blur-lg border border-white/80 dark:border-[#23372B]/60 shadow-[0_12px_40px_rgba(0,0,0,0.03)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.25)] rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 space-y-4 sm:space-y-6 transition-all duration-300">
+        <div ref={cardRef} className="w-full bg-[#FAF8F6]/75 dark:bg-[#07130D]/70 backdrop-blur-lg border border-white/80 dark:border-[#3f3f46]/60 shadow-[0_12px_40px_rgba(0,0,0,0.03)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.25)] rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 space-y-4 sm:space-y-6 transition-all duration-300">
           {/* Segmented Control Pill Toggle - Only visible on Step 1 */}
           {step === 1 && (
             <div className="flex justify-center animate-fade-in">
-              <div className="inline-flex p-1 bg-moss-100 dark:bg-[#101F1A] border border-ink-200 dark:border-[#23372B]/60 rounded-xl w-full">
+              <div className="inline-flex p-1 bg-moss-100 dark:bg-[#07130D] border border-ink-200 dark:border-[#3f3f46]/60 rounded-xl w-full">
                 <button
                   type="button"
                   onClick={() => navigate("/login")}
@@ -526,8 +249,8 @@ export default function SignUp() {
                         key={id}
                         onClick={() => setRole(id)}
                         className={`w-full rounded-xl border p-3.5 sm:p-4.5 text-left transition-all duration-200 cursor-pointer flex items-center justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] hover:-translate-y-0.5 hover:scale-[1.015] active:scale-[0.985] ${selected
-                          ? "border-moss-700 dark:border-[#E5C583] bg-moss-100/40 dark:bg-[#1C3328]/40"
-                          : "border-ink-200 dark:border-[#23372B] bg-white/60 dark:bg-[#13221C]/60 hover:border-moss-600/30"
+                          ? "border-moss-700 dark:border-[#E5C583] bg-moss-100/40 dark:bg-[#07130D]/40"
+                          : "border-ink-200 dark:border-[#3f3f46] bg-white/60 dark:bg-[#07130D]/60 hover:border-moss-600/30"
                           }`}
                       >
                         <div className="flex items-center gap-3 sm:gap-4">
@@ -618,7 +341,7 @@ export default function SignUp() {
                         {progress}%
                       </span>
                     </div>
-                    <div className="w-full bg-moss-100 dark:bg-[#101F1A] border border-ink-200 dark:border-[#23372B]/60 h-2 sm:h-2.5 rounded-full overflow-hidden relative">
+                    <div className="w-full bg-moss-100 dark:bg-[#07130D] border border-ink-200 dark:border-[#3f3f46]/60 h-2 sm:h-2.5 rounded-full overflow-hidden relative">
                       <div
                         className="bg-moss-700 dark:bg-[#E5C583] h-full rounded-full transition-all duration-75"
                         style={{ width: `${progress}%` }}
@@ -628,7 +351,7 @@ export default function SignUp() {
                 ) : verified ? (
                   /* State 2: Already Verified Status Card (When navigating back from Step 3) */
                   <div className="space-y-4 sm:space-y-6 animate-fade-in">
-                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-950/30 p-4 sm:p-5 space-y-3 shadow-sm">
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 dark:bg-[#07130D]merald-950/30 p-4 sm:p-5 space-y-3 shadow-sm">
                       <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="h-5 w-5 shrink-0" />
                         <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase">
@@ -636,7 +359,7 @@ export default function SignUp() {
                         </span>
                       </div>
 
-                      <div className="bg-white/80 dark:bg-[#101F1A]/90 border border-emerald-500/20 rounded-xl p-3.5 sm:p-4 flex items-center gap-3.5">
+                      <div className="bg-white/80 dark:bg-[#07130D]/90 border border-emerald-500/20 rounded-xl p-3.5 sm:p-4 flex items-center gap-3.5">
                         <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-lg shrink-0">
                           <User className="h-5 w-5 sm:h-6 sm:w-6" />
                         </div>
@@ -663,7 +386,7 @@ export default function SignUp() {
                       >
                         Continue to Details
                       </Button>
-                      
+
                       <div className="text-center pt-1">
                         <button
                           type="button"
@@ -678,7 +401,7 @@ export default function SignUp() {
                 ) : showIdentityConfirmation ? (
                   /* State 3: "Is this you?" Identity Confirmation Card */
                   <div className="space-y-4 sm:space-y-6 animate-fade-in">
-                    <div className="rounded-2xl border border-moss-700/30 dark:border-[#E5C583]/30 bg-moss-100/40 dark:bg-[#1C3328]/40 p-4 sm:p-5 space-y-3 shadow-sm">
+                    <div className="rounded-2xl border border-moss-700/30 dark:border-[#E5C583]/30 bg-moss-100/40 dark:bg-[#07130D]/40 p-4 sm:p-5 space-y-3 shadow-sm">
                       <div className="flex items-center gap-2 text-moss-700 dark:text-[#E5C583]">
                         <ShieldCheck className="h-4.5 w-4.5 sm:h-5 sm:w-5 shrink-0" />
                         <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase">
@@ -686,7 +409,7 @@ export default function SignUp() {
                         </span>
                       </div>
 
-                      <div className="bg-white/80 dark:bg-[#101F1A]/90 border border-ink-200/80 dark:border-white/10 rounded-xl p-3.5 sm:p-4 flex items-center gap-3.5">
+                      <div className="bg-white/80 dark:bg-[#07130D]/90 border border-ink-200/80 dark:border-white/10 rounded-xl p-3.5 sm:p-4 flex items-center gap-3.5">
                         <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-moss-700/10 text-moss-700 dark:text-[#E5C583] flex items-center justify-center font-bold text-lg shrink-0">
                           <User className="h-5 w-5 sm:h-6 sm:w-6" />
                         </div>
@@ -907,7 +630,7 @@ export default function SignUp() {
 
                     {/* Live Password Validation Requirements List */}
                     {password.length > 0 && (
-                      <div className="mt-2 sm:mt-3 space-y-1 sm:space-y-1.5 bg-moss-100 dark:bg-[#101F1A] border border-ink-200 dark:border-[#23372B]/60 p-2.5 sm:p-3.5 rounded-xl text-[11px] sm:text-[12px] animate-fade-in">
+                      <div className="mt-2 sm:mt-3 space-y-1 sm:space-y-1.5 bg-moss-100 dark:bg-[#07130D] border border-ink-200 dark:border-[#3f3f46]/60 p-2.5 sm:p-3.5 rounded-xl text-[11px] sm:text-[12px] animate-fade-in">
                         <p className="text-[10px] sm:text-[11px] font-bold text-ink-700 dark:text-[#A3BCA7] uppercase mb-1">
                           Password Requirements:
                         </p>
@@ -980,6 +703,28 @@ export default function SignUp() {
                   </div>
                 </div>
 
+                {/* Terms and Conditions Checkbox */}
+                <div className="mt-4 flex items-start gap-3 animate-fade-in">
+                  <div className="flex items-center h-5">
+                    <input
+                      id="terms"
+                      type="checkbox"
+                      checked={agreeToTerms}
+                      onChange={(e) => {
+                        setAgreeToTerms(e.target.checked);
+                        setInlineError("");
+                      }}
+                      className="w-4 h-4 rounded border-ink-300 dark:border-white/20 text-moss-600 dark:text-[#E5C583] focus:ring-moss-600 dark:focus:ring-[#E5C583] bg-transparent cursor-pointer"
+                    />
+                  </div>
+                  <label htmlFor="terms" className="text-xs text-ink-700 dark:text-cream-100/70">
+                    I agree to the{" "}
+                    <a href="/terms" target="_blank" className="text-moss-700 dark:text-[#E5C583] hover:underline font-bold">Terms of Service</a>
+                    {" "}and{" "}
+                    <a href="/privacy" target="_blank" className="text-moss-700 dark:text-[#E5C583] hover:underline font-bold">Privacy Policy</a>
+                  </label>
+                </div>
+
                 <Button
                   type="button"
                   onClick={handleCompleteSignUp}
@@ -1010,7 +755,7 @@ export default function SignUp() {
                   type="button"
                   onClick={handleGoogleSignUp}
                   disabled={googleLoading}
-                  className="w-full h-[42px] sm:h-[50px] border border-ink-200 dark:border-white/15 bg-[#FAF8F6]/75 hover:bg-moss-100 dark:bg-[#101F1A]/30 dark:hover:bg-[#101F1A]/60 text-ink-900 dark:text-white rounded-xl flex items-center justify-center gap-3 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] disabled:opacity-50 animate-fade-in"
+                  className="w-full h-[42px] sm:h-[50px] border border-ink-200 dark:border-white/15 bg-[#FAF8F6]/75 hover:bg-moss-100 dark:bg-[#07130D]/30 dark:hover:bg-[#07130D]/60 text-ink-900 dark:text-white rounded-xl flex items-center justify-center gap-3 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] disabled:opacity-50 animate-fade-in"
                 >
                   {googleLoading ? (
                     <div className="h-4.5 w-4.5 sm:h-5 sm:w-5 border-2 border-auth-pill-active-bg border-t-transparent rounded-full animate-spin" />

@@ -61,7 +61,7 @@ export default function AdminSupportChat() {
   };
 
   return (
-    <div className="flex h-full bg-white dark:bg-[#0B1512] rounded-xl overflow-hidden border border-neutral-200 dark:border-white/10 shadow-sm" style={{ minHeight: "600px" }}>
+    <div className="flex h-full bg-white dark:bg-[#09090b] rounded-xl overflow-hidden border border-neutral-200 dark:border-white/10 shadow-sm" style={{ minHeight: "600px" }}>
       {/* LEFT SIDEBAR: Threads List */}
       <div className="w-1/3 border-r border-neutral-200 dark:border-white/10 flex flex-col bg-neutral-50 dark:bg-black/20">
         <div className="p-4 border-b border-neutral-200 dark:border-white/10">
@@ -119,7 +119,7 @@ export default function AdminSupportChat() {
       </div>
 
       {/* RIGHT PANEL: Chat Thread */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#0B1512]">
+      <div className="flex-1 flex flex-col bg-white dark:bg-[#09090b]">
         {activeThread ? (
           <>
             {/* Header */}

@@ -232,6 +232,42 @@ export async function initDb() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS property_inspections (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        application_id UUID,
+        property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+        tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        landlord_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        date DATE NOT NULL,
+        time VARCHAR(20) NOT NULL,
+        location TEXT,
+        notes TEXT,
+        status VARCHAR(50) DEFAULT 'Scheduled',
+        created_by VARCHAR(50) DEFAULT 'landlord',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS property_applications (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,

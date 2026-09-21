@@ -20,8 +20,8 @@
 }
 
 body.dark {
-  --db-bg: #0B1512;
-  --card-bg: #12221C;
+  --db-bg: #09090b;
+  --card-bg: #07130D;
   --active-pill-bg: #E5C583;
   --active-btn-bg: #E5C583;
   --border-light: rgba(255, 255, 255, 0.08);
@@ -35,7 +35,7 @@ body.dark {
 }
 
 body.dark .db-sidebar-btn {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: transparent;
 }
 
 body.dark .db-sidebar-btn:hover {
@@ -49,7 +49,7 @@ body.dark .db-sidebar-btn.active {
 
 body.dark .db-sidebar-tooltip {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 body.dark .db-icon-btn {
@@ -70,7 +70,7 @@ body.dark .db-card:hover {
 
 body.dark .pro-card-tag {
   background-color: var(--active-pill-bg);
-  color: #0B1512 !important;
+  color: #09090b !important;
 }
 
 body.dark .pro-card-close {
@@ -94,7 +94,7 @@ body.dark .pro-card-prism polygon[fill="#E4EAE1"] {
 
 body.dark .pro-advantages-btn {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 body.dark .pro-advantages-btn:hover {
@@ -118,7 +118,7 @@ body.dark .db-popup-item:hover {
 }
 
 body.dark .db-action-btn.approve {
-  color: #0B1512 !important;
+  color: #09090b !important;
 }
 
 body.dark .db-action-btn.approve:hover {
@@ -126,7 +126,7 @@ body.dark .db-action-btn.approve:hover {
 }
 
 body.dark .db-nav-pill.active .db-pill-badge {
-  background-color: #0B1512;
+  background-color: #09090b;
   color: #E5C583;
 }
 
@@ -145,7 +145,7 @@ body.dark .requests-show-more-btn:hover {
 }
 
 body.dark .ap-filter-select option {
-  background-color: #12221C;
+  background-color: #07130D;
   color: #FFFFFF;
 }
 
@@ -369,7 +369,7 @@ body.dark .ap-filter-select option {
   justify-content: center;
   cursor: pointer;
   border: none;
-  background-color: rgba(38, 38, 38, 0.03);
+  background-color: transparent;
   color: var(--text-secondary);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -434,7 +434,7 @@ body.dark .ap-filter-select option {
 
 body.dark .db-sidebar-tooltip {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 .db-sidebar-btn:hover .db-sidebar-tooltip {
@@ -700,7 +700,7 @@ body.dark .db-sidebar-tooltip {
   justify-content: space-between;
   height: 240px;
   min-height: 240px;
-  max-width: 360px;
+  max-width: 100%;
   width: 100%;
   box-sizing: border-box;
 }
@@ -806,6 +806,7 @@ body.dark .db-sidebar-tooltip {
   padding: 4px 10px;
   border-radius: 6px;
   border: 1px solid var(--border-light);
+  white-space: nowrap;
 }
 
 .activity-metric {
@@ -1108,8 +1109,8 @@ body.dark .db-sidebar-tooltip {
 
 /* Horizontal properties scroll section */
 .properties-list-card {
-  height: 320px;
-  min-height: 320px;
+  min-height: 340px;
+  height: auto;
 }
 
 .properties-vertical-scroll {
@@ -1130,7 +1131,9 @@ body.dark .db-sidebar-tooltip {
   border-radius: 20px;
   padding: 12px 16px;
   width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
   transition: border-color 0.2s ease;
 }
 
@@ -2584,7 +2587,7 @@ body.dark .landlord-rent-again-box {
 
 body.dark .reliability-close-btn {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 .reliability-close-btn:hover {
@@ -2634,7 +2637,7 @@ body.dark .payment-subtab-container {
 }
 
 body.dark .payment-subtab-btn.active {
-  color: #0B1512;
+  color: #09090b;
 }
 
 /* Redesigned empty state for overview card */
@@ -2794,7 +2797,7 @@ body.dark .welcome-modal-icon-wrapper {
 }
 
 body.dark .welcome-modal-btn {
-  color: #0B1512 !important;
+  color: #09090b !important;
 }
 
 .tour-ask-overlay {
@@ -2898,7 +2901,7 @@ body.dark .tour-btn-no:hover {
 }
 
 body.dark .tour-btn-yes {
-  color: #0B1512 !important;
+  color: #09090b !important;
 }
 
 /* Tour Portal Backdrop spotlight */
@@ -3052,7 +3055,7 @@ body.dark .tour-btn-back:hover {
 }
 
 body.dark .tour-btn-next {
-  color: #0B1512 !important;
+  color: #09090b !important;
 }
 
 /* Floating pointer indicator hand/arrow */
@@ -3076,20 +3079,25 @@ body.dark .tour-btn-next {
     padding: 0 12px;
     height: 64px;
   }
+
   .db-header-left {
     gap: 8px;
   }
+
   .db-header-right {
     gap: 8px;
   }
+
   .db-nav-pills {
     padding: 2px;
     gap: 2px;
   }
+
   .db-nav-pill {
     padding: 6px 10px;
     font-size: 11px;
   }
+
   .db-icon-btn-group {
     padding: 0 8px;
     gap: 4px;

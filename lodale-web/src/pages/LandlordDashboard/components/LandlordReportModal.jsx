@@ -46,7 +46,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
     if (isLive) {
       return {
         label: "Live Vacant",
-        badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+        badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950 dark:text-emerald-300",
         isVerified: true
       };
     }
@@ -72,7 +72,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
     // Default to In Review for pending_review, pending approval, pending, etc.
     return {
       label: "In Review",
-      badgeClass: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+      badgeClass: "bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950 dark:text-amber-300",
       isVerified: false
     };
   };
@@ -142,11 +142,11 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 text-left text-ink-900 dark:text-white font-sans animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+      <div className="relative w-full max-w-3xl bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 text-left text-ink-900 dark:text-white font-sans animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Bar */}
-        <div className="flex items-center justify-between p-5 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#162721]">
+        <div className="flex items-center justify-between p-5 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#07130D]">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-moss-100 text-moss-800 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
               <FileText className="h-6 w-6" />
@@ -162,7 +162,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-bold text-xs rounded-xl border border-emerald-200 dark:border-emerald-900/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950/40 dark:text-emerald-300 font-bold text-xs rounded-xl border border-emerald-200 dark:border-emerald-900/40 transition-colors flex items-center gap-1.5 cursor-pointer"
               title="Download CSV Spreadsheet"
             >
               <Download className="h-3.5 w-3.5" /> Export CSV
@@ -170,7 +170,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
 
             <button
               onClick={handlePrint}
-              className="px-3 py-1.5 bg-moss-700 hover:bg-moss-800 text-white dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] dark:text-[#16241F] font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-3 py-1.5 bg-moss-700 hover:bg-moss-800 text-white dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] dark:text-[#07130D] font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
               title="Print Statement / Save PDF"
             >
               <Printer className="h-3.5 w-3.5" /> Print / Save PDF
@@ -287,10 +287,10 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#162721] flex justify-end">
+        <div className="p-4 border-t border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#07130D] flex justify-end">
           <button
             onClick={onClose}
-            className="px-5 py-2 bg-ink-900 hover:bg-black text-white dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] dark:text-[#16241F] font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs"
+            className="px-5 py-2 bg-ink-900 hover:bg-black text-white dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] dark:text-[#07130D] font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs"
           >
             Close Statement
           </button>

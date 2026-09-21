@@ -69,41 +69,62 @@ export default function RequestInfo({ request, onClose, onUpdateStatus }) {
           </div>
 
           {/* Actions to Update Status */}
-          <div className="ui-notes-section">
-            <h3 className="ui-section-title">Update Status</h3>
-            <div className="ui-notes-box" style={{ display: "flex", gap: "10px", padding: "16px" }}>
-              <button
-                className="db-action-btn"
-                style={{ backgroundColor: "rgba(229, 197, 131, 0.15)", color: "#C69024", flexGrow: 1, padding: "10px" }}
-                onClick={() => {
-                  onUpdateStatus(request.id, "Pending");
-                  onClose();
-                }}
-              >
-                Set Pending
-              </button>
-              <button
-                className="db-action-btn"
-                style={{ backgroundColor: "rgba(37, 99, 235, 0.1)", color: "#2563EB", flexGrow: 1, padding: "10px" }}
-                onClick={() => {
-                  onUpdateStatus(request.id, "In Progress");
-                  onClose();
-                }}
-              >
-                Set In Progress
-              </button>
-              <button
-                className="db-action-btn"
-                style={{ backgroundColor: "rgba(16, 185, 129, 0.1)", color: "#10B981", flexGrow: 1, padding: "10px" }}
-                onClick={() => {
-                  onUpdateStatus(request.id, "Completed");
-                  onClose();
-                }}
-              >
-                Set Completed
-              </button>
-            </div>
-          </div>
+          {(() => {
+            const st = (request.status || "").toLowerCase();
+            const isResolved = st === "completed" || st === "resolved" || st === "closed";
+
+            if (isResolved) {
+              return (
+                <div className="ui-notes-section">
+                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-900 dark:text-emerald-200">Request Resolved</h4>
+                      <p className="text-xs text-emerald-700 dark:text-emerald-300/80 mt-0.5">This issue has been marked as completed and resolved.</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="ui-notes-section">
+                <h3 className="ui-section-title">Update Status</h3>
+                <div className="ui-notes-box" style={{ display: "flex", gap: "10px", padding: "16px" }}>
+                  <button
+                    className="db-action-btn"
+                    style={{ backgroundColor: "rgba(229, 197, 131, 0.15)", color: "#C69024", flexGrow: 1, padding: "10px" }}
+                    onClick={() => {
+                      onUpdateStatus(request.id, "Pending");
+                      onClose();
+                    }}
+                  >
+                    Set Pending
+                  </button>
+                  <button
+                    className="db-action-btn"
+                    style={{ backgroundColor: "rgba(37, 99, 235, 0.1)", color: "#2563EB", flexGrow: 1, padding: "10px" }}
+                    onClick={() => {
+                      onUpdateStatus(request.id, "In Progress");
+                      onClose();
+                    }}
+                  >
+                    Set In Progress
+                  </button>
+                  <button
+                    className="db-action-btn"
+                    style={{ backgroundColor: "rgba(16, 185, 129, 0.1)", color: "#10B981", flexGrow: 1, padding: "10px" }}
+                    onClick={() => {
+                      onUpdateStatus(request.id, "Completed");
+                      onClose();
+                    }}
+                  >
+                    Set Completed
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Footer */}

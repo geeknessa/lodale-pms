@@ -109,9 +109,20 @@ export default function TenantApplications({ setActiveTab }) {
     }
   };
 
+  const [inspections, setInspections] = useState([]);
   useEffect(() => {
     loadApplications();
   }, []);
+
+  useEffect(() => {
+    async function loadInspections() {
+      if (typeof inspectionService.getAllInspections === 'function') {
+        const data = await inspectionService.getAllInspections();
+        setInspections(data || []);
+      }
+    }
+    loadInspections();
+  }, [applications]);
 
   const handleOpenWithdrawModal = (app) => {
     setSelectedAppForWithdraw(app);
@@ -151,12 +162,6 @@ export default function TenantApplications({ setActiveTab }) {
       }
 
       await applicationService.withdrawApplication(selectedAppForWithdraw.id, finalReason);
-      
-      const withdrawnIds = JSON.parse(localStorage.getItem("withdrawnTenantAppIds") || "[]");
-      if (!withdrawnIds.includes(String(selectedAppForWithdraw.id))) {
-        withdrawnIds.push(String(selectedAppForWithdraw.id));
-        localStorage.setItem("withdrawnTenantAppIds", JSON.stringify(withdrawnIds));
-      }
 
       triggerToast("Application withdrawn and reason sent to landlord.", "info", "Application Withdrawn");
       setApplications(prev => prev.filter(a => String(a.id) !== String(selectedAppForWithdraw.id)));
@@ -227,7 +232,7 @@ export default function TenantApplications({ setActiveTab }) {
 
     setInspectionSubmitting(true);
     try {
-      const existing = inspectionService.getInspection(selectedAppForInspection.id) || {};
+      const existing = inspections.find(i => String(i.applicationId || i.application_id) === String(selectedAppForInspection.id)) || {};
       const landlordId = selectedAppForInspection.landlordId || selectedAppForInspection.landlord_id || (selectedAppForInspection.landlordFirstName ? `landlord-${selectedAppForInspection.landlordFirstName.toLowerCase()}` : "landlord");
 
       const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
@@ -260,6 +265,10 @@ export default function TenantApplications({ setActiveTab }) {
         status: newStatus,
         createdBy: "tenant"
       });
+
+      // Refresh inspections
+      const data = await inspectionService.getAllInspections();
+      setInspections(data || []);
 
       // Send chat notification to landlord
       if (landlordId) {
@@ -331,7 +340,7 @@ export default function TenantApplications({ setActiveTab }) {
         ) : filteredApps.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredApps.map(app => {
-              const currentInspection = inspectionService.getInspection(app.id);
+              const currentInspection = inspections.find(i => String(i.applicationId || i.application_id) === String(app.id));
 
               // Check lifecycle stages stored in local storage
               const sentInvoiceIds = JSON.parse(localStorage.getItem("sentInvoiceAppIds") || "[]");
@@ -352,7 +361,7 @@ export default function TenantApplications({ setActiveTab }) {
               const isLockedFromWithdrawal = effectiveStatus !== "pending" && effectiveStatus !== "Pending";
 
               return (
-                <div key={app.id} className="p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C] shadow-sm flex flex-col hover:border-moss-300 dark:hover:border-moss-700 transition-colors">
+                <div key={app.id} className="p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#07130D] shadow-sm flex flex-col hover:border-moss-300 dark:hover:border-moss-700 transition-colors">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1 pr-4">
                       <h3 className="font-bold text-[15px] text-ink-900 dark:text-white line-clamp-2 cursor-pointer" onClick={() => navigate(`/listings/${app.propertyId}`)}>
@@ -369,9 +378,9 @@ export default function TenantApplications({ setActiveTab }) {
                       )}
                     </div>
                     <span className={`px-2.5 py-1 text-[11px] font-bold rounded-md whitespace-nowrap ${
-                      effectiveStatus === 'move_in_ready' || effectiveStatus === 'leased' || effectiveStatus === 'Leased' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                      effectiveStatus === 'move_in_ready' || effectiveStatus === 'leased' || effectiveStatus === 'Leased' ? 'bg-emerald-100 text-emerald-700 dark:bg-[#07130D]merald-900/30 dark:text-emerald-400' :
                       effectiveStatus === 'Rejected' || effectiveStatus === 'declined' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
-                      'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                      'bg-amber-100 text-amber-700 dark:bg-[#07130D]mber-900/30 dark:text-amber-400'
                     }`}>
                       {effectiveStatus.replace(/_/g, ' ').toUpperCase()}
                     </span>
@@ -379,7 +388,7 @@ export default function TenantApplications({ setActiveTab }) {
 
                   {/* LIFECYCLE STAGE BANNER */}
                   {effectiveStatus === "invoice_sent" && (
-                    <div className="my-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                    <div className="my-2 p-3 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 space-y-1">
                       <span className="font-extrabold flex items-center gap-1 text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
                         <FileText className="h-3.5 w-3.5" /> Rent Invoice Issued
                       </span>
@@ -401,7 +410,7 @@ export default function TenantApplications({ setActiveTab }) {
                   )}
 
                   {effectiveStatus === "rent_paid" && (
-                    <div className="my-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
+                    <div className="my-2 p-3 rounded-xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
                       <span className="font-extrabold flex items-center gap-1 text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="h-3.5 w-3.5" /> Payment Verified
                       </span>
@@ -434,7 +443,7 @@ export default function TenantApplications({ setActiveTab }) {
                   )}
 
                   {effectiveStatus === "move_in_ready" && (
-                    <div className="my-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
+                    <div className="my-2 p-3 rounded-xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
                       <span className="font-extrabold flex items-center gap-1 text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                         <Key className="h-3.5 w-3.5" /> Move-in Ready & Leased!
                       </span>
@@ -446,7 +455,7 @@ export default function TenantApplications({ setActiveTab }) {
 
                   {/* Inspection Status Card */}
                   {currentInspection ? (
-                    <div className="my-2 p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start justify-between gap-2">
+                    <div className="my-2 p-3 rounded-xl bg-amber-50/70 dark:bg-[#07130D]mber-950/30 border border-amber-200/80 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start justify-between gap-2">
                       <div className="space-y-0.5">
                         <span className="font-bold flex items-center gap-1 text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
                           <Calendar className="h-3.5 w-3.5" /> Inspection ({currentInspection.status})
@@ -497,7 +506,7 @@ export default function TenantApplications({ setActiveTab }) {
 
                   {/* Latest Landlord Request / Message */}
                   {app.lastMessage && (
-                    <div className="my-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200">
+                    <div className="my-2 p-3 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200">
                       <span className="font-bold flex items-center gap-1 mb-1 text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
                         💬 Latest Landlord Message / Request
                       </span>
@@ -543,7 +552,7 @@ export default function TenantApplications({ setActiveTab }) {
                           setSelectedAppForUpload(app);
                           setShowUploadModal(true);
                         }}
-                        className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-bold text-xs rounded-lg transition-colors border border-amber-200 dark:border-amber-900/40 flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/40 dark:text-amber-300 font-bold text-xs rounded-lg transition-colors border border-amber-200 dark:border-amber-900/40 flex items-center gap-1 cursor-pointer"
                       >
                         <FileText className="h-3.5 w-3.5" /> Upload Doc
                       </button>
@@ -585,7 +594,7 @@ export default function TenantApplications({ setActiveTab }) {
             })}
           </div>
         ) : (
-          <div className="p-8 text-center rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-[#12221C]/50 my-2">
+          <div className="p-8 text-center rounded-2xl border border-dashed border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-[#07130D]/50 my-2">
             <div className="mb-3 flex justify-center"><FileText className="h-8 w-8 text-moss-600/50 dark:text-[#E5C583]/50" /></div>
             <h4 className="font-bold text-[15px] text-ink-900 dark:text-white mb-1">
               {searchQuery ? "No matching applications found." : "No applications yet"}
@@ -607,8 +616,8 @@ export default function TenantApplications({ setActiveTab }) {
 
       {/* Modal: Book / Confirm / Manage Property Inspection */}
       {showInspectionModal && selectedAppForInspection && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-3xl max-w-md w-full p-6 shadow-xl border border-neutral-200 dark:border-neutral-800 space-y-4 text-left">
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-3xl max-w-md w-full p-6 shadow-xl border border-neutral-200 dark:border-neutral-800 space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-neutral-100 dark:border-white/10 pb-3">
               <h3 className="font-bold text-base text-ink-900 dark:text-white flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" /> Property Inspection Appointment
@@ -617,12 +626,12 @@ export default function TenantApplications({ setActiveTab }) {
             </div>
 
             {(() => {
-              const activeInsp = inspectionService.getInspection(selectedAppForInspection.id);
+              const activeInsp = inspections.find(i => String(i.applicationId || i.application_id) === String(selectedAppForInspection.id));
 
               if (activeInsp && activeInsp.status === "Scheduled") {
                 return (
                   <div className="space-y-4">
-                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-xs space-y-1.5">
+                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-800/40 text-xs space-y-1.5">
                       <span className="font-bold text-amber-900 dark:text-amber-200 block text-sm">
                         Landlord Scheduled an Inspection
                       </span>
@@ -671,7 +680,7 @@ export default function TenantApplications({ setActiveTab }) {
                         required
                         value={inspectionForm.date}
                         onChange={(e) => setInspectionForm(prev => ({ ...prev, date: e.target.value }))}
-                        className="w-full rounded-xl border border-neutral-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#12221C] outline-none focus:border-moss-600"
+                        className="w-full rounded-xl border border-neutral-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#07130D] outline-none focus:border-moss-600"
                       />
                     </div>
                     <div>
@@ -679,7 +688,7 @@ export default function TenantApplications({ setActiveTab }) {
                       <select
                         value={inspectionForm.time}
                         onChange={(e) => setInspectionForm(prev => ({ ...prev, time: e.target.value }))}
-                        className="w-full rounded-xl border border-neutral-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#12221C] outline-none focus:border-moss-600"
+                        className="w-full rounded-xl border border-neutral-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#07130D] outline-none focus:border-moss-600"
                       >
                         <option value="09:00 AM">09:00 AM</option>
                         <option value="10:00 AM">10:00 AM</option>
@@ -699,7 +708,7 @@ export default function TenantApplications({ setActiveTab }) {
                       placeholder="e.g. Would love to inspect the property on Saturday morning..."
                       value={inspectionForm.notes}
                       onChange={(e) => setInspectionForm(prev => ({ ...prev, notes: e.target.value }))}
-                      className="w-full rounded-xl border border-neutral-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#12221C] outline-none focus:border-moss-600 resize-none"
+                      className="w-full rounded-xl border border-neutral-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#07130D] outline-none focus:border-moss-600 resize-none"
                     />
                   </div>
 
@@ -736,8 +745,8 @@ export default function TenantApplications({ setActiveTab }) {
 
       {/* Modal: Withdraw Application with Reason */}
       {showWithdrawModal && selectedAppForWithdraw && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-md w-full p-6 shadow-xl border border-neutral-200 dark:border-neutral-800 space-y-4 text-left">
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-md w-full p-6 shadow-xl border border-neutral-200 dark:border-neutral-800 space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-neutral-100 dark:border-white/10 pb-3">
               <h3 className="font-bold text-base text-rose-600 dark:text-rose-400 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5" /> Withdraw Application
@@ -787,7 +796,7 @@ export default function TenantApplications({ setActiveTab }) {
                   placeholder="Explain why you are withdrawing your application..."
                   value={customReasonText}
                   onChange={(e) => setCustomReasonText(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-200 dark:border-white/10 bg-cream-50/50 dark:bg-[#12221C] p-3 text-xs text-ink-900 dark:text-white outline-none focus:border-rose-500 transition-colors resize-none"
+                  className="w-full rounded-xl border border-neutral-200 dark:border-white/10 bg-cream-50/50 dark:bg-[#07130D] p-3 text-xs text-ink-900 dark:text-white outline-none focus:border-rose-500 transition-colors resize-none"
                 />
               </div>
 
@@ -822,8 +831,8 @@ export default function TenantApplications({ setActiveTab }) {
 
       {/* Modal: Upload Requested Document */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-md w-full p-6 shadow-xl border border-neutral-200 dark:border-neutral-800 space-y-4 text-left">
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-md w-full p-6 shadow-xl border border-neutral-200 dark:border-neutral-800 space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-neutral-100 dark:border-white/10 pb-3">
               <h3 className="font-bold text-base text-ink-900 dark:text-white flex items-center gap-2">
                 <FileText className="h-5 w-5 text-moss-600" /> Upload Requested Document
@@ -841,7 +850,7 @@ export default function TenantApplications({ setActiveTab }) {
                 <select
                   value={documentType}
                   onChange={(e) => setDocumentType(e.target.value)}
-                  className="w-full rounded-xl border border-neutral-200 dark:border-white/10 bg-cream-50 dark:bg-[#12221C] p-2.5 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600"
+                  className="w-full rounded-xl border border-neutral-200 dark:border-white/10 bg-cream-50 dark:bg-[#07130D] p-2.5 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600"
                 >
                   <option value="Proof of Employment / Payslip">Proof of Employment / Payslip</option>
                   <option value="Government ID / NIN Verification">Government ID / NIN Verification</option>
@@ -863,7 +872,7 @@ export default function TenantApplications({ setActiveTab }) {
               </div>
 
               {uploadFileName && (
-                <div className="p-3 bg-moss-50 dark:bg-moss-900/20 border border-moss-200 dark:border-moss-800/40 rounded-xl text-xs text-moss-900 dark:text-moss-300 font-medium truncate">
+                <div className="p-3 bg-moss-50 dark:bg-white/10 border border-moss-200 dark:border-white/10 rounded-xl text-xs text-moss-900 dark:text-moss-300 font-medium truncate">
                   Attached: <strong>{uploadFileName}</strong>
                 </div>
               )}
@@ -918,8 +927,8 @@ export default function TenantApplications({ setActiveTab }) {
 
       {/* Move-in Rules & Key Pickup Modal */}
       {showMoveInModal && selectedMoveInRules && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800 space-y-4 text-left">
+        <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-neutral-200 dark:border-neutral-800 space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-neutral-100 dark:border-white/10 pb-3">
               <h3 className="font-black text-base text-ink-900 dark:text-white flex items-center gap-2">
                 <Key className="h-5 w-5 text-emerald-600 dark:text-[#E5C583]" /> Move-in Rules & Key Handover Details
@@ -928,7 +937,7 @@ export default function TenantApplications({ setActiveTab }) {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 space-y-2">
+              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-200 dark:border-emerald-900/40 space-y-2">
                 <h4 className="font-extrabold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" /> Key Pickup Appointment
                 </h4>
@@ -944,13 +953,13 @@ export default function TenantApplications({ setActiveTab }) {
                 <h4 className="font-extrabold text-ink-900 dark:text-white flex items-center gap-1.5">
                   <Info className="h-4 w-4 text-moss-600" /> House Rules & Policies
                 </h4>
-                <div className="p-3 bg-white dark:bg-[#12221C] rounded-xl border border-neutral-200 dark:border-neutral-800 font-mono text-[11px] whitespace-pre-line leading-relaxed text-ink-800 dark:text-cream-100">
+                <div className="p-3 bg-white dark:bg-[#07130D] rounded-xl border border-neutral-200 dark:border-neutral-800 font-mono text-[11px] whitespace-pre-line leading-relaxed text-ink-800 dark:text-cream-100">
                   {selectedMoveInRules.houseRules}
                 </div>
               </div>
 
               {selectedMoveInRules.additionalNotes && (
-                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 space-y-1">
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 space-y-1">
                   <span className="font-bold block text-[11px]">Additional Key / Utility Notes:</span>
                   <p className="italic">{selectedMoveInRules.additionalNotes}</p>
                 </div>

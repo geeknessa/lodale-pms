@@ -47,7 +47,7 @@ export default function DropdownWithOther({
         value={selectedKey}
         onChange={handleSelectChange}
         required={required}
-        className={`w-full rounded-xl border border-ink-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-ink-900 dark:text-white text-xs font-medium px-3.5 py-2.5 h-[42px] outline-none transition-all focus:border-moss-600 dark:focus:border-[#E5C583] hover:border-moss-500 cursor-pointer ${className}`}
+        className={`w-full rounded-xl border border-ink-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-ink-900 dark:text-white text-xs font-medium px-3.5 py-2.5 h-[42px] outline-none transition-all focus:border-moss-600 dark:focus:border-[#E5C583] hover:border-moss-500 cursor-pointer ${className}`}
       >
         <option value="" disabled>
           {placeholder}
@@ -71,7 +71,7 @@ export default function DropdownWithOther({
             value={customInput}
             onChange={handleCustomInputChange}
             placeholder="Type custom value here..."
-            className="w-full rounded-xl border border-moss-500/80 dark:border-[#E5C583]/80 bg-white dark:bg-[#12221C] text-ink-900 dark:text-white text-xs font-medium px-3.5 py-2.5 h-[42px] outline-none transition-all"
+            className="w-full rounded-xl border border-moss-500/80 dark:border-[#E5C583]/80 bg-white dark:bg-[#07130D] text-ink-900 dark:text-white text-xs font-medium px-3.5 py-2.5 h-[42px] outline-none transition-all"
             autoFocus
           />
         </div>

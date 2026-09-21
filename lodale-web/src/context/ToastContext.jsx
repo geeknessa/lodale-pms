@@ -97,7 +97,7 @@ function ToastItem({ toast, onClose }) {
     ? "bg-[#200E12] border-rose-500/50 text-rose-100 shadow-[0_10px_30px_rgba(244,63,94,0.25)]"
     : isWarning
     ? "bg-[#20180E] border-amber-500/50 text-amber-100 shadow-[0_10px_30px_rgba(245,158,11,0.25)]"
-    : "bg-[#16241F] border-[#E5C583]/50 text-[#E5C583] shadow-[0_10px_30px_rgba(229,197,131,0.2)]";
+    : "bg-[#07130D] border-[#E5C583]/50 text-[#E5C583] shadow-[0_10px_30px_rgba(229,197,131,0.2)]";
 
   const iconColorClasses = isSuccess
     ? "text-emerald-400 bg-emerald-500/20"

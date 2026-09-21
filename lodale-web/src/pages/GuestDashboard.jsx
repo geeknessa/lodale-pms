@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Search,
   FileText,
@@ -10,7 +10,8 @@ import {
   Wallet,
   Wrench,
   ArrowRight,
-  BookOpen
+  BookOpen,
+  AlertTriangle
 } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -131,10 +132,10 @@ function BlogSection({ C, isDark }) {
               Market Reports &amp;<br /><em className="not-italic" style={{ color: C.gold }}>Expert Insights.</em>
             </h2>
           </div>
-          <a href="#" className="flex items-center gap-1.5 text-xs sm:text-sm font-bold shrink-0 mb-1 group transition-colors hover:brightness-125"
+          <Link to="/how-it-works" className="flex items-center gap-1.5 text-xs sm:text-sm font-bold shrink-0 mb-1 group transition-colors hover:brightness-125"
             style={{ color: C.gold }}>
             View All Articles <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </a>
+          </Link>
         </div>
         <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6">
           {BLOG.map(p => <BlogCard key={p.id} {...p} C={C} isDark={isDark} />)}
@@ -229,6 +230,7 @@ export default function GuestDashboard() {
   const listingsGridRef = useRef(null);
 
   const [allListings, setAllListings] = useState([]);
+  const [listingsError, setListingsError] = useState(null);
 
   const [fallbackTheme, setFallbackTheme] = useState("dark");
   
@@ -293,71 +295,72 @@ export default function GuestDashboard() {
 
   const C = isDark ? darkC : lightC;
 
-  useEffect(() => {
-    async function fetchPublicListings() {
-      try {
-        let apiProps = [];
-        try {
-          const apiRes = await propertyService.getProperties();
-          if (Array.isArray(apiRes)) {
-            apiProps = apiRes;
-          } else if (apiRes && Array.isArray(apiRes.properties)) {
-            apiProps = apiRes.properties;
-          }
-        } catch (e) { }
-
-        const formatted = apiProps.map((item) => {
-          if (!item) return null;
-          const key = String(item.id || item.title);
-          
-          let landlordObj;
-          if (item.landlord && typeof item.landlord === "object" && (item.landlord.first_name || item.landlord.name)) {
-            const l = item.landlord;
-            landlordObj = {
-              id: l.id || null,
-              name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
-              score: l.score ?? "New",
-              reviews: l.reviews ?? 0,
-              phone_number: l.phone_number || null
-            };
-          } else {
-            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: "New", reviews: 0, phone_number: null };
-          }
-          
-          return {
-            id: item.id || key,
-            title: item.title || item.address_line1 || "Property",
-            location: item.location || item.city || "Lagos, Nigeria",
-            price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
-            beds: item.beds || item.bedrooms || 1,
-            baths: item.baths || item.bathrooms || 1,
-            type: item.type || item.property_type || "apartment",
-            image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-            amenities: item.amenities || [],
-            landlord: landlordObj,
-            status: item.status,
-            isPending: item.isPending
-          };
-        }).filter(Boolean);
-
-        // STRICT FILTER: Exclude unapproved / pending / rejected listings from guest view
-        const approvedOnly = formatted.filter((p) => {
-          if (!p) return false;
-          const status = (p.status || "").toLowerCase();
-          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
-            return false;
-          }
-          return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
-        });
-
-        setAllListings(approvedOnly);
-      } catch (err) {
-        console.warn("Failed to load public listings:", err);
-      } finally {
-        setIsLoading(false);
+  const fetchPublicListings = async () => {
+    setIsLoading(true);
+    setListingsError(null);
+    try {
+      let apiProps = [];
+      const apiRes = await propertyService.getProperties();
+      if (Array.isArray(apiRes)) {
+        apiProps = apiRes;
+      } else if (apiRes && Array.isArray(apiRes.properties)) {
+        apiProps = apiRes.properties;
       }
-    }
 
+      const formatted = apiProps.map((item) => {
+        if (!item) return null;
+        const key = String(item.id || item.title);
+        
+        let landlordObj;
+        if (item.landlord && typeof item.landlord === "object" && (item.landlord.first_name || item.landlord.name)) {
+          const l = item.landlord;
+          landlordObj = {
+            id: l.id || null,
+            name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
+            score: l.score ?? "New",
+            reviews: l.reviews ?? 0,
+            phone_number: l.phone_number || null
+          };
+        } else {
+          landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: "New", reviews: 0, phone_number: null };
+        }
+        
+        return {
+          id: item.id || key,
+          title: item.title || item.address_line1 || "Property",
+          location: item.location || item.city || "Lagos, Nigeria",
+          price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
+          beds: item.beds || item.bedrooms || 1,
+          baths: item.baths || item.bathrooms || 1,
+          type: item.type || item.property_type || "apartment",
+          image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
+          amenities: item.amenities || [],
+          landlord: landlordObj,
+          status: item.status,
+          isPending: item.isPending
+        };
+      }).filter(Boolean);
+
+      // STRICT FILTER: Exclude unapproved / pending / rejected listings from guest view
+      const approvedOnly = formatted.filter((p) => {
+        if (!p) return false;
+        const status = (p.status || "").toLowerCase();
+        if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
+          return false;
+        }
+        return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
+      });
+
+      setAllListings(approvedOnly);
+    } catch (err) {
+      console.warn("Failed to load public listings:", err);
+      setListingsError(err.message || "We could not load properties right now.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchPublicListings();
   }, []);
 
@@ -507,6 +510,25 @@ export default function GuestDashboard() {
               <ListingCardSkeleton key={n} />
             ))}
           </div>
+        ) : listingsError ? (
+          <div className="mt-12 text-center p-8 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex flex-col items-center justify-center max-w-md mx-auto">
+            <div className="h-14 w-14 rounded-2xl bg-rose-500/20 flex items-center justify-center mb-4 text-rose-500 dark:text-rose-400">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <h3 className="font-bold text-lg text-rose-900 dark:text-rose-200 mb-1">
+              Listings unavailable
+            </h3>
+            <p className="text-xs text-rose-700 dark:text-rose-300/80 max-w-xs leading-relaxed mb-5">
+              We could not load properties right now. Please check your network connection or server status.
+            </p>
+            <button
+              type="button"
+              onClick={fetchPublicListings}
+              className="px-6 py-2.5 rounded-xl bg-rose-700 dark:bg-rose-600 hover:bg-rose-800 text-white font-bold text-xs cursor-pointer transition-all shadow-md"
+            >
+              Retry Loading
+            </button>
+          </div>
         ) : filteredListings.length > 0 ? (
           <>
             <div ref={listingsGridRef} className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
@@ -519,7 +541,7 @@ export default function GuestDashboard() {
               <div className="flex flex-col items-center justify-center pt-12 pb-4">
                 <button
                   onClick={() => setDisplayLimit((prev) => prev + 9)}
-                  className="px-8 py-3 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs tracking-wider uppercase shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                  className="px-8 py-3 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs tracking-wider uppercase shadow-lg transition-all flex items-center gap-2 cursor-pointer"
                 >
                   Load More Listings ({filteredListings.length - displayLimit} remaining)
                 </button>

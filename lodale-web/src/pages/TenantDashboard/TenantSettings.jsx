@@ -70,73 +70,21 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [activeTab, setActiveTab] = useState("personal"); // "personal" | "security" | "documents"
   const [docSubTab, setDocSubTab] = useState("pending"); // "pending" | "signed"
 
-  // Helper to read initial local tenant profile
-  const getInitialProfile = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-    try {
-      const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null);
-      if (raw) {
-        const prof = JSON.parse(raw);
-        // Re-attach avatar from separate localStorage key if not present in profile
-        if (!prof.avatar && !prof.avatar_url && emailKey) {
-          const savedAvatar = localStorage.getItem("tenantAvatar_" + emailKey);
-          if (savedAvatar) {
-            prof.avatar = savedAvatar;
-            prof.avatar_url = savedAvatar;
-          }
-        }
-        return prof;
-      }
-    } catch (e) { }
-    return null;
-  };
-
-  const initialProf = getInitialProfile();
-  const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-
-  const initialUsername =
-    sessionStorage.getItem("tenantUsername") ||
-    (emailKey ? localStorage.getItem("tenantUsername_" + emailKey) : null) ||
-    sessionStorage.getItem("username") ||
-    sessionStorage.getItem("username") ||
-    "Tunde";
-  const nameParts = initialUsername.split(" ");
-  const initialFirst = initialProf?.first_name || initialProf?.firstName || nameParts[0] || "";
-  const initialLast = initialProf?.last_name || initialProf?.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "");
-  const initialEmail = initialProf?.email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "";
-  const initialPhone = initialProf?.phone_number || initialProf?.phone || "";
-  const initialAddress = initialProf?.address || "";
-  const initialDob = initialProf?.dob || "";
-  const initialLocation = initialProf?.location || "";
-  const initialPostalCode = initialProf?.postalCode || "";
-  const initialOccupation = initialProf?.occupation || "";
-  const initialIncome = initialProf?.income || "";
-  const initialAvatar =
-    currentAvatar ||
-    initialProf?.avatar ||
-    initialProf?.avatar_url ||
-    (emailKey ? localStorage.getItem("tenantAvatar_" + emailKey) : null) ||
-    sessionStorage.getItem("tenantAvatarUrl") ||
-    localStorage.getItem("tenantAvatarUrl") ||
-    "";
-
-  // Load initial settings
-  const [userProfile, setUserProfile] = useState(initialProf || {});
+  const [userProfile, setUserProfile] = useState({});
 
   const [gender, setGender] = useState("Male");
-  const [firstName, setFirstName] = useState(initialFirst);
-  const [lastName, setLastName] = useState(initialLast);
-  const [email, setEmail] = useState(initialEmail);
-  const [address, setAddress] = useState(initialAddress);
-  const [phone, setPhone] = useState(initialPhone);
-  const [dob, setDob] = useState(initialDob);
-  const [location, setLocation] = useState(initialLocation);
-  const [postalCode, setPostalCode] = useState(initialPostalCode);
-  const initialEmploymentStatus = initialProf?.employmentStatus || initialProf?.employment_status || "Employed (Full-time)";
-  const [employmentStatus, setEmploymentStatus] = useState(initialEmploymentStatus);
-  const [occupation, setOccupation] = useState(initialOccupation);
-  const [income, setIncome] = useState(initialIncome);
-  const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dob, setDob] = useState("");
+  const [location, setLocation] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [employmentStatus, setEmploymentStatus] = useState("Employed (Full-time)");
+  const [occupation, setOccupation] = useState("");
+  const [income, setIncome] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -194,20 +142,36 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   useEffect(() => {
     async function loadProfile() {
       try {
-        const profile = await userService.getProfile();
-        if (profile) {
-          setUserProfile((prev) => ({ ...prev, ...profile }));
-          if (profile.first_name) setFirstName(profile.first_name);
-          if (profile.last_name) setLastName(profile.last_name);
-          if (profile.email) setEmail(profile.email);
-          if (profile.phone_number) setPhone(profile.phone_number);
-          if (profile.location) setLocation(profile.location);
-          if (profile.avatar_url && !avatarUrl) {
-            setAvatarUrl(profile.avatar_url);
-          }
+        const [profile, roleProfile] = await Promise.all([
+          userService.getProfile().catch(() => ({})),
+          profileService.getMyProfile().catch(() => ({}))
+        ]);
+
+        // Seed fallback state from sessionStorage if present
+        const rawLocalProf = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile");
+        let localObj = {};
+        if (rawLocalProf) {
+          try { localObj = JSON.parse(rawLocalProf); } catch (e) {}
         }
+
+        const merged = { ...localObj, ...profile, ...roleProfile };
+
+        setUserProfile(merged);
+        if (merged.first_name || merged.firstName) setFirstName(merged.first_name || merged.firstName);
+        if (merged.last_name || merged.lastName) setLastName(merged.last_name || merged.lastName);
+        if (merged.email) setEmail(merged.email);
+        if (merged.phone_number || merged.phone) setPhone(merged.phone_number || merged.phone);
+        if (merged.occupation) setOccupation(merged.occupation);
+        if (merged.employment_status || merged.employmentStatus) setEmploymentStatus(merged.employment_status || merged.employmentStatus);
+        if (merged.monthly_income || merged.income || merged.monthlyIncome) setIncome(merged.monthly_income || merged.income || merged.monthlyIncome);
+        if (merged.address) setAddress(merged.address);
+        if (merged.location) setLocation(merged.location);
+        if (merged.postal_code || merged.postalCode) setPostalCode(merged.postal_code || merged.postalCode);
+        if (merged.gender) setGender(merged.gender);
+        if (merged.date_of_birth || merged.dob) setDob(merged.date_of_birth || merged.dob);
+        if (merged.avatar_url && !avatarUrl) setAvatarUrl(merged.avatar_url);
       } catch (err) {
-        console.warn("Using local tenant profile cache:", err);
+        console.warn("Failed to fetch tenant profile:", err);
       }
     }
     loadProfile();
@@ -227,35 +191,19 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         triggerToast("Image file is too large (max 5MB).", "error", "Upload Failed");
         return;
       }
+      if (!file.type.startsWith('image/')) {
+        setFeedbackMessage({ type: "error", text: "Invalid file type. Please select an image." });
+        triggerToast("Invalid file type. Please select an image.", "error", "Upload Failed");
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = (evt) => {
         const base64Data = evt.target.result;
         setAvatarUrl(base64Data);
 
-        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-        try {
-          if (emailKey) {
-            // Tenant-scoped avatar key — does not overwrite landlord avatar
-            localStorage.setItem("tenantAvatar_" + emailKey, base64Data);
-          }
-          // Session-level quick sync keys
-          sessionStorage.setItem("tenantAvatarUrl", base64Data);
-        } catch (storageErr) {
-          console.warn("[TenantSettings] Could not save avatar to localStorage (quota):", storageErr?.message);
-        }
-
-        const updatedProf = { ...userProfile, avatar: base64Data, avatar_url: base64Data };
+        const updatedProf = { ...userProfile, avatar_url: base64Data };
         setUserProfile(updatedProf);
-        // Tenant-scoped profile session key
-        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(updatedProf));
-        if (emailKey) {
-          // Strip base64 avatar from localStorage profile to avoid quota exceeded errors
-          const lsProf = { ...updatedProf };
-          if (lsProf.avatar && lsProf.avatar.startsWith("data:")) delete lsProf.avatar;
-          if (lsProf.avatar_url && lsProf.avatar_url.startsWith("data:")) delete lsProf.avatar_url;
-          localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(lsProf));
-        }
 
         // Notify parent / sidebar / header
         onAvatarChange?.(base64Data);
@@ -285,62 +233,12 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
       setIsSaving(true);
       try {
-        // Step 1: Always save locally first (tenant-scoped keys — never touches landlord data)
         const newFullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-        const curEmail = (sessionStorage.getItem("lastLoggedInEmail") || email || "").toLowerCase();
-
-        sessionStorage.setItem("tenantUsername", newFullName);
-        if (curEmail) {
-          localStorage.setItem("tenantUsername_" + curEmail, newFullName);
-        }
-
-        const profToSave = {
-          ...userProfile,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          phone_number: phone.trim(),
-          address: address.trim(),
-          dob: dob.trim(),
-          location: location,
-          postalCode: postalCode.trim(),
-          occupation: occupation.trim(),
-          employmentStatus: employmentStatus.trim(),
-          income: income.trim(),
-          avatar: avatarUrl || userProfile.avatar || ""
-        };
-        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(profToSave));
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(profToSave));
-        if (curEmail) {
-          // Strip base64 avatar from localStorage profile to avoid quota exceeded errors
-          const lsProf = { ...profToSave };
-          if (lsProf.avatar && lsProf.avatar.startsWith("data:")) delete lsProf.avatar;
-          if (lsProf.avatar_url && lsProf.avatar_url.startsWith("data:")) delete lsProf.avatar_url;
-          localStorage.setItem("tenantProfile_" + curEmail, JSON.stringify(lsProf));
-        }
-        if (avatarUrl) {
-          try {
-            if (curEmail) localStorage.setItem("tenantAvatar_" + curEmail, avatarUrl);
-          } catch (storageErr) {
-            console.warn("[TenantSettings] Could not save avatar to localStorage (quota):", storageErr?.message);
-          }
-          sessionStorage.setItem("tenantAvatarUrl", avatarUrl);
-          // Only store URL (not base64) in localStorage to save space
-          if (!avatarUrl.startsWith("data:")) {
-            try { localStorage.setItem("tenantAvatarUrl", avatarUrl); } catch (e) { /* quota */ }
-          }
-        }
-
-        // Notify parent / sidebar / header
-        onAvatarChange?.(avatarUrl);
-        onProfileUpdate?.(newFullName, avatarUrl);
-
+        
         // Notify sidebar and search header to refresh immediately
         window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: newFullName, avatar: avatarUrl, location: location } }));
-        window.dispatchEvent(new Event("storage"));
 
-        // Step 2: Try to sync with backend — fail gracefully if session has expired
+        // Try to sync with backend — fail gracefully if session has expired
         const token = sessionStorage.getItem("lodale_token");
         if (token) {
           try {
@@ -355,21 +253,55 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             await profileService.updateMyProfile({
               occupation: occupation.trim(),
               employment_status: employmentStatus.trim(),
-              monthly_income: income.trim()
+              monthly_income: income.trim(),
+              gender: gender,
+              address: address.trim(),
+              location: location.trim(),
+              postal_code: postalCode.trim(),
+              date_of_birth: dob
             });
 
             if (updatedProfile) {
-              const serverName = `${updatedProfile.first_name || ""} ${updatedProfile.last_name || ""}`.trim();
+              const serverName = `${updatedProfile.first_name || firstName || ""} ${updatedProfile.last_name || lastName || ""}`.trim();
               if (serverName) {
-                sessionStorage.setItem("tenantUsername", serverName);
-                if (curEmail) {
-                  localStorage.setItem("tenantUsername_" + curEmail, serverName);
-                }
-                window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: serverName, avatar: avatarUrl } }));
+                sessionStorage.setItem("username", serverName);
               }
+              const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || email || "").toLowerCase();
+              const fullMergedProf = {
+                ...updatedProfile,
+                firstName: firstName.trim(),
+                first_name: firstName.trim(),
+                lastName: lastName.trim(),
+                last_name: lastName.trim(),
+                email: email.trim() || updatedProfile?.email || "",
+                phone: phone.trim(),
+                phone_number: phone.trim(),
+                occupation: occupation.trim(),
+                employment_status: employmentStatus.trim(),
+                employmentStatus: employmentStatus.trim(),
+                monthly_income: income.trim(),
+                income: income.trim(),
+                incomeRange: income.trim(),
+                monthlyIncome: income.trim(),
+                gender,
+                address: address.trim(),
+                location: location.trim(),
+                postal_code: postalCode.trim(),
+                postalCode: postalCode.trim(),
+                date_of_birth: dob,
+                dob: dob
+              };
+              sessionStorage.setItem("currentUserProfile", JSON.stringify(fullMergedProf));
+              sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(fullMergedProf));
+              if (emailKey) {
+                localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(fullMergedProf));
+              }
+              
+              window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: serverName, avatar: avatarUrl } }));
             }
           } catch (apiErr) {
-            console.warn("[TenantSettings] Background API sync note (profile saved locally):", apiErr?.message);
+            console.error("[TenantSettings] API sync failed:", apiErr?.message);
+            throw apiErr;
           }
         }
 
@@ -521,7 +453,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     .logo-title {
       font-size: 24px;
       font-weight: 800;
-      color: #1E382A;
+      color: #07130D;
       letter-spacing: -0.01em;
       margin: 0;
     }
@@ -532,7 +464,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     }
     .verified-pill {
       border: 1.5px solid #cbd5e1;
-      color: #1E382A;
+      color: #07130D;
       font-size: 10.5px;
       font-weight: 800;
       padding: 6px 18px;
@@ -542,7 +474,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     }
     .green-bar {
       height: 3.5px;
-      background: #1E382A;
+      background: #07130D;
       width: 100%;
       margin-bottom: 30px;
       border-radius: 2px;
@@ -648,7 +580,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
       font-family: 'Dancing Script', cursive, sans-serif;
       font-size: 28px;
       font-weight: 700;
-      color: #1E382A;
+      color: #07130D;
       margin: 6px 0 10px 0;
     }
     .sig-name {
@@ -780,7 +712,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
       <div className="settings-sidebar-card">
         <div className="settings-profile-section">
           <div className="settings-avatar-container" onClick={handleAvatarClick} title="Click to upload a new photo">
-            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-moss-100/70 dark:bg-[#1E382A] text-moss-700 dark:text-[#E5C583] border-4 border-neutral-200 dark:border-white/10">
+            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] border-4 border-neutral-200 dark:border-white/10">
               {avatarUrl ? (
                 <img src={avatarUrl} alt="User Profile" className="h-full w-full object-cover" />
               ) : (
@@ -858,10 +790,10 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             {feedbackMessage && (
               <div
                 className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${feedbackMessage.type === "success"
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : feedbackMessage.type === "error"
                       ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                      : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                      : "bg-amber-50 dark:bg-[#07130D]mber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
                   }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -1104,10 +1036,10 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             {feedbackMessage && (
               <div
                 className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${feedbackMessage.type === "success"
-                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : feedbackMessage.type === "error"
                       ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                      : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                      : "bg-amber-50 dark:bg-[#07130D]mber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
                   }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -1205,7 +1137,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 type="button"
                 onClick={() => setDocSubTab("pending")}
                 className={`px-4 py-2 rounded-xl text-[13px] font-extrabold transition-all cursor-pointer flex items-center gap-2 ${docSubTab === "pending"
-                  ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
+                  ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-sm"
                   : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
                   }`}
               >
@@ -1222,7 +1154,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 type="button"
                 onClick={() => setDocSubTab("signed")}
                 className={`px-4 py-2 rounded-xl text-[13px] font-extrabold transition-all cursor-pointer flex items-center gap-2 ${docSubTab === "signed"
-                  ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0B1512] shadow-sm"
+                  ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-sm"
                   : "text-ink-600 dark:text-cream-100/70 hover:bg-ink-50 dark:hover:bg-white/5"
                   }`}
               >
@@ -1239,7 +1171,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               <div className="space-y-4">
                 {documents.filter(d => d.status === "pending").length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-14 px-4 text-center border-2 border-dashed border-ink-100 dark:border-white/10 rounded-2xl bg-ink-50/30 dark:bg-white/[0.02]">
-                    <div className="p-3.5 bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300 rounded-2xl mb-3 border border-amber-500/20">
+                    <div className="p-3.5 bg-amber-500/10 text-amber-600 dark:bg-[#07130D]mber-500/20 dark:text-amber-300 rounded-2xl mb-3 border border-amber-500/20">
                       <FileCheck className="h-6 w-6" />
                     </div>
                     <h4 className="font-extrabold text-base text-ink-900 dark:text-white">No Documents Awaiting Signature</h4>
@@ -1251,13 +1183,13 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                   documents.filter(d => d.status === "pending").map((doc) => (
                     <div
                       key={doc.id}
-                      className="p-5 rounded-2xl border border-amber-500/30 dark:border-white/10 bg-white dark:bg-[#13221C]/80 shadow-xs hover:shadow-md transition-all duration-300 relative overflow-hidden group space-y-4"
+                      className="p-5 rounded-2xl border border-amber-500/30 dark:border-white/10 bg-white dark:bg-[#07130D]/80 shadow-xs hover:shadow-md transition-all duration-300 relative overflow-hidden group space-y-4"
                     >
                       <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 rounded-t-2xl absolute top-0 left-0" />
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                         <div className="flex items-center gap-3">
-                          <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300 shrink-0 border border-amber-500/20">
+                          <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-[#07130D]mber-500/20 dark:text-amber-300 shrink-0 border border-amber-500/20">
                             <FileText className="h-5 w-5" />
                           </div>
                           <div>
@@ -1291,7 +1223,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                         <Button
                           type="button"
                           onClick={() => { setSelectedDocToSign(doc); setSignatureInput(`${firstName} ${lastName}`.trim()); }}
-                          className="bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d8b672] text-white dark:text-[#0B1512] text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-xs flex items-center gap-2 shrink-0 self-end sm:self-auto cursor-pointer"
+                          className="bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d8b672] text-white dark:text-[#09090b] text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-xs flex items-center gap-2 shrink-0 self-end sm:self-auto cursor-pointer"
                         >
                           <PenTool className="h-3.5 w-3.5" />
                           <span>Review & E-Sign</span>
@@ -1306,7 +1238,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               <div className="space-y-4">
                 {documents.filter(d => d.status === "signed").length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-14 px-4 text-center border-2 border-dashed border-ink-100 dark:border-white/10 rounded-2xl bg-ink-50/30 dark:bg-white/[0.02]">
-                    <div className="p-3.5 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-2xl mb-3 border border-emerald-500/20">
+                    <div className="p-3.5 bg-emerald-500/10 text-emerald-600 dark:bg-[#07130D]merald-500/20 dark:text-emerald-400 rounded-2xl mb-3 border border-emerald-500/20">
                       <FileText className="h-6 w-6" />
                     </div>
                     <h4 className="font-extrabold text-base text-ink-900 dark:text-white">No Signed Documents Archived</h4>
@@ -1318,13 +1250,13 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                   documents.filter(d => d.status === "signed").map((doc) => (
                     <div
                       key={doc.id}
-                      className="p-5 rounded-2xl border border-ink-100/80 dark:border-white/10 bg-white dark:bg-[#13221C]/80 shadow-xs hover:shadow-md transition-all duration-300 relative overflow-hidden group space-y-4"
+                      className="p-5 rounded-2xl border border-ink-100/80 dark:border-white/10 bg-white dark:bg-[#07130D]/80 shadow-xs hover:shadow-md transition-all duration-300 relative overflow-hidden group space-y-4"
                     >
                       <div className="h-1 w-full bg-gradient-to-r from-emerald-500 via-moss-600 to-amber-500 rounded-t-2xl absolute top-0 left-0" />
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                         <div className="flex items-center gap-3">
-                          <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0 border border-emerald-500/20">
+                          <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-[#07130D]merald-500/20 dark:text-emerald-400 shrink-0 border border-emerald-500/20">
                             <CheckCircle2 className="h-5 w-5" />
                           </div>
                           <div>
@@ -1377,7 +1309,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                           <Button
                             type="button"
                             onClick={() => handleDownloadPDF(doc)}
-                            className="bg-[#2C4633] hover:bg-[#1E3123] dark:bg-[#E5C583] dark:hover:bg-[#d8b672] text-white dark:text-[#0B1512] text-xs font-extrabold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                            className="bg-[#2C4633] hover:bg-[#1E3123] dark:bg-[#E5C583] dark:hover:bg-[#d8b672] text-white dark:text-[#09090b] text-xs font-extrabold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                             title="Export Print-Ready PDF"
                           >
                             <Download className="h-3.5 w-3.5" />
@@ -1403,7 +1335,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           >
             <div className="modal-header flex items-center justify-between pb-3 border-b border-ink-100/30 dark:border-white/10 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:bg-amber-500/25 dark:text-amber-300">
+                <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:bg-[#07130D]mber-500/25 dark:text-amber-300">
                   <PenTool className="h-5 w-5" />
                 </div>
                 <div>
@@ -1435,12 +1367,12 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                     value={signatureInput}
                     onChange={(e) => setSignatureInput(e.target.value)}
                     placeholder="e.g. Roland Donald"
-                    className="w-full px-3.5 py-2 rounded-xl border border-ink-200/60 dark:border-white/10 bg-white dark:bg-[#13221C] text-sm font-bold text-ink-900 dark:text-white outline-none focus:ring-2 focus:ring-moss-600"
+                    className="w-full px-3.5 py-2 rounded-xl border border-ink-200/60 dark:border-white/10 bg-white dark:bg-[#07130D] text-sm font-bold text-ink-900 dark:text-white outline-none focus:ring-2 focus:ring-moss-600"
                     required
                   />
 
                   {signatureInput.trim() && (
-                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-center">
+                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 dark:bg-[#07130D]mber-500/15 border border-amber-500/20 text-center">
                       <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300 block mb-0.5">
                         Digital Signature Stamp Preview
                       </span>
@@ -1465,7 +1397,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 </label>
               </div>
 
-              <div className="flex gap-3 pt-3 border-t border-ink-100/30 dark:border-white/10 shrink-0 bg-white dark:bg-[#13221C]">
+              <div className="flex gap-3 pt-3 border-t border-ink-100/30 dark:border-white/10 shrink-0 bg-white dark:bg-[#07130D]">
                 <Button
                   type="button"
                   variant="secondary"
@@ -1476,7 +1408,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-2.5 font-extrabold text-[13px] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-2.5 font-extrabold text-[13px] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Send className="h-3.5 w-3.5" />
                   <span>Sign & Send to Landlord</span>
@@ -1493,18 +1425,18 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           <div className="tenant-modal-content text-left max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-4 border-b border-ink-100/40 dark:border-white/10 mb-5">
               <div>
-                <h3 className="text-xl font-extrabold text-[#1E382A] dark:text-[#E5C583] tracking-tight">LODALE PMS</h3>
+                <h3 className="text-xl font-extrabold text-[#07130D] dark:text-[#E5C583] tracking-tight">LODALE PMS</h3>
                 <p className="text-xs text-ink-400 dark:text-cream-100/50">Legal Vault & Encrypted Execution</p>
               </div>
               <div className="flex items-center gap-3">
-                <span className="px-3 py-1 text-[10.5px] font-extrabold border border-ink-200/80 dark:border-white/20 text-[#1E382A] dark:text-[#E5C583] rounded-full uppercase tracking-wider">
+                <span className="px-3 py-1 text-[10.5px] font-extrabold border border-ink-200/80 dark:border-white/20 text-[#07130D] dark:text-[#E5C583] rounded-full uppercase tracking-wider">
                   VERIFIED & EXECUTED
                 </span>
                 <button className="close-btn text-ink-400 hover:text-ink-900 dark:hover:text-white text-2xl font-bold leading-none cursor-pointer" onClick={() => setSelectedDocToView(null)}>&times;</button>
               </div>
             </div>
 
-            <div className="w-full h-1 bg-[#1E382A] dark:bg-[#E5C583] rounded-full mb-6"></div>
+            <div className="w-full h-1 bg-[#07130D] dark:bg-[#E5C583] rounded-full mb-6"></div>
 
             <div className="text-center mb-6">
               <h2 className="text-xl font-black text-ink-900 dark:text-white">{selectedDocToView.title || "Tenancy Lease Agreement (2026-2027)"}</h2>
@@ -1553,7 +1485,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block mb-1">
                   VERIFIED TENANT SIGNATURE
                 </span>
-                <p className="font-serif italic font-extrabold text-2xl text-[#1E382A] dark:text-[#E5C583] my-1">
+                <p className="font-serif italic font-extrabold text-2xl text-[#07130D] dark:text-[#E5C583] my-1">
                   {selectedDocToView.signedName || "Verified Tenant"}
                 </p>
                 <p className="text-xs font-bold text-ink-900 dark:text-white">{selectedDocToView.signedName || "Tenant"}</p>
@@ -1564,7 +1496,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block mb-1">
                   LANDLORD COUNTERSIGNATURE
                 </span>
-                <p className="font-serif italic font-extrabold text-2xl text-[#1E382A] dark:text-[#E5C583] my-1">
+                <p className="font-serif italic font-extrabold text-2xl text-[#07130D] dark:text-[#E5C583] my-1">
                   {selectedDocToView.landlordName?.split("/").pop()?.trim() || "Engr. Clement Okoro"}
                 </p>
                 <p className="text-xs font-bold text-ink-900 dark:text-white">{selectedDocToView.landlordName || "Skyline Realty / Engr. Clement Okoro"}</p>
@@ -1588,7 +1520,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               <Button
                 type="button"
                 onClick={() => handleDownloadPDF(selectedDocToView)}
-                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3 font-bold text-[13px] cursor-pointer"
+                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3 font-bold text-[13px] cursor-pointer"
               >
                 <Download className="h-3.5 w-3.5 mr-1.5 inline" /> Download PDF
               </Button>

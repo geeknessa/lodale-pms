@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { handlePropertySubmit } from "../../utils/propertyUtils";
 import { propertyService } from "../../services/propertyService";
+import { chatService } from "../../services/chatService";
+import { notificationService } from "../../services/notificationService";
 
 export const GENERAL_UNIT_AMENITIES = [
   "24/7 Security",
@@ -210,25 +212,32 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
 
   // Notifications & User Profile
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
-  const [notifications, setNotifications] = useState(() => {
-    const saved = localStorage.getItem("landlordNotifications");
-    if (saved) {
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    async function loadNotifications() {
       try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) { }
-    }
-    return [
-      {
-        id: "n-init-1",
-        title: "Welcome to Portfolio Wizard",
-        message: "Establish property identity, set up units, attach legal proof, and invite tenants.",
-        type: "info",
-        time: "Just now",
-        read: false
+        const notifs = await notificationService.getMyNotifications();
+        if (notifs && notifs.length > 0) {
+          setNotifications(notifs);
+        } else {
+          setNotifications([
+            {
+              id: "n-init-1",
+              title: "Welcome to Portfolio Wizard",
+              message: "Establish property identity, set up units, attach legal proof, and invite tenants.",
+              type: "info",
+              time: "Just now",
+              read: false
+            }
+          ]);
+        }
+      } catch (err) {
+        console.warn("Failed to load notifications", err);
       }
-    ];
-  });
+    }
+    loadNotifications();
+  }, []);
 
   const [showLandlordProfileModal, setShowLandlordProfileModal] = useState(false);
   const [username] = useState(() => {

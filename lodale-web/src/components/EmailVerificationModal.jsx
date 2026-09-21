@@ -71,7 +71,7 @@ export default function EmailVerificationModal({ isOpen, onClose, newEmail, demo
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in">
-      <div className="relative w-full max-w-md bg-white dark:bg-[#0B1512] rounded-3xl shadow-2xl border border-ink-100 dark:border-white/10 p-6 sm:p-8 overflow-hidden text-left">
+      <div className="relative w-full max-w-md bg-white dark:bg-[#09090b] rounded-3xl shadow-2xl border border-ink-100 dark:border-white/10 p-6 sm:p-8 overflow-hidden text-left">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -83,7 +83,7 @@ export default function EmailVerificationModal({ isOpen, onClose, newEmail, demo
 
         {/* Icon & Heading */}
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-2xl bg-moss-50 dark:bg-moss-950/60 text-moss-700 dark:text-[#E5C583] flex items-center justify-center shrink-0 border border-moss-200 dark:border-moss-800/40">
+          <div className="w-12 h-12 rounded-2xl bg-moss-50 dark:bg-white/5 text-moss-700 dark:text-[#E5C583] flex items-center justify-center shrink-0 border border-moss-200 dark:border-white/10">
             <Mail className="w-6 h-6" />
           </div>
           <div>
@@ -98,7 +98,7 @@ export default function EmailVerificationModal({ isOpen, onClose, newEmail, demo
         {activeDemoCode && (
           <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between">
             <span>Demo Verification Code:</span>
-            <span className="font-mono font-bold tracking-widest text-sm bg-amber-200 dark:bg-amber-900/60 px-2.5 py-0.5 rounded-lg text-amber-950 dark:text-amber-100">
+            <span className="font-mono font-bold tracking-widest text-sm bg-amber-200 dark:bg-[#07130D]mber-900/60 px-2.5 py-0.5 rounded-lg text-amber-950 dark:text-amber-100">
               {activeDemoCode}
             </span>
           </div>

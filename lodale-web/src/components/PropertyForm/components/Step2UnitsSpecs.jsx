@@ -105,7 +105,7 @@ export default function Step2UnitsSpecs({
                 onClick={() => setIsMultiUnit(false)}
                 className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${!isMultiUnit
                   ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
-                  : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
+                  : "bg-white dark:bg-[#07130D] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
                   }`}
               >
                 <div className="font-bold text-sm">1</div>
@@ -120,7 +120,7 @@ export default function Step2UnitsSpecs({
                 onClick={() => setIsMultiUnit(true)}
                 className={`p-3.5 rounded-xl border-2 transition-all cursor-pointer text-left flex items-start gap-3 outline-none ${isMultiUnit
                   ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
-                  : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
+                  : "bg-white dark:bg-[#07130D] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/10"
                   }`}
               >
                 <div className="font-bold text-sm">2+</div>
@@ -135,7 +135,7 @@ export default function Step2UnitsSpecs({
 
         {isMultiUnit ? (
           <div className="space-y-6">
-            <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-slate-200 dark:border-white/10">
+            <div className="bg-white dark:bg-[#07130D] p-4 rounded-xl border border-slate-200 dark:border-white/10">
               <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
                 Building Blocks / Floors (Optional)
               </label>
@@ -190,7 +190,7 @@ export default function Step2UnitsSpecs({
                   <button
                     type="button"
                     onClick={() => setUnitAddTab("manual")}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "manual" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "manual" ? "bg-white dark:bg-[#07130D] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
                       }`}
                   >
                     Single Unit
@@ -198,7 +198,7 @@ export default function Step2UnitsSpecs({
                   <button
                     type="button"
                     onClick={() => setUnitAddTab("generator")}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "generator" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "generator" ? "bg-white dark:bg-[#07130D] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
                       }`}
                   >
                     Bulk Generator
@@ -206,7 +206,7 @@ export default function Step2UnitsSpecs({
                   <button
                     type="button"
                     onClick={() => setUnitAddTab("csv")}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "csv" ? "bg-white dark:bg-[#16241F] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
+                    className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer border-none ${unitAddTab === "csv" ? "bg-white dark:bg-[#07130D] text-slate-900 dark:text-white shadow-xs" : "text-slate-600 dark:text-slate-300"
                       }`}
                   >
                     CSV Upload
@@ -215,7 +215,7 @@ export default function Step2UnitsSpecs({
               </div>
 
               {unitAddTab === "manual" && (
-                <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-slate-200 dark:border-white/10 mb-4 space-y-3">
+                <div className="bg-white dark:bg-[#07130D] p-4 rounded-xl border border-slate-200 dark:border-white/10 mb-4 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="sm:col-span-1">
                       <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -227,7 +227,7 @@ export default function Step2UnitsSpecs({
                         onChange={(e) => setManualUnitName(e.target.value)}
                         maxLength={500}
                         placeholder={getUnitNamePlaceholder()}
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none"
                       />
                     </div>
                     <div>
@@ -235,7 +235,7 @@ export default function Step2UnitsSpecs({
                       <select
                         value={manualBeds}
                         onChange={(e) => setManualBeds(e.target.value)}
-                        className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none font-medium"
+                        className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                       >
                         <option value="1">1 Bed</option>
                         <option value="2">2 Beds</option>
@@ -249,7 +249,7 @@ export default function Step2UnitsSpecs({
                       <select
                         value={manualBaths}
                         onChange={(e) => setManualBaths(e.target.value)}
-                        className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none font-medium"
+                        className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                       >
                         <option value="1">1 Bath</option>
                         <option value="2">2 Baths</option>
@@ -269,7 +269,7 @@ export default function Step2UnitsSpecs({
                         value={manualRent}
                         onChange={(e) => setManualRent(e.target.value)}
                         placeholder="e.g. 2500000"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none"
                       />
                     </div>
                     <div>
@@ -279,7 +279,7 @@ export default function Step2UnitsSpecs({
                       <select
                         value={manualRentPeriod}
                         onChange={(e) => setManualRentPeriod(e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none font-medium"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                       >
                         <option value="annually">1 Year / Annually (per yr)</option>
                         <option value="session">1 Academic Session (8-9 mos)</option>
@@ -297,7 +297,7 @@ export default function Step2UnitsSpecs({
                         <select
                           value={manualHostelPricingType}
                           onChange={(e) => setManualHostelPricingType(e.target.value)}
-                          className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none font-medium"
+                          className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                         >
                           <option value="per_bedspace">🛏️ Per Bedspace (Student)</option>
                           <option value="per_room">🚪 Per Room (Private Room)</option>
@@ -319,8 +319,8 @@ export default function Step2UnitsSpecs({
               )}
 
               {unitAddTab === "generator" && (
-                <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-slate-200 dark:border-white/10 mb-4 space-y-4">
-                  <div className="p-3 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
+                <div className="bg-white dark:bg-[#07130D] p-4 rounded-xl border border-slate-200 dark:border-white/10 mb-4 space-y-4">
+                  <div className="p-3 rounded-xl bg-emerald-50/80 dark:bg-[#07130D]merald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
                     <Info className="h-4 w-4 shrink-0 text-emerald-700 dark:text-[#E5C583] mt-0.5" />
                     <div>
                       <span className="font-bold">Fast Portfolio Generator: </span>
@@ -342,7 +342,7 @@ export default function Step2UnitsSpecs({
                         value={bulkStartNum}
                         onChange={(e) => setBulkStartNum(e.target.value)}
                         placeholder="101"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none"
                       />
                     </div>
                     <div>
@@ -352,7 +352,7 @@ export default function Step2UnitsSpecs({
                         value={bulkCount}
                         onChange={(e) => setBulkCount(e.target.value)}
                         placeholder="6"
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none"
+                        className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none"
                       />
                     </div>
                   </div>
@@ -363,7 +363,7 @@ export default function Step2UnitsSpecs({
                       <select
                         value={bulkBeds}
                         onChange={(e) => setBulkBeds(e.target.value)}
-                        className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none font-medium"
+                        className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                       >
                         <option value="1">1 Bed</option>
                         <option value="2">2 Beds</option>
@@ -377,7 +377,7 @@ export default function Step2UnitsSpecs({
                       <select
                         value={bulkBaths}
                         onChange={(e) => setBulkBaths(e.target.value)}
-                        className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none font-medium"
+                        className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                       >
                         <option value="1">1 Bath</option>
                         <option value="2">2 Baths</option>
@@ -392,7 +392,7 @@ export default function Step2UnitsSpecs({
                         value={bulkRent}
                         onChange={(e) => setBulkRent(e.target.value)}
                         placeholder="e.g. 2500000"
-                        className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none"
+                        className="w-full px-2.5 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none"
                       />
                     </div>
                     <div>
@@ -400,7 +400,7 @@ export default function Step2UnitsSpecs({
                       <select
                         value={bulkRentPeriod}
                         onChange={(e) => setBulkRentPeriod(e.target.value)}
-                        className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none font-medium"
+                        className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                       >
                         <option value="annually">1 Year / Annually</option>
                         <option value="session">1 Academic Session</option>
@@ -416,7 +416,7 @@ export default function Step2UnitsSpecs({
                         <select
                           value={bulkHostelPricingType}
                           onChange={(e) => setBulkHostelPricingType(e.target.value)}
-                          className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#12221C] text-slate-900 dark:text-white outline-none font-medium"
+                          className="w-full px-2 py-2 text-xs rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                         >
                           <option value="per_bedspace">🛏️ Per Bedspace</option>
                           <option value="per_room">🚪 Per Room</option>
@@ -436,7 +436,7 @@ export default function Step2UnitsSpecs({
               )}
 
               {unitAddTab === "csv" && (
-                <div className="bg-white dark:bg-[#16241F] p-4 rounded-xl border border-slate-200 dark:border-white/10 mb-4 text-center">
+                <div className="bg-white dark:bg-[#07130D] p-4 rounded-xl border border-slate-200 dark:border-white/10 mb-4 text-center">
                   <input ref={csvFileInputRef} type="file" accept=".csv" onChange={handleCsvFileUpload} className="hidden" />
                   <button
                     type="button"
@@ -449,7 +449,7 @@ export default function Step2UnitsSpecs({
               )}
 
               {unitsList.length > 0 && (
-                <div className="border border-slate-200 dark:border-white/10 rounded-xl bg-white dark:bg-[#12221C] overflow-hidden">
+                <div className="border border-slate-200 dark:border-white/10 rounded-xl bg-white dark:bg-[#07130D] overflow-hidden">
                   <div className="p-3 bg-slate-100 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 flex justify-between items-center text-xs font-bold">
                     <span className="text-slate-800 dark:text-slate-200">
                       Portfolio Units ({unitsList.length}) – Click "Edit" on any unit to customize rent, amenities, or rules
@@ -478,7 +478,7 @@ export default function Step2UnitsSpecs({
 
                           if (isEditingRow) {
                             return (
-                              <tr key={i} className="bg-amber-50/70 dark:bg-amber-950/30">
+                              <tr key={i} className="bg-amber-50/70 dark:bg-[#07130D]mber-950/30">
                                 <td colSpan={4} className="p-3 space-y-3">
                                   <div className="flex items-center justify-between border-b border-amber-200 dark:border-white/10 pb-2">
                                     <span className="font-bold text-xs text-amber-900 dark:text-[#E5C583]">
@@ -509,7 +509,7 @@ export default function Step2UnitsSpecs({
                                         type="text"
                                         value={editingUnitForm.unit_name}
                                         onChange={(e) => setEditingUnitForm(prev => ({ ...prev, unit_name: e.target.value }))}
-                                        className="w-full px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white"
+                                        className="w-full px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white"
                                       />
                                     </div>
                                     <div>
@@ -518,7 +518,7 @@ export default function Step2UnitsSpecs({
                                         <select
                                           value={editingUnitForm.bedrooms}
                                           onChange={(e) => setEditingUnitForm(prev => ({ ...prev, bedrooms: e.target.value }))}
-                                          className="w-1/2 px-1 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white font-medium"
+                                          className="w-1/2 px-1 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white font-medium"
                                         >
                                           <option value="1">1 Bed</option>
                                           <option value="2">2 Beds</option>
@@ -529,7 +529,7 @@ export default function Step2UnitsSpecs({
                                         <select
                                           value={editingUnitForm.bathrooms}
                                           onChange={(e) => setEditingUnitForm(prev => ({ ...prev, bathrooms: e.target.value }))}
-                                          className="w-1/2 px-1 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white font-medium"
+                                          className="w-1/2 px-1 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white font-medium"
                                         >
                                           <option value="1">1 Bath</option>
                                           <option value="2">2 Baths</option>
@@ -545,12 +545,12 @@ export default function Step2UnitsSpecs({
                                           type="number"
                                           value={editingUnitForm.rent_amount}
                                           onChange={(e) => setEditingUnitForm(prev => ({ ...prev, rent_amount: e.target.value }))}
-                                          className="w-2/3 px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white"
+                                          className="w-2/3 px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white"
                                         />
                                         <select
                                           value={editingUnitForm.rent_period}
                                           onChange={(e) => setEditingUnitForm(prev => ({ ...prev, rent_period: e.target.value }))}
-                                          className="w-1/3 px-1 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white font-medium"
+                                          className="w-1/3 px-1 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white font-medium"
                                         >
                                           <option value="annually">/yr</option>
                                           <option value="session">/session</option>
@@ -567,7 +567,7 @@ export default function Step2UnitsSpecs({
                                         <select
                                           value={editingUnitForm.pricing_type || "per_bedspace"}
                                           onChange={(e) => setEditingUnitForm(prev => ({ ...prev, pricing_type: e.target.value }))}
-                                          className="w-full px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white font-medium"
+                                          className="w-full px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white font-medium"
                                         >
                                           <option value="per_bedspace">🛏️ Bedspace</option>
                                           <option value="per_room">🚪 Room</option>
@@ -584,7 +584,7 @@ export default function Step2UnitsSpecs({
                                         value={editingUnitForm.description}
                                         onChange={(e) => setEditingUnitForm(prev => ({ ...prev, description: e.target.value }))}
                                         placeholder="e.g. Top floor corner flat"
-                                        className="w-full px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white"
+                                        className="w-full px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white"
                                       />
                                     </div>
                                     <div>
@@ -594,7 +594,7 @@ export default function Step2UnitsSpecs({
                                         value={editingUnitForm.amenities}
                                         onChange={(e) => setEditingUnitForm(prev => ({ ...prev, amenities: e.target.value }))}
                                         placeholder="e.g. Prepaid Meter, Water Heater"
-                                        className="w-full px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white"
+                                        className="w-full px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white"
                                       />
                                     </div>
                                     <div>
@@ -604,7 +604,7 @@ export default function Step2UnitsSpecs({
                                         value={editingUnitForm.rules}
                                         onChange={(e) => setEditingUnitForm(prev => ({ ...prev, rules: e.target.value }))}
                                         placeholder="e.g. No Pets, Quiet Hours"
-                                        className="w-full px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white"
+                                        className="w-full px-2 py-1.5 text-xs rounded-md border border-slate-300 dark:border-white/20 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white"
                                       />
                                     </div>
                                   </div>
@@ -712,12 +712,12 @@ export default function Step2UnitsSpecs({
                                 {hasUnitSpecs && (
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {u.amenities && (
-                                      <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded border border-emerald-200 dark:border-emerald-800/40">
+                                      <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-emerald-100 dark:bg-[#07130D]merald-950/60 text-emerald-800 dark:text-emerald-300 rounded border border-emerald-200 dark:border-emerald-800/40">
                                         ✨ {typeof u.amenities === "string" ? u.amenities : u.amenities.join(", ")}
                                       </span>
                                     )}
                                     {u.rules && (
-                                      <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-[#E5C583] rounded border border-amber-200 dark:border-amber-800/40">
+                                      <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 dark:bg-[#07130D]mber-950/60 text-amber-800 dark:text-[#E5C583] rounded border border-amber-200 dark:border-amber-800/40">
                                         📋 {typeof u.rules === "string" ? u.rules : u.rules.join(", ")}
                                       </span>
                                     )}
@@ -784,7 +784,7 @@ export default function Step2UnitsSpecs({
                 <select
                   value={rentCycle}
                   onChange={(e) => setRentCycle(e.target.value)}
-                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none font-medium"
+                  className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                 >
                   <option value="annual">1 Year / Annually (per year)</option>
                   <option value="session">1 Academic Session (8-9 months)</option>
@@ -800,7 +800,7 @@ export default function Step2UnitsSpecs({
                   <select
                     value={singleHostelPricingType}
                     onChange={(e) => setSingleHostelPricingType(e.target.value)}
-                    className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-slate-900 dark:text-white outline-none font-medium"
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                   >
                     <option value="per_bedspace">🛏️ Per Bedspace (Student)</option>
                     <option value="per_room">🚪 Per Room (Private Room)</option>

@@ -265,7 +265,7 @@ export default function TenantChat({ setActiveTab }) {
               download={fileName}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-moss-900 dark:bg-moss-800 dark:text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-moss-900 dark:bg-[#07130D] dark:text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
             >
               Download / View Document
             </a>

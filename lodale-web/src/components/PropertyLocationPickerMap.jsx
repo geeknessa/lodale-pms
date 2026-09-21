@@ -236,14 +236,14 @@ export default function PropertyLocationPickerMap({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search address, landmark, area (e.g. Lekki Phase 1, Victoria Island)..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/10 rounded-xl text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 dark:focus:border-[#E5C583] shadow-xs"
+              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-xl text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 dark:focus:border-[#E5C583] shadow-xs"
             />
           </div>
 
           <button
             type="submit"
             disabled={isSearching}
-            className="px-4 py-2.5 bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#d4b371] dark:text-[#0B1512] font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="px-4 py-2.5 bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#d4b371] dark:text-[#09090b] font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0"
           >
             {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             <span>Find Pin</span>
@@ -253,7 +253,7 @@ export default function PropertyLocationPickerMap({
             type="button"
             onClick={handleDetectGPS}
             title="Auto-detect my current GPS location"
-            className="px-3 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shrink-0"
+            className="px-3 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-[#07130D]mber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shrink-0"
           >
             <Compass className="h-4 w-4" /> GPS
           </button>
@@ -261,7 +261,7 @@ export default function PropertyLocationPickerMap({
 
         {/* Search Results Dropdown */}
         {searchResults.length > 0 && (
-          <div className="absolute z-[1000] left-0 right-0 mt-1.5 bg-white dark:bg-[#12221C] border border-ink-200 dark:border-white/15 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-ink-100 dark:divide-white/5">
+          <div className="absolute z-[1000] left-0 right-0 mt-1.5 bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/15 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-ink-100 dark:divide-white/5">
             {searchResults.map((res) => (
               <button
                 key={res.place_id}
@@ -281,7 +281,7 @@ export default function PropertyLocationPickerMap({
       <div className="relative rounded-2xl overflow-hidden border border-ink-200 dark:border-white/10 shadow-md">
         <div ref={mapContainerRef} className="h-64 w-full z-0" />
         
-        <div className="absolute bottom-3 left-3 right-3 bg-white/90 dark:bg-[#12221C]/90 backdrop-blur-md p-2.5 rounded-xl border border-ink-100 dark:border-white/10 text-[11px] text-ink-700 dark:text-cream-100/80 flex items-center justify-between z-[500]">
+        <div className="absolute bottom-3 left-3 right-3 bg-white/90 dark:bg-[#07130D]/90 backdrop-blur-md p-2.5 rounded-xl border border-ink-100 dark:border-white/10 text-[11px] text-ink-700 dark:text-cream-100/80 flex items-center justify-between z-[500]">
           <div className="flex items-center gap-1.5 truncate pr-2">
             <Navigation className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583] shrink-0" />
             <span className="truncate">

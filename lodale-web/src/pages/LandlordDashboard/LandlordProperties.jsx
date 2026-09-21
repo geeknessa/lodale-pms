@@ -35,14 +35,14 @@ function CustomSelect({ value, onChange, options, placeholder }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between gap-2 px-4 py-2.5 bg-white dark:bg-[#16241F] border border-ink-100 dark:border-white/10 text-ink-900 dark:text-white rounded-xl text-[12.5px] font-bold cursor-pointer transition-all duration-200 hover:border-ink-400 dark:hover:border-white/30 hover:bg-ink-50/50 dark:hover:bg-white/5 outline-none select-none min-w-[130px]"
+        className="flex items-center justify-between gap-2 px-4 py-2.5 bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 text-ink-900 dark:text-white rounded-xl text-[12.5px] font-bold cursor-pointer transition-all duration-200 hover:border-ink-400 dark:hover:border-white/30 hover:bg-ink-50/50 dark:hover:bg-white/5 outline-none select-none min-w-[130px]"
       >
         <span>{selectedOption ? selectedOption.label : placeholder}</span>
         <ChevronDown className={`h-3.5 w-3.5 text-ink-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-1.5 w-full min-w-[160px] bg-white dark:bg-[#12221C] border border-[#E4EAE1] dark:border-white/10 rounded-xl shadow-lg z-50 py-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="absolute left-0 mt-1.5 w-full min-w-[160px] bg-white dark:bg-[#07130D] border border-[#E4EAE1] dark:border-white/10 rounded-xl shadow-lg z-50 py-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
           {options.map((option) => {
             const isSelected = option.value === value;
             return (
@@ -90,7 +90,7 @@ const TYPE_OPTIONS = [
 ];
 
 const PropertyCardSkeleton = () => (
-  <div className="ap-property-card bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs animate-pulse flex flex-col sm:flex-row items-center gap-4">
+  <div className="ap-property-card bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs animate-pulse flex flex-col sm:flex-row items-center gap-4">
     <div className="ap-card-visual shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-slate-200 dark:bg-white/10" />
     <div className="ap-card-details flex-1 min-w-0 space-y-3 w-full">
       <div className="flex items-center gap-2">
@@ -138,19 +138,7 @@ export default function LandlordProperties() {
     return sessionStorage.getItem("username") || "Ada";
   });
 
-  const [tenantsMap, setTenantsMap] = useState({});
-
   useEffect(() => {
-    const loadTenants = () => {
-      const saved = localStorage.getItem("propertyTenants");
-      if (saved) {
-        try {
-          setTenantsMap(JSON.parse(saved));
-        } catch (e) {}
-      }
-    };
-    loadTenants();
-
     async function fetchInitialTenantData() {
       try {
         const [leasesRes, appsRes] = await Promise.allSettled([
@@ -168,9 +156,6 @@ export default function LandlordProperties() {
       }
     }
     fetchInitialTenantData();
-
-    window.addEventListener("storage", loadTenants);
-    return () => window.removeEventListener("storage", loadTenants);
   }, []);
 
   const handleOpenTenantsPopup = async (propertyItem) => {
@@ -307,39 +292,7 @@ export default function LandlordProperties() {
       }
     });
 
-    // 3. Process tenantsMap state & localStorage "propertyTenants" (supports both Array & Object structure)
-    try {
-      const saved = localStorage.getItem("propertyTenants");
-      const sourceMap = saved ? JSON.parse(saved) : tenantsMap;
-      if (Array.isArray(sourceMap)) {
-        sourceMap.forEach(t => {
-          if (matchesProperty(t.propertyId || t.property_id, t.propertyTitle || t.property_title)) addTenantIfUnique(t);
-        });
-      } else if (typeof sourceMap === 'object' && sourceMap !== null) {
-        Object.keys(sourceMap).forEach(key => {
-          const arr = Array.isArray(sourceMap[key]) ? sourceMap[key] : [sourceMap[key]];
-          arr.forEach(t => {
-            if (matchesProperty(t.propertyId || t.property_id, t.propertyTitle || t.property_title, key)) addTenantIfUnique(t);
-          });
-        });
-      }
-    } catch (e) {}
-
-    // 4. Also check tenantsMap state if populated separately
-    if (typeof tenantsMap === 'object' && tenantsMap !== null) {
-      if (Array.isArray(tenantsMap)) {
-        tenantsMap.forEach(t => {
-          if (matchesProperty(t.propertyId || t.property_id, t.propertyTitle || t.property_title)) addTenantIfUnique(t);
-        });
-      } else {
-        Object.keys(tenantsMap).forEach(key => {
-          const arr = Array.isArray(tenantsMap[key]) ? tenantsMap[key] : [tenantsMap[key]];
-          arr.forEach(t => {
-            if (matchesProperty(t.propertyId || t.property_id, t.propertyTitle || t.property_title, key)) addTenantIfUnique(t);
-          });
-        });
-      }
-    }
+    // (localStorage propertyTenants logic removed in favor of pure API data)
 
     // 5. Embedded tenant details directly on property object
     if (propertyObj) {
@@ -628,8 +581,8 @@ export default function LandlordProperties() {
     return matchesSearch && matchesRent && matchesLocation && matchesType;
   });
 
-  // Dynamic Active Tenants from storage
-  const activeTenants = Object.values(tenantsMap).flat();
+  // Dynamic Active Tenants from backend (no longer reading local storage array)
+  // Replaced by specific lookups via getTenantsForProperty
 
   // Rotate pastel styles for cards
   const pastelStyles = [
@@ -746,7 +699,7 @@ export default function LandlordProperties() {
                 <div
                   key={item.id ? `prop-${item.id}` : `prop-idx-${idx}`}
                   style={{ animationDelay: `${(idx % 8) * 45}ms` }}
-                  className="ap-property-card bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
+                  className="ap-property-card bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
                 >
                   {/* Real Property Photo */}
                   <div className="ap-card-visual flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-ink-100 dark:bg-white/10 relative">
@@ -777,7 +730,7 @@ export default function LandlordProperties() {
                                   key={t.id || tIdx}
                                   src={t.avatar}
                                   name={t.name || t.tenantName}
-                                  className="w-7 h-7 rounded-full border-2 border-white dark:border-[#16241F] text-[11px] font-bold text-white shrink-0 shadow-xs"
+                                  className="w-7 h-7 rounded-full border-2 border-white dark:border-[#07130D] text-[11px] font-bold text-white shrink-0 shadow-xs"
                                 />
                               ))}
                             </div>
@@ -789,7 +742,7 @@ export default function LandlordProperties() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-ink-400 dark:text-cream-100/50">
-                            <div className="w-7 h-7 rounded-full bg-moss-700 text-white flex items-center justify-center border border-white dark:border-[#16241F]">
+                            <div className="w-7 h-7 rounded-full bg-moss-700 text-white flex items-center justify-center border border-white dark:border-[#07130D]">
                               <User className="h-3.5 w-3.5" />
                             </div>
                             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">No tenants</span>
@@ -853,7 +806,7 @@ export default function LandlordProperties() {
                         }
                         if (isLive) {
                           return (
-                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-[#07130D]merald-950/80 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-300">
                               <CheckCircle2 className="h-3 w-3" /> Live
                             </span>
                           );
@@ -870,7 +823,7 @@ export default function LandlordProperties() {
                         }
                         if (isPending) {
                           return (
-                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-300">
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-amber-100 dark:bg-[#07130D]mber-950/80 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-300">
                               <Clock className="h-3 w-3" /> Pending Review
                             </span>
                           );
@@ -884,7 +837,7 @@ export default function LandlordProperties() {
                   <div className="ap-card-actions flex items-center gap-2">
                     <button
                       onClick={() => setEditingProperty(item)}
-                      className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/40 transition-colors flex items-center gap-1 cursor-pointer"
+                      className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/40 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/40 transition-colors flex items-center gap-1 cursor-pointer"
                       title="Edit property details"
                     >
                       <Edit3 className="h-3.5 w-3.5" /> Edit
@@ -932,7 +885,7 @@ export default function LandlordProperties() {
           <div className="flex flex-col items-center justify-center pt-6 pb-4">
             <button
               onClick={() => setDisplayLimit((prev) => prev + 8)}
-              className="px-6 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs tracking-wide shadow-md transition-all flex items-center gap-2 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs tracking-wide shadow-md transition-all flex items-center gap-2 cursor-pointer"
             >
               Load More Properties ({filteredProperties.length - displayLimit} remaining)
             </button>
@@ -1027,11 +980,11 @@ export default function LandlordProperties() {
       {/* Delete Property Confirmation Modal */}
       {propertyToDelete && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => !isDeleting && setPropertyToDelete(null)}
         >
           <div
-            className="bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+            className="bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
