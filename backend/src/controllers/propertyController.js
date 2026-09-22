@@ -1,6 +1,7 @@
 import { PropertyModel } from '../models/propertyModel.js';
 import { UserModel } from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { PropertyVerificationService } from '../services/propertyVerificationService.js';
 
 export const propertyController = {
   getProperties: asyncHandler(async (req, res) => {
@@ -128,12 +129,26 @@ export const propertyController = {
     }
     const sanitizedPropertyType = (property_type || 'single_house').toString().trim().toLowerCase().replace(/\s+/g, '_');
 
+    // Run Automated Rule-Based Property Verification Engine
+    const verification = await PropertyVerificationService.verifyProperty(req.body, effectiveLandlordId);
+    
+    const isAutoApproved = verification.decision === 'AUTO_APPROVE';
+    const assignedStatus = isAutoApproved ? 'active_vacant' : 'pending_review';
+    const approvalType = isAutoApproved ? 'automatic' : 'pending';
+    const approvedAt = isAutoApproved ? new Date().toISOString() : null;
+
     const property = await PropertyModel.createProperty({
       effectiveLandlordId, title, slug, description, sanitizedPropertyType, 
-      address_line1, city, state, bedrooms, bathrooms, rent_amount, status: 'pending_review', 
+      address_line1, city, state, bedrooms, bathrooms, rent_amount, 
+      status: assignedStatus, 
       ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
       rules, images, cover_image, blocks, units,
-      is_occupied, tenant_name, tenant_contact, lease_start_date, available_from
+      is_occupied, tenant_name, tenant_contact, lease_start_date, available_from,
+      verification_score: verification.score,
+      approval_type: approvalType,
+      risk_level: verification.riskLevel,
+      verification_results: verification.results,
+      approved_at: approvedAt
     });
 
     if (Array.isArray(amenities) && amenities.length > 0) {
@@ -142,17 +157,29 @@ export const propertyController = {
       }
     }
 
-    await PropertyModel.queueForApproval(property.id, effectiveLandlordId);
+    // Queue status reflects approval or pending review
+    const queueStatus = isAutoApproved ? 'approved' : 'queued';
+    await PropertyModel.queueForApproval(property.id, effectiveLandlordId, queueStatus);
 
     const createdBlocks = await PropertyModel.getBlocks(property.id);
     const createdUnits = await PropertyModel.getUnits(property.id);
+
+    const responseMessage = isAutoApproved
+      ? 'Property verified and automatically approved! Your listing is now active and live.'
+      : 'Property submitted successfully! It is now pending admin review before going live.';
 
     res.status(201).json({
       ...property,
       blocks: createdBlocks,
       units: createdUnits,
-      status: 'pending_review',
-      message: 'Property submitted successfully! It is now pending admin review before going live.'
+      status: assignedStatus,
+      approval_type: approvalType,
+      verification_score: verification.score,
+      risk_level: verification.riskLevel,
+      verification_results: verification.results,
+      approved_at: approvedAt,
+      review_reasons: verification.reviewReasons,
+      message: responseMessage
     });
   }),
 

@@ -51,6 +51,11 @@ export const adminController = {
         images: p.images,
         latitude: p.latitude,
         longitude: p.longitude,
+        approvalType: p.approval_type || (statusLabel === 'Live' ? 'manual' : null),
+        verificationScore: p.verification_score,
+        riskLevel: p.risk_level,
+        verificationResults: typeof p.verification_results === 'string' ? (() => { try { return JSON.parse(p.verification_results); } catch(e) { return p.verification_results; } })() : p.verification_results,
+        approvedAt: p.approved_at,
       };
     }));
 
@@ -64,10 +69,12 @@ export const adminController = {
     let newPropertyStatus = 'pending_review';
     let newQueueStatus = 'queued';
     let rejectionReason = reason || notes || null;
+    let manualApprovalType = null;
 
     if (action === 'approve') {
       newPropertyStatus = 'active_vacant';
       newQueueStatus = 'approved';
+      manualApprovalType = 'manual';
     } else if (action === 'reject') {
       newPropertyStatus = 'inactive';
       newQueueStatus = 'rejected';
@@ -76,7 +83,7 @@ export const adminController = {
       newQueueStatus = 'under_review';
     }
 
-    const property = await AdminModel.updatePropertyStatus(id, newPropertyStatus);
+    const property = await AdminModel.updatePropertyStatus(id, newPropertyStatus, manualApprovalType);
     if (!property) {
       return res.status(404).json({ error: 'Property listing not found.' });
     }
@@ -88,6 +95,7 @@ export const adminController = {
       action,
       status: newPropertyStatus,
       queue_status: newQueueStatus,
+      approval_type: property.approval_type,
       message: action === 'approve'
         ? `Property "${property.title}" approved and is now active & live!`
         : (action === 'reject'

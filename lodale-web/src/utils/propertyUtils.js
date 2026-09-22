@@ -290,6 +290,16 @@ export async function handlePropertySubmit({
     
     if (backendProp && backendProp.id) {
       newPropertyObj.id = backendProp.id;
+      if (backendProp.status) {
+        newPropertyObj.rawStatus = backendProp.status;
+        const isLive = backendProp.status === 'active_vacant' || backendProp.status === 'approved' || backendProp.status === 'live';
+        newPropertyObj.status = isLive ? "Live" : (backendProp.status === 'inactive' ? "Rejected" : "Pending Approval");
+        newPropertyObj.verificationStatus = isLive ? "Approved" : "Under Verification";
+      }
+      if (backendProp.approval_type) newPropertyObj.approvalType = backendProp.approval_type;
+      if (backendProp.verification_score !== undefined) newPropertyObj.verificationScore = backendProp.verification_score;
+      if (backendProp.risk_level) newPropertyObj.riskLevel = backendProp.risk_level;
+      if (backendProp.verification_results) newPropertyObj.verificationResults = backendProp.verification_results;
     }
   } catch (err) {
     console.error("Backend API property create error:", err);

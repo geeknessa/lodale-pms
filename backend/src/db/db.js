@@ -191,15 +191,6 @@ export async function initDb() {
       `);
     }
 
-    // Ensure test landlord jane@gmail.com exists
-    const landlordCheck = await client.query("SELECT id FROM users WHERE LOWER(email) = 'jane@gmail.com'");
-    if (landlordCheck.rowCount === 0) {
-      await client.query(`
-        INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number, account_status)
-        VALUES 
-          ('Jane', 'Landlord', 'jane@gmail.com', '$2a$10$GaGLHlgXkLLKXbPhR5au1eN97UQO13kBYo6FMO4Pv8PGeulq.vkbe', 'landlord', 'verified', '+234 802 000 0000', 'active')
-      `);
-    }
 
     // Purge non-existent test tenants if present
     await client.query(`

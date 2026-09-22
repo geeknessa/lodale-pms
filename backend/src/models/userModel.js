@@ -15,8 +15,8 @@ export const UserModel = {
     }
 
     // Landlord aliases
-    if (cleanEmail === 'landlord' || cleanEmail === 'landlord@lodale.com' || cleanEmail === 'landlord@gmail.com' || cleanEmail === 'jane@gmail.com') {
-      const res = await pool.query("SELECT * FROM users WHERE LOWER(email) IN ('landlord', 'landlord@lodale.com', 'landlord@gmail.com', 'jane@gmail.com') OR primary_role = 'landlord' LIMIT 1");
+    if (cleanEmail === 'landlord' || cleanEmail === 'landlord@lodale.com' || cleanEmail === 'landlord@gmail.com') {
+      const res = await pool.query("SELECT * FROM users WHERE LOWER(email) IN ('landlord', 'landlord@lodale.com', 'landlord@gmail.com') OR primary_role = 'landlord' LIMIT 1");
       if (res.rows[0]) return res.rows[0];
     }
 

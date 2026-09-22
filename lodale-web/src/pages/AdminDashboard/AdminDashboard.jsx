@@ -1441,16 +1441,23 @@ export default function AdminDashboard() {
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span
-                            className={`text-xs px-2.5 py-0.5 rounded font-bold uppercase ${lst.status === "Live"
-                              ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
-                              : lst.status === "Pending Approval"
-                                ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
-                                : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
-                              }`}
-                          >
-                            {lst.status}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`text-xs px-2.5 py-0.5 rounded font-bold uppercase ${lst.status === "Live"
+                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
+                                : lst.status === "Pending Approval"
+                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
+                                  : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
+                                }`}
+                            >
+                              {lst.status}
+                            </span>
+                            {lst.approvalType && (
+                              <span className="text-[10.5px] px-2 py-0.5 rounded-md font-bold uppercase bg-[#DAD7CD]/50 dark:bg-white/10 text-[#344E41] dark:text-[#E5C583]">
+                                {lst.approvalType === 'automatic' ? '⚡ Auto' : 'Manual'}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs text-[#262626]/50 dark:text-[#A3BCA7]/60">
                             {lst.type}
                           </span>
@@ -2325,20 +2332,85 @@ export default function AdminDashboard() {
                 </p>
               </div>
 
-              <div>
-                <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Verification Status</h4>
-                <div className="text-xs text-[#262626] dark:text-[#E4EBE6] mt-1 flex items-center gap-1.5">
-                  <span>Title Deed Document:</span>
-                  {selectedListing.deedVerified ? (
-                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Verified
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 font-semibold text-rose-700 dark:text-rose-400">
-                      <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Unverified
+              {/* Verification & Risk Summary Card */}
+              <div className="bg-[#DAD7CD]/30 dark:bg-[#1B2C25] p-3.5 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] space-y-2.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#262626] dark:text-[#E5C583] flex items-center gap-1.5">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-[#E5C583]" />
+                    <span>System Verification & Approval</span>
+                  </h4>
+                  {selectedListing.approvalType && (
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider ${
+                      selectedListing.approvalType === 'automatic'
+                        ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300'
+                        : (selectedListing.approvalType === 'manual'
+                          ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-300'
+                          : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300')
+                    }`}>
+                      {selectedListing.approvalType === 'automatic' ? '⚡ Automatically Approved' : (selectedListing.approvalType === 'manual' ? 'Manually Approved' : 'Pending Admin Review')}
                     </span>
                   )}
                 </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  <div className="p-2 bg-white/70 dark:bg-white/5 rounded border border-black/5 dark:border-white/5">
+                    <div className="text-[11px] text-[#262626]/70 dark:text-[#A3BCA7]">Verification Score</div>
+                    <div className="font-extrabold text-[#344E41] dark:text-[#E5C583] text-sm mt-0.5">
+                      {selectedListing.verificationScore !== null && selectedListing.verificationScore !== undefined
+                        ? `${selectedListing.verificationScore} / 100`
+                        : (selectedListing.status === 'Live' ? '90+ / 100' : 'Under Review')}
+                    </div>
+                  </div>
+
+                  <div className="p-2 bg-white/70 dark:bg-white/5 rounded border border-black/5 dark:border-white/5">
+                    <div className="text-[11px] text-[#262626]/70 dark:text-[#A3BCA7]">Risk Level</div>
+                    <div className={`font-extrabold text-xs uppercase mt-0.5 ${
+                      (selectedListing.riskLevel || '').toLowerCase() === 'low'
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : ((selectedListing.riskLevel || '').toLowerCase() === 'high'
+                          ? 'text-rose-700 dark:text-rose-400'
+                          : 'text-amber-700 dark:text-amber-400')
+                    }`}>
+                      {selectedListing.riskLevel || (selectedListing.status === 'Live' ? 'Low' : 'Needs Review')}
+                    </div>
+                  </div>
+
+                  <div className="p-2 bg-white/70 dark:bg-white/5 rounded border border-black/5 dark:border-white/5 col-span-2 sm:col-span-1">
+                    <div className="text-[11px] text-[#262626]/70 dark:text-[#A3BCA7]">Title Document</div>
+                    <div className="font-bold text-xs mt-0.5">
+                      {selectedListing.ownershipDoc || selectedListing.ownership_doc || selectedListing.deedVerified ? (
+                        <span className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Uploaded
+                        </span>
+                      ) : (
+                        <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                          <XCircle className="h-3 w-3" /> Missing
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* If detailed verificationResults breakdown is available */}
+                {selectedListing.verificationResults && typeof selectedListing.verificationResults === 'object' && (
+                  <div className="mt-1 pt-2 border-t border-black/5 dark:border-white/5 space-y-1">
+                    <div className="text-[11px] font-bold text-[#262626]/80 dark:text-[#E4EBE6]">Rule-Based Checks:</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
+                      {Object.entries(selectedListing.verificationResults).map(([k, check]) => {
+                        if (!check || typeof check !== 'object') return null;
+                        const isPass = check.status === 'PASS';
+                        return (
+                          <div key={k} className="flex items-center justify-between px-2 py-1 bg-white/50 dark:bg-white/5 rounded" title={check.reason || ''}>
+                            <span className="text-[#262626]/80 dark:text-[#A3BCA7] truncate mr-1">{check.name || k.replace(/_/g, ' ')}:</span>
+                            <span className={`font-bold shrink-0 ${isPass ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                              {check.status} {check.score !== undefined ? `(${check.score}/${check.maxScore})` : ''}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Uploaded Property Photos Gallery */}

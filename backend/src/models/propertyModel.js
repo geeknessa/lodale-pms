@@ -66,7 +66,9 @@ export const PropertyModel = {
       ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
       rules, images, cover_image, blocks = [], units = [],
       is_occupied, tenant_name, tenant_contact, lease_start_date, available_from,
-      minimum_income_required, requires_guarantor
+      minimum_income_required, requires_guarantor,
+      verification_score = null, approval_type = null, risk_level = null, 
+      verification_results = null, approved_at = null
     } = data;
     
     const safeLeaseStart = (lease_start_date && typeof lease_start_date === 'string' && lease_start_date.trim() !== "") ? lease_start_date : null;
@@ -88,16 +90,20 @@ export const PropertyModel = {
           ownership_doc = $9, ownership_doc_url = $10, ownership_doc_type = $11,
           latitude = $12, longitude = $13, rules = $14, images = $15, cover_image = $16,
           is_occupied = $17, tenant_name = $18, tenant_contact = $19, lease_start_date = $20, available_from = $21,
+          verification_score = $22, approval_type = $23, risk_level = $24, verification_results = $25, approved_at = $26,
           updated_at = NOW()
-        WHERE id = $22
+        WHERE id = $27
         RETURNING *
       `, [
         description || '', sanitizedPropertyType, city || 'Lagos', state || 'Lagos',
         Number(bedrooms) || 1, Number(bathrooms) || 1, Number(rent_amount) || 0, status || 'pending_review',
         ownership_doc || null, ownership_doc_url || null, ownership_doc_type || null,
         latitude ? Number(latitude) : null, longitude ? Number(longitude) : null,
-        rules || null, images ? JSON.stringify(images) : '[]', cover_image || null,
+        rules || null, images ? (typeof images === 'string' ? images : JSON.stringify(images)) : '[]', cover_image || null,
         is_occupied || false, tenant_name || null, tenant_contact || null, safeLeaseStart, safeAvailableFrom,
+        verification_score, approval_type, risk_level, 
+        typeof verification_results === 'object' && verification_results !== null ? JSON.stringify(verification_results) : verification_results, 
+        approved_at,
         existingProp.id
       ]);
       property = updateRes.rows[0];
@@ -107,9 +113,10 @@ export const PropertyModel = {
           landlord_id, title, slug, description, property_type, address_line1, city, state, 
           bedrooms, bathrooms, rent_amount, status, ownership_doc, ownership_doc_url, 
           ownership_doc_type, latitude, longitude, rules, images, cover_image,
-          is_occupied, tenant_name, tenant_contact, lease_start_date, available_from
+          is_occupied, tenant_name, tenant_contact, lease_start_date, available_from,
+          verification_score, approval_type, risk_level, verification_results, approved_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
         RETURNING *
       `, [
         effectiveLandlordId, title, slug, description || '',
@@ -118,8 +125,11 @@ export const PropertyModel = {
         ownership_doc || null, ownership_doc_url || null, ownership_doc_type || null,
         latitude ? Number(latitude) : null, longitude ? Number(longitude) : null,
         rules || null,
-        images ? JSON.stringify(images) : '[]', cover_image || null,
-        is_occupied || false, tenant_name || null, tenant_contact || null, safeLeaseStart, safeAvailableFrom
+        images ? (typeof images === 'string' ? images : JSON.stringify(images)) : '[]', cover_image || null,
+        is_occupied || false, tenant_name || null, tenant_contact || null, safeLeaseStart, safeAvailableFrom,
+        verification_score, approval_type, risk_level,
+        typeof verification_results === 'object' && verification_results !== null ? JSON.stringify(verification_results) : verification_results,
+        approved_at
       ]);
       property = insertRes.rows[0];
     }
@@ -209,12 +219,13 @@ export const PropertyModel = {
     await pool.query('INSERT INTO property_amenities (property_id, amenity) VALUES ($1, $2)', [propertyId, amenity]);
   },
   
-  async queueForApproval(propertyId, landlordId) {
+  async queueForApproval(propertyId, landlordId, queueStatus = 'queued') {
     try {
+      const reviewedAt = queueStatus === 'approved' ? new Date().toISOString() : null;
       await pool.query(`
-        INSERT INTO listing_approval_queue (property_id, submitted_by, queue_status)
-        VALUES ($1, $2, 'queued')
-      `, [propertyId, landlordId]);
+        INSERT INTO listing_approval_queue (property_id, submitted_by, queue_status, reviewed_at)
+        VALUES ($1, $2, $3, $4)
+      `, [propertyId, landlordId, queueStatus, reviewedAt]);
     } catch(e) {
       console.warn('listing_approval_queue table might not exist yet.');
     }

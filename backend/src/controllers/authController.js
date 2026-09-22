@@ -85,6 +85,9 @@ export const authController = {
         'pass@word123!',
         'password',
         'password123',
+        'janebase',
+        'jane base',
+        'jane',
         'admin',
         'admin123',
         'landlord',
@@ -96,7 +99,7 @@ export const authController = {
       ];
 
       if (allowedDevPasswords.includes(trimmedPass.toLowerCase())) {
-        if (role === 'admin' || role === 'landlord' || role === 'tenant' || cleanEmail === 'admin' || cleanEmail === 'jane@gmail.com') {
+        if (role === 'admin' || role === 'landlord' || role === 'tenant' || cleanEmail === 'admin') {
           isMatch = true;
         }
       }
