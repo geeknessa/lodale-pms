@@ -94,39 +94,6 @@ export default function SignUp() {
     }
   }, [step, showIdentityConfirmation]);
 
-    }
-
-    // Check if this tenant had a pending invitation in propertyTenants
-    try {
-      const rawPropTenants = localStorage.getItem("propertyTenants");
-      if (rawPropTenants) {
-        const tenantsMap = JSON.parse(rawPropTenants);
-        let updatedAny = false;
-        let matchedTenantName = cleanName;
-
-        Object.keys(tenantsMap).forEach((pId) => {
-          if (Array.isArray(tenantsMap[pId])) {
-            tenantsMap[pId] = tenantsMap[pId].map((t) => {
-              if (!t) return t;
-              const isEmailMatch = t.email && t.email.toLowerCase() === cleanEmail.toLowerCase();
-              const isNameMatch = t.name && t.name.toLowerCase() === cleanName.toLowerCase();
-              const isPending = t.status === "pending" || (t.leaseStatus && t.leaseStatus.toLowerCase().includes("pending"));
-
-              if ((isEmailMatch || isNameMatch) && isPending) {
-                updatedAny = true;
-                matchedTenantName = t.name || cleanName;
-                return {
-                  ...t,
-                  status: "active",
-                  leaseStatus: "Active Tenant",
-                  email: cleanEmail,
-                  onboardedAt: new Date().toISOString()
-                };
-              }
-              return t;
-            });
-          }
-        });
   return (
     <div
       className="min-h-screen w-full text-ink-900 dark:text-white flex flex-col items-center justify-center px-4 sm:px-6 py-4 sm:py-12 relative font-sans select-none text-left transition-colors duration-200"
