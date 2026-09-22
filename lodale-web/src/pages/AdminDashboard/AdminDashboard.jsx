@@ -2307,7 +2307,7 @@ export default function AdminDashboard() {
                           ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-300'
                           : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300')
                     }`}>
-                      {selectedListing.approvalType === 'automatic' ? '⚡ Automatically Approved' : (selectedListing.approvalType === 'manual' ? 'Manually Approved' : 'Pending Admin Review')}
+                      {selectedListing.approvalType === 'automatic' ? 'Automatically Approved' : (selectedListing.approvalType === 'manual' ? 'Manually Approved' : 'Pending Admin Review')}
                     </span>
                   )}
                 </div>

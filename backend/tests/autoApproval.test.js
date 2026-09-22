@@ -226,17 +226,17 @@ async function runTests() {
     }
 
     // ==================================================================
-    // TEST 6: Insufficient Price Comparison Data -> ADMIN REVIEW
+    // TEST 6: Area With 0 Comparables & Implausible Price -> ADMIN REVIEW
     // ==================================================================
-    console.log('--- TEST 6: Insufficient price comparison data ---');
-    // Submitting property in an area with 0 existing comparable live properties
+    console.log('--- TEST 6: Insufficient price comparison data with implausible price ---');
+    // Submitting property in an area with 0 existing comparables and implausible price
     const noComparablesProperty = {
       ...validPropertyData,
       title: 'Cottage in Remote Unique Area',
       address_line1: '1 Remote Mountain Rd',
       city: 'Obudu-Highlands-998877',
       state: 'Cross River',
-      rent_amount: 2500000
+      rent_amount: 999000000000 // Implausibly high without comparables
     };
 
     const t6Verification = await PropertyVerificationService.verifyProperty(noComparablesProperty, testLandlordId);
@@ -244,7 +244,7 @@ async function runTests() {
     console.log(`Reasons: ${t6Verification.reviewReasons.join(' | ')}`);
 
     if (t6Verification.decision === 'ADMIN_REVIEW' && t6Verification.results.price_analysis.status === 'INSUFFICIENT_DATA') {
-      console.log('✓ TEST 6 PASSED: Insufficient price comparison data correctly identified; routed to Admin Review.\n');
+      console.log('✓ TEST 6 PASSED: Implausible price in area without comparables routed to Admin Review.\n');
       passedTests++;
     } else {
       console.error('✗ TEST 6 FAILED: Expected INSUFFICIENT_DATA but got:', t6Verification);

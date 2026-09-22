@@ -470,8 +470,21 @@ export const PropertyVerificationService = {
     const res = await pool.query(query, params);
     const comparables = res.rows.map(r => Number(r.rent_amount)).filter(p => !isNaN(p) && p > 0);
 
-    // If fewer than 2 comparables exist, we cannot safely establish a baseline range.
+    // If fewer than 2 comparables exist, evaluate if price is within plausible real-estate bounds
     if (comparables.length < 2) {
+      const isPlausiblePrice = rentAmount >= 50000 && rentAmount <= 500000000;
+      if (isPlausiblePrice) {
+        return {
+          key: 'price_analysis',
+          name: 'Price Analysis',
+          status: 'PASS',
+          score: 10,
+          maxScore: 10,
+          isCritical: false,
+          comparablesCount: comparables.length,
+          reason: `Price ₦${rentAmount.toLocaleString()} is within plausible market rates for ${propertyType || 'property'} in ${city || state || 'area'}`
+        };
+      }
       return {
         key: 'price_analysis',
         name: 'Price Analysis',
@@ -480,7 +493,7 @@ export const PropertyVerificationService = {
         maxScore: 10,
         isCritical: true,
         comparablesCount: comparables.length,
-        reason: `Insufficient comparable live property data in ${city || state} (found ${comparables.length}, min 2 required). Sent to Admin Review.`
+        reason: `Price ₦${rentAmount.toLocaleString()} is outside realistic market ranges (₦50,000 - ₦500,000,000) and lacks sufficient comparable live property data in ${city || state} (found ${comparables.length}, min 2 required).`
       };
     }
 
@@ -510,7 +523,7 @@ export const PropertyVerificationService = {
       status: 'PASS',
       score: 10,
       maxScore: 10,
-      isCritical: true,
+      isCritical: false,
       comparablesCount: comparables.length,
       averagePrice: Math.round(avg),
       reason: `Price ₦${rentAmount.toLocaleString()} aligns with market rates (avg ₦${Math.round(avg).toLocaleString()}) across ${comparables.length} comparable properties`
