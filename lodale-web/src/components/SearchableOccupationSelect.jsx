@@ -74,7 +74,7 @@ export default function SearchableOccupationSelect({ value, onChange, placeholde
     <div ref={containerRef} className={`relative w-full text-left font-sans ${className}`}>
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-[#12221C] p-2.5 sm:p-3 text-xs sm:text-sm text-ink-900 dark:text-white cursor-pointer transition-colors focus-within:border-moss-600 shadow-sm"
+        className="flex items-center justify-between w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-[#07130D] p-2.5 sm:p-3 text-xs sm:text-sm text-ink-900 dark:text-white cursor-pointer transition-colors focus-within:border-moss-600 shadow-sm"
       >
         <span className={value ? "font-semibold text-ink-900 dark:text-white" : "text-ink-400 dark:text-cream-100/50"}>
           {value || placeholder}
@@ -83,7 +83,7 @@ export default function SearchableOccupationSelect({ value, onChange, placeholde
       </div>
 
       {isOpen && (
-        <div className="absolute z-[9999] left-0 right-0 mt-1 bg-white dark:bg-[#162721] border border-ink-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden max-h-60 flex flex-col">
+        <div className="absolute z-[9999] left-0 right-0 mt-1 bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-xl shadow-xl overflow-hidden max-h-60 flex flex-col">
           <div className="p-2 border-b border-ink-100 dark:border-white/10 flex items-center gap-2 bg-cream-50/50 dark:bg-white/5">
             <Search className="h-3.5 w-3.5 text-ink-400 dark:text-cream-100/50" />
             <input
@@ -107,7 +107,7 @@ export default function SearchableOccupationSelect({ value, onChange, placeholde
                     onClick={() => handleSelect(occ)}
                     className={`w-full text-left px-3 py-2 text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-moss-50 text-moss-800 dark:bg-moss-900/40 dark:text-[#E5C583] font-bold'
+                        ? 'bg-moss-50 text-moss-800 dark:bg-white/10 dark:text-[#E5C583] font-bold'
                         : 'hover:bg-ink-50 dark:hover:bg-white/5 text-ink-800 dark:text-cream-100'
                     }`}
                   >

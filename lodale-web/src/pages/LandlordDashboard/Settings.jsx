@@ -1,20 +1,56 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
-import { User, Lock, Sun, Moon, Calendar, LogOut, Pencil, FileText, CheckCircle2 } from "lucide-react";
+import { User, Lock, Sun, Moon, Calendar, LogOut, Pencil, FileText, CheckCircle2, ShieldCheck, Loader2, Settings as SettingsIcon, Award, Clock, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
 import { profileService } from "../../services/profileService";
 import { leaseService } from "../../services/leaseService";
+import { reminderService } from "../../services/reminderService";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
+import EmailVerificationModal from "../../components/EmailVerificationModal";
 import "./Settings.css";
 
-export default function Settings() {
+const ToggleSwitch = ({ checked, onChange, label }) => (
+  <label className="inline-flex items-center gap-3 cursor-pointer select-none">
+    {label && <span className="text-xs font-extrabold text-ink-800 dark:text-cream-100">{label}</span>}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+        checked ? 'bg-emerald-600 dark:bg-[#E5C583]' : 'bg-ink-300 dark:bg-white/20'
+      }`}
+    >
+      <span
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-[#1E1E1E] shadow-md ring-0 transition duration-200 ease-in-out ${
+          checked ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  </label>
+);
+
+export default function Settings({ onShowReportModal }) {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
-  const [activeTab, setActiveTab] = useState("profile"); // profile | password
+  const [activeTab, setActiveTab] = useState("profile"); // profile | password | lease_settings
   const [gender, setGender] = useState("male"); // male | female
+
+  const [reminderSettings, setReminderSettings] = useState(() => reminderService.getSettings());
+
+  const handleReminderSettingChange = (key, value) => {
+    const newSettings = { ...reminderSettings, [key]: value };
+    setReminderSettings(newSettings);
+    reminderService.saveSettings(newSettings);
+    triggerToast("Settings saved successfully.", "success");
+  };
+
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [isSigningLease, setIsSigningLease] = useState(false);
 
   // Landlord Name splitting with per-tab sessionStorage priority
   const [userProfile, setUserProfile] = useState({
@@ -51,18 +87,11 @@ export default function Settings() {
   const [bankAccountName, setBankAccountName] = useState("");
 
   const loadStoredProfile = () => {
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase() || "";
-    let localProf = null;
-    try {
-      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile") || (emailKey ? sessionStorage.getItem("userProfile_" + emailKey) : null);
-      if (raw) localProf = JSON.parse(raw);
-    } catch (e) { }
-
-    const storedUsername = sessionStorage.getItem("username") || (emailKey ? sessionStorage.getItem("username_" + emailKey) : null) || sessionStorage.getItem("username") || "";
-
-    let fname = localProf?.firstName || localProf?.first_name || "";
-    let lname = localProf?.lastName || localProf?.last_name || "";
-    if (!fname && storedUsername) {
+    const storedUsername = sessionStorage.getItem("username") || "Landlord User";
+    
+    let fname = "";
+    let lname = "";
+    if (storedUsername) {
       const parts = storedUsername.trim().split(" ");
       fname = parts[0] || "";
       lname = parts.slice(1).join(" ") || "";
@@ -70,23 +99,6 @@ export default function Settings() {
 
     setFirstName(fname);
     setLastName(lname);
-    setEmail(localProf?.email || emailKey || "");
-    setPhone(localProf?.phone || localProf?.phone_number || "");
-    setAddress(localProf?.address || "");
-    setDob(localProf?.dob || "");
-    setLocation(localProf?.location || "");
-    setPostalCode(localProf?.postalCode || localProf?.postal_code || "");
-    if (localProf?.gender) setGender(localProf.gender);
-
-    let savedAvatar = "";
-    if (emailKey) {
-      savedAvatar = localStorage.getItem("landlordAvatar_" + emailKey);
-    }
-    if (!savedAvatar) {
-      savedAvatar = sessionStorage.getItem("landlordAvatarUrl") || localStorage.getItem("landlordAvatarUrl") || localProf?.avatar || "";
-    }
-    setAvatarUrl(savedAvatar || "");
-    if (localProf) setUserProfile(localProf);
   };
 
   useEffect(() => {
@@ -129,17 +141,20 @@ export default function Settings() {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        triggerToast("Image file is too large (max 5MB).", "error", "Upload Failed");
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        triggerToast("Invalid file type. Please select an image.", "error", "Upload Failed");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = (evt) => {
         const base64Data = evt.target.result;
         setAvatarUrl(base64Data);
-        if (email) {
-          localStorage.setItem("landlordAvatar_" + email.toLowerCase(), base64Data);
-        }
         const updatedProf = { ...userProfile, avatar: base64Data };
         setUserProfile(updatedProf);
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-        window.dispatchEvent(new Event("storage"));
       };
       reader.readAsDataURL(file);
     }
@@ -177,6 +192,8 @@ export default function Settings() {
       triggerToast("Please provide your signature and check the confirmation box.", "warning");
       return;
     }
+    if (isSigningLease) return;
+    setIsSigningLease(true);
     try {
       await leaseService.signLease(selectedLeaseToSign.id);
       triggerToast("Lease signed successfully!", "success");
@@ -186,12 +203,16 @@ export default function Settings() {
       fetchLeases();
     } catch (err) {
       triggerToast(err.response?.data?.error || "Failed to sign lease", "error");
+    } finally {
+      setIsSigningLease(false);
     }
   };
 
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    if (isSavingProfile) return;
+    setIsSavingProfile(true);
     try {
       const updatedName = `${firstName.trim()} ${lastName.trim()}`.trim();
       const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
@@ -229,25 +250,14 @@ export default function Settings() {
       };
 
       setUserProfile(updatedProf);
-      sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-      sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-      if (cleanEmail) {
-        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
-        sessionStorage.setItem("username_" + cleanEmail, updatedName);
-      }
       if (updatedName) {
         sessionStorage.setItem("username", updatedName);
-        sessionStorage.setItem("username", updatedName);
-      }
-      if (avatarUrl && cleanEmail) {
-        localStorage.setItem("landlordAvatar_" + cleanEmail, avatarUrl);
       }
 
       setSaveSuccess(true);
       setToastMessage("Landlord profile saved successfully!");
       triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
 
-      window.dispatchEvent(new Event("storage"));
 
       setTimeout(() => {
         setSaveSuccess(false);
@@ -255,19 +265,39 @@ export default function Settings() {
       }, 3000);
     } catch (err) {
       triggerToast("Failed to save profile.", "error", "Error");
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
-  const handleSavePassword = (e) => {
+  const handleSavePassword = async (e) => {
     e.preventDefault();
+    if (isSavingPassword) return;
+    if (!currPassword) {
+      triggerToast("Please enter your current password.", "warning");
+      return;
+    }
     if (newPassword !== confirmPassword) {
       triggerToast("New password and confirmation do not match.", "error", "Password Mismatch");
       return;
     }
-    triggerToast("Security password updated successfully!", "success", "Password Changed");
-    setCurrPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+    if (newPassword.length < 6) {
+      triggerToast("Password must be at least 6 characters long.", "warning");
+      return;
+    }
+
+    setIsSavingPassword(true);
+    try {
+      await userService.changePassword(currPassword, newPassword);
+      triggerToast("Security password updated successfully!", "success", "Password Changed");
+      setCurrPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      triggerToast(err.message || err.error || "Failed to update password", "error");
+    } finally {
+      setIsSavingPassword(false);
+    }
   };
 
   const handleDiscardProfile = () => {
@@ -299,13 +329,33 @@ export default function Settings() {
         </div>
       )}
 
+      {/* Landlord Profile Completeness Guidance Banner */}
+      <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-[#07130D]mber-950/20 border border-amber-200 dark:border-amber-900/50 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-[#07130D]mber-900/30 flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800/50">
+              <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                Landlord Settings & Portfolio Verification
+              </h4>
+              <p className="text-xs text-amber-700/80 dark:text-amber-200/70 mt-1 leading-relaxed max-w-2xl">
+                You can always return to <strong>Settings</strong> anytime to update your account details. 
+                Please note: <strong>You must complete your required profile fields to manage listings and receive tenant applications.</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="set-ref-layout">
 
         {/* LEFT COLUMN - USER PROFILE CARD */}
         <div className="set-ref-left">
           <div className="set-ref-profile-box">
             <div className="set-ref-avatar-wrapper" onClick={() => fileInputRef.current?.click()} title="Click to upload a new photo">
-              <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-[#3A5A40]/10 dark:bg-[#1E382A] text-[#2C4633] dark:text-[#E5C583] border-4 border-neutral-200 dark:border-white/10 cursor-pointer">
+              <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-[#3A5A40]/10 dark:bg-[#07130D] text-[#2C4633] dark:text-[#E5C583] border-4 border-neutral-200 dark:border-white/10 cursor-pointer">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="Landlord Profile" className="h-full w-full object-cover" />
                 ) : (
@@ -358,6 +408,24 @@ export default function Settings() {
 
             <button
               type="button"
+              className={`set-ref-menu-item ${activeTab === "reports" ? "active" : ""}`}
+              onClick={() => setActiveTab("reports")}
+            >
+              <Calendar className="h-4.5 w-4.5" />
+              <span>Portfolio Reports</span>
+            </button>
+
+            <button
+              type="button"
+              className={`set-ref-menu-item ${activeTab === "lease_settings" ? "active" : ""}`}
+              onClick={() => setActiveTab("lease_settings")}
+            >
+              <SettingsIcon className="h-4.5 w-4.5" />
+              <span>Lease & Tenant Settings</span>
+            </button>
+
+            <button
+              type="button"
               className="set-ref-menu-item logout"
               onClick={handleSignOut}
             >
@@ -369,7 +437,37 @@ export default function Settings() {
 
         {/* RIGHT COLUMN - DETAIL FORM CARD */}
         <div className="set-ref-right">
-          {activeTab === "profile" ? (
+          {activeTab === "reports" ? (
+            <div className="set-ref-form space-y-6">
+              <div>
+                <h1 className="set-ref-title">Portfolio Reports</h1>
+                <p className="text-xs text-neutral-500 dark:text-cream-100/70 mt-1">
+                  Generate and download printable property summaries, tenant payment tracking reports, and financial performance statements.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl bg-cream-50/60 dark:bg-white/5 border border-moss-700/20 dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+                <div className="space-y-1">
+                  <h3 className="font-extrabold text-sm text-ink-900 dark:text-white flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" />
+                    Export Portfolio Report
+                  </h3>
+                  <p className="text-xs text-ink-500 dark:text-cream-100/60 max-w-md leading-relaxed">
+                    Create customized PDF statements for rent receipts, occupied units, active leases, and overdue payments.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onShowReportModal && onShowReportModal()}
+                  className="px-5 py-2.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d4b371] text-white dark:text-[#09090b] font-extrabold text-xs rounded-xl shadow-md cursor-pointer transition-all flex items-center gap-2 shrink-0 active:scale-95"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Create & Export Report</span>
+                </button>
+              </div>
+            </div>
+          ) : activeTab === "profile" ? (
             <form onSubmit={handleSaveProfile} className="set-ref-form">
               <h1 className="set-ref-title">Personal Information</h1>
 
@@ -600,9 +698,17 @@ export default function Settings() {
                 </button>
                 <button
                   type="submit"
-                  className="set-ref-btn-filled"
+                  disabled={isSavingProfile}
+                  className="set-ref-btn-filled flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Save Changes
+                  {isSavingProfile ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                      <span>Saving Profile...</span>
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
 
@@ -666,12 +772,144 @@ export default function Settings() {
                 </button>
                 <button
                   type="submit"
-                  className="set-ref-btn-filled"
+                  disabled={isSavingPassword}
+                  className="set-ref-btn-filled flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Save Changes
+                  {isSavingPassword ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                      <span>Updating Password...</span>
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
               </div>
             </form>
+          ) : activeTab === "lease_settings" ? (
+            <div className="set-ref-form space-y-6">
+              <div>
+                <h1 className="set-ref-title">Lease & Tenant Settings</h1>
+                <p className="text-xs text-neutral-500 dark:text-cream-100/70 mt-1 mb-6">
+                  Manage how your leases renew, configure tenant rewards, and set late fee rules.
+                </p>
+              </div>
+
+              {/* Reward Good Tenants */}
+              <div className="p-5 rounded-2xl bg-amber-50 dark:bg-[#07130D]mber-950/20 border border-amber-200 dark:border-amber-800/40">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-amber-100 dark:bg-[#07130D]mber-900/40 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
+                      <Award className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-sm text-ink-900 dark:text-amber-100">Reward Good Tenants</h3>
+                      <p className="text-[11.5px] text-ink-600 dark:text-amber-200/70 mt-1 leading-relaxed max-w-lg">
+                        Turning this on will automatically give a <strong>Gold Star</strong> to tenants who always pay their rent on time. It also allows you to easily offer them a discount when their lease is up for renewal.
+                      </p>
+                    </div>
+                  </div>
+                  <ToggleSwitch 
+                    checked={reminderSettings.loyaltyRewardsEnabled} 
+                    onChange={() => handleReminderSettingChange("loyaltyRewardsEnabled", !reminderSettings.loyaltyRewardsEnabled)} 
+                  />
+                </div>
+              </div>
+
+              {/* Lease Renewal Window */}
+              <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/40 mt-4">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-xl shrink-0">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div className="w-full">
+                    <h3 className="font-extrabold text-sm text-ink-900 dark:text-indigo-100">When should we ask the tenant if they are staying?</h3>
+                    <p className="text-[11.5px] text-ink-600 dark:text-indigo-200/70 mt-1 leading-relaxed max-w-lg mb-4">
+                      Choose how many days before the lease ends that the system should ask the tenant if they plan to renew or move out.
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <select
+                        value={[30, 45, 60, 90].includes(reminderSettings.autoNudgeDays) ? reminderSettings.autoNudgeDays : "custom"}
+                        onChange={(e) => {
+                          if (e.target.value === "custom") {
+                            handleReminderSettingChange("autoNudgeDays", 15);
+                          } else {
+                            handleReminderSettingChange("autoNudgeDays", parseInt(e.target.value));
+                          }
+                        }}
+                        className="w-full max-w-[200px] p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-indigo-950/50 text-xs font-bold text-ink-900 dark:text-indigo-100 focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value={30}>30 Days before end</option>
+                        <option value={45}>45 Days before end</option>
+                        <option value={60}>60 Days before end</option>
+                        <option value={90}>90 Days before end</option>
+                        <option value="custom">Custom...</option>
+                      </select>
+                      
+                      {![30, 45, 60, 90].includes(reminderSettings.autoNudgeDays) && (
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="number" 
+                            min="1"
+                            value={reminderSettings.autoNudgeDays}
+                            onChange={(e) => handleReminderSettingChange("autoNudgeDays", parseInt(e.target.value) || 0)}
+                            className="w-20 p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-indigo-950/50 text-xs font-bold text-ink-900 dark:text-indigo-100 focus:outline-none focus:border-indigo-500 text-center"
+                          />
+                          <span className="text-[11px] font-bold text-indigo-800 dark:text-indigo-300">Days</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Late Fee Policy */}
+              <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/40 mt-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 rounded-xl shrink-0">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                  <div className="w-full">
+                    <h3 className="font-extrabold text-sm text-ink-900 dark:text-rose-100">Set Late Fees</h3>
+                    <p className="text-[11.5px] text-ink-600 dark:text-rose-200/70 mt-1 leading-relaxed max-w-lg mb-4">
+                      Set up automatic penalties for late rent. This creates a new invoice for the tenant if they miss the grace period.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider mb-1.5">Grace Period (Days)</label>
+                        <input
+                          type="number"
+                          value={reminderSettings.gracePeriodDays}
+                          onChange={(e) => handleReminderSettingChange("gracePeriodDays", parseInt(e.target.value) || 0)}
+                          className="w-full p-2.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-rose-950/50 text-xs font-bold text-ink-900 dark:text-rose-100 focus:outline-none focus:border-rose-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider mb-1.5">Late Fee Type</label>
+                        <select
+                          value={reminderSettings.lateFeeType}
+                          onChange={(e) => handleReminderSettingChange("lateFeeType", e.target.value)}
+                          className="w-full p-2.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-rose-950/50 text-xs font-bold text-ink-900 dark:text-rose-100 focus:outline-none focus:border-rose-500"
+                        >
+                          <option value="flat">Flat Amount (₦)</option>
+                          <option value="percentage">Percentage (%)</option>
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10.5px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider mb-1.5">Late Fee Amount</label>
+                        <input
+                          type="number"
+                          value={reminderSettings.lateFeeAmount}
+                          onChange={(e) => handleReminderSettingChange("lateFeeAmount", parseInt(e.target.value) || 0)}
+                          className="w-full p-2.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-rose-950/50 text-xs font-bold text-ink-900 dark:text-rose-100 focus:outline-none focus:border-rose-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
             <div className="set-ref-form">
               <h1 className="set-ref-title">Leases & Legal Documents</h1>
@@ -687,7 +925,7 @@ export default function Settings() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {leases.map(lease => (
-                    <div key={lease.id} className="bg-white dark:bg-[#16241F] border border-[#E4EAE1] dark:border-white/10 rounded-xl p-5 shadow-sm">
+                    <div key={lease.id} className="bg-white dark:bg-[#07130D] border border-[#E4EAE1] dark:border-white/10 rounded-xl p-5 shadow-sm">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-ink-900 dark:text-white">{lease.property_title}</h3>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${lease.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
@@ -723,8 +961,8 @@ export default function Settings() {
 
       {/* Signing Modal */}
       {selectedLeaseToSign && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#12221C] rounded-2xl w-full max-w-md p-6 shadow-2xl my-8">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl w-full max-w-md p-6 shadow-2xl my-8">
             <h3 className="text-xl font-bold text-ink-900 dark:text-white mb-1 flex items-center gap-2">
               <Lock className="h-5 w-5 text-moss-600" /> Sign Lease Agreement
             </h3>
@@ -762,10 +1000,17 @@ export default function Settings() {
                 </button>
                 <button
                   onClick={handleSignLease}
-                  disabled={!signatureInput.trim() || !confirmCheck}
-                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg disabled:opacity-50"
+                  disabled={!signatureInput.trim() || !confirmCheck || isSigningLease}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg disabled:opacity-50 flex items-center gap-2 cursor-pointer disabled:cursor-not-allowed"
                 >
-                  Sign Document
+                  {isSigningLease ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                      <span>Signing Document...</span>
+                    </>
+                  ) : (
+                    "Sign Document"
+                  )}
                 </button>
               </div>
             </div>

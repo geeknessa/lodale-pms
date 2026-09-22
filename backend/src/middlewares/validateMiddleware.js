@@ -1,6 +1,20 @@
-export const validate = (schema) => (req, res, next) => {
+export const validate = (schemaOrSchemas) => (req, res, next) => {
   try {
-    req.body = schema.parse(req.body);
+    const isSingleSchema = schemaOrSchemas && schemaOrSchemas._def;
+    
+    if (isSingleSchema) {
+      req.body = schemaOrSchemas.parse(req.body);
+    } else {
+      if (schemaOrSchemas.body) {
+        req.body = schemaOrSchemas.body.parse(req.body);
+      }
+      if (schemaOrSchemas.query) {
+        req.query = schemaOrSchemas.query.parse(req.query);
+      }
+      if (schemaOrSchemas.params) {
+        req.params = schemaOrSchemas.params.parse(req.params);
+      }
+    }
     next();
   } catch (error) {
     if (error.errors) {

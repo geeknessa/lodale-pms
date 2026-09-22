@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Upload, ShieldAlert, FileText, CheckCircle2, Loader2 } from 'lucide-react';
-import { propertyService } from '../../../services/propertyService';
+import { propertyService } from "../../../services/propertyService";
+import { notificationService } from "../../../services/notificationService";
 import { triggerToast } from '../../../context/ToastContext';
 
 export default function UploadProofModal({ isOpen, onClose, property, onSuccess }) {
@@ -74,18 +75,15 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
 
       // Add notification to landlord feed
       try {
-        const savedNotifs = localStorage.getItem('landlordNotifications');
-        const currentNotifs = savedNotifs ? JSON.parse(savedNotifs) : [];
-        const newNotif = {
-          id: 'notif-proof-' + Date.now(),
+        await notificationService.createNotification({
+          userId: currentUserId || userEmail,
           title: 'Proof Submitted to Admin',
           message: `Your updated proof of ownership for "${property.title}" has been submitted and is under admin review.`,
-          time: 'Just now',
-          type: 'info',
-          read: false
-        };
-        localStorage.setItem('landlordNotifications', JSON.stringify([newNotif, ...currentNotifs]));
-      } catch (_e) {}
+          type: 'info'
+        });
+      } catch (err) {
+        console.warn('Failed to create notification via API', err);
+      }
 
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('propertyUpdated', { detail: { id: property.id, status: 'pending_review' } }));
@@ -103,13 +101,13 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg bg-white dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 text-left text-ink-900 dark:text-white font-sans">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
+      <div className="relative w-full max-w-lg bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 text-left text-ink-900 dark:text-white font-sans">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#162721]">
+        <div className="flex items-center justify-between p-5 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#07130D]">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+            <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/60 dark:text-amber-300">
               <Upload className="h-5 w-5" />
             </div>
             <div>
@@ -155,7 +153,7 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
             <select
               value={docType}
               onChange={(e) => setDocType(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 rounded-xl text-xs font-bold text-ink-900 dark:text-white focus:outline-none focus:border-moss-600 dark:focus:border-[#E5C583]"
+              className="w-full px-3.5 py-2.5 bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/15 rounded-xl text-xs font-bold text-ink-900 dark:text-white focus:outline-none focus:border-moss-600 dark:focus:border-[#E5C583]"
             >
               <option value="Certificate of Occupancy (C of O)">Certificate of Occupancy (C of O)</option>
               <option value="Deed of Assignment">Deed of Assignment</option>
@@ -203,7 +201,7 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
               value={landlordNotes}
               onChange={(e) => setLandlordNotes(e.target.value)}
               placeholder="e.g. Attached is the newly stamped Deed of Assignment from the Land Registry..."
-              className="w-full p-3 bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 rounded-xl text-xs text-ink-900 dark:text-white focus:outline-none focus:border-moss-600 dark:focus:border-[#E5C583] resize-none"
+              className="w-full p-3 bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/15 rounded-xl text-xs text-ink-900 dark:text-white focus:outline-none focus:border-moss-600 dark:focus:border-[#E5C583] resize-none"
             />
           </div>
 
@@ -220,7 +218,7 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2.5 bg-moss-700 hover:bg-moss-800 text-white dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] dark:text-[#16241F] font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 bg-moss-700 hover:bg-moss-800 text-white dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] dark:text-[#07130D] font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting ? (
                 <>

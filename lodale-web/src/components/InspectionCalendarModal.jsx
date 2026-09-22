@@ -13,10 +13,13 @@ export default function InspectionCalendarModal({ isOpen, onClose, userRole = "l
   const [inspections, setInspections] = useState([]);
 
   useEffect(() => {
-    if (isOpen) {
-      const all = inspectionService.getAllInspections();
-      setInspections(all);
+    async function loadInspections() {
+      if (isOpen && typeof inspectionService.getAllInspections === 'function') {
+        const all = await inspectionService.getAllInspections();
+        setInspections(all || []);
+      }
     }
+    loadInspections();
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -74,9 +77,9 @@ export default function InspectionCalendarModal({ isOpen, onClose, userRole = "l
   const selectedDayInspections = inspectionsByDate[selectedDateStr] || [];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-4xl bg-white dark:bg-[#12221C] rounded-3xl p-6 sm:p-8 shadow-2xl border border-neutral-200 dark:border-neutral-800 max-h-[92vh] overflow-y-auto relative text-left"
+        className="w-full max-w-4xl bg-white dark:bg-[#07130D] rounded-3xl p-6 sm:p-8 shadow-2xl border border-neutral-200 dark:border-neutral-800 max-h-[92vh] overflow-y-auto relative text-left"
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
@@ -113,7 +116,7 @@ export default function InspectionCalendarModal({ isOpen, onClose, userRole = "l
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={prevMonth}
-                  className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#12221C] text-ink-700 dark:text-cream-100 hover:bg-neutral-100 dark:hover:bg-white/10 cursor-pointer"
+                  className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#07130D] text-ink-700 dark:text-cream-100 hover:bg-neutral-100 dark:hover:bg-white/10 cursor-pointer"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -122,13 +125,13 @@ export default function InspectionCalendarModal({ isOpen, onClose, userRole = "l
                     setCurrentDate(new Date());
                     setSelectedDateStr(new Date().toISOString().split("T")[0]);
                   }}
-                  className="px-2.5 py-1 text-xs font-bold rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#12221C] text-ink-700 dark:text-cream-100 hover:bg-neutral-100 dark:hover:bg-white/10 cursor-pointer"
+                  className="px-2.5 py-1 text-xs font-bold rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#07130D] text-ink-700 dark:text-cream-100 hover:bg-neutral-100 dark:hover:bg-white/10 cursor-pointer"
                 >
                   Today
                 </button>
                 <button
                   onClick={nextMonth}
-                  className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#12221C] text-ink-700 dark:text-cream-100 hover:bg-neutral-100 dark:hover:bg-white/10 cursor-pointer"
+                  className="p-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#07130D] text-ink-700 dark:text-cream-100 hover:bg-neutral-100 dark:hover:bg-white/10 cursor-pointer"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -169,8 +172,8 @@ export default function InspectionCalendarModal({ isOpen, onClose, userRole = "l
                       isSelected
                         ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-[#263b33] border-moss-800 dark:border-[#E5C583] font-bold shadow-sm"
                         : isToday
-                        ? "bg-moss-50 dark:bg-moss-900/30 text-moss-800 dark:text-[#E5C583] border-moss-300 dark:border-moss-700 font-bold"
-                        : "bg-white dark:bg-[#12221C] text-ink-800 dark:text-cream-100 border-neutral-200/80 dark:border-neutral-800/80 hover:border-moss-400"
+                        ? "bg-moss-50 dark:bg-white/10 text-moss-800 dark:text-[#E5C583] border-moss-300 dark:border-moss-700 font-bold"
+                        : "bg-white dark:bg-[#07130D] text-ink-800 dark:text-cream-100 border-neutral-200/80 dark:border-neutral-800/80 hover:border-moss-400"
                     }`}
                   >
                     <span className="text-xs">{dayNum}</span>
@@ -226,7 +229,7 @@ export default function InspectionCalendarModal({ isOpen, onClose, userRole = "l
                   {selectedDayInspections.map((item, idx) => (
                     <div 
                       key={idx} 
-                      className="p-4 rounded-2xl bg-white dark:bg-[#12221C] border border-neutral-200 dark:border-neutral-800 shadow-xs space-y-2.5"
+                      className="p-4 rounded-2xl bg-white dark:bg-[#07130D] border border-neutral-200 dark:border-neutral-800 shadow-xs space-y-2.5"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>

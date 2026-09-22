@@ -9,7 +9,9 @@ import Button from "../components/Button";
 import { propertyService } from "../services/propertyService";
 import { applicationService } from "../services/applicationService";
 import { triggerToast } from "../context/ToastContext";
-import { INCOME_RANGES, doesIncomeMeetRequirement } from "../utils/incomeRanges";
+import { INCOME_RANGES } from "../utils/incomeRanges";
+import { useTenantQualification } from "../hooks/useTenantQualification";
+import { applicationSchema } from "../schemas/applicationSchemas";
 
 import SearchableOccupationSelect from "../components/SearchableOccupationSelect";
 
@@ -88,9 +90,9 @@ export default function Application() {
     }
   }, [listingId]);
 
-  // Requirements checks
-  const requiredIncome = listing?.minimum_income_required || listing?.minimumIncome || "No Minimum Income";
-  const meetsIncome = doesIncomeMeetRequirement(formData.monthlyIncome, requiredIncome);
+  // Requirements checks using shared hook
+  const { meetsIncome, requirements, tenantStats } = useTenantQualification(listing, formData);
+  const requiredIncome = requirements.income;
 
   // Parse house rules list from listing
   const propertyRulesList = Array.isArray(listing?.house_rules)
@@ -100,13 +102,21 @@ export default function Application() {
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
 
-    if (!meetsIncome) {
-      triggerToast(`Your annual income tier (${formData.monthlyIncome || 'Not Provided'}) does not meet the landlord requirement (${requiredIncome}). You cannot apply.`, "error", "Qualification Blocked");
+    const validation = applicationSchema.safeParse({
+      ...formData,
+      guarantorName: formData.guarantorName.trim(),
+      guarantorPhone: formData.guarantorPhone.trim(),
+      guarantorEmail: formData.guarantorEmail.trim(),
+    });
+
+    if (!validation.success) {
+      const errorMsg = validation.error.issues[0].message;
+      triggerToast(errorMsg, "warning", "Incomplete Application");
       return;
     }
 
-    if (!formData.guarantorName.trim() || !formData.guarantorPhone.trim() || !formData.guarantorEmail.trim()) {
-      triggerToast("Guarantor details (Full Name, Phone Number, Email) are mandatory for submitting an application.", "warning", "Guarantor Required");
+    if (!meetsIncome) {
+      triggerToast(`Your annual income tier (${tenantStats.income}) does not meet the landlord requirement (${requirements.income}). You cannot apply.`, "error", "Qualification Blocked");
       return;
     }
 

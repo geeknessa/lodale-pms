@@ -29,6 +29,7 @@ import {
   Flame,
   ShieldCheck,
   Award,
+  Loader2
 } from "lucide-react";
 import gsap from "gsap";
 import { Logo, LogoMark } from "../../components/Logo";
@@ -44,7 +45,8 @@ import { leaseService } from "../../services/leaseService";
 import { rentService } from "../../services/rentService";
 import { maintenanceService } from "../../services/maintenanceService";
 import { chatService } from "../../services/chatService";
-
+import { userService } from "../../services/userService";
+import { profileService } from "../../services/profileService";
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
   {
@@ -170,34 +172,20 @@ export default function TenantDashboard() {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
 
-  // Active navigation tab (persisted on page reload, or from navigation state)
-  // 0: Dashboard, 1: Search, 2: Chat, 3: Settings, 4: Applications
+  // Active navigation tab (0: Dashboard, 1: Search, 2: Chat, 3: Settings, 4: Applications)
   const [activeTab, setActiveTabState] = useState(() => {
-    try {
-      // If navigated from ListingDetail with a specific tab request, honour it
-      const navInitialTab = location?.state?.initialTab;
-      if (typeof navInitialTab === "number") return navInitialTab;
-      const saved = localStorage.getItem("tenantActiveTab");
-      return saved !== null ? Number(saved) : 0;
-    } catch (e) {
-      return 0;
-    }
+    const navInitialTab = location?.state?.initialTab;
+    if (typeof navInitialTab === "number") return navInitialTab;
+    return 0;
   });
 
   const setActiveTab = (index) => {
     setActiveTabState(index);
-    try {
-      localStorage.setItem("tenantActiveTab", index.toString());
-    } catch (e) { }
   };
 
-  // Retrieve username with fallback — reads tenant-scoped keys first
+  // Retrieve username with fallback
   const [username, setUsername] = useState(() => {
-    const sessName = sessionStorage.getItem("tenantUsername") || sessionStorage.getItem("username");
-    if (sessName) return sessName;
-    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-    const storedName = emailKey ? (localStorage.getItem("tenantUsername_" + emailKey) || sessionStorage.getItem("username_" + emailKey)) : null;
-    return storedName || localStorage.getItem("tenantUsername") || sessionStorage.getItem("username") || "Tunde";
+    return sessionStorage.getItem("tenantUsername") || sessionStorage.getItem("username") || "Tunde";
   });
   const firstName = username.split(" ")[0];
 
@@ -212,47 +200,20 @@ export default function TenantDashboard() {
     year: "numeric",
   });
 
-  // Tenant avatar state — reads tenant-scoped keys so it never picks up a landlord avatar
+  // Tenant avatar state
   const [tenantAvatar, setTenantAvatar] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
-    if (emailKey) {
-      const savedUserAvatar = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
-      if (savedUserAvatar && !savedUserAvatar.includes("unsplash.com")) return savedUserAvatar;
-    }
-    // Fallback: session-level quick sync key set by TenantSettings on upload
-    const sessionAvatar = sessionStorage.getItem("tenantAvatarUrl");
-    if (sessionAvatar && !sessionAvatar.includes("unsplash.com")) return sessionAvatar;
-    return "";
+    return sessionStorage.getItem("tenantAvatarUrl") || "";
   });
 
   useEffect(() => {
     const handleStorageUpdate = (e) => {
-      const sessEmail = sessionStorage.getItem("lastLoggedInEmail")?.toLowerCase();
-      // If this tab is locked to a specific logged-in email, ignore storage changes for other emails
-      if (sessEmail && e?.key === "lastLoggedInEmail" && e?.newValue?.toLowerCase() !== sessEmail) {
-        return;
-      }
-      const emailKey = sessEmail || sessionStorage.getItem("lastLoggedInEmail")?.toLowerCase();
-      // Read tenant-scoped username first to prevent landlord name overwriting tenant display
-      const storedName =
-        sessionStorage.getItem("tenantUsername") ||
-        (emailKey ? localStorage.getItem("tenantUsername_" + emailKey) : null) ||
-        sessionStorage.getItem("username") ||
-        (emailKey ? sessionStorage.getItem("username_" + emailKey) : null);
+      const storedName = sessionStorage.getItem("tenantUsername") || sessionStorage.getItem("username");
       if (storedName) {
         setUsername(storedName);
       }
-
-      // Read tenant-scoped avatar only
-      let updated = null;
-      if (emailKey) {
-        updated = localStorage.getItem("tenantAvatar_" + emailKey.toLowerCase());
-      }
-      if (!updated) {
-        updated = sessionStorage.getItem("tenantAvatarUrl");
-      }
-      if (updated) {
-        setTenantAvatar(updated);
+      const updatedAvatar = sessionStorage.getItem("tenantAvatarUrl");
+      if (updatedAvatar) {
+        setTenantAvatar(updatedAvatar);
       }
     };
     window.addEventListener("storage", handleStorageUpdate);
@@ -284,19 +245,43 @@ export default function TenantDashboard() {
   const [spotlightStyle, setSpotlightStyle] = useState({});
 
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
-  const [notifications, setNotifications] = useState(() => {
-    const saved = localStorage.getItem("tenantNotifications");
-    return saved ? JSON.parse(saved) : [
-      { id: 1, text: "Your rent payment was successful.", read: false },
-      { id: 2, text: "Maintenance request #42 updated.", read: false }
-    ];
-  });
+  const [notifications, setNotifications] = useState([]);
 
   const [activeLease, setActiveLease] = useState(null);
   const [requests, setRequests] = useState([]);
   const [payments, setPayments] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
+
+  // Nudge states and functions
+  const [nudgeCooldowns, setNudgeCooldowns] = useState({});
+
+  const handleNudgeLandlord = (ticket) => {
+    triggerToast(`Follow-up reminder sent to landlord for Ticket #${ticket.id || ticket.title}!`, "success");
+    setNudgeCooldowns(prev => ({ ...prev, [ticket.id]: Date.now() }));
+  };
+
+  const getTicketNudgeStatus = (ticket) => {
+    if (!ticket) return { allowed: false, reason: "" };
+    if (["completed", "resolved"].includes(ticket.status.toLowerCase())) return { allowed: false, reason: "Ticket is already resolved." };
+    
+    const lastNudge = nudgeCooldowns[ticket.id];
+    if (lastNudge && (Date.now() - lastNudge) < 24 * 60 * 60 * 1000) {
+      return { allowed: false, reason: "You recently sent a reminder. Please wait 24h." };
+    }
+
+    const hoursSince = ticket.timestamp ? (Date.now() - ticket.timestamp) / (1000 * 60 * 60) : 25; // Default allowing if old
+    const isPending = ticket.status.toLowerCase() === "pending";
+    const isInProgress = ticket.status.toLowerCase() === "in progress";
+
+    if (isPending && hoursSince < 24) return { allowed: false, reason: "Please allow 24 hours for the landlord to review." };
+    if (isPending && hoursSince >= 24) return { allowed: true, reason: "" };
+    
+    if (isInProgress && hoursSince < 72) return { allowed: false, reason: "Work is in progress. Allow 3 days for completion." };
+    if (isInProgress && hoursSince >= 72) return { allowed: true, reason: "" };
+
+    return { allowed: false, reason: "" };
+  };
 
   // Rent payment state
   const [rentPaid, setRentPaid] = useState(false);
@@ -346,7 +331,7 @@ export default function TenantDashboard() {
     
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      color: #12221C;
+      color: #07130D;
       margin: 0;
       padding: 24px;
       background: #ffffff;
@@ -359,7 +344,7 @@ export default function TenantDashboard() {
       justify-content: space-between;
       align-items: center;
       padding-bottom: 20px;
-      border-bottom: 3px solid #1E382A;
+      border-bottom: 3px solid #07130D;
       margin-bottom: 24px;
     }
     
@@ -367,7 +352,7 @@ export default function TenantDashboard() {
       font-size: 26px;
       font-weight: 800;
       letter-spacing: -0.5px;
-      color: #1E382A;
+      color: #07130D;
     }
     
     .brand span {
@@ -382,7 +367,7 @@ export default function TenantDashboard() {
       margin: 0;
       font-size: 16px;
       font-weight: 800;
-      color: #1E382A;
+      color: #07130D;
       text-transform: uppercase;
       letter-spacing: 1px;
     }
@@ -413,7 +398,7 @@ export default function TenantDashboard() {
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.8px;
-      color: #1E382A;
+      color: #07130D;
       margin-bottom: 12px;
       padding-bottom: 6px;
       border-bottom: 1px solid #CBD5E1;
@@ -460,7 +445,7 @@ export default function TenantDashboard() {
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.8px;
-      color: #1E382A;
+      color: #07130D;
       margin-bottom: 10px;
     }
     
@@ -471,7 +456,7 @@ export default function TenantDashboard() {
     }
     
     th {
-      background: #1E382A;
+      background: #07130D;
       color: #ffffff;
       font-weight: 700;
       text-align: left;
@@ -511,7 +496,7 @@ export default function TenantDashboard() {
 
     .footer-stamp {
       font-weight: 700;
-      color: #1E382A;
+      color: #07130D;
     }
   </style>
 </head>
@@ -642,13 +627,7 @@ export default function TenantDashboard() {
   const mainContentRef = useRef(null);
 
   useEffect(() => {
-    // Check if the user is newly signed up
-    const isNew = localStorage.getItem("isNewSignUp") === "true";
-    if (isNew) {
-      setShowWelcomeOverlay(true);
-      localStorage.setItem("tenantChats", JSON.stringify([]));
-      localStorage.removeItem("isNewSignUp");
-    }
+    // Removed new signup localstorage tour check
 
     // Listen for resume quick apply to switch back to Search tab
     const handleResumeApply = () => {
@@ -664,8 +643,13 @@ export default function TenantDashboard() {
   const fetchAllData = async () => {
     try {
       setLoadingData(true);
-      // Fetch active lease
-      const leases = await leaseService.getMyLeases();
+      const [leasesRes, invsRes, reqsRes] = await Promise.all([
+        leaseService.getMyLeases().catch(() => []),
+        rentService.getMyInvoices().catch(() => []),
+        maintenanceService.getMyRequests().catch(() => [])
+      ]);
+
+      const leases = Array.isArray(leasesRes) ? leasesRes : [];
       const active = leases.find(l => l.status === 'active' || l.tenant_signed_at || l.status === 'draft' || l.status === 'pending_tenant');
       if (active) {
         setActiveLease({
@@ -679,8 +663,7 @@ export default function TenantDashboard() {
         setActiveLease(null);
       }
 
-      // Fetch invoices
-      const invs = await rentService.getMyInvoices();
+      const invs = Array.isArray(invsRes) ? invsRes : [];
       setInvoices(invs);
 
       const unpaid = invs.find(i => i.status === 'unpaid');
@@ -698,8 +681,7 @@ export default function TenantDashboard() {
         }));
       setPayments(formattedPayments);
 
-      // Fetch requests
-      const reqs = await maintenanceService.getMyRequests();
+      const reqs = Array.isArray(reqsRes) ? reqsRes : [];
       const statusMap = {
         open: 'Pending',
         pending: 'Pending',
@@ -997,7 +979,7 @@ export default function TenantDashboard() {
           onClick={() => setShowMobileNav(true)}
           aria-label="Open menu"
         >
-          <Menu className="h-6 w-6 text-[#1E382A] dark:text-[#E5C583]" />
+          <Menu className="h-6 w-6 text-[#07130D] dark:text-[#E5C583]" />
         </button>
       </header>
 
@@ -1091,7 +1073,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={handleDismissWelcome}
-              className="w-full bg-[#E5C583] hover:bg-[#D8B672] text-[#0B1512] font-bold py-3.5 mt-4 transition-all duration-150 transform hover:scale-[1.01]"
+              className="w-full bg-[#E5C583] hover:bg-[#D8B672] text-[#09090b] font-bold py-3.5 mt-4 transition-all duration-150 transform hover:scale-[1.01]"
             >
               Get Started
             </Button>
@@ -1102,7 +1084,7 @@ export default function TenantDashboard() {
       {/* NOTIFICATIONS MODAL */}
       {showNotificationsModal && (
         <div className="tenant-modal-backdrop" onClick={() => setShowNotificationsModal(false)}>
-          <div className="bg-white dark:bg-[#13221C] border border-ink-100 dark:border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+          <div className="bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-ink-900 dark:text-white">Notifications</h3>
               <button className="text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold" onClick={() => setShowNotificationsModal(false)}>&times;</button>
@@ -1122,9 +1104,8 @@ export default function TenantDashboard() {
                 <Button
                   onClick={() => {
                     setNotifications([]);
-                    localStorage.setItem("tenantNotifications", JSON.stringify([]));
                   }}
-                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-[#1D2D26] dark:hover:bg-[#253930] text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl transition-colors"
+                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-[#07130D] dark:hover:bg-[#253930] text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl transition-colors"
                 >
                   Clear All
                 </Button>
@@ -1134,7 +1115,6 @@ export default function TenantDashboard() {
                   setShowNotificationsModal(false);
                   const updated = notifications.map(n => ({ ...n, read: true }));
                   setNotifications(updated);
-                  localStorage.setItem("tenantNotifications", JSON.stringify(updated));
                 }}
                 className={`${notifications.length > 0 ? 'flex-[2]' : 'w-full'} bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl`}
               >
@@ -1158,11 +1138,24 @@ export default function TenantDashboard() {
                 <div className="modal-body text-left">
                   <div className="invoice-summary">
                     <span className="summary-lbl">Due Period</span>
-                    <span className="summary-val">{currentMonthYearStr}</span>
+                    <span className="summary-val">{(() => {
+                      const unpaidInvoice = invoices.find(inv => inv.status === 'unpaid');
+                      if (unpaidInvoice && unpaidInvoice.due_date) {
+                        return new Date(unpaidInvoice.due_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+                      }
+                      if (activeLease && (activeLease.start_date || activeLease.created_at)) {
+                        const start = new Date(activeLease.start_date || activeLease.created_at);
+                        const nextDue = new Date(start.setFullYear(start.getFullYear() + 1));
+                        return nextDue.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+                      }
+                      return currentMonthYearStr;
+                    })()}</span>
                     <span className="summary-lbl mt-3">Total Rent Amount</span>
-                    <span className="summary-val amount text-moss-700 dark:text-[#E5C583]">₦150,000</span>
+                    <span className="summary-val amount text-moss-700 dark:text-[#E5C583]">{
+                      invoices.find(inv => inv.status === 'unpaid') ? `₦${parseFloat(invoices.find(inv => inv.status === 'unpaid').amount).toLocaleString()}` : (activeLease?.price || "₦150,000")
+                    }</span>
                     <span className="summary-lbl mt-3">Recipient Landlord</span>
-                    <span className="summary-val">Ada K. (Skyline Apartments)</span>
+                    <span className="summary-val">{activeLease?.landlord || "Verified Landlord"} ({activeLease?.propertyTitle || "Leased Unit"})</span>
                   </div>
 
                   <div className="payment-card-input-group mt-5">
@@ -1182,7 +1175,7 @@ export default function TenantDashboard() {
 
                   <Button
                     onClick={handlePayRentSubmit}
-                    className="w-full mt-6 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px]"
+                    className="w-full mt-6 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3.5 font-bold text-[13px]"
                   >
                     Authorize Payment (₦150,000)
                   </Button>
@@ -1219,15 +1212,15 @@ export default function TenantDashboard() {
             </div>
 
             <div className="modal-body-centered py-4">
-              <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#1E382A] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border-2 border-[#1E382A]/20 dark:border-[#E5C583]/30" style={{ width: "64px", height: "64px", marginBottom: "12px" }}>
+              <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border-2 border-[#07130D]/20 dark:border-[#E5C583]/30" style={{ width: "64px", height: "64px", marginBottom: "12px" }}>
                 {tenantAvatar ? (
                   <img src={tenantAvatar} alt="Tenant Avatar" className="h-full w-full object-cover" />
                 ) : (
-                  <User className="h-7 w-7 text-[#1E382A] dark:text-[#E5C583]" />
+                  <User className="h-7 w-7 text-[#07130D] dark:text-[#E5C583]" />
                 )}
               </div>
               <h4 className="font-bold text-[18px] text-ink-900 dark:text-white">{username}</h4>
-              <span className="px-3 py-1 rounded-full text-[11px] font-bold mt-1 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400">
+              <span className="px-3 py-1 rounded-full text-[11px] font-bold mt-1 bg-emerald-100 dark:bg-[#07130D]merald-950/40 text-emerald-700 dark:text-emerald-400">
                 Verified Tenant
               </span>
             </div>
@@ -1244,15 +1237,14 @@ export default function TenantDashboard() {
                     type="tel"
                     value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value)}
-                    className="bg-cream-50 dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
+                    className="bg-cream-50 dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
                     placeholder="+234..."
                   />
                 ) : (
                   <span className="text-[13px] font-bold">
                     {(() => {
                       try {
-                        const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-                        const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                        const raw = sessionStorage.getItem("tenantCurrentProfile") || "{}";
                         return JSON.parse(raw).phone || "Not provided";
                       } catch (e) { return "Not provided"; }
                     })()}
@@ -1266,15 +1258,14 @@ export default function TenantDashboard() {
                     type="text"
                     value={editOccupation}
                     onChange={(e) => setEditOccupation(e.target.value)}
-                    className="bg-cream-50 dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
+                    className="bg-cream-50 dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
                     placeholder="e.g. Engineer"
                   />
                 ) : (
                   <span className="text-[13px] font-bold">
                     {(() => {
                       try {
-                        const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-                        const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                        const raw = sessionStorage.getItem("tenantCurrentProfile") || "{}";
                         return JSON.parse(raw).occupation || "Not provided";
                       } catch (e) { return "Not provided"; }
                     })()}
@@ -1288,15 +1279,14 @@ export default function TenantDashboard() {
                     type="text"
                     value={editIncome}
                     onChange={(e) => setEditIncome(e.target.value)}
-                    className="bg-cream-50 dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
+                    className="bg-cream-50 dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded px-2 py-1 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 text-right w-1/2"
                     placeholder="e.g. ₦400,000"
                   />
                 ) : (
                   <span className="text-[13px] font-bold">
                     {(() => {
                       try {
-                        const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-                        const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                        const raw = sessionStorage.getItem("tenantCurrentProfile") || "{}";
                         return JSON.parse(raw).income || "Not provided";
                       } catch (e) { return "Not provided"; }
                     })()}
@@ -1324,25 +1314,24 @@ export default function TenantDashboard() {
                     Cancel
                   </Button>
                   <Button
-                    onClick={() => {
-                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-                      const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
-                      const prof = JSON.parse(raw);
-                      prof.phone = editPhone;
-                      prof.occupation = editOccupation;
-                      prof.income = editIncome;
-                      sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(prof));
-                      sessionStorage.setItem("currentUserProfile", JSON.stringify(prof));
-                      if (emailKey) {
-                        const lsProf = { ...prof };
-                        if (lsProf.avatar && lsProf.avatar.startsWith("data:")) delete lsProf.avatar;
-                        if (lsProf.avatar_url && lsProf.avatar_url.startsWith("data:")) delete lsProf.avatar_url;
-                        localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(lsProf));
+                    onClick={async () => {
+                      try {
+                        await userService.updateProfile({ phone_number: editPhone });
+                        await profileService.updateMyProfile({
+                          occupation: editOccupation,
+                          monthly_income: editIncome
+                        });
+                        
+                        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { 
+                          detail: { phone_number: editPhone, occupation: editOccupation, monthly_income: editIncome } 
+                        }));
+                        window.dispatchEvent(new Event("storage"));
+                        setIsEditingProfile(false);
+                        triggerToast("Profile updated successfully!", "success", "Profile Saved");
+                      } catch (err) {
+                        triggerToast("Failed to update profile", "error");
+                        console.error(err);
                       }
-                      window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: prof }));
-                      window.dispatchEvent(new Event("storage"));
-                      setIsEditingProfile(false);
-                      triggerToast("Profile updated successfully!", "success", "Profile Saved");
                     }}
                     className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
                   >
@@ -1360,8 +1349,7 @@ export default function TenantDashboard() {
                   </Button>
                   <Button
                     onClick={() => {
-                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-                      const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null) || "{}";
+                      const raw = sessionStorage.getItem("tenantCurrentProfile") || "{}";
                       const prof = JSON.parse(raw);
                       setEditPhone(prof.phone || "");
                       setEditOccupation(prof.occupation || "");
@@ -1391,7 +1379,7 @@ export default function TenantDashboard() {
             <div className="modal-scroll-area">
               {/* Ticket status badge and category */}
               <div className="flex justify-between items-center mb-4">
-                <span className="text-[12px] font-bold text-[#6C6E73] dark:text-[#A3BCA7] uppercase tracking-wider bg-neutral-100 dark:bg-[#1D2D26] px-2.5 py-1 rounded-md">
+                <span className="text-[12px] font-bold text-[#6C6E73] dark:text-[#A3BCA7] uppercase tracking-wider bg-neutral-100 dark:bg-[#07130D] px-2.5 py-1 rounded-md">
                   {selectedTicket.category || selectedTicket.type || "General"}
                 </span>
                 <span className={`ticket-feed-status ${selectedTicket.status.toLowerCase().replace(" ", "-")}`}>
@@ -1453,7 +1441,7 @@ export default function TenantDashboard() {
                   <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${(selectedTicket.urgency || "Medium").toLowerCase() === "high"
                     ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400"
                     : (selectedTicket.urgency || "Medium").toLowerCase() === "medium"
-                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                      ? "bg-amber-100 text-amber-700 dark:bg-[#07130D]mber-950/40 dark:text-amber-400"
                       : "bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400"
                     }`}>
                     {selectedTicket.urgency || "Medium"}
@@ -1466,11 +1454,39 @@ export default function TenantDashboard() {
                   </span>
                 </div>
               </div>
+
+              {/* Nudge Landlord Section */}
+              {(() => {
+                const { allowed, reason } = getTicketNudgeStatus(selectedTicket);
+                if (["completed", "resolved"].includes(selectedTicket.status.toLowerCase())) return null;
+
+                return (
+                  <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800/60 group" title={reason}>
+                    <Button
+                      disabled={!allowed}
+                      onClick={() => handleNudgeLandlord(selectedTicket)}
+                      className={`w-full py-2.5 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all ${
+                        allowed 
+                          ? 'bg-[#2C4633] text-white hover:bg-moss-700 dark:bg-[#E5C583] dark:text-[#09090b] dark:hover:bg-[#E5C583]/90' 
+                          : 'bg-neutral-100 text-neutral-400 dark:bg-white/5 dark:text-neutral-500 cursor-not-allowed opacity-80'
+                      }`}
+                    >
+                      <Bell className="w-4 h-4" />
+                      Nudge Landlord for Update
+                    </Button>
+                    {!allowed && reason && (
+                      <p className="text-[10px] text-center text-ink-400 dark:text-cream-100/50 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {reason}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             <Button
               onClick={() => { setShowTicketModal(false); setSelectedTicket(null); }}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
+              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3.5 font-bold text-[13px] rounded-xl"
             >
               Close Ticket
             </Button>
@@ -1503,7 +1519,7 @@ export default function TenantDashboard() {
                       <span className="text-neutral-300 dark:text-neutral-700 text-lg">★</span>
                     </>
                   ) : (
-                    <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40">
+                    <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-[#07130D]merald-950/40">
                       Verified Account
                     </span>
                   )}
@@ -1552,7 +1568,7 @@ export default function TenantDashboard() {
 
                   <div className="flex flex-col gap-3 max-h-[180px] overflow-y-auto pr-1">
                     {activeLease ? (
-                      <div className="p-3 bg-neutral-50 dark:bg-[#1D2D26]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl">
+                      <div className="p-3 bg-neutral-50 dark:bg-[#07130D]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl">
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-[12px] font-bold">Landlord Review</span>
                           <span className="text-[11px] text-amber-500 font-bold">★ 5.0</span>
@@ -1573,7 +1589,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={() => setShowRatingModal(false)}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
+              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3.5 font-bold text-[13px] rounded-xl"
             >
               Close Details
             </Button>
@@ -1652,7 +1668,7 @@ export default function TenantDashboard() {
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3 font-bold text-[13px]"
+                  className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3 font-bold text-[13px]"
                 >
                   Send Dispatch
                 </Button>
@@ -1667,7 +1683,7 @@ export default function TenantDashboard() {
           <div className="tenant-modal-content text-left max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header flex items-center justify-between pb-3 border-b border-ink-100/30 dark:border-white/10">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/15 dark:bg-amber-500/25 text-amber-500">
+                <div className="p-2 rounded-xl bg-amber-500/15 dark:bg-[#07130D]mber-500/25 text-amber-500">
                   <Flame className="h-5 w-5 fill-amber-500 animate-pulse" />
                 </div>
                 <div>
@@ -1714,7 +1730,7 @@ export default function TenantDashboard() {
 
                 return (
                   <>
-                    <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20">
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-500/10 dark:bg-[#07130D]mber-500/15 border border-amber-500/20">
                       <div>
                         <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">Residency Streak</span>
                         <div className="flex items-baseline gap-2 mt-0.5">
@@ -1753,7 +1769,7 @@ export default function TenantDashboard() {
 
             <Button
               onClick={() => setShowStreakModal(false)}
-              className="w-full mt-2 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] py-3.5 font-bold text-[13px] rounded-xl"
+              className="w-full mt-2 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3.5 font-bold text-[13px] rounded-xl"
             >
               Close Details
             </Button>
@@ -1827,7 +1843,16 @@ export default function TenantDashboard() {
                   <span>→</span>
                   <span className="db-breadcrumb-active">Dashboard</span>
                 </div>
-                <h1 className="db-title">Welcome, {firstName}!</h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="db-title">Welcome, {firstName}!</h1>
+
+                  {loadingData && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-[#07130D]merald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-[#E5C583] text-[11.5px] font-extrabold animate-pulse shadow-xs shrink-0">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-[#E5C583]" />
+                      <span>Loading lease & ledgers...</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="db-controls-group">
@@ -1851,11 +1876,11 @@ export default function TenantDashboard() {
                 </div>
 
                 <div className="db-profile-avatar-wrapper" onClick={() => setShowProfileModal(true)} title="Profile settings">
-                  <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#1E382A] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border border-[#1E382A]/20 dark:border-[#E5C583]/30">
+                  <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border border-[#07130D]/20 dark:border-[#E5C583]/30">
                     {tenantAvatar ? (
                       <img src={tenantAvatar} alt="Tenant Avatar" className="h-full w-full object-cover" />
                     ) : (
-                      <User className="h-4.5 w-4.5 text-[#1E382A] dark:text-[#E5C583]" />
+                      <User className="h-4.5 w-4.5 text-[#07130D] dark:text-[#E5C583]" />
                     )}
                   </div>
                   <span className="db-online-indicator" />
@@ -1863,7 +1888,7 @@ export default function TenantDashboard() {
 
                 <Button
                   onClick={() => setShowDispatchModal(true)}
-                  className="flex items-center gap-1.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d8b672] text-white dark:text-[#0B1512] px-3.5 py-2 text-[12.5px] font-bold transition-all duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer tour-dispatch"
+                  className="flex items-center gap-1.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d8b672] text-white dark:text-[#09090b] px-3.5 py-2 text-[12.5px] font-bold transition-all duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer tour-dispatch"
                 >
                   <Wrench className="h-3.5 w-3.5" />
                   <span>Quick Dispatch</span>
@@ -1872,13 +1897,90 @@ export default function TenantDashboard() {
                 <Button
                   variant="secondary"
                   onClick={handleDownloadSummary}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-[#12221C] hover:bg-moss-50 dark:hover:bg-white/10 text-[12.5px] font-bold text-moss-800 dark:text-cream-100 border border-moss-200 dark:border-white/10 rounded-xl transition-all cursor-pointer shadow-xs ml-1"
+                  className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-[#07130D] hover:bg-moss-50 dark:hover:bg-white/10 text-[12.5px] font-bold text-moss-800 dark:text-cream-100 border border-moss-200 dark:border-white/10 rounded-xl transition-all cursor-pointer shadow-xs ml-1"
                 >
                   <Download className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" />
                   <span>Download Summary</span>
                 </Button>
               </div>
             </div>
+
+            {/* LEASE EXPIRING SOON BANNER */}
+            {(() => {
+              if (!activeLease) return null;
+              const endDateStr = activeLease.end_date || activeLease.endDate;
+              if (!endDateStr) return null;
+              
+              const end = new Date(endDateStr);
+              const now = new Date();
+              const diffDays = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+              
+              const settings = reminderService.getSettings();
+              const nudgeDays = settings?.autoNudgeDays || 60;
+              
+              if (diffDays < 0 || diffDays > nudgeDays) return null;
+
+              return (
+                <div className="mb-6 p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-900 dark:text-indigo-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-in slide-in-from-top duration-300">
+                  <div className="flex items-start md:items-center gap-4">
+                    <div className="p-3 bg-indigo-500 text-white rounded-xl shrink-0">
+                      <Clock className="h-6 w-6 animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-base text-indigo-950 dark:text-indigo-100 flex items-center gap-2">
+                        Your Lease is Expiring Soon
+                        <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">Action Required</span>
+                      </h3>
+                      <p className="text-sm text-indigo-800 dark:text-indigo-300 mt-1 max-w-xl leading-relaxed">
+                        Your current lease for <strong>{activeLease.propertyTitle || "your unit"}</strong> ends in <strong>{diffDays} days</strong> on {end.toLocaleDateString()}. Please let us know your intentions so your landlord can prepare.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0 mt-2 md:mt-0">
+                    <button
+                      onClick={async () => {
+                        const landlordName = activeLease.landlord || "Landlord";
+                        const landlordId = activeLease.landlord_id || activeLease.landlordId || `landlord-${landlordName.toLowerCase().replace(/\s+/g, '-')}`;
+                        try {
+                          await chatService.sendMessage(landlordId, `[SYSTEM LOG] Tenant intends to RENEW their lease for ${activeLease.propertyTitle}. Please send over the renewal offer terms.`, null, {
+                            partner_name: landlordName,
+                            partner_avatar: null
+                          });
+                          triggerToast("Renewal intent sent to landlord! They will provide a new offer soon.", "success");
+                        } catch(e) {
+                          triggerToast("Failed to send intent.", "error");
+                        }
+                      }}
+                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="h-4 w-4" /> I Want to Renew
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const landlordName = activeLease.landlord || "Landlord";
+                        const landlordId = activeLease.landlord_id || activeLease.landlordId || `landlord-${landlordName.toLowerCase().replace(/\s+/g, '-')}`;
+                        try {
+                          await chatService.sendMessage(landlordId, `[SYSTEM LOG] Tenant intends to MOVE OUT. Please schedule the move-out inspection checklist.`, null, {
+                            partner_name: landlordName,
+                            partner_avatar: null
+                          });
+                          triggerToast("Move-out intent recorded. We will send you a move-out checklist shortly.", "info");
+                          // Simulate dynamic Move-Out Checklist scheduling (Step 9)
+                          setTimeout(() => {
+                            triggerToast("Action Item: Complete Move-Out Checklist before your end date.", "info");
+                          }, 2500);
+                        } catch(e) {
+                          triggerToast("Failed to send intent.", "error");
+                        }
+                      }}
+                      className="px-5 py-2.5 bg-white dark:bg-white/10 hover:bg-neutral-100 dark:hover:bg-white/20 text-indigo-900 dark:text-white font-bold text-sm rounded-xl shadow-xs cursor-pointer border border-indigo-200 dark:border-white/20 transition-all flex items-center justify-center gap-2"
+                    >
+                      <LogOut className="h-4 w-4" /> Plan Move-Out
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* DASHBOARD GRID CONTENT */}
             <div className="db-grid">
@@ -1973,7 +2075,7 @@ export default function TenantDashboard() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-2xl bg-amber-500/15 dark:bg-amber-500/25 text-amber-500">
+                      <div className="p-2.5 rounded-2xl bg-amber-500/15 dark:bg-[#07130D]mber-500/25 text-amber-500">
                         <Flame className="h-5 w-5 fill-amber-500 animate-pulse" />
                       </div>
                       <div>
@@ -2053,6 +2155,20 @@ export default function TenantDashboard() {
                             <span className="meta-val highlight-gold">{activeLease.price || "₦150,000"}</span>
                           </div>
                         </div>
+                        <div className="property-meta-grid mt-3">
+                          <div className="property-meta-item">
+                            <span className="meta-lbl">Lease Start</span>
+                            <span className="meta-val font-bold text-ink-900 dark:text-white">
+                              {activeLease.start_date || activeLease.created_at ? new Date(activeLease.start_date || activeLease.created_at).toLocaleDateString() : "Pending"}
+                            </span>
+                          </div>
+                          <div className="property-meta-item">
+                            <span className="meta-lbl">Lease End</span>
+                            <span className="meta-val font-bold text-ink-900 dark:text-white">
+                              {activeLease.end_date ? new Date(activeLease.end_date).toLocaleDateString() : (activeLease.start_date || activeLease.created_at ? new Date(new Date(activeLease.start_date || activeLease.created_at).setFullYear(new Date(activeLease.start_date || activeLease.created_at).getFullYear() + 1)).toLocaleDateString() : "Pending")}
+                            </span>
+                          </div>
+                        </div>
                         <Button
                           onClick={async () => {
                             const landlordName = activeLease.landlord || "Landlord";
@@ -2064,7 +2180,6 @@ export default function TenantDashboard() {
                               });
                             } catch (e) { }
                             sessionStorage.setItem("activeChatPartnerId", landlordId);
-                            localStorage.setItem("activeChatPartnerId", landlordId);
                             setActiveTab(2); // Navigate to Chat tab
                           }}
                           className="w-full mt-3 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12px] font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
@@ -2082,7 +2197,7 @@ export default function TenantDashboard() {
                       </p>
                       <Button
                         onClick={() => setActiveTab(1)}
-                        className="mt-4 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] text-[12px] px-4 py-2"
+                        className="mt-4 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#09090b] text-[12px] px-4 py-2"
                       >
                         Search Properties
                       </Button>
@@ -2243,7 +2358,7 @@ export default function TenantDashboard() {
             setShowProfileModal={setShowProfileModal}
             tenantAvatar={tenantAvatar}
             onStartChat={(landlordName) => {
-              localStorage.setItem("activeChatLandlordName", landlordName);
+              sessionStorage.setItem("activeChatLandlordName", landlordName);
               setActiveTab(2);
             }}
           />
@@ -2279,7 +2394,7 @@ export default function TenantDashboard() {
               <p className="text-[13px] text-muted max-w-sm mb-6 leading-relaxed">
                 This page is currently under construction. We will notify you once these tenant features are pushed to production.
               </p>
-              <Button onClick={() => setActiveTab(0)} className="dev-home-btn bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#0B1512] font-bold px-6 py-2.5 rounded-xl text-[12.5px]">
+              <Button onClick={() => setActiveTab(0)} className="dev-home-btn bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#09090b] font-bold px-6 py-2.5 rounded-xl text-[12.5px]">
                 Back to Dashboard
               </Button>
             </div>

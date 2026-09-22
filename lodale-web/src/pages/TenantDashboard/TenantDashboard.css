@@ -15,7 +15,7 @@ body.dark {
   --tenant-canvas: #0B120F;
   --tenant-card-bg: #121F1A;
   --tenant-charcoal: #E5C583;
-  --tenant-light-grey: #1D2D26;
+  --tenant-light-grey: #07130D;
   --tenant-text-main: #FFFFFF;
   --tenant-text-sec: #A3BCA7;
   --tenant-border: rgba(255, 255, 255, 0.08);
@@ -110,7 +110,7 @@ body.dark {
 
 body.dark .tenant-sidebar-btn.active {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 .tenant-sidebar-tooltip {
@@ -132,7 +132,7 @@ body.dark .tenant-sidebar-btn.active {
 
 body.dark .tenant-sidebar-tooltip {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 .tenant-sidebar-btn:hover .tenant-sidebar-tooltip {
@@ -678,7 +678,7 @@ body.dark .wallet-progress-fill {
   border: 1.5px solid rgba(44, 70, 51, 0.15);
   border-radius: 32px;
   padding: 24px;
-  color: #1E382A;
+  color: #07130D;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -714,7 +714,7 @@ body.dark .visa-card-widget {
   font-weight: 900;
   font-style: italic;
   font-size: 16px;
-  color: #1E382A;
+  color: #07130D;
 }
 
 body.dark .visa-logo {
@@ -770,7 +770,7 @@ body.dark .visa-progress-track {
 .visa-progress-fill {
   height: 100%;
   border-radius: 10px;
-  background-color: #1E382A;
+  background-color: #07130D;
   transition: width 0.5s ease;
 }
 
@@ -791,7 +791,7 @@ body.dark .visa-progress-fill {
 }
 
 .visa-pay-btn {
-  background-color: #1E382A;
+  background-color: #07130D;
   color: #FFFFFF;
   border: none;
   font-size: 10.5px;
@@ -805,7 +805,7 @@ body.dark .visa-progress-fill {
 
 body.dark .visa-pay-btn {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 .visa-pay-btn:hover {
@@ -1551,7 +1551,7 @@ body.dark .stepper-line-fill {
 body.dark .stepper-step.active .step-circle {
   background-color: #E5C583;
   border-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
   box-shadow: 0 0 0 4px rgba(229, 197, 131, 0.2);
 }
 
@@ -1974,7 +1974,7 @@ body.dark .welcome-sparkle-icon {
 
 body.dark .welcome-checklist li .chk-icon {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 .welcome-checklist li strong {
@@ -2145,7 +2145,7 @@ body.dark .welcome-checklist li .chk-icon {
 }
 
 body.dark .tour-btn-next {
-  color: #0B1512 !important;
+  color: #09090b !important;
 }
 
 .tour-btn-prev {
@@ -2320,7 +2320,7 @@ body.dark .tour-btn-next {
 }
 
 body.dark .tour-ask-btn-yes {
-  color: #0B1512 !important;
+  color: #09090b !important;
 }
 
 

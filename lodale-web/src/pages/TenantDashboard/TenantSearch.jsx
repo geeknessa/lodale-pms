@@ -4,6 +4,7 @@ import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, XC
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { applicationService } from "../../services/applicationService";
+import { profileService } from "../../services/profileService";
 import { chatService } from "../../services/chatService";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
@@ -123,20 +124,20 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
   // Dynamic approved listings loaded from backend API & localStorage
   const [allListings, setAllListings] = useState([]);
   const [isLoadingListings, setIsLoadingListings] = useState(true);
+  const [listingsError, setListingsError] = useState(null);
 
   useEffect(() => {
     async function loadTenantProperties() {
       setIsLoadingListings(true);
+      setListingsError(null);
       try {
         let apiProps = [];
-        try {
-          const apiRes = await propertyService.getProperties();
-          if (Array.isArray(apiRes)) {
-            apiProps = apiRes;
-          } else if (apiRes && Array.isArray(apiRes.properties)) {
-            apiProps = apiRes.properties;
-          }
-        } catch (e) { }
+        const apiRes = await propertyService.getProperties();
+        if (Array.isArray(apiRes)) {
+          apiProps = apiRes;
+        } else if (apiRes && Array.isArray(apiRes.properties)) {
+          apiProps = apiRes.properties;
+        }
 
         const formatted = apiProps.map((item) => {
           if (!item) return null;
@@ -185,6 +186,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
         setAllListings(approvedOnly);
       } catch (err) {
         console.warn("Failed to load tenant search listings:", err);
+        setListingsError(err.message || "Could not load properties from backend.");
       } finally {
         setIsLoadingListings(false);
       }
@@ -251,26 +253,17 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
   const [quickApplyProperty, setQuickApplyProperty] = useState(null);
   const [quickApplyAgreedRules, setQuickApplyAgreedRules] = useState([]);
 
-  // Dynamic Last Visited State loaded from localStorage
-  const [lastVisitedListings, setLastVisitedListings] = useState(() => {
-    try {
-      const saved = localStorage.getItem("lastVisitedListings");
-      return saved ? JSON.parse(saved).slice(0, 5) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  // Last Visited State (session only)
+  const [lastVisitedListings, setLastVisitedListings] = useState([]);
 
   const [savedPropertiesList, setSavedPropertiesList] = useState([]);
 
   useEffect(() => {
-    const fetchSavedProperties = () => {
+    const fetchSavedProperties = async () => {
       try {
-        const saved = localStorage.getItem("savedProperties");
-        if (saved) {
-          // Format saved properties to match the UI shape expected by PropertyCard
-          const parsed = JSON.parse(saved);
-          const formattedSaved = parsed.map((item) => ({
+        const saved = await propertyService.getSavedProperties();
+        if (Array.isArray(saved)) {
+          const formattedSaved = saved.map((item) => ({
              id: item.id,
              title: item.title || "Property",
              location: item.location || item.address_line1 || item.city || "Lagos, Nigeria",
@@ -288,11 +281,12 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
         } else {
           setSavedPropertiesList([]);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Failed to fetch saved properties from backend", e);
+      }
     };
     fetchSavedProperties();
     window.addEventListener("propertySavedChanged", fetchSavedProperties);
-    // Refresh when returning to the tab
     window.addEventListener("focus", fetchSavedProperties);
     return () => {
       window.removeEventListener("propertySavedChanged", fetchSavedProperties);
@@ -300,66 +294,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
     };
   }, []);
 
-  // Sync saved properties details whenever allListings updates from the backend
-  useEffect(() => {
-    if (allListings.length > 0) {
-      try {
-        const savedStr = localStorage.getItem("savedProperties");
-        if (savedStr) {
-          const rawSaved = JSON.parse(savedStr);
-          if (Array.isArray(rawSaved) && rawSaved.length > 0) {
-            let updatedCount = 0;
-            const syncedSaved = rawSaved
-              .filter(savedItem => allListings.some(al => String(al.id) === String(savedItem.id)))
-              .map(savedItem => {
-                const fresh = allListings.find(al => String(al.id) === String(savedItem.id));
-                if (fresh) {
-                  updatedCount++;
-                  const formattedPrice = fresh.price || `₦${Number(fresh.rent_amount || 0).toLocaleString()}${String(fresh.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`;
-                  const formattedLocation = fresh.location || `${fresh.city || ''}, ${fresh.state || ''}`;
-                  return {
-                    ...savedItem,
-                    ...fresh,
-                    title: fresh.title || savedItem.title,
-                    price: formattedPrice,
-                    location: formattedLocation,
-                    bedrooms: fresh.bedrooms || fresh.beds || savedItem.bedrooms,
-                    bathrooms: fresh.bathrooms || fresh.baths || savedItem.bathrooms,
-                    beds: fresh.bedrooms || fresh.beds || savedItem.beds,
-                    baths: fresh.bathrooms || fresh.baths || savedItem.baths,
-                    amenities: fresh.amenities || savedItem.amenities,
-                    rules: fresh.rules || savedItem.rules,
-                    images: fresh.images || savedItem.images,
-                    cover_image: fresh.cover_image || savedItem.cover_image
-                  };
-                }
-                return savedItem;
-              });
-
-            if (syncedSaved.length !== rawSaved.length || updatedCount > 0) {
-              localStorage.setItem("savedProperties", JSON.stringify(syncedSaved));
-              setSavedPropertiesList(syncedSaved.map(item => ({
-                id: item.id,
-                title: item.title || "Property",
-                location: item.location || `${item.city || ''}, ${item.state || ''}` || "Lagos, Nigeria",
-                price: item.price || `₦${Number(item.rent_amount || 0).toLocaleString()}/yr`,
-                beds: item.beds || item.bedrooms || 1,
-                baths: item.baths || item.bathrooms || 1,
-                type: item.type || item.property_type || "apartment",
-                image: item.cover_image || item.image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-                amenities: item.amenities || [],
-                landlord: item.landlord,
-                status: item.status,
-                isPending: item.isPending
-              })));
-            }
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to sync saved properties:", e);
-      }
-    }
-  }, [allListings]);
+  // Removed local storage syncing logic for saved properties since backend is now source of truth
 
   const handleInspectProperty = (property) => {
     setSelectedProperty(property);
@@ -368,11 +303,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
     // Dynamic Last Visited update on tap
     setLastVisitedListings(prev => {
       const filtered = prev.filter(p => p && p.id !== property.id);
-      const updated = [property, ...filtered].slice(0, 5);
-      try {
-        localStorage.setItem("lastVisitedListings", JSON.stringify(updated));
-      } catch (e) { }
-      return updated;
+      return [property, ...filtered].slice(0, 5);
     });
   };
 
@@ -478,8 +409,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
       const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
       const raw =
         sessionStorage.getItem("tenantCurrentProfile") ||
-        sessionStorage.getItem("currentUserProfile") ||
-        (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null);
+        sessionStorage.getItem("currentUserProfile");
       if (raw) {
         const prof = JSON.parse(raw);
         return prof.location || "";
@@ -658,11 +588,11 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
 
           <div className="db-controls-group">
             <div className="db-profile-avatar-wrapper" onClick={() => setShowProfileModal(true)} title="Profile settings">
-              <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#1E382A] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border border-[#1E382A]/20 dark:border-[#E5C583]/30">
+              <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border border-[#07130D]/20 dark:border-[#E5C583]/30">
                 {tenantAvatar ? (
                   <img src={tenantAvatar} alt="Tenant Avatar" className="h-full w-full object-cover" />
                 ) : (
-                  <User className="h-4 w-4 text-[#1E382A] dark:text-[#E5C583]" />
+                  <User className="h-4 w-4 text-[#07130D] dark:text-[#E5C583]" />
                 )}
               </div>
             </div>
@@ -698,7 +628,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
 
             {/* Live Recommended Autocomplete Suggestions Dropdown */}
             {showSuggestions && searchSuggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 z-[250] mt-1.5 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#12221C] shadow-2xl overflow-hidden py-1 text-left">
+              <div className="absolute top-full left-0 right-0 z-[250] mt-1.5 rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#07130D] shadow-2xl overflow-hidden py-1 text-left">
                 <div className="px-3.5 py-2 text-[10.5px] font-bold uppercase tracking-wider text-[#6C6E73] dark:text-[#A3BCA7] border-b border-neutral-100 dark:border-neutral-800 flex items-center justify-between">
                   <span>Recommended Suggestions</span>
                   <span className="text-[10px] text-moss-600 dark:text-[#E5C583] lowercase font-normal">matching &quot;{searchQuery}&quot;</span>
@@ -724,7 +654,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                         </p>
                       </div>
                     </div>
-                    <span className="text-[10.5px] font-bold text-moss-700 dark:text-[#E5C583] uppercase tracking-wide px-2 py-0.5 rounded bg-moss-50 dark:bg-[#1E382A] shrink-0 ml-2">
+                    <span className="text-[10.5px] font-bold text-moss-700 dark:text-[#E5C583] uppercase tracking-wide px-2 py-0.5 rounded bg-moss-50 dark:bg-[#07130D] shrink-0 ml-2">
                       {item.category}
                     </span>
                   </div>
@@ -852,7 +782,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                     ))}
                   </div>
                 ) : (
-                  <div className="p-4 text-center rounded-xl border border-dashed border-neutral-200 dark:border-neutral-800/60 bg-neutral-50/50 dark:bg-[#12221C]/50 my-2">
+                  <div className="p-4 text-center rounded-xl border border-dashed border-neutral-200 dark:border-neutral-800/60 bg-neutral-50/50 dark:bg-[#07130D]/50 my-2">
                     <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">
                       No recently visited properties yet. Tap any property listing to inspect details and view specs.
                     </p>
@@ -887,7 +817,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                     ))}
                   </div>
                 ) : (
-                  <div className="p-6 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C] my-2">
+                  <div className="p-6 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#07130D] my-2">
                     <div className="mb-2 flex justify-center"><MapPin className="h-7 w-7 text-moss-600 dark:text-[#E5C583]" /></div>
                     
                     {!userLocationStr ? (
@@ -941,7 +871,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                     ))}
                   </div>
                 ) : (
-                  <div className="p-6 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C] my-2">
+                  <div className="p-6 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#07130D] my-2">
                     <div className="mb-2 flex justify-center"><User className="h-7 w-7 text-moss-600 dark:text-[#E5C583]" /></div>
                     <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">No landlords yet</h4>
                     <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7] max-w-md mx-auto leading-relaxed">
@@ -974,7 +904,28 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 </button>
               )}
             </div>
-            {((searchType === "property" ? filteredListings.length : filteredLandlords.length) === 0) ? (
+            {listingsError ? (
+              <div className="search-empty-state py-16 text-center flex flex-col items-center justify-center max-w-sm mx-auto">
+                <div className="h-16 w-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-4 text-rose-600 dark:text-rose-400">
+                  <AlertTriangle className="h-7 w-7" />
+                </div>
+                <h3 className="font-bold text-lg text-ink-900 dark:text-white mb-1">
+                  Listings unavailable
+                </h3>
+                <p className="text-xs text-ink-500 dark:text-cream-100/60 max-w-xs leading-relaxed mb-4">
+                  We could not load properties right now. Please check your backend connection.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const handlePropertyChange = window.dispatchEvent(new CustomEvent('propertyUpdated'));
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none outline-none shadow-md"
+                >
+                  Retry Loading
+                </button>
+              </div>
+            ) : ((searchType === "property" ? filteredListings.length : filteredLandlords.length) === 0) ? (
               <div className="search-empty-state py-16 text-center flex flex-col items-center justify-center max-w-sm mx-auto">
                 <div className="h-16 w-16 rounded-2xl bg-neutral-100 dark:bg-white/10 flex items-center justify-center mb-4 text-neutral-400 dark:text-cream-100/40">
                   <SearchIcon className="h-7 w-7" />
@@ -1024,7 +975,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                       <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} />
                     ))
                   ) : (
-                    <div className="col-span-full p-8 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#12221C]">
+                    <div className="col-span-full p-8 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#07130D]">
                       <User className="h-8 w-8 text-moss-600 dark:text-[#E5C583] mx-auto mb-3" />
                       <h4 className="font-bold text-[14.5px] text-ink-900 dark:text-white mb-1">No landlords match your search</h4>
                       <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Try a different name or clear your filters.</p>
@@ -1036,7 +987,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                   <div className="flex flex-col items-center justify-center pt-8 pb-4">
                     <button
                       onClick={() => setDisplayLimit((prev) => prev + 8)}
-                      className="px-6 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs tracking-wide shadow-md transition-all flex items-center gap-2 cursor-pointer border-0"
+                      className="px-6 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs tracking-wide shadow-md transition-all flex items-center gap-2 cursor-pointer border-0"
                     >
                       Load More Properties ({filteredListings.length - displayLimit} remaining)
                     </button>
@@ -1219,13 +1170,13 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
 
               {/* Specifications pills */}
               <div className="flex gap-2 mb-5">
-                <span className="px-3 py-1 bg-neutral-100 dark:bg-[#1D2D26] text-[11px] font-bold rounded-lg uppercase">
+                <span className="px-3 py-1 bg-neutral-100 dark:bg-[#07130D] text-[11px] font-bold rounded-lg uppercase">
                   {selectedProperty.beds} Bed{selectedProperty.beds > 1 ? "s" : ""}
                 </span>
-                <span className="px-3 py-1 bg-neutral-100 dark:bg-[#1D2D26] text-[11px] font-bold rounded-lg uppercase">
+                <span className="px-3 py-1 bg-neutral-100 dark:bg-[#07130D] text-[11px] font-bold rounded-lg uppercase">
                   {selectedProperty.baths} Bath{selectedProperty.baths > 1 ? "s" : ""}
                 </span>
-                <span className="px-3 py-1 bg-neutral-100 dark:bg-[#1D2D26] text-[11px] font-bold rounded-lg uppercase">
+                <span className="px-3 py-1 bg-neutral-100 dark:bg-[#07130D] text-[11px] font-bold rounded-lg uppercase">
                   {selectedProperty.type}
                 </span>
               </div>
@@ -1236,7 +1187,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {selectedProperty.amenities && selectedProperty.amenities.length > 0 ? (
                     selectedProperty.amenities.map((a, i) => (
-                      <span key={i} className="px-2.5 py-1 bg-neutral-50 dark:bg-[#0E1714] text-[11.5px] font-semibold rounded-md border border-neutral-100 dark:border-neutral-800/40 flex items-center gap-1">
+                      <span key={i} className="px-2.5 py-1 bg-neutral-50 dark:bg-[#07130D] text-[11.5px] font-semibold rounded-md border border-neutral-100 dark:border-neutral-800/40 flex items-center gap-1">
                         <Check className="h-3 w-3 text-moss-600 dark:text-[#E5C583]" />
                         <span>{a}</span>
                       </span>
@@ -1249,8 +1200,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
 
               {/* Landlord Property Requirements & Qualification Section */}
               {(() => {
-                const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-                const rawProf = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile") || (userEmail ? localStorage.getItem("tenantProfile_" + userEmail) : null);
+                const rawProf = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile");
                 const prof = rawProf ? JSON.parse(rawProf) : {};
 
                 const reqIncome = selectedProperty.minimum_income_required || selectedProperty.minimumIncome || "No Minimum Income";
@@ -1299,7 +1249,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Ownership Status</span>
-                  <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded">
+                  <span className="px-2 py-0.5 bg-emerald-100 dark:bg-[#07130D]merald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded">
                     Verified Title
                   </span>
                 </div>
@@ -1325,7 +1275,6 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                       partner_avatar: selectedProperty.landlord?.avatar || ""
                     });
                     sessionStorage.setItem("activeChatPartnerId", landlordId);
-                    localStorage.setItem("activeChatPartnerId", landlordId);
                     setShowPropertyDetailsModal(false);
                     triggerToast(`Opening chat with ${landlordName}...`, "info", "Starting Chat");
                     if (setActiveTab) setActiveTab(2); // Navigate to Chat tab
@@ -1337,20 +1286,23 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 </Button>
                 <Button
                   onClick={async () => {
-                    const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-                    const raw = sessionStorage.getItem("tenantCurrentProfile") || (userEmail ? localStorage.getItem("tenantProfile_" + userEmail) : null) || "{}";
-                    const prof = JSON.parse(raw);
+                    const raw = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile") || "{}";
+                    let prof = {};
+                    try { prof = JSON.parse(raw); } catch (e) {}
                     
-                    if (!prof.phone && !prof.phone_number || !prof.occupation || !prof.income) {
-                      triggerToast("Please complete your profile details before applying.", "warning", "Incomplete Profile");
-                      setShowPropertyDetailsModal(false);
+                    const tenantPhone = prof.phone || prof.phone_number || "";
+                    const tenantIncome = prof.income || prof.monthlyIncome || prof.monthly_income || prof.incomeRange || "";
+                    const tenantOccupation = prof.occupation || "";
+
+                    if (!tenantPhone || !tenantOccupation || !tenantIncome) {
                       localStorage.setItem("pendingQuickApplyPropertyId", selectedProperty.id);
+                      triggerToast("Please complete your profile details (Phone, Occupation, Income) before applying.", "warning", "Incomplete Profile");
+                      setShowPropertyDetailsModal(false);
                       if (setActiveTab) setActiveTab(3);
                       return;
                     }
 
                     const reqIncome = selectedProperty.minimum_income_required || selectedProperty.minimumIncome || "No Minimum Income";
-                    const tenantIncome = prof.income || prof.monthlyIncome || "";
                     const meetsInc = doesIncomeMeetRequirement(tenantIncome, reqIncome);
 
                     if (!meetsInc) {
@@ -1359,6 +1311,22 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                     }
 
                     try {
+                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+                      let userProf = null;
+                      try {
+                        const rawP = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile");
+                        if (rawP) userProf = JSON.parse(rawP);
+                      } catch (e) { }
+
+                      const completeness = profileService.checkProfileCompleteness(userProf);
+                      if (!completeness.isComplete) {
+                        localStorage.setItem("pendingQuickApplyPropertyId", selectedProperty.id);
+                        triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) in Settings before applying for a property.`, "error", "Profile Incomplete");
+                        if (setActiveTab) setActiveTab(3);
+                        setShowPropertyDetailsModal(false);
+                        return;
+                      }
+
                       // Check for existing application first
                       const existingApp = await applicationService.getApplicationForProperty(selectedProperty.id);
                       if (existingApp) {
@@ -1396,8 +1364,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
             </div>
 
             {(() => {
-              const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-              const raw = sessionStorage.getItem("tenantCurrentProfile") || (userEmail ? localStorage.getItem("tenantProfile_" + userEmail) : null) || "{}";
+              const raw = sessionStorage.getItem("tenantCurrentProfile") || "{}";
               const prof = JSON.parse(raw);
 
               const rulesList = Array.isArray(quickApplyProperty.house_rules) 
@@ -1407,7 +1374,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
               return (
                 <div className="space-y-4">
                   {/* Prefilled Profile Summary Card */}
-                  <div className="p-4 rounded-xl bg-neutral-50 dark:bg-[#16241F] border border-neutral-200 dark:border-neutral-800 space-y-2 text-xs">
+                  <div className="p-4 rounded-xl bg-neutral-50 dark:bg-[#07130D] border border-neutral-200 dark:border-neutral-800 space-y-2 text-xs">
                     <div className="flex justify-between items-center border-b border-neutral-200/60 dark:border-neutral-800 pb-2">
                       <span className="font-bold uppercase tracking-wider text-moss-700 dark:text-[#E5C583]">Your Prefilled Profile</span>
                       <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
@@ -1449,7 +1416,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                               key={rule}
                               className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
                                 isAgreed 
-                                  ? 'bg-moss-50 border-moss-300 text-moss-900 dark:bg-moss-950/40 dark:border-moss-800 dark:text-cream-100' 
+                                  ? 'bg-moss-50 border-moss-300 text-moss-900 dark:bg-white/5 dark:border-white/10 dark:text-cream-100' 
                                   : 'bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-neutral-800 text-neutral-800 dark:text-neutral-200'
                               }`}
                             >
@@ -1541,7 +1508,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 <h4 className="font-bold text-[20px] text-ink-900 dark:text-white mt-3 mb-1">
                   {selectedLandlord.name}
                 </h4>
-                <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded-full uppercase">
+                <span className="px-3 py-1 bg-emerald-100 dark:bg-[#07130D]merald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded-full uppercase">
                   Verified title partner
                 </span>
               </div>
@@ -1568,7 +1535,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 <span className="summary-lbl">Managed properties ({selectedLandlord.properties.length})</span>
                 <div className="flex flex-col gap-2 mt-2">
                   {selectedLandlord.properties.map((p, idx) => (
-                    <div key={idx} className="p-3 bg-neutral-50 dark:bg-[#1D2D26]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl flex justify-between items-center">
+                    <div key={idx} className="p-3 bg-neutral-50 dark:bg-[#07130D]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl flex justify-between items-center">
                       <span className="text-[12.5px] font-bold">{p}</span>
                       <span className="text-[11px] text-moss-700 dark:text-[#E5C583] font-bold">Active unit</span>
                     </div>
@@ -1579,7 +1546,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
               {/* Recent tenant review */}
               <div>
                 <span className="summary-lbl">Tenant reviews</span>
-                <div className="p-3 bg-neutral-50 dark:bg-[#1D2D26]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl mt-2">
+                <div className="p-3 bg-neutral-50 dark:bg-[#07130D]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl mt-2">
                   <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] italic leading-relaxed">
                     "Excellent landlord experience. Maintenance issues are solved within 24 hours of reporting on the dashboard ledger."
                   </p>

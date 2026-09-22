@@ -1,8 +1,19 @@
 import express from 'express';
 import { pool } from '../db/db.js';
 import { requireAuth, requireRole } from '../middlewares/authMiddleware.js';
+import { validate } from '../middlewares/validateMiddleware.js';
+import { z } from 'zod';
 
 const router = express.Router();
+
+const supportMessageSchema = z.object({
+  message: z.string().min(1, "Message cannot be empty")
+});
+
+const adminReplySchema = z.object({
+  userId: z.string().min(1, "User ID is required"),
+  message: z.string().min(1, "Message cannot be empty")
+});
 
 /**
  * @route GET /api/support
@@ -31,15 +42,11 @@ router.get('/', requireAuth, async (req, res) => {
  * @desc Send a new support message to the Admin
  * @access Private (Tenant/Landlord)
  */
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, validate({ body: supportMessageSchema }), async (req, res) => {
   try {
     const userId = req.user.id;
     const role = req.user.primary_role || req.user.role || 'tenant';
     const { message } = req.body;
-
-    if (!message || !message.trim()) {
-      return res.status(400).json({ error: 'Message cannot be empty' });
-    }
 
     const query = `
       INSERT INTO support_messages (user_id, sender_role, message)
@@ -97,13 +104,9 @@ router.get('/admin/threads', requireAuth, requireRole('admin'), async (req, res)
  * @desc Admin only: Reply to a specific user's support thread
  * @access Private (Admin)
  */
-router.post('/admin/reply', requireAuth, requireRole('admin'), async (req, res) => {
+router.post('/admin/reply', requireAuth, requireRole('admin'), validate({ body: adminReplySchema }), async (req, res) => {
   try {
     const { userId, message } = req.body;
-
-    if (!userId || !message || !message.trim()) {
-      return res.status(400).json({ error: 'userId and message are required' });
-    }
 
     const query = `
       INSERT INTO support_messages (user_id, sender_role, message, is_read)

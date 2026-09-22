@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import gsap from "gsap";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle, User } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Mail, Lock, AlertCircle, CheckCircle, Zap, User, Loader2 } from "lucide-react";
 import { Logo } from "../components/Logo";
 import Button from "../components/Button";
 import heroBg from "../assets/modern_villa.png";
@@ -40,6 +40,8 @@ export default function Login() {
   const [isAdminMode] = useState(() => {
     return location.pathname === "/admin/login" || location.search.includes("role=admin");
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Pre-fill email only (never passwords) from previous session
   const [email, setEmail] = useState(() => {
@@ -105,6 +107,8 @@ export default function Login() {
 
   async function handleLoginSubmit(e) {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     setInlineError("");
     setResetMessage("");
     setSessionWarning("");
@@ -221,11 +225,18 @@ export default function Login() {
           avatar_url: res.user.avatar_url || savedProfile.avatar_url || savedProfile.avatar || ""
         };
         sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
         sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
         sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
 
-        navigate(userRole === "admin" ? "/admin/dashboard" : `/dashboard/${userRole}`);
+        // Signal dashboard to show profile completeness guidance banner and open Settings tab
+        sessionStorage.setItem("justSignedInToCompleteProfile", "true");
+        if (userRole === "tenant") {
+          navigate(`/dashboard/${userRole}`, { state: { initialTab: 3 } });
+        } else if (userRole === "landlord") {
+          navigate(`/dashboard/${userRole}`, { state: { initialTab: 0 } });
+        } else {
+          navigate(userRole === "admin" ? "/admin/dashboard" : `/dashboard/${userRole}`);
+        }
         return;
       }
     } catch (apiErr) {
@@ -259,6 +270,8 @@ export default function Login() {
         setInlineError("Invalid email or password. Please try again.");
       }
       return;
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -313,7 +326,7 @@ export default function Login() {
         </div>
 
         {/* Glassmorphic Form Card */}
-        <div ref={cardRef} className="w-full bg-[#FAF8F6]/75 dark:bg-[#101F1A]/70 backdrop-blur-lg border border-white/80 dark:border-[#23372B]/60 shadow-[0_12px_40px_rgba(0,0,0,0.03)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.25)] rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 space-y-4 sm:space-y-6 transition-all duration-300">
+        <div ref={cardRef} className="w-full bg-[#FAF8F6]/75 dark:bg-[#07130D]/70 backdrop-blur-lg border border-white/80 dark:border-[#3f3f46]/60 shadow-[0_12px_40px_rgba(0,0,0,0.03)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.25)] rounded-[20px] sm:rounded-[24px] p-5 sm:p-6 md:p-8 space-y-4 sm:space-y-6 transition-all duration-300">
           {/* Admin toggle removed to keep Admin Portal private */}
 
           {/* Form Title Header */}
@@ -442,9 +455,17 @@ export default function Login() {
 
             <Button
               type="submit"
-              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 hover:scale-[1.015] active:scale-[0.985] transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer"
+              disabled={isSubmitting}
+              className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isAdminMode ? "Log In as Admin" : "Log In"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                  <span>{isAdminMode ? "Authenticating Admin..." : "Signing in..."}</span>
+                </>
+              ) : (
+                isAdminMode ? "Log In as Admin" : "Log In"
+              )}
             </Button>
           </form>
 
@@ -464,11 +485,11 @@ export default function Login() {
 
       {/* ONLINE ACCOUNT RESTORATION FEE PAYMENT MODAL */}
       {restorationFeeInfo && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/60 dark:text-amber-300">
                   <Zap className="h-5 w-5" />
                 </div>
                 <div>
@@ -484,7 +505,7 @@ export default function Login() {
               </button>
             </div>
 
-            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-2">
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-2">
               <p>
                 An admin has approved your account restoration. To reactivate access, an account restoration fee of <strong>₦{Number(restorationFeeInfo.feeAmount).toLocaleString()}</strong> is required.
               </p>

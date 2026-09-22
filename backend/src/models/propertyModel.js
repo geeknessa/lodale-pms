@@ -4,27 +4,35 @@ export const PropertyModel = {
   async getProperties(queryParams) {
     const { city, search, propertyType } = queryParams;
 
-    let query = "SELECT * FROM properties WHERE (is_deleted IS FALSE OR is_deleted IS NULL) AND status::text IN ('active_vacant', 'approved', 'live', 'active', 'occupied', 'active_occupied')";
+    let query = `
+      SELECT p.*, 
+        (SELECT COUNT(*) FROM property_units u WHERE u.property_id = p.id) as units_count,
+        COALESCE((SELECT json_agg(a.amenity) FROM property_amenities a WHERE a.property_id = p.id), '[]'::json) as fetched_amenities,
+        (SELECT storage_url FROM property_images pi WHERE pi.property_id = p.id AND pi.is_cover = TRUE LIMIT 1) as fetched_cover_image,
+        (SELECT json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name) FROM users u WHERE u.id = p.landlord_id) as landlord_data
+      FROM properties p 
+      WHERE (p.is_deleted IS FALSE OR p.is_deleted IS NULL) 
+        AND p.status::text IN ('active_vacant', 'approved', 'live', 'active', 'occupied', 'active_occupied')`;
     const params = [];
 
     if (city) {
       params.push(`%${city.toLowerCase()}%`);
-      query += ` AND LOWER(city) LIKE $${params.length}`;
+      query += ` AND LOWER(p.city) LIKE $${params.length}`;
     }
 
     if (propertyType) {
       params.push(propertyType);
-      query += ` AND property_type::text = $${params.length}`;
+      query += ` AND p.property_type::text = $${params.length}`;
     }
 
     if (search) {
       const term = `%${search.toLowerCase()}%`;
       params.push(term);
       const idx = params.length;
-      query += ` AND (LOWER(title) LIKE $${idx} OR LOWER(address_line1) LIKE $${idx} OR LOWER(city) LIKE $${idx})`;
+      query += ` AND (LOWER(p.title) LIKE $${idx} OR LOWER(p.address_line1) LIKE $${idx} OR LOWER(p.city) LIKE $${idx})`;
     }
 
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY p.created_at DESC';
 
     const propRes = await pool.query(query, params);
     return propRes.rows;
@@ -32,14 +40,32 @@ export const PropertyModel = {
 
   async getPropertiesByLandlord(landlordId) {
     const res = await pool.query(
-      'SELECT * FROM properties WHERE landlord_id::text = $1 AND (is_deleted IS FALSE OR is_deleted IS NULL) ORDER BY created_at DESC',
+      `SELECT p.*, 
+        COALESCE((SELECT json_agg(a.amenity) FROM property_amenities a WHERE a.property_id = p.id), '[]'::json) as fetched_amenities,
+        COALESCE((SELECT json_agg(b.*) FROM property_blocks b WHERE b.property_id = p.id), '[]'::json) as fetched_blocks,
+        COALESCE((SELECT json_agg(u.*) FROM property_units u WHERE u.property_id = p.id), '[]'::json) as fetched_units,
+        (SELECT rejection_reason FROM listing_approval_queue WHERE property_id = p.id ORDER BY submitted_at DESC LIMIT 1) as fetched_admin_notes,
+        (SELECT json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name) FROM users u WHERE u.id = p.landlord_id) as landlord_data
+       FROM properties p 
+       WHERE p.landlord_id::text = $1 AND (p.is_deleted IS FALSE OR p.is_deleted IS NULL) 
+       ORDER BY p.created_at DESC`,
       [landlordId]
     );
     return res.rows;
   },
 
   async findByIdOrSlug(idOrSlug) {
-    const res = await pool.query('SELECT * FROM properties WHERE id::text = $1 OR slug = $1', [idOrSlug]);
+    const res = await pool.query(
+      `SELECT p.*, 
+        COALESCE((SELECT json_agg(a.amenity) FROM property_amenities a WHERE a.property_id = p.id), '[]'::json) as fetched_amenities,
+        COALESCE((SELECT json_agg(b.*) FROM property_blocks b WHERE b.property_id = p.id), '[]'::json) as fetched_blocks,
+        COALESCE((SELECT json_agg(u.*) FROM property_units u WHERE u.property_id = p.id), '[]'::json) as fetched_units,
+        (SELECT storage_url FROM property_images pi WHERE pi.property_id = p.id AND pi.is_cover = TRUE LIMIT 1) as fetched_cover_image,
+        (SELECT json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name) FROM users u WHERE u.id = p.landlord_id) as landlord_data
+       FROM properties p 
+       WHERE p.id::text = $1 OR p.slug = $1`, 
+      [idOrSlug]
+    );
     return res.rows[0] || null;
   },
 
@@ -346,6 +372,42 @@ export const PropertyModel = {
     }
     
     return res.rows[0];
+  },
+
+  async updateAmenities(propertyId, amenitiesArray) {
+    await pool.query('DELETE FROM property_amenities WHERE property_id = $1', [propertyId]);
+    if (amenitiesArray && amenitiesArray.length > 0) {
+      for (const amenity of amenitiesArray) {
+        await pool.query('INSERT INTO property_amenities (property_id, amenity) VALUES ($1, $2)', [propertyId, amenity]);
+      }
+    }
+  },
+
+  async saveProperty(userId, propertyId) {
+    const res = await pool.query(
+      'INSERT INTO saved_properties (user_id, property_id) VALUES ($1, $2) ON CONFLICT (user_id, property_id) DO NOTHING RETURNING *',
+      [userId, propertyId]
+    );
+    return res.rows[0];
+  },
+
+  async unsaveProperty(userId, propertyId) {
+    const res = await pool.query(
+      'DELETE FROM saved_properties WHERE user_id = $1 AND property_id = $2 RETURNING *',
+      [userId, propertyId]
+    );
+    return res.rows[0];
+  },
+
+  async getSavedProperties(userId) {
+    const res = await pool.query(
+      `SELECT p.* FROM properties p 
+       JOIN saved_properties sp ON p.id = sp.property_id 
+       WHERE sp.user_id = $1 AND (p.is_deleted IS FALSE OR p.is_deleted IS NULL)
+       ORDER BY sp.created_at DESC`,
+      [userId]
+    );
+    return res.rows;
   },
 
   async deleteProperty(id, reason = 'Landlord requested deletion') {

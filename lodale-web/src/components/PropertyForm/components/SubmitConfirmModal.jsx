@@ -23,7 +23,7 @@ export default function SubmitConfirmModal({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white dark:bg-[#12221C] text-slate-900 dark:text-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-white/10 relative space-y-5">
+      <div className="bg-white dark:bg-[#07130D] text-slate-900 dark:text-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-white/10 relative space-y-5">
         <button
           type="button"
           disabled={isSubmitting}
@@ -64,7 +64,7 @@ export default function SubmitConfirmModal({
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs font-semibold flex items-start gap-2.5">
+        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs font-semibold flex items-start gap-2.5">
           <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
           <span>This listing and attached proof of ownership will be submitted for Admin review & verification.</span>
         </div>
@@ -82,7 +82,7 @@ export default function SubmitConfirmModal({
             type="button"
             disabled={isSubmitting}
             onClick={handleConfirmSubmit}
-            className="flex-1 py-3 px-4 rounded-xl bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#12221C] font-bold text-xs hover:opacity-95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 py-3 px-4 rounded-xl bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#07130D] font-bold text-xs hover:opacity-95 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>

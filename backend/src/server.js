@@ -15,6 +15,8 @@ import chatRoutes from './routes/chat.js';
 import leaseRoutes from './routes/leases.js';
 import rentRoutes from './routes/rent.js';
 import maintenanceRoutes from './routes/maintenance.js';
+import notificationRoutes from './routes/notifications.js';
+import inspectionRoutes from './routes/inspections.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
@@ -38,15 +40,17 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // Allowed origins for CORS (supports localhost/127.0.0.1 on any port in dev, plus explicit origins)
-const configuredOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000')
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000')
   .split(',')
   .map(o => o.trim());
 
+const isLocalhostOrigin = (origin) => /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
 const isAllowedOrigin = (origin) => {
   if (!origin) return true;
-  if (configuredOrigins.includes(origin)) return true;
+  if (allowedOrigins.includes(origin)) return true;
   // Match any localhost or 127.0.0.1 on any port (e.g. :5173, :5174, etc.)
-  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  if (isLocalhostOrigin(origin)) return true;
   return false;
 };
 
@@ -92,6 +96,8 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/leases', leaseRoutes);
 app.use('/api/rent', rentRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/inspections', inspectionRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

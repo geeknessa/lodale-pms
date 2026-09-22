@@ -32,7 +32,7 @@ export default function Step5OccupancySubmit({
               <Building2 className="h-4 w-4 text-[#2C4633] dark:text-[#E5C583]" />
               <span>Multi-Unit Portfolio Occupancy ({safeUnits.length} Units)</span>
             </h3>
-            <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
+            <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-100 dark:bg-[#07130D]merald-950/60 text-emerald-800 dark:text-emerald-300">
               Portfolio Mode
             </span>
           </div>
@@ -51,7 +51,7 @@ export default function Step5OccupancySubmit({
               className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${
                 occupied === false
                   ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent shadow-xs"
-                  : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                  : "bg-white dark:bg-[#07130D] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
               }`}
             >
               <div>⚡ All Units Vacant & Available</div>
@@ -66,7 +66,7 @@ export default function Step5OccupancySubmit({
               className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${
                 occupied === true
                   ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent shadow-xs"
-                  : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                  : "bg-white dark:bg-[#07130D] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
               }`}
             >
               <div>👥 Unit-by-Unit Occupancy</div>
@@ -76,7 +76,7 @@ export default function Step5OccupancySubmit({
 
           {occupied === true && (
             <div className="space-y-3 mt-3">
-              <div className="border border-slate-200 dark:border-white/10 rounded-xl bg-white dark:bg-[#12221C] overflow-hidden">
+              <div className="border border-slate-200 dark:border-white/10 rounded-xl bg-white dark:bg-[#07130D] overflow-hidden">
                 <div className="p-3 bg-slate-100 dark:bg-white/5 border-b border-slate-200 dark:border-white/10 text-xs font-bold text-slate-800 dark:text-slate-200">
                   Portfolio Units Occupancy Status
                 </div>
@@ -138,7 +138,7 @@ export default function Step5OccupancySubmit({
             </div>
           )}
 
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#12221C] mt-3">
+          <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#07130D] mt-3">
             <Input id="availBulk" label="Available From *" type="date" value={availableFrom} onChange={(e) => setAvailableFrom(e.target.value)} required />
           </div>
         </div>
@@ -152,7 +152,7 @@ export default function Step5OccupancySubmit({
               className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${
                 occupied === false
                   ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent"
-                  : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                  : "bg-white dark:bg-[#07130D] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
               }`}
             >
               Vacant (Public Listing)
@@ -163,7 +163,7 @@ export default function Step5OccupancySubmit({
               className={`p-4 rounded-xl border-2 font-bold text-xs text-left transition-all cursor-pointer ${
                 occupied === true
                   ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent"
-                  : "bg-white dark:bg-[#16241F] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                  : "bg-white dark:bg-[#07130D] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
               }`}
             >
               Occupied (Invite Current Tenant)

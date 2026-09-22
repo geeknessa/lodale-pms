@@ -7,18 +7,29 @@ export default function ListingCard({ listing }) {
   return (
     <Link
       to={`/listings/${listing.id}`}
-      className="group block overflow-hidden rounded-2xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#16241F] transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-xl hover:border-moss-500/50 dark:hover:border-[#E5C583]/50 cursor-pointer"
+      className="group block overflow-hidden rounded-2xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#07130D] transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-xl hover:border-moss-500/50 dark:hover:border-[#E5C583]/50 cursor-pointer"
     >
       <div className="flex h-48 w-full items-center justify-center bg-ink-100 dark:bg-white/10 overflow-hidden relative">
         <img
           src={imgUrl}
           alt={listing.title}
+          loading="lazy"
           className="h-full w-full object-cover group-hover:scale-108 transition-transform duration-500 ease-out"
           onError={(e) => {
+            e.target.onerror = null;
             e.target.src = "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80";
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        
+        {/* Building Type Badge */}
+        {listing.property_type && (
+          <div className="absolute top-3 left-3 bg-white/90 dark:bg-[#07130D]/90 backdrop-blur-sm border border-white/20 dark:border-white/10 px-2.5 py-1 rounded-full shadow-sm z-10">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-800 dark:text-cream-100/90">
+              {listing.property_type.replace(/_/g, ' ')}
+            </span>
+          </div>
+        )}
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
@@ -32,12 +43,20 @@ export default function ListingCard({ listing }) {
         <p className="mt-1 text-[13px] text-ink-500 dark:text-cream-100/70 truncate">{listing.location}</p>
 
         <div className="mt-3 flex items-center gap-4 text-[12px] text-ink-700 dark:text-cream-100/80 font-medium">
-          <span className="flex items-center gap-1">
-            <BedDouble className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" /> {listing.beds || 1} Bed
-          </span>
-          <span className="flex items-center gap-1">
-            <Bath className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" /> {listing.baths || 1} Bath
-          </span>
+          {(Number(listing.units_count) > 1 || Number(listing.unitsCount) > 1) ? (
+            <span className="flex items-center gap-1">
+              <Building2 className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" /> {listing.units_count || listing.unitsCount} Units
+            </span>
+          ) : (
+            <>
+              <span className="flex items-center gap-1">
+                <BedDouble className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" /> {listing.beds || listing.bedrooms || 1} Bed
+              </span>
+              <span className="flex items-center gap-1">
+                <Bath className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" /> {listing.baths || listing.bathrooms || 1} Bath
+              </span>
+            </>
+          )}
         </div>
 
         <div className="mt-4 flex items-center justify-between rounded-xl bg-moss-50 dark:bg-white/5 px-3 py-2 group-hover:bg-moss-700 dark:group-hover:bg-[#E5C583] transition-all duration-300">

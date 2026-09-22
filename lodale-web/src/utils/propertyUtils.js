@@ -338,40 +338,9 @@ export async function handlePropertySubmit({
 
     // Persist pending tenant invitation if occupied or tenant details provided
     if (occupied || tenantName || tenantContact) {
-      try {
-        const propId = editId || newPropertyObj.id;
-        const isEmail = tenantContact && tenantContact.includes("@");
-        const pendingTenant = {
-          id: "tenant-inv-" + Date.now(),
-          name: tenantName || "Invited Tenant",
-          tenantName: tenantName || "Invited Tenant",
-          email: isEmail ? tenantContact.trim() : "",
-          phone: !isEmail ? tenantContact.trim() : "",
-          propertyId: propId,
-          propertyTitle: displayName || address,
-          status: "pending",
-          leaseStatus: "Pending Invitation",
-          rentAmount: minRent,
-          dueDate: "1st of month",
-          paymentStatus: "Unpaid",
-          leaseStartDate: leaseStartDate || ""
-        };
-
-        const savedTenants = localStorage.getItem("propertyTenants");
-        const tenantsMap = savedTenants ? JSON.parse(savedTenants) : {};
-        if (!tenantsMap[propId]) tenantsMap[propId] = [];
-        const existingList = tenantsMap[propId];
-        const exists = existingList.some(t => 
-          (t.name && pendingTenant.name && t.name.toLowerCase() === pendingTenant.name.toLowerCase()) || 
-          (t.email && pendingTenant.email && t.email.toLowerCase() === pendingTenant.email.toLowerCase())
-        );
-        if (!exists) {
-          tenantsMap[propId].push(pendingTenant);
-          localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
-        }
-      } catch (invErr) {
-        console.warn("Failed to save pending tenant invitation:", invErr);
-      }
+      // Backend handles leases and invitations.
+      // A formal lease should be generated via leaseService or application flow instead of local storage mocking.
+      console.info("Property created with tenant details. A formal lease should be generated via the Tenancy flow.");
     }
 
     window.dispatchEvent(new Event("storage"));

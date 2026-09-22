@@ -35,7 +35,7 @@ textarea,
    ───────────────────────────────────────────────────────────── */
 .dap-top-nav {
   height: 66px;
-  background-color: #12221C;
+  background-color: #07130D;
   color: #FFFFFF;
   display: flex;
   align-items: center;
@@ -49,7 +49,7 @@ textarea,
 }
 
 body.dark .dap-top-nav {
-  background-color: #0B1512;
+  background-color: #09090b;
 }
 
 .dap-nav-brand {
@@ -138,7 +138,7 @@ body.dark .dap-top-nav {
 }
 
 body.dark .dap-left-panel {
-  background-color: #12221C;
+  background-color: #07130D;
   border-right-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -204,7 +204,7 @@ body.dark .dap-step-nav-btn:hover {
 
 body.dark .dap-step-nav-btn.active {
   background: linear-gradient(135deg, #E5C583 0%, #c4a25e 100%);
-  color: #12221C;
+  color: #07130D;
   box-shadow: 0 6px 18px rgba(229, 197, 131, 0.2);
 }
 
@@ -225,7 +225,7 @@ body.dark .dap-step-nav-btn.active {
 
 body.dark .dap-step-nav-btn.active .dap-step-nav-badge {
   background-color: rgba(18, 34, 28, 0.3);
-  color: #12221C;
+  color: #07130D;
 }
 
 .dap-step-nav-btn.completed .dap-step-nav-badge {
@@ -291,7 +291,7 @@ body.dark .dap-step-nav-btn.active .dap-step-nav-badge {
 }
 
 body.dark .dap-main-card {
-  background-color: #12221C;
+  background-color: #07130D;
   border-color: rgba(255, 255, 255, 0.08);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
 }
@@ -403,7 +403,7 @@ body.dark .dap-card-progress-fill {
 }
 
 body.dark .dap-option-card {
-  background-color: #16241F;
+  background-color: #07130D;
   border-color: rgba(255, 255, 255, 0.08);
   color: #FFFFFF;
 }
@@ -491,7 +491,7 @@ body.dark .dap-option-desc {
 }
 
 body.dark .dap-bottom-capsule-bar {
-  background-color: #12221C;
+  background-color: #07130D;
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
 }
@@ -531,7 +531,7 @@ body.dark .dap-capsule-nav-btn.prev {
 
 body.dark .dap-capsule-nav-btn.next {
   background-color: #E5C583;
-  color: #12221C;
+  color: #07130D;
 }
 
 .dap-capsule-nav-btn.next:hover {
@@ -577,7 +577,7 @@ body.dark .dap-capsule-step-pill {
 }
 
 body.dark .dap-right-panel {
-  background-color: #12221C;
+  background-color: #07130D;
   border-left-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -616,7 +616,7 @@ body.dark .dap-gallery-title {
 }
 
 body.dark .dap-gallery-thumb-card {
-  background-color: #16241F;
+  background-color: #07130D;
   border-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -649,7 +649,7 @@ body.dark .dap-gallery-thumb-card.cover {
 
 body.dark .dap-gallery-cover-badge {
   background-color: rgba(229, 197, 131, 0.9);
-  color: #12221C;
+  color: #07130D;
 }
 
 .dap-doc-summary-box {
@@ -660,7 +660,7 @@ body.dark .dap-gallery-cover-badge {
 }
 
 body.dark .dap-doc-summary-box {
-  background-color: #16241F;
+  background-color: #07130D;
   border-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -742,7 +742,7 @@ body.dark .tour-spotlight-mask {
   padding: 24px;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
   box-sizing: border-box;
-  color: #12221C;
+  color: #07130D;
   z-index: 9995;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
@@ -750,7 +750,7 @@ body.dark .tour-spotlight-mask {
 }
 
 body.dark .tour-tooltip-card {
-  background-color: #12221C;
+  background-color: #07130D;
   border-color: #E5C583;
   color: #FFFFFF;
 }
@@ -791,7 +791,7 @@ body.dark .tour-step-indicator {
 .tour-tooltip-title {
   font-size: 16px;
   font-weight: 800;
-  color: #12221C;
+  color: #07130D;
   margin: 0;
   text-align: left;
 }
@@ -854,7 +854,7 @@ body.dark .tour-btn-skip {
   border: 1px solid rgba(38, 38, 38, 0.15);
   font-size: 12px;
   font-weight: 600;
-  color: #12221C;
+  color: #07130D;
   cursor: pointer;
   padding: 6px 12px;
   border-radius: 10px;
@@ -880,7 +880,7 @@ body.dark .tour-btn-back {
 
 body.dark .tour-btn-next {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -983,7 +983,7 @@ body.dark .tour-btn-next {
   height: 32px;
   border-radius: 50%;
   background: #E5C583;
-  color: #0B1512;
+  color: #09090b;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -87,7 +87,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
       <div 
         className="w-full max-w-5xl bg-white dark:bg-[#1E1E1E] rounded-3xl p-6 sm:p-8 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[92vh] overflow-y-auto relative animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
@@ -334,7 +334,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
                         <div>
                           <h4 className="font-bold text-sm text-ink-900 dark:text-cream-100">{item.title}</h4>
                           <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">Lease Term: {item.period}</p>
-                          <span className="inline-block mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full capitalize">
+                          <span className="inline-block mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-[#07130D]merald-950 px-2.5 py-0.5 rounded-full capitalize">
                             {item.status}
                           </span>
                         </div>
@@ -411,7 +411,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
       {/* RELIABILITY BREAKDOWN SUB-MODAL */}
       {showReliabilityDetails && (
-        <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowReliabilityDetails(false)}>
+        <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowReliabilityDetails(false)}>
           <div className="w-full max-w-md bg-white dark:bg-[#1E1E1E] rounded-3xl p-6 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[85vh] overflow-y-auto relative animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-white/10 mb-4">
               <h3 className="font-extrabold text-base text-ink-900 dark:text-cream-100">Reliability Breakdown</h3>

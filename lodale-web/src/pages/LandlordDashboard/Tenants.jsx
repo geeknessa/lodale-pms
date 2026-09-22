@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2 } from "lucide-react";
+import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2, Bell } from "lucide-react";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
 import { leaseService } from "../../services/leaseService";
 import { applicationService } from "../../services/applicationService";
 import { chatService } from "../../services/chatService";
+import { reminderService } from "../../services/reminderService";
 import { apiClient } from "../../lib/apiClient";
 import Avatar from "../../components/Avatar";
+import RenewalOfferModal from "./components/RenewalOfferModal";
 import "./Tenants.css";
 
 const TenantsSkeleton = () => (
@@ -54,18 +56,32 @@ const TenantsSkeleton = () => (
   </div>
 );
 
-export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
+export default function Tenants({ setSelectedTenantForDetails, setActiveTab, initialShowAddModal, onResetInitialAddModal }) {
   const [tenantsList, setTenantsList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [displayLimit, setDisplayLimit] = useState(8);
   const [properties, setProperties] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All"); // All, Active, Pending, Past
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(initialShowAddModal || false);
+
+  useEffect(() => {
+    if (initialShowAddModal) {
+      setShowAddModal(true);
+      if (onResetInitialAddModal) onResetInitialAddModal();
+    }
+  }, [initialShowAddModal, onResetInitialAddModal]);
   const [tenantToRate, setTenantToRate] = useState(null);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [rentAgain, setRentAgain] = useState("yes");
+  
+  const [renewalTenant, setRenewalTenant] = useState(null);
+  const [settings, setSettings] = useState(null);
+
+  useEffect(() => {
+    setSettings(reminderService.getSettings());
+  }, []);
 
   // Form State for Adding Tenant
   const [formData, setFormData] = useState({
@@ -171,11 +187,16 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
           else badgeLabel = 'Pending';
         }
 
-        const key = String(l.tenant_id || l.id || l.tenant_email || l.tenant_name).toLowerCase();
-        if (key) seenKeys.add(key);
+        const tenantIdentifier = String(l.tenant_email || l.tenant_name || l.tenant_id).toLowerCase();
+        const propIdentifier = String(l.property_title || l.property_id).toLowerCase();
+        const compositeKey = `${tenantIdentifier}-${propIdentifier}`;
+
+        if (compositeKey && seenKeys.has(compositeKey)) return;
+        seenKeys.add(compositeKey);
 
         allTenants.push({
-          id: l.tenant_id || l.id,
+          id: l.tenant_id || l.tenantId, // keep tenant's user ID as main ID
+          leaseId: l.id, // the actual lease ID for API calls
           name: l.tenant_name || "Unknown Tenant",
           email: l.tenant_email || "",
           phone: l.tenant_contact || l.phone || "",
@@ -185,6 +206,8 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
           leaseStatus: badgeLabel,
           rentAmount: l.rent_amount,
           rentPeriod: l.rent_period,
+          startDate: l.start_date || l.startDate,
+          endDate: l.end_date || l.endDate,
           dueDate: l.start_date ? new Date(l.start_date).toLocaleDateString("en-US", { day: 'numeric', month: 'short' }) : "1st of month",
           paymentStatus: isPaid ? "Paid" : "Unpaid"
         });
@@ -195,9 +218,11 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
         const tenantId = String(a.tenantId || a.tenant_id || a.tenant?.id || a.id || '');
         const tenantEmail = a.tenant?.email || a.email || "";
         const tenantName = `${a.tenant?.firstName || a.first_name || ''} ${a.tenant?.lastName || a.last_name || ''}`.trim() || a.tenantName || a.tenant?.name || "Tenant";
-        const key = String(tenantId || tenantEmail || tenantName).toLowerCase();
+        const tenantKey = String(tenantId || tenantEmail || tenantName).toLowerCase();
+        const propKey = String(a.propertyTitle || a.property_title || a.propertyId || a.property_id).toLowerCase();
+        const compositeKey = `${tenantKey}-${propKey}`;
 
-        if (key && !seenKeys.has(key)) {
+        if (compositeKey && !seenKeys.has(compositeKey)) {
           const s = (a.status || '').toLowerCase();
           const isFullyLeased = s === 'leased' || s === 'active';
           const isLeaseSent = s === 'approved' || s === 'lease_generated' || s === 'pending_tenant' || s === 'signed';
@@ -205,7 +230,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
           // Strictly skip raw applicants who have not been sent a lease agreement
           if (!isFullyLeased && !isLeaseSent) return;
 
-          seenKeys.add(key);
+          seenKeys.add(compositeKey);
 
           let status = isFullyLeased ? 'active' : 'pending';
           let badgeLabel = isFullyLeased ? 'Active Tenant' : 'Pending Sign & Pay';
@@ -226,48 +251,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
         }
       });
 
-      // 3. Process Local Storage Property Tenants
-      try {
-        const rawLocal = localStorage.getItem("propertyTenants");
-        if (rawLocal) {
-          const localMap = JSON.parse(rawLocal);
-          if (Array.isArray(localMap)) {
-            localMap.forEach(t => {
-              const key = String(t.id || t.email || t.name).toLowerCase();
-              if (key && !seenKeys.has(key)) {
-                seenKeys.add(key);
-                allTenants.push(t);
-              }
-            });
-          } else if (typeof localMap === 'object') {
-            Object.keys(localMap).forEach(propId => {
-              const list = Array.isArray(localMap[propId]) ? localMap[propId] : [localMap[propId]];
-              list.forEach(t => {
-                if (!t) return;
-                const key = String(t.id || t.email || t.name).toLowerCase();
-                if (key && !seenKeys.has(key)) {
-                  seenKeys.add(key);
-                  allTenants.push({
-                    id: t.id || Date.now(),
-                    name: t.name || t.tenantName || "Tenant",
-                    email: t.email || "",
-                    phone: t.phone || "",
-                    propertyId: propId,
-                    propertyTitle: t.propertyTitle || "Property",
-                    status: (t.status || 'active').toLowerCase(),
-                    leaseStatus: t.leaseStatus || "Active Tenant",
-                    rentAmount: t.rentAmount || 0,
-                    dueDate: t.dueDate || "1st of month",
-                    paymentStatus: t.paymentStatus || "Paid"
-                  });
-                }
-              });
-            });
-          }
-        }
-      } catch (err) {
-        console.warn("Error reading local propertyTenants:", err);
-      }
+      // 3. (localStorage propertyTenants logic removed in favor of pure API data)
 
       // 4. Process Embedded Tenants directly from Property Listings (ONLY if explicit tenant contact info exists)
       const combinedProperties = [...(propertyList || [])];
@@ -405,7 +389,25 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
         }
       });
 
-      setTenantsList(allTenants);
+      // Final Deduplication by Email+Property to prevent duplicates
+      const uniqueTenantsMap = new Map();
+      allTenants.forEach(t => {
+        const tenantKey = String(t.email || t.phone || t.name || "").toLowerCase();
+        const propKey = String(t.propertyTitle || t.propertyId || "none").toLowerCase();
+        const finalKey = `${tenantKey}-${propKey}`;
+        
+        // If we already have this tenant for this property, overwrite only if the new one is 'active'
+        if (uniqueTenantsMap.has(finalKey)) {
+           const existing = uniqueTenantsMap.get(finalKey);
+           if (t.status === 'active' && existing.status !== 'active') {
+             uniqueTenantsMap.set(finalKey, t);
+           }
+        } else {
+           uniqueTenantsMap.set(finalKey, t);
+        }
+      });
+
+      setTenantsList(Array.from(uniqueTenantsMap.values()));
     } catch (e) {
       console.warn("Could not load tenants list:", e);
       setTenantsList([]);
@@ -471,114 +473,9 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
       return;
     }
 
-    // Get selected property details
-    const selectedProp = properties.find((p) => p.id === formData.propertyId);
-    const propTitle = selectedProp ? selectedProp.title : "Property";
-
-    const isPendingStatus = (formData.status || "pending") === "pending";
-    const newTenantObj = {
-      id: Date.now(),
-      name: formData.name,
-      tenantName: formData.name,
-      avatar: "",
-      email: formData.email,
-      phone: formData.phone || "",
-      reliabilityScore: 0,
-      occupation: formData.occupation || "Independent Professional",
-      income: formData.income ? formatCurrency(formData.income, "/mo") : "₦450,000/mo",
-      notes: formData.notes || "Invitation sent via Lodale portal.",
-      leaseStatus: isPendingStatus ? "Pending Invitation" : `Active Tenant (${formData.unit ? "Unit " + formData.unit : "Main Unit"})`,
-      paymentStatus: formData.paymentStatus || "Unpaid",
-      dueDate: formData.dueDate,
-      status: formData.status || "pending",
-      propertyId: formData.propertyId,
-      propertyTitle: propTitle
-    };
-
-    // Load current tenants list map from localStorage
-    const savedTenants = localStorage.getItem("propertyTenants");
-    const tenantsMap = savedTenants ? JSON.parse(savedTenants) : {};
-
-    if (!tenantsMap[formData.propertyId]) {
-      tenantsMap[formData.propertyId] = [];
-    }
-
-    tenantsMap[formData.propertyId].push(newTenantObj);
-    localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
-
-    // Register tenant into global users list for Admin visibility
-    try {
-      const tenantEmail = (formData.email || `${formData.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@tenant.lodale.com`).toLowerCase();
-      const tenantRecord = {
-        id: newTenantObj.id,
-        name: formData.name,
-        email: tenantEmail,
-        phone: formData.phone || '',
-        role: 'Tenant',
-        status: isPendingStatus ? 'Pending' : 'Active'
-      };
-      localStorage.setItem("registeredUser_" + tenantEmail, JSON.stringify(tenantRecord));
-      const existingStr = localStorage.getItem("registeredUsers");
-      let existing = existingStr ? JSON.parse(existingStr) : [];
-      existing = existing.filter(u => u && u.email && u.email.toLowerCase() !== tenantEmail);
-      existing.push(tenantRecord);
-      localStorage.setItem("registeredUsers", JSON.stringify(existing));
-    } catch (e) {}
-
-    // Seed chat thread for this tenant
-    const savedChats = localStorage.getItem("landlordChats");
-    const chatsList = savedChats ? JSON.parse(savedChats) : [];
-    const chatExists = chatsList.some((c) => c.name === formData.name);
-
-    if (!chatExists) {
-      const newChat = {
-        id: formData.name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
-        name: formData.name,
-        avatar: newTenantObj.avatar,
-        email: formData.email,
-        phone: newTenantObj.phone,
-        reliabilityScore: newTenantObj.reliabilityScore,
-        occupation: newTenantObj.occupation,
-        income: newTenantObj.income,
-        notes: newTenantObj.notes,
-        leaseStatus: newTenantObj.leaseStatus,
-        lastMessage: "Tenant invitation sent.",
-        time: "Just now",
-        type: "tenant",
-        messages: [
-          {
-            id: 1,
-            sender: "landlord",
-            text: `Welcome to Lodale! I have registered your profile for ${propTitle}. You can accept your invite, manage payments, and submit requests here once onboarded.`,
-            time: "Just now"
-          }
-        ]
-      };
-      chatsList.push(newChat);
-      localStorage.setItem("landlordChats", JSON.stringify(chatsList));
-    }
-
-    // Reset Form
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      propertyId: "",
-      unit: "",
-      occupation: "",
-      income: "",
-      notes: "",
-      paymentStatus: "Paid",
-      dueDate: "1st of every month",
-      status: "pending"
-    });
-
+    // Backend-driven workflow enforcement
+    triggerToast(`To add ${formData.name}, please invite them to apply for the property via the sharing link and generate a formal lease from their application.`, "info", "Use Application Workflow");
     setShowAddModal(false);
-    loadData();
-
-    // Notify other components/tabs
-    window.dispatchEvent(new Event("storage"));
-    triggerToast(`Invitation sent to ${formData.name}! They will show as Pending Invitation until onboarded.`, "success", "Invitation Sent");
   };
 
   // Direct contact helper -> goes to chat tab
@@ -592,8 +489,6 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     } catch (e) { }
 
     sessionStorage.setItem("activeChatPartnerId", partnerId);
-    localStorage.setItem("activeChatPartnerId", partnerId);
-    localStorage.setItem("activeChatTenantName", tenantName);
     window.dispatchEvent(new Event("storage"));
 
     // 3. Change tab to Chat (Tab index 3)
@@ -601,85 +496,38 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
   };
 
   // End Lease & Rate Action
-  const handleRateAndEndLease = (e) => {
+  const handleRateAndEndLease = async (e) => {
     e.preventDefault();
+    if (!tenantToRate) return;
 
-    const { id: tenantId, propertyId } = tenantToRate;
-    const savedTenants = localStorage.getItem("propertyTenants");
-    if (!savedTenants) return;
+    if (!tenantToRate.leaseId) {
+      triggerToast("Cannot end lease: No active lease found for this tenant.", "error");
+      return;
+    }
 
     try {
-      const tenantsMap = JSON.parse(savedTenants);
-      const list = tenantsMap[propertyId] || [];
-      const updatedList = list.map((t) => {
-        if (t.id === tenantId) {
-          let updatedScore = t.reliabilityScore;
-          let customReviews = t.customReviews || [];
-
-          // Only update score if rating is selected (> 0)
-          if (rating > 0) {
-            const prevScore = parseFloat(t.reliabilityScore) || 0;
-            updatedScore = prevScore > 0 ? ((prevScore + rating) / 2).toFixed(1) : rating.toFixed(1);
-          }
-
-          // Add review if rating > 0 or comment is filled
-          if (rating > 0 || comment.trim()) {
-            const newReview = {
-              landlord: "You (Current Landlord)",
-              rating: rating > 0 ? rating : parseFloat(t.reliabilityScore) || 0,
-              text: comment.trim() || "Lease ended. No written review comment provided.",
-              rentAgain: rentAgain === "yes" ? "Yes" : "No"
-            };
-            customReviews = [newReview, ...customReviews];
-          }
-
-          return {
-            ...t,
-            status: "past",
-            leaseStatus: "Lease Ended / Past Tenant",
-            reliabilityScore: updatedScore,
-            customReviews: customReviews
-          };
-        }
-        return t;
-      });
-
-      tenantsMap[propertyId] = updatedList;
-      localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
-
-      // Close modal & reset fields
+      await leaseService.endLease(tenantToRate.leaseId);
+      triggerToast("Lease agreement successfully ended.", "info", "Lease Ended");
+    } catch (error) {
+      console.error("Error rating and ending lease:", error);
+      triggerToast("Failed to end lease. Please try again.", "error", "Operation Failed");
+    } finally {
       setTenantToRate(null);
       setRating(0);
       setComment("");
       setRentAgain("yes");
-
       loadData();
-      window.dispatchEvent(new Event("storage"));
-      triggerToast("Lease agreement successfully ended.", "info", "Lease Ended");
-    } catch (error) {
-      console.error("Error rating and ending lease:", error);
     }
   };
 
   // Remove Tenant entirely
-  const handleDeleteTenant = (tenantId, propertyId) => {
+  const handleDeleteTenant = async (tenantId) => {
     if (!window.confirm("Are you sure you want to remove this tenant from the system entirely? This action cannot be undone.")) {
       return;
     }
 
-    const savedTenants = localStorage.getItem("propertyTenants");
-    if (!savedTenants) return;
-
     try {
-      const tenantsMap = JSON.parse(savedTenants);
-      const list = tenantsMap[propertyId] || [];
-      const updatedList = list.filter((t) => t.id !== tenantId);
-
-      tenantsMap[propertyId] = updatedList;
-      localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
-      loadData();
-      window.dispatchEvent(new Event("storage"));
-      triggerToast("Tenant record removed successfully.", "success", "Tenant Removed");
+      triggerToast("To fully remove a tenant from your portfolio, please terminate their lease in the Leases tab.", "warning", "Action Restricted");
     } catch (e) {
       console.error("Error removing tenant:", e);
     }
@@ -763,8 +611,13 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                       />
                     </div>
                     <div className="tenant-card-meta">
-                      <h4 className="tenant-card-name">{tenant.name}</h4>
-                      <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
+                      <div className="flex items-center gap-2">
+                        <h4 className="tenant-card-name">{tenant.name}</h4>
+                        {settings?.loyaltyRewardsEnabled && tenant.paymentStatus === "Paid" && (
+                          <Star className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" title="Perfect Payment History" />
+                        )}
+                      </div>
+                      <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
                         {tenant.leaseStatus || (tenant.status === 'active' ? "Active Tenant" : "Pending Sign & Pay")}
                       </span>
                     </div>
@@ -811,47 +664,20 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                 {/* Card Footer Actions */}
                 <div className="tenant-card-actions">
                   <button
-                    className="tenant-action-btn chat-btn"
+                    className="tenant-action-btn chat-btn w-full"
                     onClick={() => handleMessageTenant(tenant.name, tenant.avatar, tenant)}
                     title="Open Chat"
                   >
-                    <MessageSquare className="h-3.5 w-3.5" /> Chat
+                    <MessageSquare className="h-4 w-4" /> Chat
                   </button>
 
                   <button
-                    className="tenant-action-btn"
+                    className="tenant-action-btn w-full hover:bg-moss-50 hover:text-moss-700 dark:hover:bg-moss-950/30"
                     onClick={() => setSelectedTenantForDetails(tenant)}
                     title="View Details"
                   >
-                    <Info className="h-3.5 w-3.5" /> Details
+                    <Info className="h-4 w-4" /> View Details
                   </button>
-
-                  {tenant.status !== "past" ? (
-                    <button
-                      className="tenant-action-btn hover:text-red-500 hover:border-red-500"
-                      onClick={() => {
-                        setTenantToRate({
-                          id: tenant.id,
-                          propertyId: tenant.propertyId,
-                          name: tenant.name
-                        });
-                        setRating(0);
-                        setComment("");
-                        setRentAgain("yes");
-                      }}
-                      title="End Lease"
-                    >
-                      <X className="h-3.5 w-3.5" /> End Lease
-                    </button>
-                  ) : (
-                    <button
-                      className="tenant-action-btn hover:text-red-600 hover:border-red-600"
-                      onClick={() => handleDeleteTenant(tenant.id, tenant.propertyId)}
-                      title="Delete Record"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
-                    </button>
-                  )}
                 </div>
 
               </div>
@@ -863,7 +689,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
             <div className="flex flex-col items-center justify-center pt-8 pb-4">
               <button
                 onClick={() => setDisplayLimit((prev) => prev + 8)}
-                className="px-6 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs tracking-wide shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs tracking-wide shadow-md transition-all flex items-center gap-2 cursor-pointer"
               >
                 Load More Tenants ({filteredTenants.length - displayLimit} remaining)
               </button>
@@ -1178,6 +1004,16 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
         </div>
       )}
 
+      {/* RENEWAL OFFER MODAL */}
+      <RenewalOfferModal
+        isOpen={!!renewalTenant}
+        onClose={() => setRenewalTenant(null)}
+        tenant={renewalTenant}
+        onConfirm={(lease, t) => {
+          triggerToast(`Renewal lease generated for ${t.name || t.tenantName}!`, "success");
+          loadData(true);
+        }}
+      />
     </div>
   );
 }

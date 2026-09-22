@@ -79,7 +79,7 @@ export default function Step1IdentityLocation({
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer outline-none ${
                     houseSubtype === sub.id
                       ? "bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] border-transparent font-bold"
-                      : "bg-white dark:bg-[#16241F] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15"
+                      : "bg-white dark:bg-[#07130D] text-slate-700 dark:text-slate-200 border-slate-200 dark:border-white/15"
                   }`}
                 >
                   {sub.label}

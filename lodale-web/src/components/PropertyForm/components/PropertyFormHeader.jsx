@@ -75,13 +75,13 @@ export default function PropertyFormHeader({
 
             {/* NOTIFICATIONS DROPDOWN */}
             {showNotifDropdown && (
-              <div className="absolute right-0 top-12 z-[100] w-80 sm:w-[360px] rounded-3xl bg-white dark:bg-[#12221C] border border-slate-200 dark:border-white/10 shadow-2xl p-5 space-y-4 text-left animate-in fade-in slide-in-from-top-3 duration-200">
+              <div className="absolute right-0 top-12 z-[100] w-80 sm:w-[360px] rounded-3xl bg-white dark:bg-[#07130D] border border-slate-200 dark:border-white/10 shadow-2xl p-5 space-y-4 text-left animate-in fade-in slide-in-from-top-3 duration-200">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/10">
                   <h3 className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
                     <Bell className="h-4 w-4 text-[#2C4633] dark:text-[#E5C583]" />
                     <span>Notifications</span>
                     {notifications.length > 0 && (
-                      <span className="px-2 py-0.5 text-[10px] font-extrabold bg-[#2C4633] text-[#E5C583] dark:bg-[#E5C583] dark:text-[#0B1512] rounded-full">
+                      <span className="px-2 py-0.5 text-[10px] font-extrabold bg-[#2C4633] text-[#E5C583] dark:bg-[#E5C583] dark:text-[#09090b] rounded-full">
                         {notifications.length}
                       </span>
                     )}
@@ -91,7 +91,7 @@ export default function PropertyFormHeader({
                       <button
                         onClick={() => {
                           setNotifications([]);
-                          localStorage.setItem("landlordNotifications", JSON.stringify([]));
+                          // Backend marking as read could go here.
                         }}
                         className="text-[11px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 cursor-pointer border-none bg-transparent"
                       >
@@ -151,7 +151,7 @@ export default function PropertyFormHeader({
             onClick={() => setShowLandlordProfileModal(true)}
             title="View landlord profile details"
           >
-            <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center bg-[#2C4633] dark:bg-[#1E382A] text-[#E5C583] font-extrabold text-sm border-2 border-emerald-400/40 shadow-xs shrink-0">
+            <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center bg-[#2C4633] dark:bg-[#07130D] text-[#E5C583] font-extrabold text-sm border-2 border-emerald-400/40 shadow-xs shrink-0">
               {landlordAvatar ? (
                 <img src={landlordAvatar} alt="Landlord profile" className="h-full w-full object-cover" />
               ) : (

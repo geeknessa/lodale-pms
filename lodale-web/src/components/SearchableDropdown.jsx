@@ -57,7 +57,7 @@ export default function SearchableDropdown({
 
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between cursor-pointer px-3.5 py-2.5 h-[42px] rounded-xl border border-ink-200 dark:border-white/15 bg-white dark:bg-[#16241F] text-ink-900 dark:text-white text-xs font-medium transition-all hover:border-moss-600 dark:hover:border-[#E5C583]"
+        className="flex items-center justify-between cursor-pointer px-3.5 py-2.5 h-[42px] rounded-xl border border-ink-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-ink-900 dark:text-white text-xs font-medium transition-all hover:border-moss-600 dark:hover:border-[#E5C583]"
       >
         <span className={value ? "font-bold text-ink-900 dark:text-white truncate" : "text-ink-400 dark:text-cream-100/50 truncate"}>
           {value || placeholder}
@@ -66,7 +66,7 @@ export default function SearchableDropdown({
       </div>
 
       {isOpen && (
-        <div className="absolute z-[300] left-0 right-0 mt-1 max-h-60 rounded-xl border border-ink-200 dark:border-white/15 bg-white dark:bg-[#12221C] shadow-2xl overflow-hidden flex flex-col animate-in fade-in">
+        <div className="absolute z-[300] left-0 right-0 mt-1 max-h-60 rounded-xl border border-ink-200 dark:border-white/15 bg-white dark:bg-[#07130D] shadow-2xl overflow-hidden flex flex-col animate-in fade-in">
           {/* Search Box */}
           <div className="p-2 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#182C24]">
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#1F362C] border border-ink-200 dark:border-white/15">
@@ -97,7 +97,7 @@ export default function SearchableDropdown({
                     onClick={() => handleSelect(opt)}
                     className={`flex items-center justify-between px-3.5 py-2 text-xs cursor-pointer transition-colors ${
                       isSelected
-                        ? "bg-moss-100/70 dark:bg-[#1E382A] text-moss-800 dark:text-[#E5C583] font-bold"
+                        ? "bg-moss-100/70 dark:bg-[#07130D] text-moss-800 dark:text-[#E5C583] font-bold"
                         : "text-ink-900 dark:text-cream-100 hover:bg-cream-100 dark:hover:bg-white/5"
                     }`}
                   >

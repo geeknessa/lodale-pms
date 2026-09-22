@@ -26,7 +26,7 @@ export default function AccessDenied() {
         </div>
 
         {/* Glassmorphic Card */}
-        <div className="w-full bg-[#FAF8F6]/75 dark:bg-[#101F1A]/70 backdrop-blur-lg border border-white/80 dark:border-[#23372B]/60 shadow-[0_12px_40px_rgba(0,0,0,0.03)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.25)] rounded-[20px] sm:rounded-[24px] p-6 sm:p-8 space-y-6 transition-all duration-300">
+        <div className="w-full bg-[#FAF8F6]/75 dark:bg-[#07130D]/70 backdrop-blur-lg border border-white/80 dark:border-[#3f3f46]/60 shadow-[0_12px_40px_rgba(0,0,0,0.03)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.25)] rounded-[20px] sm:rounded-[24px] p-6 sm:p-8 space-y-6 transition-all duration-300">
           <div className="text-5xl text-rose-500 flex justify-center">
             <ShieldAlert className="h-16 w-16 animate-pulse" />
           </div>

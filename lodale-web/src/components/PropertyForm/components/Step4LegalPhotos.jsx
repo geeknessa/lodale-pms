@@ -48,7 +48,7 @@ export default function Step4LegalPhotos({
       <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 space-y-3">
         {/* INFORMATIONAL CALLOUT BANNER FOR BULK GENERATED COMPOUND PHOTOS */}
         {wasBulkGenerated && isMultiUnit && (
-          <div className="p-3 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
+          <div className="p-3 rounded-xl bg-emerald-50/90 dark:bg-[#07130D]merald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
             <Info className="h-4 w-4 shrink-0 text-emerald-700 dark:text-[#E5C583] mt-0.5" />
             <div>
               <span className="font-bold">Building Exterior & Shared Compound Grounds: </span>
@@ -91,7 +91,7 @@ export default function Step4LegalPhotos({
                   className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                     isCover
                       ? "bg-[#2C4633]/10 dark:bg-[#E5C583]/10 border-[#2C4633] dark:border-[#E5C583]"
-                      : "bg-white dark:bg-[#16241F] border-slate-200 dark:border-white/10"
+                      : "bg-white dark:bg-[#07130D] border-slate-200 dark:border-white/10"
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-2">
@@ -155,7 +155,7 @@ export default function Step4LegalPhotos({
             {safeUnits.map((unit, unitIdx) => {
               const uImgs = unit.images || unit.photos || [];
               return (
-                <div key={unitIdx} className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#16241F] space-y-2">
+                <div key={unitIdx} className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#07130D] space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="font-bold text-xs text-slate-900 dark:text-white">{unit.unit_name}</span>

@@ -33,7 +33,7 @@ function RoleAccessPrompt({ requiredRole = "landlord" }) {
         </div>
 
         {/* Glassmorphic Prompt Card */}
-        <div className="w-full bg-[#FAF8F6]/85 dark:bg-[#101F1A]/85 backdrop-blur-lg border border-white/80 dark:border-[#23372B]/60 shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.3)] rounded-[20px] sm:rounded-[24px] p-6 sm:p-8 space-y-5 transition-all duration-300">
+        <div className="w-full bg-[#FAF8F6]/85 dark:bg-[#07130D]/85 backdrop-blur-lg border border-white/80 dark:border-[#3f3f46]/60 shadow-[0_12px_40px_rgba(0,0,0,0.05)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.3)] rounded-[20px] sm:rounded-[24px] p-6 sm:p-8 space-y-5 transition-all duration-300">
           
           <div className={`inline-flex items-center justify-center h-14 w-14 sm:h-16 sm:w-16 rounded-2xl mb-1 border ${
             isLandlordRequired 
