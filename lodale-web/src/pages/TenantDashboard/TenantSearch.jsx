@@ -1249,7 +1249,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Ownership Status</span>
-                  <span className="px-2 py-0.5 bg-emerald-100 dark:bg-[#07130D]merald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded">
+                  <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded">
                     Verified Title
                   </span>
                 </div>
@@ -1508,7 +1508,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 <h4 className="font-bold text-[20px] text-ink-900 dark:text-white mt-3 mb-1">
                   {selectedLandlord.name}
                 </h4>
-                <span className="px-3 py-1 bg-emerald-100 dark:bg-[#07130D]merald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded-full uppercase">
+                <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded-full uppercase">
                   Verified title partner
                 </span>
               </div>

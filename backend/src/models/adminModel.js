@@ -53,6 +53,7 @@ export const AdminModel = {
       SET status = $1,
           approval_type = COALESCE($3, approval_type),
           approved_at = CASE WHEN $4::boolean THEN NOW() ELSE approved_at END,
+          auto_approve_at = NULL,
           updated_at = NOW()
       WHERE id::text = $2 OR slug = $2
       RETURNING *

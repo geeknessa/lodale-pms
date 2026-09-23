@@ -330,10 +330,10 @@ export default function Settings({ onShowReportModal }) {
       )}
 
       {/* Landlord Profile Completeness Guidance Banner */}
-      <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-[#07130D]mber-950/20 border border-amber-200 dark:border-amber-900/50 relative overflow-hidden">
+      <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-[#07130D]mber-900/30 flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800/50">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800/50">
               <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
@@ -796,10 +796,10 @@ export default function Settings({ onShowReportModal }) {
               </div>
 
               {/* Reward Good Tenants */}
-              <div className="p-5 rounded-2xl bg-amber-50 dark:bg-[#07130D]mber-950/20 border border-amber-200 dark:border-amber-800/40">
+              <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-amber-100 dark:bg-[#07130D]mber-900/40 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
+                    <div className="p-2 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
                       <Award className="w-5 h-5" />
                     </div>
                     <div>

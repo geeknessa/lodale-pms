@@ -41,7 +41,7 @@ export const ADD_PROPERTY_TOUR_STEPS = [
     stepNum: 2,
     target: ".tour-step-nav-2",
     title: "2. Units & Specifications",
-    content: "Setup unit layout & rental pricing. Add individual flats manually, use the ⚡ Bulk Generator for multi-unit buildings, or import unit spreadsheets via CSV.",
+    content: "Setup unit layout & rental pricing. Add individual flats manually, use the Bulk Generator for multi-unit buildings, or import unit spreadsheets via CSV.",
     placement: "right",
     formStep: 2
   },

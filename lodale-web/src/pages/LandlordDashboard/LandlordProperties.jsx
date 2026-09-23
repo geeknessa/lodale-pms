@@ -454,7 +454,6 @@ export default function LandlordProperties() {
         } catch (err) {}
 
         const propMap = new Map();
-        const seenSignatures = new Set();
 
         const addUniqueProp = (p) => {
           if (!p || (!p.id && p.id !== 0)) return;
@@ -463,8 +462,6 @@ export default function LandlordProperties() {
           // Enforce strict ownership check
           const pLandlordId = String(p.landlord_id || p.landlordId || p.landlord?.id || "").trim();
           if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) return;
-
-          const sig = `${(p.title || "").trim().toLowerCase()}|${(p.address_line1 || p.address || p.location || "").trim().toLowerCase()}`;
 
           if (propMap.has(propIdKey)) {
             const existing = propMap.get(propIdKey);
@@ -478,16 +475,20 @@ export default function LandlordProperties() {
             return;
           }
 
-          if (sig.length > 1 && seenSignatures.has(sig)) {
-            return;
-          }
+          const locParts = [p.address_line1 || p.address, p.city, p.state].filter(Boolean);
+          const computedLoc = p.location || (locParts.length > 0 ? locParts.join(', ') : (p.city || p.state || 'Abuja'));
+          const propBeds = Number(p.bedrooms) || (Array.isArray(p.units) && p.units[0]?.bedrooms ? Number(p.units[0].bedrooms) : 1);
+          const propBaths = Number(p.bathrooms) || (Array.isArray(p.units) && p.units[0]?.bathrooms ? Number(p.units[0].bathrooms) : 1);
 
           propMap.set(propIdKey, {
             ...p,
             price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
-            location: p.location || `${p.city || "Lagos"}, ${p.state || "Lagos"}`
+            location: computedLoc,
+            bedrooms: propBeds,
+            bathrooms: propBaths,
+            beds: propBeds,
+            baths: propBaths
           });
-          if (sig.length > 1) seenSignatures.add(sig);
         };
 
         // Populate initial local properties
@@ -839,7 +840,7 @@ export default function LandlordProperties() {
                         }
                         if (isLive) {
                           return (
-                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-[#07130D]merald-950/80 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-300">
                               <CheckCircle2 className="h-3 w-3" /> Live
                             </span>
                           );
@@ -856,7 +857,7 @@ export default function LandlordProperties() {
                         }
                         if (isPending) {
                           return (
-                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-amber-100 dark:bg-[#07130D]mber-950/80 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-300">
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-300">
                               <Clock className="h-3 w-3" /> Pending Review
                             </span>
                           );
@@ -870,7 +871,7 @@ export default function LandlordProperties() {
                   <div className="ap-card-actions flex items-center gap-2">
                     <button
                       onClick={() => setEditingProperty(item)}
-                      className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/40 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/40 transition-colors flex items-center gap-1 cursor-pointer"
+                      className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/40 transition-colors flex items-center gap-1 cursor-pointer"
                       title="Edit property details"
                     >
                       <Edit3 className="h-3.5 w-3.5" /> Edit

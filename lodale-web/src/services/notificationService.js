@@ -7,7 +7,7 @@ export const notificationService = {
   async getMyNotifications() {
     try {
       const data = await apiClient('/notifications');
-      return data || [];
+      return Array.isArray(data) ? data : (data?.notifications || []);
     } catch (err) {
       console.warn('[notificationService.getMyNotifications error]:', err.message);
       return [];

@@ -2,6 +2,7 @@ import { PropertyModel } from '../models/propertyModel.js';
 import { UserModel } from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { PropertyVerificationService } from '../services/propertyVerificationService.js';
+import { autoApprovalService } from '../services/autoApprovalService.js';
 
 export const propertyController = {
   getProperties: asyncHandler(async (req, res) => {
@@ -20,7 +21,7 @@ export const propertyController = {
         images: parsedImages,
         cover_image: actualCoverImage,
         price: `₦${Number(p.rent_amount).toLocaleString()}${String(p.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
-        location: `${p.address_line1}, ${p.city}`,
+        location: [p.address_line1, p.city, p.state].filter(Boolean).join(', ') || p.city || p.state || 'Abuja',
         landlord: p.landlord_data?.id ? p.landlord_data : null
       };
     });
@@ -51,7 +52,7 @@ export const propertyController = {
         cover_image: actualCoverImage,
         admin_notes: p.fetched_admin_notes,
         price: `₦${Number(p.rent_amount).toLocaleString()}${String(p.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
-        location: `${p.address_line1}, ${p.city}`,
+        location: [p.address_line1, p.city, p.state].filter(Boolean).join(', ') || p.city || p.state || 'Abuja',
         landlord: p.landlord_data?.id ? p.landlord_data : null
       };
     });
@@ -85,7 +86,7 @@ export const propertyController = {
       cover_image: actualCoverImage,
       landlord: property.landlord_data?.id ? property.landlord_data : null,
       price: `₦${Number(property.rent_amount).toLocaleString()}${String(property.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
-      location: `${property.address_line1}, ${property.city}`,
+      location: [property.address_line1, property.city, property.state].filter(Boolean).join(', ') || property.city || property.state || 'Abuja',
     });
   }),
 
@@ -108,10 +109,13 @@ export const propertyController = {
     // Run Automated Rule-Based Property Verification Engine
     const verification = await PropertyVerificationService.verifyProperty(req.body, effectiveLandlordId);
     
-    const isAutoApproved = verification.decision === 'AUTO_APPROVE';
-    const assignedStatus = isAutoApproved ? 'active_vacant' : 'pending_review';
-    const approvalType = isAutoApproved ? 'automatic' : 'pending';
-    const approvedAt = isAutoApproved ? new Date().toISOString() : null;
+    const qualifiesForAutoApproval = verification.decision === 'AUTO_APPROVE';
+    const assignedStatus = 'pending_review';
+    const approvalType = 'pending';
+    const approvedAt = null;
+    const autoApproveAt = qualifiesForAutoApproval
+      ? new Date(Date.now() + 60000).toISOString()
+      : null;
 
     const property = await PropertyModel.createProperty({
       effectiveLandlordId, title, slug, description, sanitizedPropertyType, 
@@ -124,7 +128,8 @@ export const propertyController = {
       approval_type: approvalType,
       risk_level: verification.riskLevel,
       verification_results: verification.results,
-      approved_at: approvedAt
+      approved_at: approvedAt,
+      auto_approve_at: autoApproveAt
     });
 
     if (Array.isArray(amenities) && amenities.length > 0) {
@@ -133,15 +138,19 @@ export const propertyController = {
       }
     }
 
-    // Queue status reflects approval or pending review
-    const queueStatus = isAutoApproved ? 'approved' : 'queued';
-    await PropertyModel.queueForApproval(property.id, effectiveLandlordId, queueStatus);
+    // Queue status in listing_approval_queue starts as queued
+    await PropertyModel.queueForApproval(property.id, effectiveLandlordId, 'queued');
+
+    // Schedule 1-minute server-side delayed auto-approval if eligible
+    if (qualifiesForAutoApproval) {
+      autoApprovalService.schedulePropertyAutoApproval(property.id, 60000);
+    }
 
     const createdBlocks = await PropertyModel.getBlocks(property.id);
     const createdUnits = await PropertyModel.getUnits(property.id);
 
-    const responseMessage = isAutoApproved
-      ? 'Property verified and automatically approved! Your listing is now active and live.'
+    const responseMessage = qualifiesForAutoApproval
+      ? 'Property passed automated verification! It is scheduled for automatic approval in 1 minute following safety verification.'
       : 'Property submitted successfully! It is now pending admin review before going live.';
 
     res.status(201).json({
@@ -150,6 +159,7 @@ export const propertyController = {
       units: createdUnits,
       status: assignedStatus,
       approval_type: approvalType,
+      auto_approve_at: autoApproveAt,
       verification_score: verification.score,
       risk_level: verification.riskLevel,
       verification_results: verification.results,
@@ -215,6 +225,7 @@ export const propertyController = {
       return res.status(403).json({ error: 'Forbidden: You can only delete your own properties' });
     }
 
+    autoApprovalService.cancelScheduledAutoApproval(id);
     await PropertyModel.deleteProperty(id);
     res.json({ message: 'Property deleted successfully' });
   }),
@@ -235,6 +246,7 @@ export const propertyController = {
       return res.status(403).json({ error: 'Forbidden: You can only update status of your own properties' });
     }
 
+    autoApprovalService.cancelScheduledAutoApproval(id);
     const updated = await PropertyModel.updatePropertyStatus(id, status);
     if (!updated) {
       return res.status(404).json({ error: 'Property not found' });

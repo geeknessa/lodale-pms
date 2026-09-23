@@ -187,7 +187,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
           </div>
 
           {/* Payment Details with 1-Click Copy Buttons */}
-          <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-[#07130D]merald-950/20 space-y-3 text-xs">
+          <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-3 text-xs">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-emerald-900 dark:text-emerald-300 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                 <Building2 className="h-4 w-4 text-emerald-600 dark:text-[#E5C583]" />
@@ -211,7 +211,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
                 <button
                   type="button"
                   onClick={() => copyToClipboard(invoice.bankAccountNumber, 'Account Number')}
-                  className="p-2 rounded-lg bg-emerald-50 dark:bg-[#07130D]merald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
+                  className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
                   title="Copy Account Number"
                 >
                   {copiedField === 'Account Number' ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
@@ -226,7 +226,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
                 <button
                   type="button"
                   onClick={() => copyToClipboard(invoice.bankName, 'Bank Name')}
-                  className="p-2 rounded-lg bg-emerald-50 dark:bg-[#07130D]merald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
+                  className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
                   title="Copy Bank Name"
                 >
                   {copiedField === 'Bank Name' ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
@@ -241,7 +241,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
                 <button
                   type="button"
                   onClick={() => copyToClipboard(invoice.bankAccountName || invoice.landlordName, 'Account Name')}
-                  className="p-2 rounded-lg bg-emerald-50 dark:bg-[#07130D]merald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
+                  className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-[#E5C583] hover:bg-emerald-100 cursor-pointer border-none"
                   title="Copy Account Name"
                 >
                   {copiedField === 'Account Name' ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
@@ -284,7 +284,7 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
               </div>
 
               {receiptFileName && (
-                <div className="p-2.5 bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-xs text-emerald-900 dark:text-emerald-300 font-semibold truncate">
+                <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 rounded-xl text-xs text-emerald-900 dark:text-emerald-300 font-semibold truncate">
                   Attached Proof: <strong>{receiptFileName}</strong>
                 </div>
               )}

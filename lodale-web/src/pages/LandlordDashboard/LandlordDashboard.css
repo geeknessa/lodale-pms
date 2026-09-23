@@ -99,6 +99,7 @@ body.dark .pro-advantages-btn {
 
 body.dark .pro-advantages-btn:hover {
   background-color: #FFFFFF;
+  color: #09090b !important;
 }
 
 body.dark .activity-badge {
@@ -123,6 +124,7 @@ body.dark .db-action-btn.approve {
 
 body.dark .db-action-btn.approve:hover {
   background-color: #FFFFFF;
+  color: #09090b !important;
 }
 
 body.dark .db-nav-pill.active .db-pill-badge {
@@ -147,6 +149,22 @@ body.dark .requests-show-more-btn:hover {
 body.dark .ap-filter-select option {
   background-color: #07130D;
   color: #FFFFFF;
+}
+
+body.dark .property-mini-btn:hover {
+  background-color: #E5C583 !important;
+  color: #09090b !important;
+  border-color: #E5C583 !important;
+}
+
+body.dark .db-view-request-btn {
+  background-color: #E5C583 !important;
+  color: #09090b !important;
+}
+
+body.dark .db-view-request-btn:hover {
+  background-color: #D8B672 !important;
+  color: #09090b !important;
 }
 
 

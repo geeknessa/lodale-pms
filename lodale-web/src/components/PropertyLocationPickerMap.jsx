@@ -253,7 +253,7 @@ export default function PropertyLocationPickerMap({
             type="button"
             onClick={handleDetectGPS}
             title="Auto-detect my current GPS location"
-            className="px-3 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-[#07130D]mber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shrink-0"
+            className="px-3 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shrink-0"
           >
             <Compass className="h-4 w-4" /> GPS
           </button>

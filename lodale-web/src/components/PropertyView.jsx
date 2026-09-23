@@ -27,6 +27,17 @@ export function PropertyDetailView() {
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [selectedUnitForModal, setSelectedUnitForModal] = useState(null);
 
+  const { 
+    meetsIncome, 
+    meetsGuarantor, 
+    meetsEmployment, 
+    requirements, 
+    tenantStats 
+  } = useTenantQualification(property);
+
+  const requiredIncome = requirements?.income || (property?.minimum_income_required ? `₦${Number(property.minimum_income_required).toLocaleString()}/yr` : "None Stated");
+  const employmentReq = requirements?.employment || property?.employment_requirement || "Any Employment Status";
+
   useEffect(() => {
     async function loadProperty() {
       setLoading(true);
@@ -143,14 +154,6 @@ export function PropertyDetailView() {
     (!property.landlord_id && !property.landlord?.id)
   );
 
-  const { 
-    meetsIncome, 
-    meetsGuarantor, 
-    meetsEmployment, 
-    requirements, 
-    tenantStats 
-  } = useTenantQualification(property);
-
   // Parse House Rules
   const houseRulesList = Array.isArray(property?.house_rules)
     ? property.house_rules
@@ -239,7 +242,7 @@ export function PropertyDetailView() {
             <div className="flex items-center gap-3 mb-2">
               <span className={`text-[11px] font-extrabold uppercase px-3 py-1 rounded-full border ${property.status === 'occupied' || property.status === 'active_occupied'
                   ? 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30'
-                  : 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-[#07130D]merald-500/20 dark:text-emerald-300 dark:border-emerald-500/30'
+                  : 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30'
                 }`}>
                 {property.status === 'occupied' || property.status === 'active_occupied' ? 'Occupied' : 'Active Listing'}
               </span>

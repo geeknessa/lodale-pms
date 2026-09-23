@@ -69,6 +69,42 @@ export const applyForProperty = async (req, res) => {
        RETURNING *`,
       [propertyId, tenantId, notes || null]
     );
+
+    // 3. Create notification for the landlord
+    try {
+      const propRes = await pool.query(
+        `SELECT title, landlord_id FROM properties WHERE id = $1`,
+        [propertyId]
+      );
+      if (propRes.rows.length > 0) {
+        const property = propRes.rows[0];
+        const landlordId = property.landlord_id;
+
+        if (landlordId) {
+          const tenantRes = await pool.query(
+            `SELECT first_name, last_name, email FROM users WHERE id = $1`,
+            [tenantId]
+          );
+          const tenantUser = tenantRes.rows[0];
+          const tenantName = tenantUser
+            ? `${tenantUser.first_name || ''} ${tenantUser.last_name || ''}`.trim() || tenantUser.email
+            : 'A prospective tenant';
+
+          await pool.query(
+            `INSERT INTO notifications (user_id, title, message, type)
+             VALUES ($1, $2, $3, $4)`,
+            [
+              landlordId,
+              'New Rental Application Received',
+              `${tenantName} submitted an application for "${property.title}".`,
+              'application'
+            ]
+          );
+        }
+      }
+    } catch (notifErr) {
+      console.error('Failed to create landlord application notification:', notifErr);
+    }
     
     res.status(201).json({ success: true, application: newApp.rows[0] });
   } catch (error) {
@@ -148,7 +184,7 @@ export const getLandlordApplications = async (req, res) => {
          p.title as property_title,
          p.rent_amount as property_rent_amount,
          p.rent_period as property_rent_period,
-         COALESCE(p.minimum_income_required, 0) as minimum_income_required,
+         COALESCE(p.minimum_income_required::text, '0') as minimum_income_required,
          COALESCE(p.requires_guarantor, false) as requires_guarantor,
          u.first_name,
          u.last_name,
@@ -278,6 +314,32 @@ export const updateApplicationStatus = async (req, res) => {
        RETURNING *`,
       [status, rejectionReason || null, id]
     );
+
+    // Notify the tenant about the application update
+    try {
+      const tenantId = checkOwnership.rows[0].tenant_id;
+      const isApproved = status === 'approved';
+      const isRejected = status === 'rejected';
+      const title = isApproved
+        ? 'Application Approved!'
+        : isRejected
+          ? 'Application Update: Not Approved'
+          : `Application Status: ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+
+      const message = isApproved
+        ? 'Congratulations! Your rental application has been approved by the landlord.'
+        : isRejected
+          ? `Your application was not approved.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`
+          : `Your application status has been updated to ${status}.`;
+
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type)
+         VALUES ($1, $2, $3, $4)`,
+        [tenantId, title, message, isApproved ? 'success' : isRejected ? 'warning' : 'application']
+      );
+    } catch (notifErr) {
+      console.error('Failed to notify tenant of application update:', notifErr);
+    }
 
     res.json({ success: true, application: updatedApp.rows[0] });
   } catch (error) {

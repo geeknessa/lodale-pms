@@ -37,7 +37,7 @@ export default function Step3AmenitiesRules({
     <div className="space-y-6 animate-in fade-in">
       {/* INFORMATIONAL CALLOUT BANNER FOR COMPOUND FACILITIES (Show only when bulk generated) */}
       {wasBulkGenerated && safeUnits.length > 0 && (
-        <div className="p-3.5 rounded-xl bg-emerald-50/90 dark:bg-[#07130D]merald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
+        <div className="p-3.5 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
           <Info className="h-4 w-4 shrink-0 text-emerald-700 dark:text-[#E5C583] mt-0.5" />
           <div>
             <span className="font-bold">Compound & Shared Facilities: </span>

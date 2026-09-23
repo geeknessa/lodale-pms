@@ -100,16 +100,23 @@ export async function handlePropertySubmit({
   const bathsVal = getVal("bathrooms") || bathrooms || "1";
   
   const cityInput = getVal("city");
-  const cityVal = (cityInput || cityName || "Lagos").trim();
+  const cityVal = (cityInput || cityName || "").trim();
   
   const stateInput = getVal("state");
-  const stateVal = (stateInput || stateName || "Lagos").trim();
+  const stateVal = (stateInput || stateName || "").trim();
   
   const descVal = (getVal("description") || description || "").trim();
 
-  const numericRent = Number(rent.replace(/[^0-9]/g, "")) || 0;
-  const numericBedrooms = Number(bedrooms) || 1;
-  const numericBathrooms = Number(bathsVal) || 1;
+  const parseNumeric = (val, defaultVal = 1) => {
+    if (typeof val === "number" && !isNaN(val)) return Math.floor(val);
+    if (!val) return defaultVal;
+    const match = String(val).match(/\d+/);
+    return match ? parseInt(match[0], 10) : defaultVal;
+  };
+
+  const numericRent = Number(String(rent).replace(/[^0-9]/g, "")) || 0;
+  const numericBedrooms = parseNumeric(bedrooms, 1);
+  const numericBathrooms = parseNumeric(bathsVal, 1);
 
   if (!displayName && !address) {
     setFormError("Property Name / Title and Address are required.");

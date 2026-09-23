@@ -320,7 +320,7 @@ export default function Step2UnitsSpecs({
 
               {unitAddTab === "generator" && (
                 <div className="bg-white dark:bg-[#07130D] p-4 rounded-xl border border-slate-200 dark:border-white/10 mb-4 space-y-4">
-                  <div className="p-3 rounded-xl bg-emerald-50/80 dark:bg-[#07130D]merald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
+                  <div className="p-3 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
                     <Info className="h-4 w-4 shrink-0 text-emerald-700 dark:text-[#E5C583] mt-0.5" />
                     <div>
                       <span className="font-bold">Fast Portfolio Generator: </span>
@@ -430,7 +430,7 @@ export default function Step2UnitsSpecs({
                     onClick={handleGenerateBulkUnits}
                     className="w-full py-2.5 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none mt-2"
                   >
-                    ⚡ Generate Units Batch
+                    Generate Units Batch
                   </button>
                 </div>
               )}
@@ -478,7 +478,7 @@ export default function Step2UnitsSpecs({
 
                           if (isEditingRow) {
                             return (
-                              <tr key={i} className="bg-amber-50/70 dark:bg-[#07130D]mber-950/30">
+                              <tr key={i} className="bg-amber-50/70 dark:bg-amber-950/30">
                                 <td colSpan={4} className="p-3 space-y-3">
                                   <div className="flex items-center justify-between border-b border-amber-200 dark:border-white/10 pb-2">
                                     <span className="font-bold text-xs text-amber-900 dark:text-[#E5C583]">
@@ -712,12 +712,12 @@ export default function Step2UnitsSpecs({
                                 {hasUnitSpecs && (
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {u.amenities && (
-                                      <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-emerald-100 dark:bg-[#07130D]merald-950/60 text-emerald-800 dark:text-emerald-300 rounded border border-emerald-200 dark:border-emerald-800/40">
+                                      <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 rounded border border-emerald-200 dark:border-emerald-800/40">
                                         ✨ {typeof u.amenities === "string" ? u.amenities : u.amenities.join(", ")}
                                       </span>
                                     )}
                                     {u.rules && (
-                                      <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 dark:bg-[#07130D]mber-950/60 text-amber-800 dark:text-[#E5C583] rounded border border-amber-200 dark:border-amber-800/40">
+                                      <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-[#E5C583] rounded border border-amber-200 dark:border-amber-800/40">
                                         📋 {typeof u.rules === "string" ? u.rules : u.rules.join(", ")}
                                       </span>
                                     )}

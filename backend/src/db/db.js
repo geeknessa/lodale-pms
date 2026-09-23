@@ -105,6 +105,7 @@ export async function initDb() {
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS deletion_reason TEXT;
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS restoration_fee_amount NUMERIC(15, 2);
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS restoration_fee_status VARCHAR(50) DEFAULT 'none';
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS auto_approve_at TIMESTAMPTZ;
 
       CREATE TABLE IF NOT EXISTS chat_messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -246,6 +247,12 @@ export async function initDb() {
       );
 
       ALTER TABLE tenant_profiles ALTER COLUMN monthly_income TYPE TEXT USING monthly_income::text;
+
+      ALTER TABLE tenant_profiles
+      ADD COLUMN IF NOT EXISTS gender VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS address TEXT,
+      ADD COLUMN IF NOT EXISTS location VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS postal_code VARCHAR(50);
 
       CREATE TABLE IF NOT EXISTS support_messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

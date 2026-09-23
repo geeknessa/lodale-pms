@@ -16,7 +16,8 @@ import {
   PenTool,
   Clock,
   Send,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
@@ -251,14 +252,14 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             });
 
             await profileService.updateMyProfile({
-              occupation: occupation.trim(),
-              employment_status: employmentStatus.trim(),
-              monthly_income: income.trim(),
-              gender: gender,
-              address: address.trim(),
-              location: location.trim(),
-              postal_code: postalCode.trim(),
-              date_of_birth: dob
+              occupation: (occupation || '').trim(),
+              employment_status: (employmentStatus || '').trim(),
+              monthly_income: (income || '').trim(),
+              gender: gender || null,
+              address: (address || '').trim(),
+              location: (location || '').trim(),
+              postal_code: (postalCode || '').trim(),
+              date_of_birth: dob && dob.trim() !== 'DD-MM-YYYY' ? dob.trim() : null
             });
 
             if (updatedProfile) {
@@ -790,10 +791,10 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             {feedbackMessage && (
               <div
                 className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${feedbackMessage.type === "success"
-                    ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : feedbackMessage.type === "error"
                       ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                      : "bg-amber-50 dark:bg-[#07130D]mber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                      : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
                   }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -1011,7 +1012,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               >
                 {isSaving ? (
                   <>
-                    <span className="inline-block animate-spin mr-1">⏳</span>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
                     <span>Saving...</span>
                   </>
                 ) : saveSuccess ? (
@@ -1036,10 +1037,10 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             {feedbackMessage && (
               <div
                 className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${feedbackMessage.type === "success"
-                    ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : feedbackMessage.type === "error"
                       ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                      : "bg-amber-50 dark:bg-[#07130D]mber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                      : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
                   }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -1171,7 +1172,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               <div className="space-y-4">
                 {documents.filter(d => d.status === "pending").length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-14 px-4 text-center border-2 border-dashed border-ink-100 dark:border-white/10 rounded-2xl bg-ink-50/30 dark:bg-white/[0.02]">
-                    <div className="p-3.5 bg-amber-500/10 text-amber-600 dark:bg-[#07130D]mber-500/20 dark:text-amber-300 rounded-2xl mb-3 border border-amber-500/20">
+                    <div className="p-3.5 bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300 rounded-2xl mb-3 border border-amber-500/20">
                       <FileCheck className="h-6 w-6" />
                     </div>
                     <h4 className="font-extrabold text-base text-ink-900 dark:text-white">No Documents Awaiting Signature</h4>
@@ -1189,7 +1190,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                         <div className="flex items-center gap-3">
-                          <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-[#07130D]mber-500/20 dark:text-amber-300 shrink-0 border border-amber-500/20">
+                          <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300 shrink-0 border border-amber-500/20">
                             <FileText className="h-5 w-5" />
                           </div>
                           <div>
@@ -1238,7 +1239,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               <div className="space-y-4">
                 {documents.filter(d => d.status === "signed").length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-14 px-4 text-center border-2 border-dashed border-ink-100 dark:border-white/10 rounded-2xl bg-ink-50/30 dark:bg-white/[0.02]">
-                    <div className="p-3.5 bg-emerald-500/10 text-emerald-600 dark:bg-[#07130D]merald-500/20 dark:text-emerald-400 rounded-2xl mb-3 border border-emerald-500/20">
+                    <div className="p-3.5 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-2xl mb-3 border border-emerald-500/20">
                       <FileText className="h-6 w-6" />
                     </div>
                     <h4 className="font-extrabold text-base text-ink-900 dark:text-white">No Signed Documents Archived</h4>
@@ -1256,7 +1257,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                         <div className="flex items-center gap-3">
-                          <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-[#07130D]merald-500/20 dark:text-emerald-400 shrink-0 border border-emerald-500/20">
+                          <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0 border border-emerald-500/20">
                             <CheckCircle2 className="h-5 w-5" />
                           </div>
                           <div>
@@ -1335,7 +1336,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           >
             <div className="modal-header flex items-center justify-between pb-3 border-b border-ink-100/30 dark:border-white/10 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:bg-[#07130D]mber-500/25 dark:text-amber-300">
+                <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:bg-amber-500/25 dark:text-amber-300">
                   <PenTool className="h-5 w-5" />
                 </div>
                 <div>
@@ -1372,7 +1373,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                   />
 
                   {signatureInput.trim() && (
-                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 dark:bg-[#07130D]mber-500/15 border border-amber-500/20 text-center">
+                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-center">
                       <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300 block mb-0.5">
                         Digital Signature Stamp Preview
                       </span>

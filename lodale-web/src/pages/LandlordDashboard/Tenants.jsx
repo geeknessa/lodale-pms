@@ -617,7 +617,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
                           <Star className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" title="Perfect Payment History" />
                         )}
                       </div>
-                      <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
+                      <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
                         {tenant.leaseStatus || (tenant.status === 'active' ? "Active Tenant" : "Pending Sign & Pay")}
                       </span>
                     </div>

@@ -23,6 +23,9 @@ export const adminController = {
         statusLabel = p.queue_status === 'under_review' ? 'Info Requested' : 'Pending Approval';
       }
 
+      const locParts = [p.address_line1, p.city, p.state].filter(Boolean);
+      const computedLocation = locParts.length > 0 ? locParts.join(', ') : (p.city || p.state || 'Abuja');
+
       return {
         id: p.id,
         title: p.title,
@@ -30,6 +33,14 @@ export const adminController = {
         rent_period: p.rent_period || 'per annum',
         price: `₦${Number(p.rent_amount || p.rent || 0).toLocaleString()}${String(p.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
         type: p.property_type,
+        address_line1: p.address_line1,
+        city: p.city,
+        state: p.state,
+        location: computedLocation,
+        bedrooms: Number(p.bedrooms) || 1,
+        bathrooms: Number(p.bathrooms) || 1,
+        beds: Number(p.bedrooms) || 1,
+        baths: Number(p.bathrooms) || 1,
         status: statusLabel,
         rawStatus: p.status,
         submittedAt: p.created_at,

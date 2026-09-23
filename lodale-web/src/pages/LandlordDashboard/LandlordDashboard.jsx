@@ -23,6 +23,8 @@ import {
   HelpCircle,
   LogOut,
   ArrowUpRight,
+  Eye,
+  Bookmark,
   Star,
   ListChecks,
   User,
@@ -50,6 +52,7 @@ import { Logo, LogoMark } from "../../components/Logo";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { applicationService } from "../../services/applicationService";
+import { notificationService } from "../../services/notificationService";
 import LandlordProperties from "./LandlordProperties";
 import UserInfo from "./components/UserInfo";
 import TenantDetails from "./components/TenantDetails";
@@ -369,7 +372,16 @@ export default function LandlordDashboard() {
         setApplications([]);
       }
     }
+    async function fetchNotifications() {
+      try {
+        const notifs = await notificationService.getMyNotifications();
+        setNotifications(Array.isArray(notifs) ? notifs : []);
+      } catch (err) {
+        setNotifications([]);
+      }
+    }
     fetchBadgeCount();
+    fetchNotifications();
   }, []);
 
   const [notifications, setNotifications] = useState([]);
@@ -393,10 +405,15 @@ export default function LandlordDashboard() {
     return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  const unreadNotifCount = notifications.filter(n => !n.read).length;
+  const unreadNotifCount = notifications.filter(n => !n.read && !n.is_read).length;
 
-  const markAllNotifsRead = () => {
-    const updated = notifications.map(n => ({ ...n, read: true }));
+  const markAllNotifsRead = async () => {
+    try {
+      await notificationService.markAsRead('all');
+    } catch (e) {
+      console.warn(e);
+    }
+    const updated = notifications.map(n => ({ ...n, read: true, is_read: true }));
     setNotifications(updated);
   };
 
@@ -712,8 +729,6 @@ export default function LandlordDashboard() {
     }
 
     const propMap = new Map();
-    const seenSignatures = new Set();
-
     const addUniqueProp = (p) => {
       if (!p || !p.id) return;
 
@@ -728,23 +743,26 @@ export default function LandlordDashboard() {
         return;
       }
 
-      const sig = `${(p.title || "").trim().toLowerCase()}|${(p.address_line1 || p.address || p.location || "").trim().toLowerCase()}`;
       if (propMap.has(p.id)) {
         const existing = propMap.get(p.id);
         propMap.set(p.id, { ...existing, ...p });
         return;
       }
 
-      if (sig.length > 1 && seenSignatures.has(sig)) {
-        return;
-      }
+      const locParts = [p.address_line1 || p.address, p.city, p.state].filter(Boolean);
+      const computedLoc = p.location || (locParts.length > 0 ? locParts.join(', ') : (p.city || p.state || 'Abuja'));
+      const propBeds = Number(p.bedrooms) || (Array.isArray(p.units) && p.units[0]?.bedrooms ? Number(p.units[0].bedrooms) : 1);
+      const propBaths = Number(p.bathrooms) || (Array.isArray(p.units) && p.units[0]?.bathrooms ? Number(p.units[0].bathrooms) : 1);
 
       propMap.set(p.id, {
         ...p,
         price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
-        location: p.location || `${p.city || "Lagos"}, ${p.state || "Lagos"}`
+        location: computedLoc,
+        bedrooms: propBeds,
+        bathrooms: propBaths,
+        beds: propBeds,
+        baths: propBaths
       });
-      if (sig.length > 1) seenSignatures.add(sig);
     };
 
     if (Array.isArray(apiProps)) {
@@ -832,17 +850,19 @@ export default function LandlordDashboard() {
   const fetchAllData = async () => {
     try {
       setLoadingData(true);
-      const [allLeases, invs, reqs, apps] = await Promise.all([
+      const [allLeases, invs, reqs, apps, notifs] = await Promise.all([
         leaseService.getMyLeases().catch(() => []),
         rentService.getMyInvoices().catch(() => []),
         maintenanceService.getMyRequests().catch(() => []),
         applicationService.getLandlordApplications().catch(() => []),
+        notificationService.getMyNotifications().catch(() => []),
         loadProperties().catch(() => [])
       ]);
 
       setLeases(allLeases);
       setInvoices(invs);
       setApplications(Array.isArray(apps) ? apps : []);
+      setNotifications(Array.isArray(notifs) ? notifs : []);
 
       const statusMap = {
         open: 'Pending',
@@ -1029,23 +1049,30 @@ export default function LandlordDashboard() {
                     notifications.map((notif) => {
                       const isSuccess = notif.type === 'success';
                       const isWarning = notif.type === 'warning';
+                      const isApp = notif.type === 'application' || notif.title?.toLowerCase().includes('application');
                       const borderClass = isSuccess
-                        ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 dark:bg-[#07130D]merald-950/10"
+                        ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/10"
                         : isWarning
                           ? "border-l-4 border-l-rose-500 bg-rose-50/30 dark:bg-rose-950/10"
-                          : "border-l-4 border-l-moss-700 dark:border-l-[#E5C583] bg-cream-50/30 dark:bg-white/5";
+                          : isApp
+                            ? "border-l-4 border-l-moss-600 bg-moss-50/30 dark:bg-moss-950/20"
+                            : "border-l-4 border-l-moss-700 dark:border-l-[#E5C583] bg-cream-50/30 dark:bg-white/5";
 
                       const IconComponent = isSuccess
                         ? CheckCircle2
                         : isWarning
                           ? AlertTriangle
-                          : Info;
+                          : isApp
+                            ? ClipboardList
+                            : Info;
 
                       const iconColorClass = isSuccess
-                        ? "text-emerald-600 dark:text-emerald-400 bg-emerald-100/40 dark:bg-[#07130D]merald-950/30"
+                        ? "text-emerald-600 dark:text-emerald-400 bg-emerald-100/40 dark:bg-emerald-950/30"
                         : isWarning
                           ? "text-rose-600 dark:text-rose-400 bg-rose-100/40 dark:bg-rose-950/30"
-                          : "text-moss-700 dark:text-[#E5C583] bg-[#E4EAE1]/50 dark:bg-white/10";
+                          : isApp
+                            ? "text-moss-700 dark:text-[#E5C583] bg-[#E4EAE1]/60 dark:bg-white/10"
+                            : "text-moss-700 dark:text-[#E5C583] bg-[#E4EAE1]/50 dark:bg-white/10";
 
                       return (
                         <div
@@ -1062,26 +1089,47 @@ export default function LandlordDashboard() {
                             </div>
                             <p className="text-[11.5px] leading-relaxed text-ink-600 dark:text-cream-100/70 mt-1">{notif.message}</p>
 
+                            {isApp && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setShowNotifDropdown(false);
+                                  setActiveTab(0);
+                                  setActivePill("Applications");
+                                }}
+                                className="mt-2 text-xs font-bold text-moss-800 dark:text-[#E5C583] bg-moss-100 hover:bg-moss-200 dark:bg-white/10 px-2.5 py-1 rounded-lg border border-moss-300 dark:border-white/20 flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                              >
+                                <ClipboardList className="h-3.5 w-3.5" /> Review Application &rarr;
+                              </button>
+                            )}
+
                             {(notif.title?.includes("Proof") || notif.message?.includes("proof") || notif.title?.includes("Ownership")) && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setShowNotifications(false);
+                                  setShowNotifDropdown(false);
                                   const target = displayProperties.find(p => notif.message?.includes(p.title) || notif.title?.includes(p.title)) || displayProperties.find(p => (p.status || "").toLowerCase().includes("info") || (p.status || "").toLowerCase().includes("proof")) || displayProperties[0];
                                   if (target) setSelectedProofProperty(target);
                                 }}
-                                className="mt-2 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 hover:bg-amber-200 dark:bg-[#07130D]mber-950/60 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                                className="mt-2 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
                               >
                                 <Upload className="h-3.5 w-3.5" /> Upload Document Now &rarr;
                               </button>
                             )}
 
-                            <span className="text-[10px] font-semibold text-ink-400 dark:text-cream-100/50 block mt-1.5">{notif.time || "Just now"}</span>
+                            <span className="text-[10px] font-semibold text-ink-400 dark:text-cream-100/50 block mt-1.5">
+                              {notif.time || (notif.created_at ? new Date(notif.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : "Just now")}
+                            </span>
                           </div>
 
                           <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
+                              try {
+                                if (notif.id) await notificationService.markAsRead(notif.id);
+                              } catch (err) {
+                                console.warn(err);
+                              }
                               setNotifications(prev => prev.filter(n => n.id !== notif.id));
                             }}
                             className="absolute top-3.5 right-3.5 opacity-0 group-hover:opacity-100 focus:opacity-100 text-ink-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all duration-150 p-1 cursor-pointer border-none bg-transparent outline-none"
@@ -1157,6 +1205,11 @@ export default function LandlordDashboard() {
                 >
                   <Icon className="h-4 w-4 shrink-0" />
                   <span className="db-sidebar-label">{item.label}</span>
+                  {item.id === "applications" && pendingAppsCount > 0 && (
+                    <span className="ml-auto px-1.5 py-0.5 text-[10px] font-black rounded-full bg-rose-500 text-white animate-pulse">
+                      {pendingAppsCount}
+                    </span>
+                  )}
                   {isSidebarCollapsed && <span className="db-sidebar-tooltip">{item.label}</span>}
                 </button>
               );
@@ -1210,7 +1263,7 @@ export default function LandlordDashboard() {
                     </div>
 
                     {loadingData && (
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-[#07130D]merald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-[#E5C583] text-[11.5px] font-extrabold animate-pulse shadow-xs shrink-0">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-[#E5C583] text-[11.5px] font-extrabold animate-pulse shadow-xs shrink-0">
                         <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-[#E5C583]" />
                         <span>Loading portfolio data...</span>
                       </div>
@@ -1269,7 +1322,7 @@ export default function LandlordDashboard() {
 
                     return (
                       <div className={`grid grid-cols-1 sm:grid-cols-2 ${expiringLeases.length > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4 mb-8`}>
-                        <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-[#07130D]merald-950/40 border border-emerald-200 dark:border-emerald-800/40">
+                        <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40">
                           <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 block mb-1">Collected Rent (This Month)</span>
                           <span className="text-2xl font-black text-emerald-900 dark:text-emerald-200">₦{collectedAmount.toLocaleString()}</span>
                           <span className="text-[11px] text-emerald-700 dark:text-emerald-400 block mt-1">From {paidTenants.length} paid lease contract{paidTenants.length === 1 ? '' : 's'}</span>
@@ -1358,7 +1411,7 @@ export default function LandlordDashboard() {
                                   <span className="font-black text-base text-emerald-600 dark:text-emerald-400 block">+₦{amount.toLocaleString()}</span>
                                   <span className="text-[11px] font-semibold text-ink-400 dark:text-cream-100/60 block">Paid • {t.dueDate || "Monthly Rent"}</span>
                                 </div>
-                                <span className="px-3 py-1 bg-emerald-100 dark:bg-[#07130D]merald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] rounded-full border border-emerald-300 dark:border-emerald-800">
+                                <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] rounded-full border border-emerald-300 dark:border-emerald-800">
                                   Completed
                                 </span>
                               </div>
@@ -1368,9 +1421,9 @@ export default function LandlordDashboard() {
                       )
                     ) : (
                       overdueTenants.length === 0 ? (
-                        <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-emerald-50/50 dark:bg-[#07130D]merald-950/20 rounded-2xl border border-dashed border-emerald-200 dark:border-emerald-800/30">
+                        <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-dashed border-emerald-200 dark:border-emerald-800/30">
                           <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500 mb-3" />
-                          <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">All tenant payments are up to date! 🎉</p>
+                          <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">All tenant payments are up to date!</p>
                           <p className="text-xs mt-1 text-emerald-600 dark:text-emerald-400 opacity-80">There are currently no overdue or outstanding rent balances.</p>
                         </div>
                       ) : (
@@ -1407,6 +1460,39 @@ export default function LandlordDashboard() {
             ) : (
               /* DASHBOARD CONTENT GRID (URGENCY-FIRST LAYOUT) */
               <div className="space-y-6">
+
+                {/* PENDING APPLICATIONS ALERT BANNER */}
+                {pendingAppsCount > 0 && (
+                  <div className="p-4 sm:p-5 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-950 dark:text-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md animate-in slide-in-from-top duration-200">
+                    <div className="flex items-center gap-3.5">
+                      <div className="p-3 bg-emerald-600 text-white rounded-xl shrink-0 shadow-sm">
+                        <ClipboardList className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-extrabold text-sm sm:text-base text-emerald-950 dark:text-emerald-100">
+                            {pendingAppsCount} Pending Rental Application{pendingAppsCount > 1 ? "s" : ""}
+                          </h4>
+                          <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-emerald-600 text-white uppercase tracking-wider">
+                            Action Required
+                          </span>
+                        </div>
+                        <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-0.5">
+                          You have received prospective tenant application{pendingAppsCount > 1 ? "s" : ""} awaiting your review and approval.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setActiveTab(0);
+                        setActivePill("Applications");
+                      }}
+                      className="px-4 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-sm cursor-pointer shrink-0 transition-all flex items-center gap-2"
+                    >
+                      <ClipboardList className="h-4 w-4" /> Review Application{pendingAppsCount > 1 ? "s" : ""} &rarr;
+                    </button>
+                  </div>
+                )}
 
                 {/* GETTING STARTED CHECKLIST (EMPTY STATE FOR NEW LANDLORDS) */}
                 {displayProperties.length === 0 && !loadingData && (
@@ -2110,7 +2196,7 @@ export default function LandlordDashboard() {
               <div className="flex items-center justify-between p-4 rounded-2xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300">
-                    <span className="text-lg">👁️</span>
+                    <Eye className="h-5 w-5" />
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-ink-900 dark:text-white">Property Views</h4>
@@ -2125,7 +2211,7 @@ export default function LandlordDashboard() {
               <div className="flex items-center justify-between p-4 rounded-2xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-xl bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300">
-                    <span className="text-lg">❤️</span>
+                    <Bookmark className="h-5 w-5" />
                   </div>
                   <div>
                     <h4 className="font-bold text-sm text-ink-900 dark:text-white">Property Saves</h4>
@@ -2153,7 +2239,7 @@ export default function LandlordDashboard() {
             </button>
 
             <div className="flex justify-center mb-3">
-              <div className="bg-amber-100 dark:bg-[#07130D]mber-900/20 p-3.5 rounded-full text-amber-500">
+              <div className="bg-amber-100 dark:bg-amber-900/20 p-3.5 rounded-full text-amber-500">
                 <Star className="h-8 w-8 fill-current" />
               </div>
             </div>

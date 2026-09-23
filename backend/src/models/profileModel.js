@@ -1,5 +1,41 @@
 import { pool } from '../db/db.js';
 
+const parseSafeDate = (val) => {
+  if (!val || typeof val !== 'string' || !val.trim()) return null;
+  const trimmed = val.trim();
+  if (trimmed.toLowerCase() === 'dd-mm-yyyy' || trimmed.toLowerCase() === 'yyyy-mm-dd') return null;
+  
+  // DD-MM-YYYY or DD/MM/YYYY
+  const ddmmyyyy = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (ddmmyyyy) {
+    const day = ddmmyyyy[1].padStart(2, '0');
+    const month = ddmmyyyy[2].padStart(2, '0');
+    const year = ddmmyyyy[3];
+    return `${year}-${month}-${day}`;
+  }
+
+  // YYYY-MM-DD
+  const yyyymmdd = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (yyyymmdd) {
+    const year = yyyymmdd[1];
+    const month = yyyymmdd[2].padStart(2, '0');
+    const day = yyyymmdd[3].padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  const d = new Date(trimmed);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().split('T')[0];
+  }
+  return null;
+};
+
+const parseSafeNumber = (val) => {
+  if (val === null || val === undefined || val === '') return null;
+  const num = Number(val);
+  return isNaN(num) ? null : num;
+};
+
 export const ProfileModel = {
   // ──────────────────────────────────────────
   // LANDLORD PROFILE
@@ -20,6 +56,9 @@ export const ProfileModel = {
       total_properties_managed, years_in_business,
       professional_license, website_url, bio
     } = data;
+
+    const numProperties = parseSafeNumber(total_properties_managed);
+    const numYears = parseSafeNumber(years_in_business);
 
     const res = await pool.query(`
       INSERT INTO landlord_profiles (
@@ -45,7 +84,7 @@ export const ProfileModel = {
     `, [
       userId, business_name, business_type, tax_id,
       bank_name, bank_account_number, bank_account_name,
-      total_properties_managed ?? null, years_in_business ?? null,
+      numProperties, numYears,
       professional_license, website_url, bio
     ]);
     return res.rows[0];
@@ -80,6 +119,11 @@ export const ProfileModel = {
       emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
       preferred_move_in_date, max_budget, gender, address, location, postal_code, bio
     } = data;
+
+    const safeDob = parseSafeDate(date_of_birth);
+    const safeMoveIn = parseSafeDate(preferred_move_in_date);
+    const safeDependants = parseSafeNumber(number_of_dependants);
+    const safeBudget = parseSafeNumber(max_budget);
 
     const res = await pool.query(`
       INSERT INTO tenant_profiles (
@@ -116,12 +160,12 @@ export const ProfileModel = {
         updated_at                     = NOW()
       RETURNING *
     `, [
-      userId, date_of_birth ?? null, nationality, occupation,
+      userId, safeDob, nationality, occupation,
       employer_name, employment_status, monthly_income ? String(monthly_income) : null,
-      marital_status, number_of_dependants ?? null,
+      marital_status, safeDependants,
       guarantor_name, guarantor_phone, guarantor_email, guarantor_relationship,
       emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
-      preferred_move_in_date ?? null, max_budget ? String(max_budget) : null,
+      safeMoveIn, safeBudget,
       gender, address, location, postal_code, bio
     ]);
     return res.rows[0];

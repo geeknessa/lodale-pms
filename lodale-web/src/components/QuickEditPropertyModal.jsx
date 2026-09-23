@@ -247,7 +247,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
         </div>
 
         {/* Locked Fields Notice */}
-        <div className="p-4 bg-amber-50 dark:bg-[#07130D]mber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start justify-between gap-3">
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start justify-between gap-3">
           <div className="flex items-start gap-2">
             <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
@@ -258,7 +258,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
           <button
             type="button"
             onClick={() => setShowAdminRequest(true)}
-            className="px-2.5 py-1.5 bg-amber-200 hover:bg-amber-300 dark:bg-[#07130D]mber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-bold text-[11px] rounded-lg transition-colors shrink-0 cursor-pointer border border-amber-300 dark:border-amber-800"
+            className="px-2.5 py-1.5 bg-amber-200 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-bold text-[11px] rounded-lg transition-colors shrink-0 cursor-pointer border border-amber-300 dark:border-amber-800"
           >
             Request Admin Change
           </button>

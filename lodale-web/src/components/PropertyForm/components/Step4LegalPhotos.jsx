@@ -48,7 +48,7 @@ export default function Step4LegalPhotos({
       <div className="p-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 space-y-3">
         {/* INFORMATIONAL CALLOUT BANNER FOR BULK GENERATED COMPOUND PHOTOS */}
         {wasBulkGenerated && isMultiUnit && (
-          <div className="p-3 rounded-xl bg-emerald-50/90 dark:bg-[#07130D]merald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
+          <div className="p-3 rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40 text-emerald-900 dark:text-emerald-300 text-xs flex items-start gap-2.5 leading-relaxed">
             <Info className="h-4 w-4 shrink-0 text-emerald-700 dark:text-[#E5C583] mt-0.5" />
             <div>
               <span className="font-bold">Building Exterior & Shared Compound Grounds: </span>

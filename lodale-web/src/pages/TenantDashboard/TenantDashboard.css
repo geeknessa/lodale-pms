@@ -2148,6 +2148,10 @@ body.dark .tour-btn-next {
   color: #09090b !important;
 }
 
+body.dark .tour-btn-next:hover {
+  color: #09090b !important;
+}
+
 .tour-btn-prev {
   background: transparent;
   border: 1px solid var(--tenant-border);
@@ -2162,6 +2166,11 @@ body.dark .tour-btn-next {
 
 .tour-btn-prev:hover {
   background-color: var(--tenant-light-grey);
+}
+
+body.dark .tour-btn-prev:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #FFFFFF !important;
 }
 
 /* Floating pointer indicator hand/arrow */
@@ -2311,6 +2320,11 @@ body.dark .tour-btn-next {
   background-color: var(--tenant-light-grey) !important;
 }
 
+body.dark .tour-ask-btn-no:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #FFFFFF !important;
+}
+
 .tour-ask-btn-yes {
   flex: 1;
   background-color: var(--settings-accent) !important;
@@ -2320,6 +2334,10 @@ body.dark .tour-btn-next {
 }
 
 body.dark .tour-ask-btn-yes {
+  color: #09090b !important;
+}
+
+body.dark .tour-ask-btn-yes:hover {
   color: #09090b !important;
 }
 

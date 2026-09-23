@@ -82,9 +82,9 @@ export default function Login() {
       passwordRef.current?.focus();
     }
 
-    // Redirect already authenticated admin to /admin/dashboard
+    // Redirect already authenticated admin to /admin/dashboard only if not redirected from a protected route
     const isAlreadyAdmin = sessionStorage.getItem("isAuthenticated") === "true" && sessionStorage.getItem("userRole") === "admin";
-    if (isAlreadyAdmin && (location.pathname === "/admin/login" || location.pathname === "/login")) {
+    if (isAlreadyAdmin && !location.state?.fromProtected && (location.pathname === "/admin/login" || location.pathname === "/login")) {
       navigate("/admin/dashboard");
     }
 
@@ -489,7 +489,7 @@ export default function Login() {
           <div className="bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/60 dark:text-amber-300">
+                <div className="p-2 rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
                   <Zap className="h-5 w-5" />
                 </div>
                 <div>
@@ -505,7 +505,7 @@ export default function Login() {
               </button>
             </div>
 
-            <div className="p-4 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-2">
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200 text-xs leading-relaxed space-y-2">
               <p>
                 An admin has approved your account restoration. To reactivate access, an account restoration fee of <strong>₦{Number(restorationFeeInfo.feeAmount).toLocaleString()}</strong> is required.
               </p>

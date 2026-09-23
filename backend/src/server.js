@@ -17,6 +17,7 @@ import rentRoutes from './routes/rent.js';
 import maintenanceRoutes from './routes/maintenance.js';
 import notificationRoutes from './routes/notifications.js';
 import inspectionRoutes from './routes/inspections.js';
+import { autoApprovalService } from './services/autoApprovalService.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
@@ -81,8 +82,11 @@ process.on('unhandledRejection', (reason) => {
   console.error('[Server Unhandled Rejection]:', reason);
 });
 
-// Initialize Database
+// Initialize Database and Services
 initDb();
+if (process.env.NODE_ENV !== 'test') {
+  autoApprovalService.startAutoApprovalWorker(10000);
+}
 
 // Routes
 app.use('/api/auth', authRoutes);

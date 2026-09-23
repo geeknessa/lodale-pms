@@ -334,7 +334,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
                         <div>
                           <h4 className="font-bold text-sm text-ink-900 dark:text-cream-100">{item.title}</h4>
                           <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">Lease Term: {item.period}</p>
-                          <span className="inline-block mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-[#07130D]merald-950 px-2.5 py-0.5 rounded-full capitalize">
+                          <span className="inline-block mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-2.5 py-0.5 rounded-full capitalize">
                             {item.status}
                           </span>
                         </div>

@@ -94,71 +94,51 @@ export const PropertyModel = {
       is_occupied, tenant_name, tenant_contact, lease_start_date, available_from,
       minimum_income_required, requires_guarantor,
       verification_score = null, approval_type = null, risk_level = null, 
-      verification_results = null, approved_at = null
+      verification_results = null, approved_at = null, auto_approve_at = null
     } = data;
     
     const safeLeaseStart = (lease_start_date && typeof lease_start_date === 'string' && lease_start_date.trim() !== "") ? lease_start_date : null;
     const safeAvailableFrom = (available_from && typeof available_from === 'string' && available_from.trim() !== "") ? available_from : null;
 
-    // Deduplication check: check if same landlord already created a property with matching title & address
-    let property = null;
-    const existingCheck = await pool.query(
-      `SELECT * FROM properties WHERE landlord_id = $1 AND LOWER(TRIM(title)) = LOWER(TRIM($2)) AND LOWER(TRIM(address_line1)) = LOWER(TRIM($3)) LIMIT 1`,
-      [effectiveLandlordId, title, address_line1]
-    );
+    const parseInteger = (val, defaultVal = 1) => {
+      if (typeof val === 'number' && !isNaN(val)) return Math.floor(val);
+      if (!val) return defaultVal;
+      const match = String(val).match(/\d+/);
+      return match ? parseInt(match[0], 10) : defaultVal;
+    };
 
-    if (existingCheck.rows.length > 0) {
-      const existingProp = existingCheck.rows[0];
-      const updateRes = await pool.query(`
-        UPDATE properties SET
-          description = $1, property_type = $2, city = $3, state = $4,
-          bedrooms = $5, bathrooms = $6, rent_amount = $7, status = $8,
-          ownership_doc = $9, ownership_doc_url = $10, ownership_doc_type = $11,
-          latitude = $12, longitude = $13, rules = $14, images = $15, cover_image = $16,
-          is_occupied = $17, tenant_name = $18, tenant_contact = $19, lease_start_date = $20, available_from = $21,
-          verification_score = $22, approval_type = $23, risk_level = $24, verification_results = $25, approved_at = $26,
-          updated_at = NOW()
-        WHERE id = $27
-        RETURNING *
-      `, [
-        description || '', sanitizedPropertyType, city || 'Lagos', state || 'Lagos',
-        Number(bedrooms) || 1, Number(bathrooms) || 1, Number(rent_amount) || 0, status || 'pending_review',
-        ownership_doc || null, ownership_doc_url || null, ownership_doc_type || null,
-        latitude ? Number(latitude) : null, longitude ? Number(longitude) : null,
-        rules || null, images ? (typeof images === 'string' ? images : JSON.stringify(images)) : '[]', cover_image || null,
-        is_occupied || false, tenant_name || null, tenant_contact || null, safeLeaseStart, safeAvailableFrom,
-        verification_score, approval_type, risk_level, 
-        typeof verification_results === 'object' && verification_results !== null ? JSON.stringify(verification_results) : verification_results, 
-        approved_at,
-        existingProp.id
-      ]);
-      property = updateRes.rows[0];
-    } else {
-      const insertRes = await pool.query(`
-        INSERT INTO properties (
-          landlord_id, title, slug, description, property_type, address_line1, city, state, 
-          bedrooms, bathrooms, rent_amount, status, ownership_doc, ownership_doc_url, 
-          ownership_doc_type, latitude, longitude, rules, images, cover_image,
-          is_occupied, tenant_name, tenant_contact, lease_start_date, available_from,
-          verification_score, approval_type, risk_level, verification_results, approved_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
-        RETURNING *
-      `, [
-        effectiveLandlordId, title, slug, description || '',
-        sanitizedPropertyType, address_line1, city || 'Lagos', state || 'Lagos',
-        Number(bedrooms) || 1, Number(bathrooms) || 1, Number(rent_amount) || 0, status || 'pending_review',
-        ownership_doc || null, ownership_doc_url || null, ownership_doc_type || null,
-        latitude ? Number(latitude) : null, longitude ? Number(longitude) : null,
-        rules || null,
-        images ? (typeof images === 'string' ? images : JSON.stringify(images)) : '[]', cover_image || null,
-        is_occupied || false, tenant_name || null, tenant_contact || null, safeLeaseStart, safeAvailableFrom,
-        verification_score, approval_type, risk_level,
-        typeof verification_results === 'object' && verification_results !== null ? JSON.stringify(verification_results) : verification_results,
-        approved_at
-      ]);
-      property = insertRes.rows[0];
-    }
+    const finalBedrooms = parseInteger(bedrooms, 1);
+    const finalBathrooms = parseInteger(bathrooms, 1);
+    const finalPropertyType = (sanitizedPropertyType || data.property_type || 'single_house').toString().trim().toLowerCase().replace(/\s+/g, '_');
+
+    const insertRes = await pool.query(`
+      INSERT INTO properties (
+        landlord_id, title, slug, description, property_type, address_line1, city, state, 
+        bedrooms, bathrooms, rent_amount, status, ownership_doc, ownership_doc_url, 
+        ownership_doc_type, latitude, longitude, rules, images, cover_image,
+        is_occupied, tenant_name, tenant_contact, lease_start_date, available_from,
+        minimum_income_required, requires_guarantor,
+        verification_score, approval_type, risk_level, verification_results, approved_at,
+        auto_approve_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
+      RETURNING *
+    `, [
+      effectiveLandlordId, title, slug, description || '',
+      finalPropertyType, address_line1, city || 'Abuja', state || 'Abuja',
+      finalBedrooms, finalBathrooms, Number(rent_amount) || 0, status || 'pending_review',
+      ownership_doc || null, ownership_doc_url || null, ownership_doc_type || null,
+      latitude ? Number(latitude) : null, longitude ? Number(longitude) : null,
+      rules || null,
+      images ? (typeof images === 'string' ? images : JSON.stringify(images)) : '[]', cover_image || null,
+      is_occupied || false, tenant_name || null, tenant_contact || null, safeLeaseStart, safeAvailableFrom,
+      minimum_income_required ? Number(minimum_income_required) : 0, requires_guarantor || false,
+      verification_score, approval_type, risk_level,
+      typeof verification_results === 'object' && verification_results !== null ? JSON.stringify(verification_results) : verification_results,
+      approved_at,
+      auto_approve_at
+    ]);
+    const property = insertRes.rows[0];
 
     // Map of block name -> block UUID
     const blockIdMap = {};
@@ -187,8 +167,8 @@ export const PropertyModel = {
           property.id,
           bId,
           u.unit_name.trim(),
-          Number(u.bedrooms) || Number(bedrooms) || 1,
-          Number(u.bathrooms) || Number(bathrooms) || 1,
+          parseInteger(u.bedrooms, finalBedrooms),
+          parseInteger(u.bathrooms, finalBathrooms),
           Number(u.rent_amount) || Number(rent_amount) || 0,
           u.rent_period || 'annually',
           u.status || 'vacant',
@@ -206,8 +186,8 @@ export const PropertyModel = {
       `, [
         property.id,
         'Main Unit',
-        Number(bedrooms) || 1,
-        Number(bathrooms) || 1,
+        finalBedrooms,
+        finalBathrooms,
         Number(rent_amount) || 0,
         'annually',
         'vacant'

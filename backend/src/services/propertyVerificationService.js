@@ -561,7 +561,7 @@ export const PropertyVerificationService = {
     const suspendedCount = Number(row.suspended_count) || 0;
     const approvedCount = Number(row.approved_count) || 0;
 
-    if (rejectedCount > 0 || suspendedCount > 0) {
+    if (suspendedCount > 0 || rejectedCount >= 3) {
       return {
         key: 'landlord_history',
         name: 'Landlord History',
@@ -572,6 +572,20 @@ export const PropertyVerificationService = {
         rejectedCount,
         suspendedCount,
         reason: `Landlord has past listing issues (${rejectedCount} rejected, ${suspendedCount} suspended). Sent to Admin Review.`
+      };
+    }
+
+    if (rejectedCount > 0) {
+      return {
+        key: 'landlord_history',
+        name: 'Landlord History',
+        status: 'MINOR_INFRACTIONS',
+        score: 0,
+        maxScore: 5,
+        isCritical: false,
+        rejectedCount,
+        suspendedCount,
+        reason: `Landlord has past rejected listing (${rejectedCount} rejected). Deducted 5 points.`
       };
     }
 
