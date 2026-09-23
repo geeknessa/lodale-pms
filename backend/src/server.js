@@ -29,7 +29,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'sha256-RrBFl9ujuxpmpWzstaoC7DV6YEJAFKNN4XGtiNOmvvI='"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https://images.unsplash.com"],
@@ -49,16 +49,24 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // Allowed origins for CORS
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000').split(',').map(o => o.trim());
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000')
+  .split(',')
+  .map(o => o.trim().replace(/\/$/, ''));
 
-const isLocalhostOrigin = (origin) => /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // Allow non-browser, server-to-server, or same-origin requests
+  const cleanOrigin = origin.replace(/\/$/, '');
+  if (process.env.NODE_ENV !== 'production') return true;
+  if (allowedOrigins.includes('*') || allowedOrigins.includes(cleanOrigin)) return true;
+  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0|(10|172\.(1[6-9]|2[0-9]|3[0-1])|192\.168)\.\d+\.\d+)(:\d+)?$/i.test(cleanOrigin);
+};
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || isLocalhostOrigin(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Blocked by CORS policy'));
+      callback(null, false);
     }
   },
   credentials: true,

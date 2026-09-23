@@ -217,11 +217,19 @@ export async function initDb() {
         emergency_contact_relationship VARCHAR(100),
         preferred_move_in_date DATE,
         max_budget TEXT,
+        gender VARCHAR(50),
+        address TEXT,
+        location VARCHAR(255),
+        postal_code VARCHAR(50),
         bio TEXT,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
       ALTER TABLE tenant_profiles ALTER COLUMN monthly_income TYPE TEXT USING monthly_income::text;
+      ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS gender VARCHAR(50);
+      ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS address TEXT;
+      ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS location VARCHAR(255);
+      ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS postal_code VARCHAR(50);
 
       CREATE TABLE IF NOT EXISTS support_messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

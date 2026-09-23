@@ -161,14 +161,14 @@ export const updateUserStatusSchema = z.object({
   reason: z.string().optional()
 });
 
-export const supportTicketSchema = z.object({
+const supportTicketSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   message: z.string().min(1, "Message is required"),
   category: z.string().optional(),
   priority: z.string().optional()
 });
 
-export const supportReplySchema = z.object({
+const supportReplySchema = z.object({
   ticketId: z.string().min(1, "Ticket ID is required"),
   message: z.string().min(1, "Message is required")
 });

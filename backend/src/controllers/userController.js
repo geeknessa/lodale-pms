@@ -35,12 +35,14 @@ export const userController = {
     // 1. Fetch leases for landlord properties
     const leasesRes = await pool.query(
       `SELECT l.id as lease_id, l.status as lease_status, l.tenant_signed_at, l.landlord_signed_at,
-              l.rent_amount, l.rent_period, l.start_date,
-              p.id as property_id, p.title as property_title,
-              u.id as tenant_id, u.first_name, u.last_name, u.email as tenant_email, u.phone_number as tenant_phone, u.avatar_url
+              l.rent_amount, l.rent_period, l.start_date, l.end_date,
+              p.id as property_id, p.title as property_title, p.address as property_address,
+              u.id as tenant_id, u.first_name, u.last_name, u.email as tenant_email, u.phone_number as tenant_phone, u.avatar_url,
+              tp.emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
        FROM leases l
        JOIN properties p ON l.property_id = p.id
        JOIN users u ON l.tenant_id = u.id
+       LEFT JOIN tenant_profiles tp ON u.id = tp.user_id
        WHERE l.landlord_id = $1
        ORDER BY l.created_at DESC`,
       [landlordId]
@@ -49,11 +51,13 @@ export const userController = {
     // 2. Fetch applications for landlord properties
     const appsRes = await pool.query(
       `SELECT a.id as application_id, a.status as application_status, a.created_at,
-              p.id as property_id, p.title as property_title, p.rent_amount, p.rent_period,
-              u.id as tenant_id, u.first_name, u.last_name, u.email as tenant_email, u.phone_number as tenant_phone, u.avatar_url
+              p.id as property_id, p.title as property_title, p.rent_amount, p.rent_period, p.address as property_address,
+              u.id as tenant_id, u.first_name, u.last_name, u.email as tenant_email, u.phone_number as tenant_phone, u.avatar_url,
+              tp.emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
        FROM property_applications a
        JOIN properties p ON a.property_id = p.id
        JOIN users u ON a.tenant_id = u.id
+       LEFT JOIN tenant_profiles tp ON u.id = tp.user_id
        WHERE p.landlord_id = $1
        ORDER BY a.created_at DESC`,
       [landlordId]
@@ -83,15 +87,27 @@ export const userController = {
 
       tenants.push({
         id: l.tenant_id || l.lease_id,
+        leaseId: l.lease_id,
+        tenantId: l.tenant_id,
         name: `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'Tenant',
+        firstName: l.first_name,
+        lastName: l.last_name,
         email: l.tenant_email || '',
         phone: l.tenant_phone || '',
         avatar: l.avatar_url || '',
         propertyId: l.property_id,
         propertyTitle: l.property_title || 'Leased Property',
+        currentAddress: l.property_address || l.property_title || '',
         status: status,
         leaseStatus: badgeLabel,
         rentAmount: l.rent_amount,
+        rentPeriod: l.rent_period || 'monthly',
+        startDate: l.start_date,
+        endDate: l.end_date,
+        emergencyContact: l.emergency_contact || l.guarantor_phone || '',
+        occupation: l.occupation || l.employment_status || '',
+        guarantorName: l.guarantor_name || '',
+        guarantorPhone: l.guarantor_phone || '',
         dueDate: l.start_date ? new Date(l.start_date).toLocaleDateString("en-US", { day: 'numeric', month: 'short' }) : "1st of month",
         paymentStatus: isActive ? "Paid" : "Unpaid"
       });
@@ -115,15 +131,24 @@ export const userController = {
 
         tenants.push({
           id: a.tenant_id || a.application_id,
+          tenantId: a.tenant_id,
           name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Tenant',
+          firstName: a.first_name,
+          lastName: a.last_name,
           email: a.tenant_email || '',
           phone: a.tenant_phone || '',
           avatar: a.avatar_url || '',
           propertyId: a.property_id,
           propertyTitle: a.property_title || 'Leased Property',
+          currentAddress: a.property_address || a.property_title || '',
           status: status,
           leaseStatus: badgeLabel,
           rentAmount: a.rent_amount || 0,
+          rentPeriod: a.rent_period || 'monthly',
+          emergencyContact: a.emergency_contact || a.guarantor_phone || '',
+          occupation: a.occupation || a.employment_status || '',
+          guarantorName: a.guarantor_name || '',
+          guarantorPhone: a.guarantor_phone || '',
           dueDate: "1st of month",
           paymentStatus: isFullyLeased ? "Paid" : "Unpaid"
         });

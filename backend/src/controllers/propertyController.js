@@ -2,6 +2,17 @@ import { PropertyModel } from '../models/propertyModel.js';
 import { UserModel } from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
+const formatSafePrice = (rentAmount, period) => {
+  const num = Number(rentAmount || 0);
+  const suffix = String(period || '').toLowerCase().includes('month') ? '/mo' : '/yr';
+  return `₦${isNaN(num) ? '0' : num.toLocaleString()}${suffix}`;
+};
+
+const formatSafeLocation = (addr, city) => {
+  if (addr && city) return `${addr}, ${city}`;
+  return addr || city || 'Location not specified';
+};
+
 export const propertyController = {
   getProperties: asyncHandler(async (req, res) => {
     const properties = await PropertyModel.getProperties(req.query);
@@ -18,8 +29,8 @@ export const propertyController = {
         amenities,
         images: parsedImages,
         cover_image: actualCoverImage,
-        price: `₦${Number(p.rent_amount).toLocaleString()}${String(p.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
-        location: `${p.address_line1}, ${p.city}`,
+        price: formatSafePrice(p.rent_amount, p.rent_period),
+        location: formatSafeLocation(p.address_line1, p.city),
         landlord: p.landlord_data?.id ? p.landlord_data : null
       };
     });
@@ -49,8 +60,8 @@ export const propertyController = {
         images: parsedImages,
         cover_image: actualCoverImage,
         admin_notes: p.fetched_admin_notes,
-        price: `₦${Number(p.rent_amount).toLocaleString()}${String(p.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
-        location: `${p.address_line1}, ${p.city}`,
+        price: formatSafePrice(p.rent_amount, p.rent_period),
+        location: formatSafeLocation(p.address_line1, p.city),
         landlord: p.landlord_data?.id ? p.landlord_data : null
       };
     });
@@ -83,8 +94,8 @@ export const propertyController = {
       images: parsedImages,
       cover_image: actualCoverImage,
       landlord: property.landlord_data?.id ? property.landlord_data : null,
-      price: `₦${Number(property.rent_amount).toLocaleString()}${String(property.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
-      location: `${property.address_line1}, ${property.city}`,
+      price: formatSafePrice(property.rent_amount, property.rent_period),
+      location: formatSafeLocation(property.address_line1, property.city),
     });
   }),
 

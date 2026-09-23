@@ -1,5 +1,18 @@
 import { pool } from '../db/db.js';
 
+const toNullableStr = (val) => (!val || (typeof val === 'string' && val.trim() === '') ? null : val);
+const toNullableDate = (val) => (!val || (typeof val === 'string' && val.trim() === '') ? null : val);
+const toNullableInt = (val) => {
+  if (val === undefined || val === null || val === '') return null;
+  const num = parseInt(val, 10);
+  return isNaN(num) ? null : num;
+};
+const toNullableNum = (val) => {
+  if (val === undefined || val === null || val === '') return null;
+  const clean = String(val).replace(/[^0-9.]/g, '');
+  return clean === '' ? null : clean;
+};
+
 export const ProfileModel = {
   // ──────────────────────────────────────────
   // LANDLORD PROFILE
@@ -43,10 +56,18 @@ export const ProfileModel = {
         updated_at            = NOW()
       RETURNING *
     `, [
-      userId, business_name, business_type, tax_id,
-      bank_name, bank_account_number, bank_account_name,
-      total_properties_managed ?? null, years_in_business ?? null,
-      professional_license, website_url, bio
+      userId,
+      toNullableStr(business_name),
+      toNullableStr(business_type),
+      toNullableStr(tax_id),
+      toNullableStr(bank_name),
+      toNullableStr(bank_account_number),
+      toNullableStr(bank_account_name),
+      toNullableInt(total_properties_managed),
+      toNullableInt(years_in_business),
+      toNullableStr(professional_license),
+      toNullableStr(website_url),
+      toNullableStr(bio)
     ]);
     return res.rows[0];
   },
@@ -93,10 +114,10 @@ export const ProfileModel = {
       ON CONFLICT (user_id) DO UPDATE SET
         date_of_birth                  = COALESCE(EXCLUDED.date_of_birth, tenant_profiles.date_of_birth),
         nationality                    = COALESCE(EXCLUDED.nationality, tenant_profiles.nationality),
-        occupation                     = EXCLUDED.occupation,
+        occupation                     = COALESCE(EXCLUDED.occupation, tenant_profiles.occupation),
         employer_name                  = COALESCE(EXCLUDED.employer_name, tenant_profiles.employer_name),
-        employment_status              = EXCLUDED.employment_status,
-        monthly_income                 = EXCLUDED.monthly_income,
+        employment_status              = COALESCE(EXCLUDED.employment_status, tenant_profiles.employment_status),
+        monthly_income                 = COALESCE(EXCLUDED.monthly_income, tenant_profiles.monthly_income),
         marital_status                 = COALESCE(EXCLUDED.marital_status, tenant_profiles.marital_status),
         number_of_dependants           = COALESCE(EXCLUDED.number_of_dependants, tenant_profiles.number_of_dependants),
         guarantor_name                 = COALESCE(EXCLUDED.guarantor_name, tenant_profiles.guarantor_name),
@@ -116,13 +137,29 @@ export const ProfileModel = {
         updated_at                     = NOW()
       RETURNING *
     `, [
-      userId, date_of_birth ?? null, nationality, occupation,
-      employer_name, employment_status, monthly_income ? String(monthly_income) : null,
-      marital_status, number_of_dependants ?? null,
-      guarantor_name, guarantor_phone, guarantor_email, guarantor_relationship,
-      emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
-      preferred_move_in_date ?? null, max_budget ? String(max_budget) : null,
-      gender, address, location, postal_code, bio
+      userId,
+      toNullableDate(date_of_birth),
+      toNullableStr(nationality),
+      toNullableStr(occupation),
+      toNullableStr(employer_name),
+      toNullableStr(employment_status),
+      toNullableStr(monthly_income),
+      toNullableStr(marital_status),
+      toNullableInt(number_of_dependants),
+      toNullableStr(guarantor_name),
+      toNullableStr(guarantor_phone),
+      toNullableStr(guarantor_email),
+      toNullableStr(guarantor_relationship),
+      toNullableStr(emergency_contact_name),
+      toNullableStr(emergency_contact_phone),
+      toNullableStr(emergency_contact_relationship),
+      toNullableDate(preferred_move_in_date),
+      toNullableNum(max_budget),
+      toNullableStr(gender),
+      toNullableStr(address),
+      toNullableStr(location),
+      toNullableStr(postal_code),
+      toNullableStr(bio)
     ]);
     return res.rows[0];
   },
