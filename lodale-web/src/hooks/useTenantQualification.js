@@ -38,7 +38,24 @@ export function useTenantQualification(property, overrideProfile = null) {
   }, [property]);
 
   if (!property) {
-    return { loading: true, meetsAll: false };
+    return { 
+      loading: true, 
+      tenantProfile: {},
+      meetsIncome: true,
+      meetsGuarantor: true,
+      meetsEmployment: true,
+      meetsAll: true,
+      requirements: {
+        income: "No Minimum Income",
+        guarantor: false,
+        employment: "Any Employment"
+      },
+      tenantStats: {
+        income: "Not Provided",
+        hasGuarantor: false,
+        employment: "Not Provided"
+      }
+    };
   }
 
   const profileToUse = overrideProfile || tenantProfile;

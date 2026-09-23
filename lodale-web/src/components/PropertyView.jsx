@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { propertyService } from '../services/propertyService';
 import { profileService } from '../services/profileService';
+import { ratingService } from '../services/ratingService';
 import { triggerToast } from '../context/ToastContext';
 import Button from './Button';
 import { Logo } from './Logo';
 import {
   ArrowLeft, MapPin, BedDouble, Bath, CheckCircle2, XCircle, ShieldCheck,
   Building2, Trash2, Edit3, Loader2, ListChecks, Home, DollarSign, AlertTriangle, Shield,
-  Maximize2, ChevronLeft, ChevronRight, X
+  Maximize2, ChevronLeft, ChevronRight, X, Star, User
 } from 'lucide-react';
 import PropertyDetailMap from './PropertyDetailMap';
 import QuickEditPropertyModal from './QuickEditPropertyModal';
@@ -25,7 +26,17 @@ export function PropertyDetailView() {
   const [showQuickEditModal, setShowQuickEditModal] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxImagesOverride, setLightboxImagesOverride] = useState(null);
   const [selectedUnitForModal, setSelectedUnitForModal] = useState(null);
+  const [showUnitSelectorModal, setShowUnitSelectorModal] = useState(false);
+
+  const { 
+    meetsIncome, 
+    meetsGuarantor, 
+    meetsEmployment, 
+    requirements, 
+    tenantStats 
+  } = useTenantQualification(property);
 
   useEffect(() => {
     async function loadProperty() {
@@ -133,6 +144,10 @@ export function PropertyDetailView() {
 
   const currentImage = allImages[activeImageIndex] || allImages[0];
 
+  const landlordId = property.landlord_id || property.landlord?.id || property.landlordId || "landlord_default";
+  const landlordName = property.landlord_name || property.landlord?.name || property.landlordName || (property.landlord?.first_name ? `${property.landlord.first_name} ${property.landlord.last_name || ''}`.trim() : "Landlord");
+  const landlordRatingData = ratingService.getLandlordReviews(landlordId);
+
   const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
   const currentUserRole = (sessionStorage.getItem("userRole") || "").toLowerCase();
 
@@ -143,18 +158,11 @@ export function PropertyDetailView() {
     (!property.landlord_id && !property.landlord?.id)
   );
 
-  const { 
-    meetsIncome, 
-    meetsGuarantor, 
-    meetsEmployment, 
-    requirements, 
-    tenantStats 
-  } = useTenantQualification(property);
-
   // Parse House Rules
+  const cleanString = (str) => typeof str === 'string' ? str.replace(/^[{"]+|[}"]+$/g, '').trim() : str;
   const houseRulesList = Array.isArray(property?.house_rules)
-    ? property.house_rules
-    : (typeof property?.rules === 'string' && property.rules ? property.rules.split(',').map(r => r.trim()) : []);
+    ? property.house_rules.map(cleanString)
+    : (typeof property?.rules === 'string' && property.rules ? property.rules.split(',').map(cleanString) : []);
 
   const handleApply = (unitName = null) => {
     const auth = sessionStorage.getItem("isAuthenticated") === "true";
@@ -182,6 +190,12 @@ export function PropertyDetailView() {
         navigate("/dashboard/tenant");
         return;
       }
+
+      if (!unitName && property.units && property.units.length > 1) {
+        setShowUnitSelectorModal(true);
+        return;
+      }
+
       navigate(unitName ? `/apply/${property.id}?unit=${encodeURIComponent(unitName)}` : `/apply/${property.id}`);
     }
   };
@@ -202,7 +216,7 @@ export function PropertyDetailView() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 transition-all hover:shadow-md">
           {!isOwnerLandlord && (
             <button
               type="button"
@@ -237,17 +251,13 @@ export function PropertyDetailView() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#07130D] p-6 rounded-2xl border border-ink-200 dark:border-white/10 shadow-lg">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <span className={`text-[11px] font-extrabold uppercase px-3 py-1 rounded-full border ${property.status === 'occupied' || property.status === 'active_occupied'
-                  ? 'bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30'
-                  : 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-[#07130D]merald-500/20 dark:text-emerald-300 dark:border-emerald-500/30'
-                }`}>
-                {property.status === 'occupied' || property.status === 'active_occupied' ? 'Occupied' : 'Active Listing'}
-              </span>
-              {property.property_type && (
-                <span className="text-[11px] font-extrabold uppercase px-3 py-1 rounded-full border bg-moss-100 text-moss-800 border-moss-300 dark:bg-white/10 dark:text-cream-100 dark:border-white/20">
-                  {property.property_type.replace(/_/g, ' ')}
+              <div className="flex items-center gap-1.5">
+                <div className={`w-2 h-2 rounded-full ${property.status === 'occupied' || property.status === 'active_occupied' ? 'bg-indigo-500' : 'bg-emerald-500'}`}></div>
+                <span className={`text-[11px] font-extrabold uppercase tracking-widest ${property.status === 'occupied' || property.status === 'active_occupied' ? 'text-indigo-600 dark:text-indigo-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  {property.status === 'occupied' || property.status === 'active_occupied' ? 'Occupied' : 'Active Listing'}
                 </span>
-              )}
+              </div>
+
               <span className="text-xs text-ink-500 dark:text-cream-100/60 flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" />
                 {property.location || `${property.address_line1 || ''}, ${property.city || ''}`}
@@ -321,46 +331,46 @@ export function PropertyDetailView() {
         </div>
 
         {/* Specifications Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-[#07130D] p-4 rounded-2xl border border-ink-200 dark:border-white/10 flex items-center gap-3 shadow-sm">
-            <div className="p-3 rounded-xl bg-moss-100 text-moss-700 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white dark:bg-[#14221B] p-5 rounded-3xl border border-[#E7E5E0] dark:border-white/10 flex flex-col gap-3 transition-all hover:shadow-md shadow-sm">
+            <div className="p-3 rounded-2xl bg-[#FAF8F5] text-[#2C4633] dark:bg-[#E5C583]/10 dark:text-[#E5C583] w-fit text-moss-700 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
               {property.units && property.units.length > 1 ? <Building2 className="h-6 w-6" /> : <BedDouble className="h-6 w-6" />}
             </div>
             <div>
-              <span className="text-[11px] text-ink-500 dark:text-cream-100/60 uppercase font-bold block">{property.units && property.units.length > 1 ? 'Total Units' : 'Bedrooms'}</span>
-              <span className="text-lg font-bold text-ink-900 dark:text-white">{property.units && property.units.length > 1 ? property.units.length + ' Units' : (property.bedrooms || 1) + ' Beds'}</span>
+              <span className="text-[10px] text-[#71717A] tracking-widest mb-1 dark:text-cream-100/60 uppercase font-bold block">{property.units && property.units.length > 1 ? 'Total Units' : 'Bedrooms'}</span>
+              <span className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white">{property.units && property.units.length > 1 ? property.units.length + ' Units' : (property.bedrooms || 1) + ' Beds'}</span>
             </div>
           </div>
 
           {(!property.units || property.units.length <= 1) && (
-            <div className="bg-white dark:bg-[#07130D] p-4 rounded-2xl border border-ink-200 dark:border-white/10 flex items-center gap-3 shadow-sm">
-              <div className="p-3 rounded-xl bg-moss-100 text-moss-700 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
+            <div className="bg-white dark:bg-[#14221B] p-5 rounded-3xl border border-[#E7E5E0] dark:border-white/10 flex flex-col gap-3 transition-all hover:shadow-md shadow-sm">
+              <div className="p-3 rounded-2xl bg-[#FAF8F5] text-[#2C4633] dark:bg-[#E5C583]/10 dark:text-[#E5C583] w-fit text-moss-700 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
                 <Bath className="h-6 w-6" />
               </div>
               <div>
-                <span className="text-[11px] text-ink-500 dark:text-cream-100/60 uppercase font-bold block">Bathrooms</span>
-                <span className="text-lg font-bold text-ink-900 dark:text-white">{property.bathrooms || 1} Baths</span>
+                <span className="text-[10px] text-[#71717A] tracking-widest mb-1 dark:text-cream-100/60 uppercase font-bold block">Bathrooms</span>
+                <span className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white">{property.bathrooms || 1} Baths</span>
               </div>
             </div>
           )}
 
-          <div className="bg-white dark:bg-[#07130D] p-4 rounded-2xl border border-ink-200 dark:border-white/10 flex items-center gap-3 shadow-sm">
-            <div className="p-3 rounded-xl bg-moss-100 text-moss-700 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
+          <div className="bg-white dark:bg-[#14221B] p-5 rounded-3xl border border-[#E7E5E0] dark:border-white/10 flex flex-col gap-3 transition-all hover:shadow-md shadow-sm">
+            <div className="p-3 rounded-2xl bg-[#FAF8F5] text-[#2C4633] dark:bg-[#E5C583]/10 dark:text-[#E5C583] w-fit text-moss-700 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
               <Building2 className="h-6 w-6" />
             </div>
             <div>
-              <span className="text-[11px] text-ink-500 dark:text-cream-100/60 uppercase font-bold block">Property Type</span>
-              <span className="text-lg font-bold text-ink-900 dark:text-white capitalize">{property.property_type || 'Apartment'}</span>
+              <span className="text-[10px] text-[#71717A] tracking-widest mb-1 dark:text-cream-100/60 uppercase font-bold block">Property Type</span>
+              <span className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white capitalize">{property.property_type || 'Apartment'}</span>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#07130D] p-4 rounded-2xl border border-ink-200 dark:border-white/10 flex items-center gap-3 shadow-sm">
-            <div className="p-3 rounded-xl bg-moss-100 text-moss-700 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
+          <div className="bg-white dark:bg-[#14221B] p-5 rounded-3xl border border-[#E7E5E0] dark:border-white/10 flex flex-col gap-3 transition-all hover:shadow-md shadow-sm">
+            <div className="p-3 rounded-2xl bg-[#FAF8F5] text-[#2C4633] dark:bg-[#E5C583]/10 dark:text-[#E5C583] w-fit text-moss-700 dark:bg-[#E5C583]/15 dark:text-[#E5C583]">
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
-              <span className="text-[11px] text-ink-500 dark:text-cream-100/60 uppercase font-bold block">Serviced</span>
-              <span className="text-lg font-bold text-ink-900 dark:text-white">{property.is_serviced ? 'Yes (Full Service)' : 'Standard'}</span>
+              <span className="text-[10px] text-[#71717A] tracking-widest mb-1 dark:text-cream-100/60 uppercase font-bold block">Serviced</span>
+              <span className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white">{property.is_serviced ? 'Yes (Full Service)' : 'Standard'}</span>
             </div>
           </div>
         </div>
@@ -368,7 +378,7 @@ export function PropertyDetailView() {
         {/* LANDLORD REQUIREMENTS & AUTOMATED SYSTEM QUALIFICATION CARD */}
         <div className="bg-white dark:bg-[#07130D] p-6 rounded-2xl border border-ink-200 dark:border-white/10 shadow-lg space-y-4 text-left">
           <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-3">
-            <h3 className="text-lg font-bold text-ink-900 dark:text-white flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white flex items-center gap-2">
               <ShieldCheck className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" /> Landlord Requirements & Qualification
             </h3>
             {currentUserRole === "tenant" && (
@@ -387,7 +397,7 @@ export function PropertyDetailView() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="p-4 rounded-xl bg-cream-50/70 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-1">
               <span className="text-[11px] font-semibold text-ink-400 dark:text-cream-100/50 uppercase tracking-wider block">Minimum Required Income</span>
-              <p className="font-bold text-sm text-ink-900 dark:text-white">{requiredIncome}</p>
+              <p className="font-bold text-sm text-ink-900 dark:text-white">{requirements?.income || 'Standard Tiers'}</p>
               {currentUserRole === "tenant" && (
                 <div className="pt-2">
                   {meetsIncome ? (
@@ -405,7 +415,9 @@ export function PropertyDetailView() {
 
             <div className="p-4 rounded-xl bg-cream-50/70 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-1">
               <span className="text-[11px] font-semibold text-ink-400 dark:text-cream-100/50 uppercase tracking-wider block">Guarantor Policy</span>
-              <p className="font-bold text-sm text-ink-900 dark:text-white">Mandatory Guarantor Required</p>
+              <p className="font-bold text-sm text-ink-900 dark:text-white">
+                {requirements?.guarantor ? 'Mandatory Guarantor Required' : 'No Guarantor Required'}
+              </p>
               {currentUserRole === "tenant" && (
                 <div className="pt-2">
                   {meetsGuarantor ? (
@@ -423,7 +435,7 @@ export function PropertyDetailView() {
 
             <div className="p-4 rounded-xl bg-cream-50/70 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-1">
               <span className="text-[11px] font-semibold text-ink-400 dark:text-cream-100/50 uppercase tracking-wider block">Employment Preference</span>
-              <p className="font-bold text-sm text-ink-900 dark:text-white">{employmentReq}</p>
+              <p className="font-bold text-sm text-ink-900 dark:text-white">{requirements?.employment || 'Any Employment'}</p>
               {currentUserRole === "tenant" && (
                 <div className="pt-2">
                   {meetsEmployment ? (
@@ -458,7 +470,7 @@ export function PropertyDetailView() {
 
         {/* Description Section */}
         <div className="bg-white dark:bg-[#07130D] p-6 rounded-2xl border border-ink-200 dark:border-white/10 shadow-lg space-y-3 text-left">
-          <h3 className="text-lg font-bold text-ink-900 dark:text-white flex items-center gap-2">
+          <h3 className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white flex items-center gap-2">
             <ListChecks className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" /> Property Description
           </h3>
           <p className="text-sm text-ink-700 dark:text-cream-100/80 leading-relaxed whitespace-pre-line">
@@ -469,9 +481,9 @@ export function PropertyDetailView() {
         {/* Amenities Section */}
         {property.amenities && property.amenities.length > 0 && (
           <div className="bg-white dark:bg-[#07130D] p-6 rounded-2xl border border-ink-200 dark:border-white/10 shadow-lg space-y-4 text-left">
-            <h3 className="text-lg font-bold text-ink-900 dark:text-white">Features & Amenities</h3>
+            <h3 className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white">Features & Amenities</h3>
             <div className="flex flex-wrap gap-2.5">
-              {(Array.isArray(property.amenities) ? property.amenities : []).map((amenity, idx) => (
+              {(Array.isArray(property.amenities) ? property.amenities.map(cleanString) : []).map((amenity, idx) => (
                 <span
                   key={idx}
                   className="px-3.5 py-1.5 rounded-xl bg-cream-50 dark:bg-white/5 border border-ink-200 dark:border-white/10 text-xs font-semibold text-ink-800 dark:text-cream-100/90 flex items-center gap-1.5"
@@ -487,7 +499,7 @@ export function PropertyDetailView() {
         {/* Available Units Section (For Bulk Generated Multi-Unit Properties) */}
         {property.units && property.units.length > 1 && (
           <div className="bg-white dark:bg-[#07130D] p-6 rounded-2xl border border-ink-200 dark:border-white/10 shadow-lg space-y-4 text-left">
-            <h3 className="text-lg font-bold text-ink-900 dark:text-white flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white flex items-center gap-2">
               <Building2 className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" />
               Available Units in this Property
             </h3>
@@ -533,6 +545,79 @@ export function PropertyDetailView() {
           </div>
         )}
 
+        {/* Landlord Profile & Verified Ratings / Reviews Section */}
+        <div className="bg-white dark:bg-[#07130D] p-6 rounded-2xl border border-ink-200 dark:border-white/10 shadow-lg space-y-4 text-left">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-ink-100 dark:border-white/10 pb-4">
+            <div className="flex flex-col gap-3 transition-all hover:shadow-md">
+              <div className="h-12 w-12 rounded-full bg-moss-100 dark:bg-[#E5C583]/15 text-moss-700 dark:text-[#E5C583] flex items-center justify-center font-bold text-lg border border-moss-200 dark:border-[#E5C583]/30">
+                <User className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white">
+                    {landlordName}
+                  </h3>
+                  <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3" /> Verified Landlord
+                  </span>
+                </div>
+                <p className="text-xs text-ink-500 dark:text-cream-100/60 font-medium">Property Manager & Host</p>
+              </div>
+            </div>
+
+            {/* Rating Summary Badge */}
+            <div className="flex flex-col gap-3 transition-all hover:shadow-md bg-cream-50 dark:bg-white/5 p-3 rounded-xl border border-ink-100 dark:border-white/10 shrink-0">
+              <div className="flex items-center gap-1.5 text-amber-500 font-extrabold text-xl">
+                <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+                <span>{landlordRatingData.rating}</span>
+              </div>
+              <div className="text-left pl-2 border-l border-ink-200 dark:border-white/10">
+                <span className="text-xs font-bold text-ink-900 dark:text-white block">
+                  {landlordRatingData.count} {landlordRatingData.count === 1 ? 'Tenant Review' : 'Tenant Reviews'}
+                </span>
+                <span className="text-[10px] text-ink-500 dark:text-cream-100/50">Verified Tenancy Ratings</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tenant Reviews */}
+          {landlordRatingData.hasReviews ? (
+            <div className="space-y-3 pt-2">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-cream-100/60">
+                Tenant Reviews & Ratings ({landlordRatingData.count})
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {landlordRatingData.reviews.map((rev) => (
+                  <div key={rev.id} className="p-4 rounded-xl bg-cream-50/70 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-ink-900 dark:text-white">{rev.tenantName}</span>
+                      <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        <span>{rev.rating}.0</span>
+                      </div>
+                    </div>
+                    {rev.comment && (
+                      <p className="text-xs text-ink-700 dark:text-cream-100/80 italic">
+                        "{rev.comment}"
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between text-[10px] text-ink-400 dark:text-cream-100/40 pt-1">
+                      <span>{rev.propertyTitle ? `Tenant at ${rev.propertyTitle}` : 'Verified Resident'}</span>
+                      <span>{new Date(rev.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl bg-cream-50/50 dark:bg-white/5 border border-dashed border-ink-200 dark:border-white/10 text-center">
+              <p className="text-xs text-ink-500 dark:text-cream-100/60 font-medium">
+                No tenant reviews submitted for this landlord yet. Ratings update automatically when verified tenants submit feedback.
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Location & Map Section with Open in Google Maps */}
         <PropertyDetailMap
           latitude={property.latitude}
@@ -551,10 +636,13 @@ export function PropertyDetailView() {
             <div className="text-white text-xs sm:text-sm font-semibold flex items-center gap-2">
               <span className="font-bold text-[#E5C583] tracking-wide">{property.title}</span>
               <span className="opacity-40">•</span>
-              <span className="opacity-80">Photo {lightboxIndex + 1} of {allImages.length}</span>
+              <span className="opacity-80">Photo {lightboxIndex + 1} of {(lightboxImagesOverride || allImages).length}</span>
             </div>
             <button
-              onClick={() => setIsLightboxOpen(false)}
+              onClick={() => {
+                setIsLightboxOpen(false);
+                setLightboxImagesOverride(null);
+              }}
               className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all cursor-pointer border border-white/10 hover:scale-105"
               title="Close (Esc)"
             >
@@ -564,11 +652,12 @@ export function PropertyDetailView() {
 
           {/* Lightbox Main Image & Navigation Arrows */}
           <div className="relative flex-1 flex items-center justify-center p-4 min-h-0 overflow-hidden">
-            {allImages.length > 1 && (
+            {(lightboxImagesOverride || allImages).length > 1 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setLightboxIndex((prev) => (prev > 0 ? prev - 1 : allImages.length - 1));
+                  const list = lightboxImagesOverride || allImages;
+                  setLightboxIndex((prev) => (prev > 0 ? prev - 1 : list.length - 1));
                 }}
                 className="absolute left-4 z-20 p-3 rounded-full bg-black/60 hover:bg-black/90 text-white border border-white/20 transition-all cursor-pointer shadow-2xl hover:scale-110"
                 title="Previous Image"
@@ -578,17 +667,18 @@ export function PropertyDetailView() {
             )}
 
             <img
-              src={allImages[lightboxIndex] || allImages[0]}
+              src={(lightboxImagesOverride || allImages)[lightboxIndex] || (lightboxImagesOverride || allImages)[0]}
               alt={`${property.title} full view`}
               className="max-h-[85vh] max-w-full object-contain rounded-xl shadow-2xl transition-all duration-300"
               onError={(e) => { e.target.onerror = null; e.target.src = '/src/assets/skyline_apartment.png'; }}
             />
 
-            {allImages.length > 1 && (
+            {(lightboxImagesOverride || allImages).length > 1 && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setLightboxIndex((prev) => (prev < allImages.length - 1 ? prev + 1 : 0));
+                  const list = lightboxImagesOverride || allImages;
+                  setLightboxIndex((prev) => (prev < list.length - 1 ? prev + 1 : 0));
                 }}
                 className="absolute right-4 z-20 p-3 rounded-full bg-black/60 hover:bg-black/90 text-white border border-white/20 transition-all cursor-pointer shadow-2xl hover:scale-110"
                 title="Next Image"
@@ -599,16 +689,16 @@ export function PropertyDetailView() {
           </div>
 
           {/* Lightbox Bottom Thumbnail Carousel */}
-          {allImages.length > 1 && (
+          {(lightboxImagesOverride || allImages).length > 1 && (
             <div className="p-4 bg-black/80 backdrop-blur-md border-t border-white/10 flex justify-center gap-2.5 overflow-x-auto">
-              {allImages.map((img, idx) => (
+              {(lightboxImagesOverride || allImages).map((img, idx) => (
                 <button
                   key={idx}
                   onClick={() => setLightboxIndex(idx)}
                   className={`relative h-14 w-20 rounded-lg overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${lightboxIndex === idx ? 'border-[#E5C583] scale-105 opacity-100 shadow-md' : 'border-transparent opacity-40 hover:opacity-100'
                     }`}
                 >
-                  <img src={img} alt={`Thumb ${idx}`} className="w-full h-full object-cover" />
+                  <img src={typeof img === 'object' ? img.url : img} alt={`Thumb ${idx}`} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -629,98 +719,227 @@ export function PropertyDetailView() {
         />
       )}
 
-      {/* Unit Detail Modal */}
-      {selectedUnitForModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedUnitForModal(null)}>
-          <div className="bg-white dark:bg-[#07130D] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-ink-200 dark:border-white/10" onClick={(e) => e.stopPropagation()}>
-            {/* Modal Header / Image */}
-            <div className="relative h-56 bg-ink-100 dark:bg-white/5">
-              {selectedUnitForModal.images && selectedUnitForModal.images.length > 0 ? (
-                <img src={typeof selectedUnitForModal.images[0] === 'object' ? selectedUnitForModal.images[0].url : selectedUnitForModal.images[0]} alt={selectedUnitForModal.unit_name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Home className="h-12 w-12 text-ink-300 dark:text-cream-100/20" />
-                </div>
-              )}
-              <button
-                onClick={() => setSelectedUnitForModal(null)}
-                className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full transition-colors"
-              >
+      {/* Multi-Unit Selection Modal */}
+      {showUnitSelectorModal && property.units && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowUnitSelectorModal(false)}>
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl shadow-2xl w-full max-w-md p-6 border border-ink-200 dark:border-white/10 text-left space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-white/10">
+              <h3 className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" /> Select Unit to Apply
+              </h3>
+              <button onClick={() => setShowUnitSelectorModal(false)} className="p-1 rounded-lg text-ink-400 hover:text-ink-900 dark:text-cream-100/50 dark:hover:text-white">
                 <X className="h-5 w-5" />
               </button>
-              <div className="absolute bottom-3 left-3 flex gap-2">
-                <span className={`text-xs uppercase font-bold px-3 py-1.5 rounded-full shadow-sm ${selectedUnitForModal.status?.toLowerCase() === 'vacant' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                  {selectedUnitForModal.status}
-                </span>
-              </div>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-5">
-                <div>
-                  <h3 className="text-2xl font-black text-ink-900 dark:text-white">{selectedUnitForModal.unit_name}</h3>
-                  <p className="text-sm font-semibold text-ink-500 dark:text-cream-100/60 mt-1">{property.title}</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-xl font-black text-moss-700 dark:text-[#E5C583]">₦{Number(selectedUnitForModal.rent_amount || 0).toLocaleString()}</span>
-                  <span className="block text-[11px] font-bold text-ink-500 dark:text-cream-100/50 uppercase">/{selectedUnitForModal.rent_period || 'yr'}</span>
-                </div>
-              </div>
+            <p className="text-xs text-ink-600 dark:text-cream-100/70">
+              This property contains multiple units. Please select the specific unit you wish to apply for:
+            </p>
 
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-cream-50 dark:bg-white/5 border border-ink-100 dark:border-white/5">
-                  <div className="p-2 bg-white dark:bg-[#07130D] rounded-lg shadow-sm border border-ink-100 dark:border-white/5">
-                    <BedDouble className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" />
-                  </div>
-                  <div>
-                    <span className="block text-[10px] uppercase font-bold text-ink-500 dark:text-cream-100/50">Bedrooms</span>
-                    <span className="text-sm font-black text-ink-900 dark:text-white">{selectedUnitForModal.bedrooms || 1}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-cream-50 dark:bg-white/5 border border-ink-100 dark:border-white/5">
-                  <div className="p-2 bg-white dark:bg-[#07130D] rounded-lg shadow-sm border border-ink-100 dark:border-white/5">
-                    <Bath className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" />
-                  </div>
-                  <div>
-                    <span className="block text-[10px] uppercase font-bold text-ink-500 dark:text-cream-100/50">Bathrooms</span>
-                    <span className="text-sm font-black text-ink-900 dark:text-white">{selectedUnitForModal.bathrooms || 1}</span>
-                  </div>
-                </div>
-              </div>
-
-              {selectedUnitForModal.description && (
-                <div className="mb-6">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-cream-100/50 mb-2">Unit Description</h4>
-                  <p className="text-sm text-ink-700 dark:text-cream-100/80 leading-relaxed bg-ink-50 dark:bg-white/5 p-4 rounded-xl border border-ink-100 dark:border-transparent">{selectedUnitForModal.description}</p>
-                </div>
-              )}
-
-              <div className="pt-2 border-t border-ink-200 dark:border-white/10 flex justify-end gap-3">
-                <Button
-                  onClick={() => setSelectedUnitForModal(null)}
-                  variant="outline"
-                  className="w-full sm:w-auto font-bold px-8 py-3.5 rounded-xl"
-                >
-                  Close
-                </Button>
-
-                {selectedUnitForModal.status?.toLowerCase() === 'vacant' && (!currentUserRole || currentUserRole === 'tenant') && (
-                  <Button
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {property.units.map((unit, idx) => {
+                const isVacant = unit.status?.toLowerCase() === 'vacant';
+                return (
+                  <div
+                    key={idx}
                     onClick={() => {
-                      setSelectedUnitForModal(null);
-                      handleApply(selectedUnitForModal.unit_name);
+                      if (isVacant) {
+                        setShowUnitSelectorModal(false);
+                        navigate(`/apply/${property.id}?unit=${encodeURIComponent(unit.unit_name)}`);
+                      }
                     }}
-                    className="w-full sm:w-auto font-bold px-8 py-3.5 rounded-xl bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#d4b371] dark:text-[#09090b] transition-all shadow-md hover:shadow-lg"
+                    className={`p-3.5 rounded-xl border transition-all flex items-center justify-between ${isVacant
+                      ? 'border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-white/5 hover:border-moss-600 dark:hover:border-[#E5C583] cursor-pointer'
+                      : 'border-ink-100 dark:border-white/5 bg-ink-50 dark:bg-white/5 opacity-50 cursor-not-allowed'
+                      }`}
                   >
-                    Apply for this Unit
-                  </Button>
-                )}
-              </div>
+                    <div>
+                      <h4 className="font-bold text-ink-900 dark:text-white text-sm">{unit.unit_name}</h4>
+                      <p className="text-[10px] text-[#71717A] tracking-widest mb-1 dark:text-cream-100/60 font-medium">
+                        {unit.bedrooms || 1} Bed • {unit.bathrooms || 1} Bath • ₦{Number(String(unit.rent_amount || '0').replace(/[^\d.]/g, '')).toLocaleString()} / {unit.rent_period || 'yr'}
+                      </p>
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${isVacant ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300' : 'bg-rose-500/15 text-rose-800 dark:text-rose-300'}`}>
+                      {unit.status}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
+
+      {/* Unit Detail Modal */}
+      {selectedUnitForModal && (
+        <UnitDetailModal
+          unit={selectedUnitForModal}
+          property={property}
+          currentUserRole={currentUserRole}
+          onClose={() => setSelectedUnitForModal(null)}
+          onApply={(unitName) => {
+            setSelectedUnitForModal(null);
+            handleApply(unitName);
+          }}
+          onOpenLightbox={(images, idx) => {
+            setLightboxImagesOverride(images);
+            setLightboxIndex(idx);
+            setIsLightboxOpen(true);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function UnitDetailModal({ unit, property, currentUserRole, onClose, onApply, onOpenLightbox }) {
+  const unitImages = Array.isArray(unit.images) && unit.images.length > 0
+    ? unit.images.map(img => (typeof img === 'object' ? img.url : img))
+    : [];
+  const mainUnitImage = unitImages[0] || '/src/assets/skyline_apartment.png';
+  const cleanString = (str) => typeof str === 'string' ? str.replace(/^[{"]+|[}"]+$/g, '').trim() : str; const unitFeatures = Array.isArray(unit.features)
+    ? unit.features.map(cleanString)
+    : (Array.isArray(unit.amenities)
+      ? unit.amenities.map(cleanString)
+      : (typeof unit.features === 'string' && unit.features ? unit.features.map(cleanString).split(',').map(cleanString) : []));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-[#07130D] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden border border-ink-200 dark:border-white/10 max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        
+        {/* Modal Header / Main Photo with Lightbox Expand */}
+        <div
+          onClick={() => {
+            if (unitImages.length > 0) {
+              onOpenLightbox(unitImages, 0);
+            }
+          }}
+          className="relative h-60 bg-ink-100 dark:bg-white/5 cursor-zoom-in group shrink-0"
+          title="Click to expand full photo"
+        >
+          <img
+            src={mainUnitImage}
+            alt={unit.unit_name}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={(e) => { e.target.onerror = null; e.target.src = '/src/assets/skyline_apartment.png'; }}
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/80 text-white rounded-full transition-colors z-10"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          
+          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+            <span className="bg-black/70 text-white backdrop-blur-md text-xs font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg border border-white/20">
+              <Maximize2 className="h-3.5 w-3.5 text-[#E5C583]" /> Expand Photos ({unitImages.length || 1})
+            </span>
+          </div>
+
+          <div className="absolute bottom-3 left-3 flex gap-2">
+            <span className={`text-xs uppercase font-bold px-3 py-1.5 rounded-full shadow-sm ${unit.status?.toLowerCase() === 'vacant' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+              {unit.status}
+            </span>
+          </div>
+        </div>
+
+        {/* Unit Thumbnails Carousel (If >1 photos) */}
+        {unitImages.length > 1 && (
+          <div className="p-3 bg-cream-50/80 dark:bg-white/5 border-b border-ink-100 dark:border-white/10 flex gap-2 overflow-x-auto shrink-0">
+            {unitImages.map((img, idx) => (
+              <button
+                key={idx}
+                onClick={() => onOpenLightbox(unitImages, idx)}
+                className="relative h-14 w-20 rounded-lg overflow-hidden border border-ink-200 dark:border-white/20 shrink-0 hover:opacity-100 opacity-75 transition-opacity cursor-pointer"
+                title="Click to view full photo"
+              >
+                <img src={img} alt={`Unit photo ${idx + 1}`} className="w-full h-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto space-y-5">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="text-2xl font-black text-ink-900 dark:text-white">{unit.unit_name}</h3>
+              <p className="text-xs font-semibold text-ink-500 dark:text-cream-100/60 mt-0.5">{property.title}</p>
+            </div>
+            <div className="text-right">
+              <span className="text-xl font-black text-moss-700 dark:text-[#E5C583]">₦{Number(unit.rent_amount || 0).toLocaleString()}</span>
+              <span className="block text-[11px] font-bold text-ink-500 dark:text-cream-100/50 uppercase">/{unit.rent_period || 'yr'}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-3 transition-all hover:shadow-md p-3.5 rounded-xl bg-cream-50 dark:bg-white/5 border border-ink-100 dark:border-white/5">
+              <div className="p-2 bg-white dark:bg-[#07130D] rounded-lg shadow-sm border border-ink-100 dark:border-white/5">
+                <BedDouble className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" />
+              </div>
+              <div>
+                <span className="block text-[10px] uppercase font-bold text-ink-500 dark:text-cream-100/50">Bedrooms</span>
+                <span className="text-sm font-black text-ink-900 dark:text-white">{unit.bedrooms || 1} Beds</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 transition-all hover:shadow-md p-3.5 rounded-xl bg-cream-50 dark:bg-white/5 border border-ink-100 dark:border-white/5">
+              <div className="p-2 bg-white dark:bg-[#07130D] rounded-lg shadow-sm border border-ink-100 dark:border-white/5">
+                <Bath className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" />
+              </div>
+              <div>
+                <span className="block text-[10px] uppercase font-bold text-ink-500 dark:text-cream-100/50">Bathrooms</span>
+                <span className="text-sm font-black text-ink-900 dark:text-white">{unit.bathrooms || 1} Baths</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Unit Features & Amenities */}
+          {unitFeatures.length > 0 && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-cream-100 mb-2">Unit Features & Amenities</h4>
+              <div className="flex flex-wrap gap-2">
+                {unitFeatures.map((feat, idx) => (
+                  <span key={idx} className="px-3 py-1 rounded-lg bg-moss-50 dark:bg-white/5 text-moss-900 dark:text-cream-100 border border-moss-200 dark:border-white/10 text-xs font-semibold flex items-center gap-1.5">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" />
+                    {typeof feat === 'string' ? feat : feat.name || feat.title}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {unit.description && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-cream-100/50 mb-1.5">Unit Description</h4>
+              <p className="text-xs text-ink-700 dark:text-cream-100/80 leading-relaxed bg-ink-50 dark:bg-white/5 p-3.5 rounded-xl border border-ink-100 dark:border-transparent whitespace-pre-line">
+                {unit.description}
+              </p>
+            </div>
+          )}
+
+          <div className="pt-3 border-t border-ink-200 dark:border-white/10 flex justify-end gap-3">
+            <Button
+              onClick={onClose}
+              variant="outline"
+              className="w-full sm:w-auto font-bold px-6 py-3 rounded-xl"
+            >
+              Close
+            </Button>
+
+            {unit.status?.toLowerCase() === 'vacant' && (!currentUserRole || currentUserRole === 'tenant') && (
+              <Button
+                onClick={() => onApply(unit.unit_name)}
+                className="w-full sm:w-auto font-bold px-6 py-3 rounded-xl bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#d4b371] dark:text-[#09090b] transition-all shadow-md hover:shadow-lg"
+              >
+                Apply for this Unit
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

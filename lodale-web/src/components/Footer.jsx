@@ -110,36 +110,36 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link
-                  to="/how-it-works"
+                <a
+                  href="/explore#how-it-works"
                   className="text-zinc-400 hover:text-white transition-colors"
                 >
                   How It Works
-                </Link>
+                </a>
               </li>
               <li>
-                <Link
-                  to="/about"
-                  className="text-zinc-400 hover:text-white transition-colors"
-                >
-                  About
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/explore#for-tenants"
+                <a
+                  href="/explore#for-tenants"
                   className="text-zinc-400 hover:text-white transition-colors"
                 >
                   For Tenants
-                </Link>
+                </a>
               </li>
               <li>
-                <Link
-                  to="/explore#for-landlords"
+                <a
+                  href="/explore#for-landlords"
                   className="text-zinc-400 hover:text-white transition-colors"
                 >
                   For Landlords
-                </Link>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/explore#faq"
+                  className="text-zinc-400 hover:text-white transition-colors"
+                >
+                  FAQs
+                </a>
               </li>
             </ul>
           </div>
@@ -159,12 +159,12 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <Link
-                  to="/how-it-works"
+                <a
+                  href="/explore#faq"
                   className="text-zinc-400 hover:text-white transition-colors"
                 >
-                  Safety Guides
-                </Link>
+                  Safety Guides &amp; FAQs
+                </a>
               </li>
             </ul>
           </div>

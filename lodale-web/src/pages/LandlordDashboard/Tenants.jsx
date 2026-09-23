@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2, Bell } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2, Bell, AlertTriangle, RotateCcw, Link2, Copy, Send, ExternalLink, CheckCircle2 } from "lucide-react";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
@@ -10,6 +11,7 @@ import { reminderService } from "../../services/reminderService";
 import { apiClient } from "../../lib/apiClient";
 import Avatar from "../../components/Avatar";
 import RenewalOfferModal from "./components/RenewalOfferModal";
+import RateTenantModal from "../../components/RateTenantModal";
 import "./Tenants.css";
 
 const TenantsSkeleton = () => (
@@ -57,6 +59,7 @@ const TenantsSkeleton = () => (
 );
 
 export default function Tenants({ setSelectedTenantForDetails, setActiveTab, initialShowAddModal, onResetInitialAddModal }) {
+  const navigate = useNavigate();
   const [tenantsList, setTenantsList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [displayLimit, setDisplayLimit] = useState(8);
@@ -64,14 +67,36 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All"); // All, Active, Pending, Past
   const [showAddModal, setShowAddModal] = useState(initialShowAddModal || false);
+  const [createdInvite, setCreatedInvite] = useState(null);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
-    if (initialShowAddModal) {
+    const autoOpen = sessionStorage.getItem("autoOpenAddTenantModal");
+    if (autoOpen === "true") {
+      setShowAddModal(true);
+      sessionStorage.removeItem("autoOpenAddTenantModal");
+      
+      try {
+        const savedDraft = sessionStorage.getItem("draftTenantFormData");
+        if (savedDraft) {
+          const parsed = JSON.parse(savedDraft);
+          const newlyCreatedId = sessionStorage.getItem("latestCreatedPropertyId");
+          if (newlyCreatedId) {
+            parsed.propertyId = newlyCreatedId;
+            sessionStorage.removeItem("latestCreatedPropertyId");
+          }
+          setFormData(parsed);
+          sessionStorage.removeItem("draftTenantFormData");
+        }
+      } catch (e) {}
+    } else if (initialShowAddModal) {
       setShowAddModal(true);
       if (onResetInitialAddModal) onResetInitialAddModal();
     }
   }, [initialShowAddModal, onResetInitialAddModal]);
   const [tenantToRate, setTenantToRate] = useState(null);
+  const [showRateTenantModal, setShowRateTenantModal] = useState(false);
+  const [selectedTenantToRate, setSelectedTenantToRate] = useState(null);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [rentAgain, setRentAgain] = useState("yes");
@@ -98,11 +123,14 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
     status: "active"
   });
 
+  const [error, setError] = useState(null);
+
   // Load properties and tenants
   const loadData = async (isSilent = false) => {
     if (!isSilent && tenantsList.length === 0) {
       setIsLoading(true);
     }
+    setError(null);
     
     let currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
     if (!currentUserId) {
@@ -389,6 +417,14 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
         }
       });
 
+      // Merge local storage invited tenants
+      try {
+        const storedInvites = JSON.parse(localStorage.getItem("lodale_invited_tenants") || "[]");
+        if (Array.isArray(storedInvites)) {
+          storedInvites.forEach((inv) => allTenants.unshift(inv));
+        }
+      } catch (err) {}
+
       // Final Deduplication by Email+Property to prevent duplicates
       const uniqueTenantsMap = new Map();
       allTenants.forEach(t => {
@@ -410,7 +446,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
       setTenantsList(Array.from(uniqueTenantsMap.values()));
     } catch (e) {
       console.warn("Could not load tenants list:", e);
-      setTenantsList([]);
+      setError("Failed to load tenant directory. Please check your network connection.");
     } finally {
       setIsLoading(false);
     }
@@ -465,7 +501,16 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Add Tenant Submit
+  // Quick add property handler from Add Tenant modal
+  const handleQuickAddProperty = () => {
+    try {
+      sessionStorage.setItem("draftTenantFormData", JSON.stringify(formData));
+      sessionStorage.setItem("autoOpenAddTenantModal", "true");
+    } catch (err) {}
+    navigate("/dashboard/landlord/add-property");
+  };
+
+  // Add Tenant Submit & Generate Invitation Link
   const handleAddTenant = (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.propertyId) {
@@ -473,9 +518,79 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
       return;
     }
 
-    // Backend-driven workflow enforcement
-    triggerToast(`To add ${formData.name}, please invite them to apply for the property via the sharing link and generate a formal lease from their application.`, "info", "Use Application Workflow");
+    const cleanEmail = formData.email.trim().toLowerCase();
+    const existingTenant = tenantsList.find(
+      (t) => (t.email || "").trim().toLowerCase() === cleanEmail && String(t.propertyId || "") === String(formData.propertyId || "")
+    );
+
+    if (existingTenant) {
+      triggerToast(`A tenant entry with email (${formData.email}) already exists for this property. Each tenant must have a unique email address.`, "warning", "Duplicate Email Blocked");
+      return;
+    }
+
+    const selectedProp = properties.find((p) => String(p.id) === String(formData.propertyId));
+    const onboardingLink = `${window.location.origin}/apply/${formData.propertyId}?invitedEmail=${encodeURIComponent(formData.email)}&tenantName=${encodeURIComponent(formData.name)}`;
+
+    const newTenant = {
+      id: `invited-${Date.now()}`,
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone || "Pending Tenant Entry",
+      propertyId: formData.propertyId,
+      propertyTitle: selectedProp ? selectedProp.title : "Assigned Property",
+      unit: formData.unit || "",
+      occupation: formData.occupation || "Pending Tenant Entry",
+      income: formData.income || "",
+      notes: formData.notes || "",
+      status: "pending",
+      leaseStatus: "Invited (Pending Onboarding)",
+      paymentStatus: formData.paymentStatus || "Grace Period",
+      dueDate: formData.dueDate || "1st of every month",
+      rentAmount: selectedProp ? (selectedProp.price || 0) : 0,
+      invitedAt: new Date().toISOString(),
+      onboardingLink: onboardingLink,
+      incompleteFields: {
+        phone: !formData.phone,
+        occupation: !formData.occupation,
+        income: !formData.income,
+        unit: !formData.unit,
+      }
+    };
+
+    // Prepend to active directory state
+    setTenantsList((prev) => [newTenant, ...prev]);
+
+    // Persist to local storage cache so it remains present
+    try {
+      const storedInvites = JSON.parse(localStorage.getItem("lodale_invited_tenants") || "[]");
+      localStorage.setItem("lodale_invited_tenants", JSON.stringify([newTenant, ...storedInvites]));
+    } catch (err) {}
+
+    triggerToast(`Onboarding invitation sent to ${formData.email}! Direct onboarding link ready.`, "success", "Invitation Dispatched");
+
+    // Open Invitation Modal
+    setCreatedInvite({
+      tenantName: formData.name,
+      email: formData.email,
+      propertyTitle: selectedProp ? selectedProp.title : "Assigned Property",
+      link: onboardingLink
+    });
+
     setShowAddModal(false);
+    // Reset form data
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      propertyId: "",
+      unit: "",
+      occupation: "",
+      income: "",
+      notes: "",
+      paymentStatus: "Paid",
+      dueDate: "1st of every month",
+      status: "active"
+    });
   };
 
   // Direct contact helper -> goes to chat tab
@@ -584,6 +699,18 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
       {/* CARDS GRID */}
       {isLoading ? (
         <TenantsSkeleton />
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center p-8 text-center bg-rose-50/60 dark:bg-rose-950/20 rounded-2xl border border-rose-200 dark:border-rose-900/40 max-w-md mx-auto my-6">
+          <AlertTriangle className="h-10 w-10 text-rose-500 mb-3" />
+          <h3 className="font-bold text-ink-800 dark:text-white mb-1">Failed to load tenant records</h3>
+          <p className="text-sm text-rose-700 dark:text-rose-400 mb-4">{error}</p>
+          <button
+            onClick={() => loadData(false)}
+            className="flex items-center gap-2 px-4 py-2 bg-moss-600 hover:bg-moss-700 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] text-sm font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+          >
+            <RotateCcw className="h-4 w-4" /> Try Again
+          </button>
+        </div>
       ) : filteredTenants.length === 0 ? (
         <div className="tenants-empty-state">
           <div className="tenants-empty-icon-wrapper">
@@ -678,6 +805,17 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
                   >
                     <Info className="h-4 w-4" /> View Details
                   </button>
+
+                  <button
+                    className="tenant-action-btn w-full hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/30"
+                    onClick={() => {
+                      setSelectedTenantToRate(tenant);
+                      setShowRateTenantModal(true);
+                    }}
+                    title="Rate Tenant"
+                  >
+                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> Rate
+                  </button>
                 </div>
 
               </div>
@@ -724,15 +862,33 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
 
                   {/* Property Dropdown (Required) */}
                   <div className="tenant-form-group tenant-form-full">
-                    <label className="tenant-form-label">Assign Property *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="tenant-form-label mb-0">Assign Property *</label>
+                      <button
+                        type="button"
+                        onClick={handleQuickAddProperty}
+                        className="text-xs font-bold text-moss-700 hover:text-moss-800 dark:text-[#E5C583] dark:hover:text-amber-300 flex items-center gap-1 cursor-pointer bg-transparent border-none outline-none transition-colors"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add Property
+                      </button>
+                    </div>
                     <select
                       name="propertyId"
                       value={formData.propertyId}
-                      onChange={handleInputChange}
+                      onChange={(e) => {
+                        if (e.target.value === "__ADD_NEW_PROPERTY__") {
+                          handleQuickAddProperty();
+                        } else {
+                          handleInputChange(e);
+                        }
+                      }}
                       className="tenant-form-select"
                       required
                     >
                       <option value="">Select property unit...</option>
+                      <option value="__ADD_NEW_PROPERTY__" className="font-bold text-moss-700 dark:text-[#E5C583]">
+                        + Add New Property...
+                      </option>
                       {properties.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.title} ({p.location})
@@ -890,13 +1046,77 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
                 </button>
                 <button
                   type="submit"
-                  className="tenant-submit-btn"
+                  className="tenant-submit-btn flex items-center gap-1.5 justify-center"
                 >
-                  Register Tenant
+                  <Send className="h-4 w-4" /> Add Tenant & Send Invite
                 </button>
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* ONBOARDING INVITATION DISPATCHED MODAL */}
+      {createdInvite && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in" onClick={() => setCreatedInvite(null)}>
+          <div className="bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/15 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 text-center relative" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setCreatedInvite(null)}
+              className="absolute top-4 right-4 text-ink-400 hover:text-ink-900 dark:hover:text-white p-1 rounded-full cursor-pointer bg-transparent border-none"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shadow-inner">
+              <Send className="h-7 w-7" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-ink-900 dark:text-white">Onboarding Invitation Sent!</h3>
+              <p className="text-xs text-ink-600 dark:text-cream-100/75 leading-relaxed">
+                An invitation email has been dispatched to <strong className="text-ink-900 dark:text-white">{createdInvite.email}</strong> for <strong className="text-moss-700 dark:text-[#E5C583]">{createdInvite.propertyTitle}</strong>.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-white/5 border border-ink-100 dark:border-white/10 text-left space-y-2">
+              <span className="text-[11px] font-bold text-ink-500 dark:text-cream-100/60 uppercase tracking-wider block">Direct Shareable Link</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={createdInvite.link}
+                  className="w-full text-xs bg-white dark:bg-black/40 border border-ink-200 dark:border-white/15 rounded-xl px-3 py-2.5 text-ink-800 dark:text-cream-100 select-all font-mono truncate"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(createdInvite.link);
+                    setCopiedLink(true);
+                    triggerToast("Invitation link copied to clipboard!", "success", "Link Copied");
+                    setTimeout(() => setCopiedLink(false), 3000);
+                  }}
+                  className="px-3.5 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs shrink-0 flex items-center gap-1.5 cursor-pointer transition-all border-none outline-none shadow-xs"
+                >
+                  {copiedLink ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copiedLink ? "Copied" : "Copy Link"}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-left">
+              <p className="text-[11.5px] text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
+                If the tenant does not have a Lodale account, opening this link guides them to sign up and complete any profile details you left blank. If they already have an account, it logs them in directly.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCreatedInvite(null)}
+              className="w-full py-3 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs cursor-pointer transition-all border-none outline-none shadow-sm"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}
@@ -1014,6 +1234,20 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
           loadData(true);
         }}
       />
+
+      {/* RATE TENANT MODAL */}
+      {showRateTenantModal && selectedTenantToRate && (
+        <RateTenantModal
+          isOpen={showRateTenantModal}
+          onClose={() => setShowRateTenantModal(false)}
+          tenantId={selectedTenantToRate.id || selectedTenantToRate.tenantId || selectedTenantToRate.email}
+          tenantName={selectedTenantToRate.name || selectedTenantToRate.tenantName || "Tenant"}
+          landlordId={sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "landlord"}
+          landlordName="Landlord"
+          propertyTitle={selectedTenantToRate.propertyTitle || ""}
+          onSuccess={() => loadData(true)}
+        />
+      )}
     </div>
   );
 }

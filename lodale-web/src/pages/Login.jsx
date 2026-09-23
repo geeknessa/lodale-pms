@@ -167,6 +167,8 @@ export default function Login() {
 
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
+        sessionStorage.removeItem("isNewSignUp");
+        localStorage.removeItem("isNewUserSignUp_" + cleanEmail);
         sessionStorage.setItem("isAuthenticated", "true");
         sessionStorage.setItem("userRole", userRole);
         sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
@@ -210,9 +212,9 @@ export default function Login() {
         // Signal dashboard to show profile completeness guidance banner and open Settings tab
         sessionStorage.setItem("justSignedInToCompleteProfile", "true");
         if (userRole === "tenant") {
-          navigate(`/dashboard/${userRole}`, { state: { initialTab: 3 } });
+          navigate(`/dashboard/${userRole}`);
         } else if (userRole === "landlord") {
-          navigate(`/dashboard/${userRole}`, { state: { initialTab: 0 } });
+          navigate(`/dashboard/${userRole}`);
         } else {
           navigate(userRole === "admin" ? "/admin/dashboard" : `/dashboard/${userRole}`);
         }

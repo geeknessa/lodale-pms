@@ -12,7 +12,7 @@ import InspectionCalendarModal from "../../../components/InspectionCalendarModal
 import { 
   CheckCircle2, XCircle, FileText, 
   Wallet, ShieldCheck, Mail, Phone, Calendar, 
-  MessageSquare, AlertTriangle, Star, Trash2, X, Search, ArrowLeft, ChevronRight, Key, Loader2
+  MessageSquare, AlertTriangle, Star, Trash2, X, Search, ArrowLeft, ChevronRight, Key, Loader2, RotateCcw
 } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
 import { doesIncomeMeetRequirement } from "../../../utils/incomeRanges";
@@ -179,8 +179,11 @@ export default function LandlordApplications({ setActiveTab }) {
     }
   };
 
+  const [error, setError] = useState(null);
+
   const fetchApplications = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const apps = await applicationService.getLandlordApplications();
       const deletedIds = JSON.parse(localStorage.getItem("deletedLandlordAppIds") || "[]");
@@ -195,6 +198,7 @@ export default function LandlordApplications({ setActiveTab }) {
       }
     } catch (err) {
       console.error(err);
+      setError(err?.response?.data?.message || err?.message || "Failed to load applications. Please check your connection or server status.");
       triggerToast("Failed to load applications", "error");
     } finally {
       setIsLoading(false);
@@ -388,8 +392,25 @@ export default function LandlordApplications({ setActiveTab }) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64 text-ink-500 font-semibold">
-        Loading applications...
+      <div className="flex flex-col items-center justify-center h-64 text-ink-500 gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-moss-600 dark:text-[#E5C583]" />
+        <span className="text-sm font-semibold">Loading applications...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center p-6 rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/60 dark:bg-rose-950/20 max-w-md mx-auto my-8">
+        <AlertTriangle className="h-10 w-10 text-rose-500 mb-3" />
+        <h3 className="font-bold text-ink-800 dark:text-white mb-1">Failed to load applications</h3>
+        <p className="text-sm text-rose-700 dark:text-rose-400 mb-4">{error}</p>
+        <button
+          onClick={fetchApplications}
+          className="flex items-center gap-2 px-4 py-2 bg-moss-600 hover:bg-moss-700 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] text-sm font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+        >
+          <RotateCcw className="h-4 w-4" /> Try Again
+        </button>
       </div>
     );
   }

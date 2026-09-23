@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { triggerToast } from "../../context/ToastContext";
+import { ratingService } from "../../services/ratingService";
 import gsap from "gsap";
 import {
   LayoutDashboard,
@@ -255,9 +256,8 @@ export default function LandlordDashboard() {
   };
 
   const getLandlordRatingData = () => {
-    // Landlord reviews are not currently backed by an API in this module.
-    // Defaulting to empty until backend reviewService is added.
-    return { hasReviews: false, rating: "New", count: 0, reviews: [] };
+    const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "landlord";
+    return ratingService.getLandlordReviews(currentUserId);
   };
 
   const ratingData = getLandlordRatingData();
@@ -357,6 +357,32 @@ export default function LandlordDashboard() {
     window.addEventListener("storage", handleAvatarUpdate);
     return () => window.removeEventListener("storage", handleAvatarUpdate);
   }, []);
+
+  // Getting Started banner visibility & dismissal state
+  const [isGettingStartedDismissed, setIsGettingStartedDismissed] = useState(() => {
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+    if (sessionStorage.getItem("gettingStartedDismissed") === "true") return true;
+    if (emailKey && localStorage.getItem("gettingStartedDismissed_" + emailKey) === "true") return true;
+    return false;
+  });
+
+  const isNewSignUpUser = (() => {
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+    if (sessionStorage.getItem("isNewSignUp") === "true") return true;
+    if (emailKey && localStorage.getItem("isNewUserSignUp_" + emailKey) === "true") return true;
+    return false;
+  })();
+
+  const handleDismissGettingStarted = () => {
+    setIsGettingStartedDismissed(true);
+    sessionStorage.setItem("gettingStartedDismissed", "true");
+    sessionStorage.removeItem("isNewSignUp");
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+    if (emailKey) {
+      localStorage.setItem("gettingStartedDismissed_" + emailKey, "true");
+      localStorage.removeItem("isNewUserSignUp_" + emailKey);
+    }
+  };
   const [applications, setApplications] = useState([]);
 
   useEffect(() => {
@@ -1225,7 +1251,7 @@ export default function LandlordDashboard() {
             ) : activePill === "Payments" ? (
               <div className="mt-4 space-y-6 animate-in fade-in duration-300">
                 {/* RENT PAYMENTS & REVENUE HISTORY FULL SECTION */}
-                <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-6 sm:p-8 border border-ink-100 dark:border-white/10 shadow-sm">
+                <div className="bg-white dark:bg-[#07130D] rounded-3xl p-6 sm:p-8 border border-ink-100 dark:border-white/10 shadow-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-ink-100 dark:border-white/10">
                     <div>
                       <h2 className="text-xl sm:text-2xl font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-3">
@@ -1400,49 +1426,84 @@ export default function LandlordDashboard() {
               /* DASHBOARD CONTENT GRID (URGENCY-FIRST LAYOUT) */
               <div className="space-y-6">
 
-                {/* GETTING STARTED CHECKLIST (EMPTY STATE FOR NEW LANDLORDS) */}
-                {displayProperties.length === 0 && !loadingData && (
-                  <div className="bg-gradient-to-br from-moss-900 via-moss-800 to-moss-950 dark:from-[#1E1E1E] dark:to-[#121212] p-6 sm:p-8 rounded-3xl text-white border border-moss-700/40 shadow-lg space-y-5 animate-in fade-in duration-300">
-                    <div className="space-y-1">
-                      <span className="px-3 py-1 bg-[#E5C583]/20 text-[#E5C583] text-[11px] font-black rounded-full uppercase tracking-wider">
+                {/* GETTING STARTED CHECKLIST (ONLY FOR NEW LANDLORDS ON SIGN UP) */}
+                {isNewSignUpUser && !isGettingStartedDismissed && displayProperties.length === 0 && !loadingData && (
+                  <div className="relative bg-[#0B2519] dark:bg-[#071911] text-white p-6 sm:p-8 rounded-3xl border border-[#1B4D35] dark:border-[#133A27] shadow-xl space-y-6 animate-in fade-in duration-300">
+                    {/* Exit / Dismiss Button */}
+                    <button
+                      type="button"
+                      onClick={handleDismissGettingStarted}
+                      aria-label="Close getting started guide"
+                      title="Dismiss guide"
+                      className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#E5C583]"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+
+                    {/* Header */}
+                    <div className="space-y-2 pr-10">
+                      <span className="inline-block px-3.5 py-1 bg-[#E5C583]/20 text-[#F5D899] border border-[#E5C583]/40 text-[11px] font-black rounded-full uppercase tracking-wider shadow-sm">
                         Getting Started
                       </span>
-                      <h3 className="text-xl font-black text-cream-100 mt-2">Welcome to Lodale! Let's get your rental portfolio set up</h3>
-                      <p className="text-xs text-cream-100/70">Complete these quick steps to get your rental management active.</p>
+                      <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">
+                        Welcome to Lodale! Let's get your rental portfolio set up
+                      </h3>
+                      <p className="text-xs sm:text-sm text-[#C8E4D5] font-medium leading-relaxed max-w-2xl">
+                        Complete these quick steps to get your rental management active and start receiving applications.
+                      </p>
                     </div>
 
+                    {/* Step Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div
                         onClick={() => navigate("/dashboard/landlord/add-property")}
-                        className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all space-y-2 group"
+                        className="p-4 sm:p-5 rounded-2xl bg-[#133A27] hover:bg-[#1B4D35] border border-[#235F42] hover:border-[#E5C583]/60 cursor-pointer transition-all duration-200 space-y-3 group shadow-md"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-moss-600/50 flex items-center justify-center text-[#E5C583] font-black text-sm">
+                        <div className="w-9 h-9 rounded-xl bg-[#E5C583] text-[#0B2519] font-black text-sm flex items-center justify-center shadow-sm">
                           1
                         </div>
-                        <h4 className="font-bold text-sm text-cream-100 group-hover:text-[#E5C583] transition-colors">Add your first property</h4>
-                        <p className="text-xs text-cream-100/60">Upload property photos, address, and rental prices.</p>
+                        <div className="space-y-1">
+                          <h4 className="font-extrabold text-sm sm:text-base text-white group-hover:text-[#F5D899] transition-colors">
+                            Add your first property
+                          </h4>
+                          <p className="text-xs text-[#B8DCC9] leading-relaxed">
+                            Upload property photos, address, and rental prices.
+                          </p>
+                        </div>
                       </div>
 
                       <div
                         onClick={() => { setAutoOpenAddTenantModal(true); setActiveTab(2); }}
-                        className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all space-y-2 group"
+                        className="p-4 sm:p-5 rounded-2xl bg-[#133A27] hover:bg-[#1B4D35] border border-[#235F42] hover:border-[#E5C583]/60 cursor-pointer transition-all duration-200 space-y-3 group shadow-md"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-moss-600/50 flex items-center justify-center text-[#E5C583] font-black text-sm">
+                        <div className="w-9 h-9 rounded-xl bg-[#E5C583] text-[#0B2519] font-black text-sm flex items-center justify-center shadow-sm">
                           2
                         </div>
-                        <h4 className="font-bold text-sm text-cream-100 group-hover:text-[#E5C583] transition-colors">Add or invite tenants</h4>
-                        <p className="text-xs text-cream-100/60">Connect your active tenants to manage leases & rent.</p>
+                        <div className="space-y-1">
+                          <h4 className="font-extrabold text-sm sm:text-base text-white group-hover:text-[#F5D899] transition-colors">
+                            Add or invite tenants
+                          </h4>
+                          <p className="text-xs text-[#B8DCC9] leading-relaxed">
+                            Connect your active tenants to manage leases & rent.
+                          </p>
+                        </div>
                       </div>
 
                       <div
                         onClick={() => setActiveTab(4)}
-                        className="p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all space-y-2 group"
+                        className="p-4 sm:p-5 rounded-2xl bg-[#133A27] hover:bg-[#1B4D35] border border-[#235F42] hover:border-[#E5C583]/60 cursor-pointer transition-all duration-200 space-y-3 group shadow-md"
                       >
-                        <div className="w-8 h-8 rounded-xl bg-moss-600/50 flex items-center justify-center text-[#E5C583] font-black text-sm">
+                        <div className="w-9 h-9 rounded-xl bg-[#E5C583] text-[#0B2519] font-black text-sm flex items-center justify-center shadow-sm">
                           3
                         </div>
-                        <h4 className="font-bold text-sm text-cream-100 group-hover:text-[#E5C583] transition-colors">Set up payout account</h4>
-                        <p className="text-xs text-cream-100/60">Receive direct rent settlements to your local account.</p>
+                        <div className="space-y-1">
+                          <h4 className="font-extrabold text-sm sm:text-base text-white group-hover:text-[#F5D899] transition-colors">
+                            Set up payout account
+                          </h4>
+                          <p className="text-xs text-[#B8DCC9] leading-relaxed">
+                            Receive direct rent settlements to your local account.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1587,7 +1648,7 @@ export default function LandlordDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                   {/* LEFT: TENANT REQUESTS CARD */}
-                  <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-white/10 shadow-sm space-y-4 tour-requests flex flex-col justify-between">
+                  <div className="bg-white dark:bg-[#07130D] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-white/10 shadow-sm space-y-4 tour-requests flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-base sm:text-lg font-bold text-[#1E293B] dark:text-cream-100">
@@ -1708,7 +1769,7 @@ export default function LandlordDashboard() {
                   </div>
 
                   {/* RIGHT: PORTFOLIO OCCUPANCY DONUT CHART CARD */}
-                  <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-white/10 shadow-sm space-y-4 flex flex-col justify-between">
+                  <div className="bg-white dark:bg-[#07130D] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-white/10 shadow-sm space-y-4 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
                       <h3 className="text-base sm:text-lg font-bold text-[#1E293B] dark:text-cream-100 flex items-center gap-2">
                         <Building2 className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" />
@@ -1803,7 +1864,7 @@ export default function LandlordDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                   {/* LEFT: RENT PAYMENTS HISTORY */}
-                  <div className="db-card p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#1E1E1E] border border-ink-100 dark:border-white/10 shadow-sm box-border tour-vault overflow-hidden flex flex-col justify-between min-h-[220px]">
+                  <div className="db-card p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 shadow-sm box-border tour-vault overflow-hidden flex flex-col justify-between min-h-[220px]">
                     <div>
                       {/* Header with top Full History link */}
                       <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-ink-100 dark:border-white/10">
@@ -1869,7 +1930,7 @@ export default function LandlordDashboard() {
                   </div>
 
                   {/* RIGHT: QUICK ACTIONS */}
-                  <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-white/10 shadow-sm space-y-3 flex flex-col justify-between min-h-[220px]">
+                  <div className="bg-white dark:bg-[#07130D] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-white/10 shadow-sm space-y-3 flex flex-col justify-between min-h-[220px]">
                     <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-2">
                       <h3 className="text-base font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-2">
                         <SlidersHorizontal className="h-4.5 w-4.5 text-moss-700 dark:text-[#E5C583]" />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search as SearchIcon, FileText, Clock, Loader2, MessageSquare, Trash2, AlertTriangle, Calendar, Lock, ShieldCheck, CheckCircle2, Key, Info } from "lucide-react";
+import { Search as SearchIcon, FileText, Clock, Loader2, MessageSquare, Trash2, AlertTriangle, Calendar, Lock, ShieldCheck, CheckCircle2, Key, Info, Star, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import Button from "../../components/Button";
 import { useNavigate } from "react-router-dom";
 import { applicationService } from "../../services/applicationService";
@@ -9,6 +9,7 @@ import { inspectionService } from "../../services/inspectionService";
 import InspectionCalendarModal from "../../components/InspectionCalendarModal";
 import TenantInvoiceModal from "../../components/TenantInvoiceModal";
 import TenantLeaseModal from "../../components/TenantLeaseModal";
+import RateLandlordModal from "../../components/RateLandlordModal";
 import { triggerToast } from "../../context/ToastContext";
 import "./TenantSearch.css";
 
@@ -26,6 +27,10 @@ export default function TenantApplications({ setActiveTab }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Rate Landlord Modal State
+  const [showRateLandlordModal, setShowRateLandlordModal] = useState(false);
+  const [selectedAppToRate, setSelectedAppToRate] = useState(null);
 
   // Digital Rent Invoice Modal State
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -50,6 +55,15 @@ export default function TenantApplications({ setActiveTab }) {
     notes: ""
   });
   const [inspectionSubmitting, setInspectionSubmitting] = useState(false);
+
+  const [dismissedMessages, setDismissedMessages] = useState(() => JSON.parse(localStorage.getItem("dismissedLandlordMessages") || "[]"));
+  const [expandedAppIds, setExpandedAppIds] = useState([]);
+
+  const handleDismissMessage = (appId) => {
+    const newDismissed = [...dismissedMessages, String(appId)];
+    setDismissedMessages(newDismissed);
+    localStorage.setItem("dismissedLandlordMessages", JSON.stringify(newDismissed));
+  };
 
   const handleOpenInvoiceModal = async (app) => {
     const inv = await invoiceService.getInvoiceByApplicationId(app.id);
@@ -295,50 +309,54 @@ export default function TenantApplications({ setActiveTab }) {
   );
 
   return (
-    <div className="tenant-search-layout" style={{ height: "100%", overflowY: "auto", paddingBottom: "100px" }}>
-      <div className="search-header-sticky">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-ink-900 dark:text-white">My Applications</h1>
-            <p className="text-sm text-ink-500 dark:text-cream-100/70 mt-1">Track and manage your property rental applications.</p>
-          </div>
-          <button
-            onClick={() => setShowCalendarModal(true)}
-            className="px-4 py-2 bg-moss-600 hover:bg-moss-700 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] font-bold text-xs sm:text-sm rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer w-fit"
-          >
-            <Calendar className="h-4 w-4" /> 📅 View Schedule Calendar
-          </button>
+    <div className="w-full min-h-full pb-20 text-left">
+      {/* Top Header */}
+      <header className="mb-6 bg-white dark:bg-[#192A1F] border border-black/5 dark:border-white/5 shadow-sm rounded-3xl p-5 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-[#1C1917] dark:text-white tracking-tight">My Applications</h1>
+          <p className="text-sm font-medium text-[#71717A] dark:text-[#A3BCA7] mt-1">Track your tenancy journey, inspect properties, sign leases, and handle payments.</p>
         </div>
+        <button
+          onClick={() => setShowCalendarModal(true)}
+          className="px-6 py-3 bg-[#1E3324] dark:bg-[#E5C583] text-white dark:text-[#09090b] font-bold text-xs rounded-xl shadow-sm hover:opacity-90 transition-all flex items-center gap-2 cursor-pointer w-fit"
+        >
+          <Calendar className="h-4 w-4" /> View Schedule Calendar
+        </button>
+      </header>
 
-        <div className="search-controls-wrapper">
-          <div className="search-input-group tour-search-bar" style={{ flex: 1, maxWidth: "400px" }}>
-            <SearchIcon className="search-icon" />
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search by property or status..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+      <div className="mb-6 max-w-md">
+            <div className="relative">
+              <SearchIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A]" />
+              <input
+                type="text"
+                className="w-full h-10 pl-10 pr-4 rounded-md border border-[#E7E5E0] dark:border-white/15 bg-white dark:bg-[#14221B] text-sm text-[#1C1917] dark:text-white placeholder:text-[#71717A] focus:border-[#2C4633] dark:focus:border-[#E5C583] outline-none transition-colors"
+                placeholder="Search by property or status..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="recommendations-container text-left" style={{ marginTop: "24px" }}>
+      <div className="mt-6">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3 text-ink-500 dark:text-cream-100/60">
-            <Loader2 className="h-7 w-7 animate-spin text-moss-600 dark:text-[#E5C583]" />
-            <span className="text-[13px] font-medium">Loading your applications...</span>
+          <div className="flex flex-col items-center justify-center py-20 gap-3 text-[#71717A] dark:text-white/60">
+            <Loader2 className="h-7 w-7 animate-spin text-[#2C4633] dark:text-[#E5C583]" />
+            <span className="text-sm font-medium">Loading your applications...</span>
           </div>
         ) : error ? (
-          <div className="p-6 text-center rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/20">
-            <p className="text-[13px] text-rose-700 dark:text-rose-400 font-medium">{error}</p>
-            <button onClick={loadApplications} className="mt-3 text-[12.5px] text-moss-700 dark:text-[#E5C583] underline font-semibold">
-              Retry
+          <div className="flex flex-col items-center justify-center h-64 text-center p-6 rounded-md border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 max-w-md mx-auto my-8">
+            <AlertTriangle className="h-10 w-10 text-red-600 mb-3" />
+            <h3 className="font-semibold text-[#1C1917] dark:text-white mb-1">Failed to load applications</h3>
+            <p className="text-xs text-red-700 dark:text-red-400 mb-4">{error}</p>
+            <button
+              onClick={loadApplications}
+              className="flex items-center gap-2 px-4 py-2 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0C1410] text-xs font-medium rounded-md hover:bg-[#1E3324] transition-all cursor-pointer"
+            >
+              <RotateCcw className="h-4 w-4" /> Try Again
             </button>
           </div>
         ) : filteredApps.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-6">
             {filteredApps.map(app => {
               const currentInspection = inspections.find(i => String(i.applicationId || i.application_id) === String(app.id));
 
@@ -358,236 +376,421 @@ export default function TenantApplications({ setActiveTab }) {
               else if (paidProofIds.includes(String(app.id))) effectiveStatus = "payment_submitted";
               else if (sentInvoiceIds.includes(String(app.id))) effectiveStatus = "invoice_sent";
 
+              const isLeased = effectiveStatus === "move_in_ready" || effectiveStatus === "leased" || effectiveStatus === "Leased" || app.status?.toLowerCase() === "leased";
               const isLockedFromWithdrawal = effectiveStatus !== "pending" && effectiveStatus !== "Pending";
 
+              // Timeline Stage Index: 1 = Submitted, 2 = Under Review / Invoiced, 3 = Lease Signed / Leased
+              let stageStep = 1;
+              if (isLeased || effectiveStatus === "lease_signed" || effectiveStatus === "lease_sent") stageStep = 3;
+              else if (effectiveStatus === "invoice_sent" || effectiveStatus === "payment_submitted" || effectiveStatus === "rent_paid" || effectiveStatus === "Under Review") stageStep = 2;
+
               return (
-                <div key={app.id} className="p-5 rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#07130D] shadow-sm flex flex-col hover:border-moss-300 dark:hover:border-moss-700 transition-colors">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1 pr-4">
-                      <h3 className="font-bold text-[15px] text-ink-900 dark:text-white line-clamp-2 cursor-pointer" onClick={() => navigate(`/listings/${app.propertyId}`)}>
+                <div key={app.id} className="p-6 rounded-3xl border border-[#E7E5E0] dark:border-white/10 bg-white dark:bg-[#14221B] flex flex-col gap-5 transition-all">
+                  {/* Top Bar: Property Title & Badge */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-[#E7E5E0] dark:border-white/10">
+                    <div>
+                      <h3
+                        className="text-lg font-bold text-[#1C1917] dark:text-white cursor-pointer hover:text-[#2C4633] dark:hover:text-[#E5C583] transition-colors"
+                        onClick={() => navigate(`/listings/${app.propertyId}`)}
+                      >
                         {app.propertyTitle || `Property #${app.propertyId}`}
                       </h3>
-                      <p className="text-[12px] text-ink-500 dark:text-cream-100/60 mt-1 flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" />
-                        Applied: {app.date}
-                      </p>
-                      {app.landlordFirstName && (
-                        <p className="text-[11px] font-semibold text-moss-700 dark:text-[#E5C583] mt-0.5">
-                          Landlord: {app.landlordFirstName} {app.landlordLastName || ''}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-3 text-xs text-[#71717A] dark:text-white/60 mt-1">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" /> Applied: {app.date}
+                        </span>
+                        {app.landlordFirstName && (
+                          <span className="font-medium text-[#2C4633] dark:text-[#E5C583]">
+                            Landlord: {app.landlordFirstName} {app.landlordLastName || ''}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <span className={`px-2.5 py-1 text-[11px] font-bold rounded-md whitespace-nowrap ${
-                      effectiveStatus === 'move_in_ready' || effectiveStatus === 'leased' || effectiveStatus === 'Leased' ? 'bg-emerald-100 text-emerald-700 dark:bg-[#07130D]merald-900/30 dark:text-emerald-400' :
-                      effectiveStatus === 'Rejected' || effectiveStatus === 'declined' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
-                      'bg-amber-100 text-amber-700 dark:bg-[#07130D]mber-900/30 dark:text-amber-400'
+
+                    <span className={`px-2.5 py-1 text-xs font-medium rounded uppercase tracking-wider ${
+                      isLeased ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/40' :
+                      effectiveStatus === 'Rejected' || effectiveStatus === 'declined' ? 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/40' :
+                      'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/40'
                     }`}>
-                      {effectiveStatus.replace(/_/g, ' ').toUpperCase()}
+                      {isLeased ? 'Leased • Active' : effectiveStatus.replace(/_/g, ' ').toUpperCase()}
                     </span>
                   </div>
 
+                  {/* RICH VERTICAL APPLICATION TIMELINE JOURNEY */}
+                  {(() => {
+                    const step1_done = true;
+                    const step2_done = Boolean(currentInspection || stageStep >= 2 || isLeased);
+                    const step3_done = Boolean(effectiveStatus === "payment_submitted" || effectiveStatus === "rent_paid" || stageStep >= 3 || isLeased);
+                    const step4_done = Boolean(effectiveStatus === "lease_signed" || effectiveStatus === "move_in_ready" || isLeased);
+                    const step5_done = Boolean(effectiveStatus === "move_in_ready" || isLeased);
+                    
+                    let activeStepNum = 1;
+                    let activeStepTitle = "Application Submitted & Profile Sync";
+                    if (step5_done) {
+                      activeStepNum = 5;
+                      activeStepTitle = "Move-in & Key Handover (Completed)";
+                    } else if (step4_done) {
+                      activeStepNum = 5;
+                      activeStepTitle = "Move-in & Key Handover";
+                    } else if (step3_done) {
+                      activeStepNum = 4;
+                      activeStepTitle = "Digital Lease & Agreement Signing";
+                    } else if (step2_done) {
+                      activeStepNum = 3;
+                      activeStepTitle = "Rent Invoice & Payment Verification";
+                    } else {
+                      activeStepNum = 2;
+                      activeStepTitle = "Landlord Review & Walkthrough Inspection";
+                    }
+
+                    const isExpanded = expandedAppIds.includes(app.id);
+
+                    return (
+                      <>
+                        {!isExpanded ? (
+                          <div 
+                            onClick={() => setExpandedAppIds(prev => [...prev, app.id])}
+                            className="flex items-center justify-between p-4 bg-stone-50 dark:bg-[#0C1410]/50 rounded-[24px] border border-stone-200 dark:border-white/10 cursor-pointer hover:bg-stone-100 dark:hover:bg-white/5 transition-colors"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="h-10 w-10 rounded-full bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0C1410] flex items-center justify-center font-bold text-sm shadow-sm">
+                                {activeStepNum}
+                              </div>
+                              <div className="text-left">
+                                <p className="text-[10px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-bold mb-0.5">Active Stage</p>
+                                <h4 className="text-sm font-bold text-[#1C1917] dark:text-white">{activeStepTitle}</h4>
+                              </div>
+                            </div>
+                            <ChevronDown className="h-5 w-5 text-stone-400" />
+                          </div>
+                        ) : (
+                          <div className="bg-[#FAF8F5] dark:bg-[#0C1410] p-5 rounded-[24px] border border-[#E7E5E0] dark:border-white/5 mt-0 mb-2 relative">
+                            <button 
+                              onClick={() => setExpandedAppIds(prev => prev.filter(id => id !== app.id))}
+                              className="absolute top-5 right-5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 bg-white dark:bg-white/5 rounded-full shadow-sm transition-colors cursor-pointer"
+                            >
+                              <ChevronUp className="h-5 w-5" />
+                            </button>
+                            <h4 className="text-[10px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-bold mb-6 ml-6 mt-1">Full Timeline Journey</h4>
+                            <div className="relative pl-6 space-y-5 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-[#E7E5E0] dark:before:bg-white/10">
+                              
+                              {/* STEP 1: Application Submitted */}
+                          <div className="relative flex items-start gap-4">
+                            <div className={`absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold ${step1_done ? 'bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0C1410]' : 'bg-stone-200 text-[#71717A]'}`}>
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between flex-wrap gap-1">
+                                <h4 className="text-xs font-semibold text-[#1C1917] dark:text-white">1. Application Submitted & Profile Sync</h4>
+                                <span className="text-[11px] text-[#71717A] dark:text-white/50">{app.date}</span>
+                              </div>
+                              <p className="text-xs text-[#71717A] dark:text-white/60 mt-0.5">Encrypted NIN profile credentials and guarantor details submitted to landlord.</p>
+                            </div>
+                          </div>
+
+                          {/* STEP 2: Landlord Screening & Walkthrough Inspection */}
+                          <div className="relative flex items-start gap-4">
+                            <div className={`absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold ${step2_done ? 'bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0C1410]' : step1_done ? 'border-2 border-[#2C4633] bg-white text-[#2C4633] dark:border-[#E5C583] dark:bg-[#14221B] dark:text-[#E5C583]' : 'bg-stone-200 text-[#71717A]'}`}>
+                              {step2_done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Calendar className="h-3 w-3" />}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between flex-wrap gap-1">
+                                <h4 className="text-xs font-semibold text-[#1C1917] dark:text-white">2. Landlord Review & Walkthrough Inspection</h4>
+                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded uppercase tracking-wider ${step2_done ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300'}`}>
+                                  {step2_done ? 'Verified' : 'Active Stage'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[#71717A] dark:text-white/60 mt-0.5">
+                                {currentInspection ? `Walkthrough scheduled for ${currentInspection.date} at ${currentInspection.time}` : 'Schedule an on-site or virtual walkthrough inspection with the landlord.'}
+                              </p>
+                              {!isLeased && (
+                                <div className="mt-2">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedAppForInspection(app);
+                                      setInspectionForm({
+                                        date: currentInspection?.date || new Date().toISOString().split("T")[0],
+                                        time: currentInspection?.time || "10:00 AM",
+                                        notes: ""
+                                      });
+                                      setShowInspectionModal(true);
+                                    }}
+                                    className="px-3 py-1 bg-white dark:bg-[#14221B] border border-[#E7E5E0] dark:border-white/15 text-[#1C1917] dark:text-white hover:border-[#2C4633] font-medium text-xs rounded transition-colors flex items-center gap-1.5 cursor-pointer w-fit"
+                                  >
+                                    <Calendar className="h-3.5 w-3.5 text-[#2C4633] dark:text-[#E5C583]" />
+                                    {currentInspection ? 'Manage Walkthrough Slot' : 'Book Walkthrough Slot'}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* STEP 3: Rent Invoice & Security Deposit */}
+                          <div className="relative flex items-start gap-4">
+                            <div className={`absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold ${step3_done ? 'bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0C1410]' : effectiveStatus === 'invoice_sent' ? 'border-2 border-[#2C4633] bg-white text-[#2C4633] dark:border-[#E5C583] dark:bg-[#14221B] dark:text-[#E5C583] animate-pulse' : 'bg-stone-200 text-[#71717A]'}`}>
+                              {step3_done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <FileText className="h-3 w-3" />}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between flex-wrap gap-1">
+                                <h4 className="text-xs font-semibold text-[#1C1917] dark:text-white">3. Rent Invoice & Payment Verification</h4>
+                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded uppercase tracking-wider ${step3_done ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' : effectiveStatus === 'invoice_sent' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-stone-100 text-stone-500'}`}>
+                                  {step3_done ? 'Confirmed' : effectiveStatus === 'invoice_sent' ? 'Invoice Issued' : 'Awaiting Invoice'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[#71717A] dark:text-white/60 mt-0.5">
+                                {effectiveStatus === 'rent_paid' ? 'Rent payment verified by landlord.' : effectiveStatus === 'payment_submitted' ? 'Payment receipt uploaded. Landlord verifying...' : effectiveStatus === 'invoice_sent' ? 'Rent invoice issued by landlord.' : 'Landlord will generate rent invoice once application review is complete.'}
+                              </p>
+                              {(effectiveStatus === 'invoice_sent' || effectiveStatus === 'payment_submitted' || effectiveStatus === 'rent_paid') && !isLeased && (
+                                <div className="mt-2">
+                                  <button
+                                    onClick={() => handleOpenInvoiceModal(app)}
+                                    className="px-3 py-1.5 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0C1410] font-medium text-xs rounded transition-colors flex items-center gap-1.5 cursor-pointer w-fit"
+                                  >
+                                    <FileText className="h-3.5 w-3.5" /> View Invoice & Pay
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* STEP 4: Tenancy Agreement & Digital Signature */}
+                          <div className="relative flex items-start gap-4">
+                            <div className={`absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold ${step4_done ? 'bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0C1410]' : effectiveStatus === 'lease_sent' ? 'border-2 border-[#2C4633] bg-white text-[#2C4633] dark:border-[#E5C583] dark:bg-[#14221B] dark:text-[#E5C583] animate-pulse' : 'bg-stone-200 text-[#71717A]'}`}>
+                              {step4_done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3 w-3" />}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between flex-wrap gap-1">
+                                <h4 className="text-xs font-semibold text-[#1C1917] dark:text-white">4. Tenancy Lease Agreement</h4>
+                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded uppercase tracking-wider ${step4_done ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' : effectiveStatus === 'lease_sent' ? 'bg-purple-50 text-purple-800 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300' : 'bg-stone-100 text-stone-500'}`}>
+                                  {step4_done ? 'Signed' : effectiveStatus === 'lease_sent' ? 'Ready to Sign' : 'Pending Step 3'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[#71717A] dark:text-white/60 mt-0.5">
+                                {step4_done ? 'Lease agreement signed digitally.' : effectiveStatus === 'lease_sent' ? 'Your lease agreement has been drafted and is ready for your signature.' : 'Drafted automatically after rent payment verification.'}
+                              </p>
+                              {effectiveStatus === 'lease_sent' && !isLeased && (
+                                <div className="mt-2">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedLeaseApp(app);
+                                      setShowLeaseModal(true);
+                                    }}
+                                    className="px-3 py-1.5 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0C1410] font-medium text-xs rounded transition-colors flex items-center gap-1.5 cursor-pointer w-fit"
+                                  >
+                                    <ShieldCheck className="h-3.5 w-3.5" /> Review & Sign Lease Contract
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* STEP 5: Key Pickup & Move-In Guidelines */}
+                          <div className="relative flex items-start gap-4">
+                            <div className={`absolute -left-6 top-0.5 h-5 w-5 rounded-full flex items-center justify-center text-xs font-bold ${step5_done ? 'bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#0C1410]' : 'bg-stone-200 text-[#71717A]'}`}>
+                              {step5_done ? <Key className="h-3.5 w-3.5" /> : <Lock className="h-3 w-3" />}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between flex-wrap gap-1">
+                                <h4 className="text-xs font-semibold text-[#1C1917] dark:text-white">5. Key Handover & House Guidelines</h4>
+                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded uppercase tracking-wider ${step5_done ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-stone-100 text-stone-500'}`}>
+                                  {step5_done ? 'Move-In Ready' : 'Pending Step 4'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[#71717A] dark:text-white/60 mt-0.5">
+                                {step5_done ? 'Congratulations! Property key pickup schedule and tenant house rules are available.' : 'Key handover details unlocked upon contract signature.'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                          )}
+                      </>
+                    );
+                  })()}
+
                   {/* LIFECYCLE STAGE BANNER */}
                   {effectiveStatus === "invoice_sent" && (
-                    <div className="my-2 p-3 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 space-y-1">
-                      <span className="font-extrabold flex items-center gap-1 text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                    <div className="my-2 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+                      <span className="font-semibold flex items-center gap-1 text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
                         <FileText className="h-3.5 w-3.5" /> Rent Invoice Issued
                       </span>
-                      <p className="text-[11.5px] leading-relaxed">
+                      <p className="text-xs leading-relaxed">
                         Landlord has issued your rent invoice. Please view invoice details and upload your payment receipt.
                       </p>
                     </div>
                   )}
 
                   {effectiveStatus === "payment_submitted" && (
-                    <div className="my-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200 space-y-1">
-                      <span className="font-extrabold flex items-center gap-1 text-[11px] uppercase tracking-wider text-blue-700 dark:text-blue-400">
+                    <div className="my-2 p-3 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+                      <span className="font-semibold flex items-center gap-1 text-[11px] uppercase tracking-wider text-blue-700 dark:text-blue-400">
                         <Clock className="h-3.5 w-3.5" /> Payment Proof Submitted
                       </span>
-                      <p className="text-[11.5px] leading-relaxed">
+                      <p className="text-xs leading-relaxed">
                         Your payment receipt has been uploaded. Awaiting landlord verification to generate your lease agreement.
                       </p>
                     </div>
                   )}
 
                   {effectiveStatus === "rent_paid" && (
-                    <div className="my-2 p-3 rounded-xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
-                      <span className="font-extrabold flex items-center gap-1 text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    <div className="my-2 p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
+                      <span className="font-semibold flex items-center gap-1 text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="h-3.5 w-3.5" /> Payment Verified
                       </span>
-                      <p className="text-[11.5px] leading-relaxed">
+                      <p className="text-xs leading-relaxed">
                         Rent payment confirmed! Landlord is currently drafting your official residential lease agreement.
                       </p>
                     </div>
                   )}
 
                   {effectiveStatus === "lease_sent" && (
-                    <div className="my-2 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/40 text-xs text-purple-900 dark:text-purple-200 space-y-1">
-                      <span className="font-extrabold flex items-center gap-1 text-[11px] uppercase tracking-wider text-purple-700 dark:text-purple-400">
+                    <div className="my-2 p-3 rounded-md bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/40 text-xs text-purple-900 dark:text-purple-200 space-y-1">
+                      <span className="font-semibold flex items-center gap-1 text-[11px] uppercase tracking-wider text-purple-700 dark:text-purple-400">
                         <ShieldCheck className="h-3.5 w-3.5" /> Lease Agreement Ready
                       </span>
-                      <p className="text-[11.5px] leading-relaxed">
+                      <p className="text-xs leading-relaxed">
                         Your lease contract is ready for digital signature! Please review and sign below.
                       </p>
                     </div>
                   )}
 
                   {effectiveStatus === "lease_signed" && (
-                    <div className="my-2 p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/40 text-xs text-indigo-900 dark:text-indigo-200 space-y-1">
-                      <span className="font-extrabold flex items-center gap-1 text-[11px] uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+                    <div className="my-2 p-3 rounded-md bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/40 text-xs text-indigo-900 dark:text-indigo-200 space-y-1">
+                      <span className="font-semibold flex items-center gap-1 text-[11px] uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
                         <CheckCircle2 className="h-3.5 w-3.5" /> Lease Digitally Signed
                       </span>
-                      <p className="text-[11.5px] leading-relaxed">
+                      <p className="text-xs leading-relaxed">
                         Signed successfully! Landlord is scheduling key pickup and issuing house rules.
                       </p>
                     </div>
                   )}
 
                   {effectiveStatus === "move_in_ready" && (
-                    <div className="my-2 p-3 rounded-xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
-                      <span className="font-extrabold flex items-center gap-1 text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    <div className="my-2 p-3 rounded-md bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
+                      <span className="font-semibold flex items-center gap-1 text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                         <Key className="h-3.5 w-3.5" /> Move-in Ready & Leased!
                       </span>
-                      <p className="text-[11.5px] leading-relaxed">
+                      <p className="text-xs leading-relaxed">
                         Congratulations! Your key handover appointment and house rules are now available.
                       </p>
                     </div>
                   )}
 
-                  {/* Inspection Status Card */}
-                  {currentInspection ? (
-                    <div className="my-2 p-3 rounded-xl bg-amber-50/70 dark:bg-[#07130D]mber-950/30 border border-amber-200/80 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start justify-between gap-2">
-                      <div className="space-y-0.5">
-                        <span className="font-bold flex items-center gap-1 text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                          <Calendar className="h-3.5 w-3.5" /> Inspection ({currentInspection.status})
-                        </span>
-                        <p className="font-semibold text-ink-900 dark:text-white">
-                          {currentInspection.date} at {currentInspection.time}
-                        </p>
-                        <p className="text-[11px] text-ink-600 dark:text-cream-100/70 truncate max-w-[200px]">
-                          Location: {currentInspection.location}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          setSelectedAppForInspection(app);
-                          setInspectionForm({
-                            date: currentInspection.date || new Date().toISOString().split("T")[0],
-                            time: currentInspection.time || "10:00 AM",
-                            notes: ""
-                          });
-                          setShowInspectionModal(true);
-                        }}
-                        className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg cursor-pointer shrink-0"
-                      >
-                        Manage
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="my-2 p-2.5 rounded-xl bg-neutral-50 dark:bg-white/5 border border-neutral-200/60 dark:border-neutral-800 text-xs flex items-center justify-between">
-                      <span className="text-ink-600 dark:text-cream-100/70 text-[11.5px] font-medium flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5 text-moss-600" /> Walkthrough Inspection
-                      </span>
-                      <button
-                        onClick={() => {
-                          setSelectedAppForInspection(app);
-                          setInspectionForm({
-                            date: new Date().toISOString().split("T")[0],
-                            time: "10:00 AM",
-                            notes: ""
-                          });
-                          setShowInspectionModal(true);
-                        }}
-                        className="px-2.5 py-1 bg-moss-600 hover:bg-moss-700 text-white font-bold text-[11px] rounded-lg cursor-pointer"
-                      >
-                        Book Slot
-                      </button>
-                    </div>
-                  )}
-
                   {/* Latest Landlord Request / Message */}
-                  {app.lastMessage && (
-                    <div className="my-2 p-3 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200">
-                      <span className="font-bold flex items-center gap-1 mb-1 text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                        💬 Latest Landlord Message / Request
-                      </span>
-                      <p className="italic line-clamp-2">{app.lastMessage}</p>
+                  {app.lastMessage && !dismissedMessages.includes(String(app.id)) && (
+                    <div 
+                      onClick={() => {
+                        handleDismissMessage(app.id);
+                        sessionStorage.setItem("activeChatLandlordName", app.landlord_name || app.propertyTitle || "Landlord");
+                        if (typeof setActiveTab === "function") setActiveTab(2);
+                      }}
+                      className="my-2 p-2.5 rounded-lg bg-neutral-50 dark:bg-white/5 border border-black/5 dark:border-white/5 text-xs text-ink-600 dark:text-cream-200 cursor-pointer hover:bg-neutral-100 dark:hover:bg-white/10 transition-colors shadow-sm"
+                    >
+                      <div className="font-semibold flex items-center gap-1.5 mb-1 text-[10.5px] uppercase tracking-widest text-ink-500 dark:text-cream-100/50">
+                        <MessageSquare className="h-3 w-3" /> New Message
+                      </div>
+                      <p className="italic line-clamp-1">{app.lastMessage}</p>
                     </div>
                   )}
                   
-                  <div className="mt-auto pt-4 border-t border-neutral-100 dark:border-neutral-800/60 flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* DYNAMIC PRIMARY STAGE BUTTON */}
-                      {effectiveStatus === "lease_sent" && (
-                        <button
-                          onClick={() => {
-                            setSelectedLeaseApp(app);
-                            setShowLeaseModal(true);
-                          }}
-                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer animate-pulse"
-                        >
-                          <ShieldCheck className="h-3.5 w-3.5" /> Review & Sign Lease
-                        </button>
-                      )}
+                  <div className="mt-auto pt-4 border-t border-[#E7E5E0] dark:border-white/10 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isLeased ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              setSelectedAppToRate(app);
+                              setShowRateLandlordModal(true);
+                            }}
+                            className="px-3 py-1.5 bg-[#FAF8F5] dark:bg-[#0C1410] border border-[#E7E5E0] dark:border-white/15 text-[#1C1917] dark:text-white font-medium text-xs rounded-md hover:border-amber-400 transition-colors flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> Rate Landlord
+                          </button>
 
-                      {effectiveStatus === "move_in_ready" && (
-                        <button
-                          onClick={() => handleOpenMoveInModal(app)}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-                        >
-                          <Key className="h-3.5 w-3.5" /> View Move-in Rules
-                        </button>
-                      )}
-
-                      {(effectiveStatus === "invoice_sent" || effectiveStatus === "payment_submitted" || effectiveStatus === "rent_paid" || effectiveStatus === "pending") && (
-                        <button
-                          onClick={() => handleOpenInvoiceModal(app)}
-                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
-                        >
-                          <FileText className="h-3.5 w-3.5" /> View Invoice & Pay
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => {
-                          setSelectedAppForUpload(app);
-                          setShowUploadModal(true);
-                        }}
-                        className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/40 dark:text-amber-300 font-bold text-xs rounded-lg transition-colors border border-amber-200 dark:border-amber-900/40 flex items-center gap-1 cursor-pointer"
-                      >
-                        <FileText className="h-3.5 w-3.5" /> Upload Doc
-                      </button>
-
-                      {/* WITHDRAW BUTTON (LOCKED IF LANDLORD PROCEEDED) */}
-                      {isLockedFromWithdrawal ? (
-                        <button
-                          disabled
-                          className="px-2.5 py-1.5 bg-neutral-100 dark:bg-white/5 text-neutral-400 dark:text-neutral-500 font-bold text-xs rounded-lg flex items-center gap-1 cursor-not-allowed border border-neutral-200 dark:border-neutral-800"
-                          title="Withdrawal is locked once landlord proceeds with application"
-                        >
-                          <Lock className="h-3.5 w-3.5 text-neutral-400" /> Locked
-                        </button>
+                          <button
+                            onClick={() => {
+                              sessionStorage.setItem("activeChatLandlord", JSON.stringify({
+                                id: app.landlordId || "landlord_1",
+                                name: `${app.landlordFirstName || 'Landlord'} ${app.landlordLastName || ''}`.trim(),
+                                propertyTitle: app.propertyTitle
+                              }));
+                              if (setActiveTab) setActiveTab("chat");
+                            }}
+                            className="px-3 py-1.5 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0C1410] font-medium text-xs rounded-md hover:bg-[#1E3324] transition-colors flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" /> Chat Landlord
+                          </button>
+                        </>
                       ) : (
-                        <button
-                          onClick={() => handleOpenWithdrawModal(app)}
-                          className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 font-bold text-xs rounded-lg transition-colors border border-rose-200 dark:border-rose-900/40 flex items-center gap-1 cursor-pointer"
-                          title="Withdraw your application for this property"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" /> Withdraw
-                        </button>
+                        <>
+                          {/* DYNAMIC PRIMARY STAGE BUTTON */}
+                          {effectiveStatus === "lease_sent" && (
+                            <button
+                              onClick={() => {
+                                setSelectedLeaseApp(app);
+                                setShowLeaseModal(true);
+                              }}
+                              className="px-3 py-1.5 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0C1410] font-medium text-xs rounded-md hover:bg-[#1E3324] transition-colors flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <ShieldCheck className="h-3.5 w-3.5" /> Review & Sign Lease
+                            </button>
+                          )}
+
+                          {(effectiveStatus === "invoice_sent" || effectiveStatus === "payment_submitted" || effectiveStatus === "rent_paid") && (
+                            <button
+                              onClick={() => handleOpenInvoiceModal(app)}
+                              className="px-3 py-1.5 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0C1410] font-medium text-xs rounded-md hover:bg-[#1E3324] transition-colors flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <FileText className="h-3.5 w-3.5" /> View Invoice & Pay
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => {
+                              setSelectedAppForUpload(app);
+                              setShowUploadModal(true);
+                            }}
+                            className="px-3 py-1.5 bg-white dark:bg-[#14221B] border border-[#E7E5E0] dark:border-white/15 text-[#1C1917] dark:text-white font-medium text-xs rounded-md hover:border-[#2C4633] transition-colors flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <FileText className="h-3.5 w-3.5 text-[#71717A]" /> Upload Doc
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              sessionStorage.setItem("activeChatLandlord", JSON.stringify({
+                                id: app.landlordId || "landlord_1",
+                                name: `${app.landlordFirstName || 'Landlord'} ${app.landlordLastName || ''}`.trim(),
+                                propertyTitle: app.propertyTitle
+                              }));
+                              if (setActiveTab) setActiveTab("chat");
+                            }}
+                            className="px-3 py-1.5 bg-white dark:bg-[#14221B] border border-[#E7E5E0] dark:border-white/15 text-[#1C1917] dark:text-white font-medium text-xs rounded-md hover:border-[#2C4633] transition-colors flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5 text-[#71717A]" /> Chat Landlord
+                          </button>
+
+                          {/* WITHDRAW BUTTON (LOCKED IF LANDLORD PROCEEDED) */}
+                          {isLockedFromWithdrawal ? (
+                            <button
+                              disabled
+                              title="Application in active review/lease stage and cannot be withdrawn."
+                              className="px-3 py-1.5 bg-stone-100 dark:bg-white/5 border border-stone-200 dark:border-white/10 text-stone-400 font-medium text-xs rounded-md flex items-center gap-1 cursor-not-allowed opacity-60"
+                            >
+                              <Lock className="h-3.5 w-3.5" /> Locked
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setSelectedAppForWithdraw(app);
+                                setShowWithdrawModal(true);
+                              }}
+                              className="px-3 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400 font-medium text-xs rounded-md hover:bg-red-100 transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> Withdraw
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
-
-                    <button
-                      onClick={() => {
-                        if (app.landlordId) {
-                          sessionStorage.setItem("activeChatPartnerId", app.landlordId);
-                        }
-                        if (setActiveTab) setActiveTab(2);
-                      }}
-                      className="px-3 py-1.5 bg-moss-600 hover:bg-moss-700 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
-                    >
-                      <MessageSquare className="h-3.5 w-3.5" /> Chat Landlord
-                    </button>
                   </div>
                 </div>
               );
@@ -977,7 +1180,32 @@ export default function TenantApplications({ setActiveTab }) {
           </div>
         </div>
       )}
+
+      {/* Rate Landlord Modal */}
+      {showRateLandlordModal && selectedAppToRate && (() => {
+        const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+        const rawProf = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile") || (userEmail ? localStorage.getItem("tenantProfile_" + userEmail) : null);
+        const prof = rawProf ? JSON.parse(rawProf) : {};
+        const tenantName = `${prof.firstName || ''} ${prof.lastName || ''}`.trim() || userEmail || "Tenant";
+
+        const landlordId = selectedAppToRate.landlordId || selectedAppToRate.landlord_id || (selectedAppToRate.landlordFirstName ? `landlord-${selectedAppToRate.landlordFirstName.toLowerCase()}` : "landlord");
+        const landlordName = selectedAppToRate.landlordFirstName ? `${selectedAppToRate.landlordFirstName} ${selectedAppToRate.landlordLastName || ''}` : "Landlord";
+
+        return (
+          <RateLandlordModal
+            isOpen={showRateLandlordModal}
+            onClose={() => setShowRateLandlordModal(false)}
+            landlordId={landlordId}
+            landlordName={landlordName}
+            tenantId={sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || userEmail || "tenant"}
+            tenantName={tenantName}
+            propertyTitle={selectedAppToRate.propertyTitle || ""}
+            onSuccess={() => loadApplications()}
+          />
+        );
+      })()}
     </div>
   );
 }
+
 

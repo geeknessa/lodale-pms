@@ -20,16 +20,20 @@ import {
   Sun,
   Moon,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ListChecks,
   Calendar,
   HelpCircle,
   Bell,
   Menu,
   Check,
+  CheckCircle2,
   Flame,
   ShieldCheck,
   Award,
-  Loader2
+  Loader2,
+  X
 } from "lucide-react";
 import gsap from "gsap";
 import { Logo, LogoMark } from "../../components/Logo";
@@ -42,11 +46,13 @@ import TenantChat from "./TenantChat";
 import TenantSettings from "./TenantSettings";
 import TenantApplications from "./TenantApplications";
 import { leaseService } from "../../services/leaseService";
+import { ratingService } from "../../services/ratingService";
 import { rentService } from "../../services/rentService";
 import { maintenanceService } from "../../services/maintenanceService";
 import { chatService } from "../../services/chatService";
 import { userService } from "../../services/userService";
 import { profileService } from "../../services/profileService";
+import { reminderService } from "../../services/reminderService";
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
   {
@@ -179,6 +185,8 @@ export default function TenantDashboard() {
     return 0;
   });
 
+  const [scheduleView, setScheduleView] = useState('events'); // 'calendar' or 'events'
+
   const setActiveTab = (index) => {
     setActiveTabState(index);
   };
@@ -264,7 +272,7 @@ export default function TenantDashboard() {
   const getTicketNudgeStatus = (ticket) => {
     if (!ticket) return { allowed: false, reason: "" };
     if (["completed", "resolved"].includes(ticket.status.toLowerCase())) return { allowed: false, reason: "Ticket is already resolved." };
-    
+
     const lastNudge = nudgeCooldowns[ticket.id];
     if (lastNudge && (Date.now() - lastNudge) < 24 * 60 * 60 * 1000) {
       return { allowed: false, reason: "You recently sent a reminder. Please wait 24h." };
@@ -276,15 +284,49 @@ export default function TenantDashboard() {
 
     if (isPending && hoursSince < 24) return { allowed: false, reason: "Please allow 24 hours for the landlord to review." };
     if (isPending && hoursSince >= 24) return { allowed: true, reason: "" };
-    
+
     if (isInProgress && hoursSince < 72) return { allowed: false, reason: "Work is in progress. Allow 3 days for completion." };
     if (isInProgress && hoursSince >= 72) return { allowed: true, reason: "" };
 
     return { allowed: false, reason: "" };
   };
 
+  // Reminder management
+  const getUserRemindersKey = () => {
+    const uid = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "guest";
+    return `tenant_reminders_${uid}`;
+  };
+
+  const addUserReminder = () => {
+    if (!newReminderTitle.trim() || !newReminderDate) {
+      triggerToast("Please enter a title and date.", "error");
+      return;
+    }
+    const reminder = {
+      id: `rem_${Date.now()}`,
+      title: newReminderTitle.trim(),
+      date: newReminderDate,
+      type: "personal",
+      createdAt: new Date().toISOString()
+    };
+    const updated = [...userReminders, reminder];
+    setUserReminders(updated);
+    try { localStorage.setItem(getUserRemindersKey(), JSON.stringify(updated)); } catch { }
+    setNewReminderTitle("");
+    setNewReminderDate("");
+    setShowAddReminderForm(false);
+    triggerToast(`Reminder set for ${new Date(newReminderDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`, "success", "Reminder Added");
+  };
+
+  const deleteUserReminder = (id) => {
+    const updated = userReminders.filter(r => r.id !== id);
+    setUserReminders(updated);
+    try { localStorage.setItem(getUserRemindersKey(), JSON.stringify(updated)); } catch { }
+  };
+
   // Rent payment state
   const [rentPaid, setRentPaid] = useState(false);
+  const [rentCycle, setRentCycle] = useState("monthly"); // monthly | yearly
 
   // Quick Request fields
   const [reqTitle, setReqTitle] = useState("");
@@ -307,6 +349,13 @@ export default function TenantDashboard() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [showStreakModal, setShowStreakModal] = useState(false);
+
+  // Calendar & Reminders state
+  const [calendarOffset, setCalendarOffset] = useState(0);
+  const [showAddReminderForm, setShowAddReminderForm] = useState(false);
+  const [newReminderTitle, setNewReminderTitle] = useState("");
+  const [newReminderDate, setNewReminderDate] = useState("");
+  const [userReminders, setUserReminders] = useState([]);
 
   const handleDownloadSummary = () => {
     try {
@@ -612,7 +661,7 @@ export default function TenantDashboard() {
         setTimeout(() => {
           try {
             document.body.removeChild(iframe);
-          } catch (e) {}
+          } catch (e) { }
         }, 1000);
       }, 300);
 
@@ -659,6 +708,7 @@ export default function TenantDashboard() {
           landlord: active.landlord_name,
           price: `₦${parseFloat(active.rent_amount).toLocaleString()}`
         });
+        setRentCycle(active.rent_period === "annually" || active.rent_period === "yearly" ? "yearly" : "monthly");
       } else {
         setActiveLease(null);
       }
@@ -710,6 +760,29 @@ export default function TenantDashboard() {
 
   useEffect(() => {
     fetchAllData();
+  }, []);
+
+  // Load user reminders and check birthday on mount
+  useEffect(() => {
+    const uid = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "guest";
+    try {
+      const raw = localStorage.getItem(`tenant_reminders_${uid}`);
+      if (raw) setUserReminders(JSON.parse(raw));
+    } catch { }
+
+    try {
+      const profileRaw = sessionStorage.getItem("tenantCurrentProfile") || "{}";
+      const profile = JSON.parse(profileRaw);
+      if (profile.date_of_birth || profile.birthday) {
+        const bday = new Date(profile.date_of_birth || profile.birthday);
+        const today = new Date();
+        if (bday.getMonth() === today.getMonth() && bday.getDate() === today.getDate()) {
+          setTimeout(() => {
+            triggerToast(`Happy Birthday, ${firstName}! Wishing you a wonderful day.`, "success", "Happy Birthday");
+          }, 2000);
+        }
+      }
+    } catch { }
   }, []);
 
   // Animate welcome screen
@@ -973,7 +1046,7 @@ export default function TenantDashboard() {
     <div className="tenant-wrapper">
       {/* MOBILE MENU HEADER */}
       <header className="mobile-header md:hidden">
-        <span className="mobile-logo-text">Lodale</span>
+        <Logo />
         <button
           className="mobile-menu-trigger"
           onClick={() => setShowMobileNav(true)}
@@ -988,10 +1061,7 @@ export default function TenantDashboard() {
         <div className="mobile-nav-overlay md:hidden" onClick={() => setShowMobileNav(false)}>
           <div className="mobile-nav-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-drawer-header">
-              <div className="flex items-center gap-2">
-                <LogoMark className="h-7 w-7" />
-                <span className="mobile-logo-text">Lodale</span>
-              </div>
+              <Logo />
               <button className="mobile-drawer-close" onClick={() => setShowMobileNav(false)}>
                 &times;
               </button>
@@ -1127,75 +1197,133 @@ export default function TenantDashboard() {
 
       {/* RENT PAYMENT MODAL */}
       {showPayModal && (
-        <div className="tenant-modal-backdrop">
-          <div className="tenant-modal-content">
+        <div className="tenant-modal-backdrop" onClick={() => setShowPayModal(false)}>
+          <div className="tenant-modal-content rounded-3xl p-6 md:p-8 max-w-lg w-full bg-white dark:bg-[#14221B] border border-[#E1EAE5] dark:border-white/10 shadow-2xl text-left" onClick={e => e.stopPropagation()}>
             {payingState === "idle" && (
               <>
-                <div className="modal-header">
-                  <h3>Secure Rent Payment</h3>
-                  <button className="close-btn" onClick={() => setShowPayModal(false)}>&times;</button>
+                <div className="modal-header flex items-center justify-between pb-4 border-b border-[#E1EAE5] dark:border-white/10 mb-5">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#1C1917] dark:text-white">Secure Rent Payment System</h3>
+                    <p className="text-xs text-[#71717A] dark:text-white/60">Verified Lodale Property Dues</p>
+                  </div>
+                  <button className="close-btn text-2xl font-bold text-[#71717A] hover:text-[#1C1917] dark:hover:text-white" onClick={() => setShowPayModal(false)}>&times;</button>
                 </div>
-                <div className="modal-body text-left">
-                  <div className="invoice-summary">
-                    <span className="summary-lbl">Due Period</span>
-                    <span className="summary-val">{(() => {
-                      const unpaidInvoice = invoices.find(inv => inv.status === 'unpaid');
-                      if (unpaidInvoice && unpaidInvoice.due_date) {
-                        return new Date(unpaidInvoice.due_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-                      }
-                      if (activeLease && (activeLease.start_date || activeLease.created_at)) {
-                        const start = new Date(activeLease.start_date || activeLease.created_at);
-                        const nextDue = new Date(start.setFullYear(start.getFullYear() + 1));
-                        return nextDue.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-                      }
-                      return currentMonthYearStr;
-                    })()}</span>
-                    <span className="summary-lbl mt-3">Total Rent Amount</span>
-                    <span className="summary-val amount text-moss-700 dark:text-[#E5C583]">{
-                      invoices.find(inv => inv.status === 'unpaid') ? `₦${parseFloat(invoices.find(inv => inv.status === 'unpaid').amount).toLocaleString()}` : (activeLease?.price || "₦150,000")
-                    }</span>
-                    <span className="summary-lbl mt-3">Recipient Landlord</span>
-                    <span className="summary-val">{activeLease?.landlord || "Verified Landlord"} ({activeLease?.propertyTitle || "Leased Unit"})</span>
-                  </div>
 
-                  <div className="payment-card-input-group mt-5">
-                    <label>Card Number</label>
-                    <input type="text" className="card-input" defaultValue="4000 8291 9302 1888" disabled />
-                    <div className="flex gap-4 mt-3">
-                      <div className="flex-1">
-                        <label>Expiry Date</label>
-                        <input type="text" className="card-input" defaultValue="12/29" disabled />
+                <div className="modal-body space-y-5">
+                  {/* Payment Schedule Selector */}
+                  {(() => {
+                    const baseRent = activeLease?.rent_amount ? parseFloat(activeLease.rent_amount) : 0;
+                    const monthlyAmt = baseRent;
+                    const yearlyAmt = baseRent * 12;
+                    return (
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-[#71717A] dark:text-white/60 mb-2">
+                          Payment Schedule
+                        </label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => setRentCycle("monthly")}
+                            className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center transition-all cursor-pointer ${rentCycle === "monthly"
+                              ? "bg-[#1E3324] text-white border-[#1E3324] dark:bg-[#E5C583] dark:text-[#0C1410] dark:border-[#E5C583]"
+                              : "bg-[#FAF8F5] dark:bg-[#0C1410] text-[#1C1917] dark:text-white border-[#E1EAE5] dark:border-white/10 hover:border-[#1E3324]"
+                              }`}
+                          >
+                            <span>Monthly</span>
+                            <span className="text-[10px] font-normal opacity-80">
+                              {monthlyAmt > 0 ? `₦${monthlyAmt.toLocaleString()} / mo` : "—"}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRentCycle("yearly")}
+                            className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center transition-all cursor-pointer ${rentCycle === "yearly"
+                              ? "bg-[#1E3324] text-white border-[#1E3324] dark:bg-[#E5C583] dark:text-[#0C1410] dark:border-[#E5C583]"
+                              : "bg-[#FAF8F5] dark:bg-[#0C1410] text-[#1C1917] dark:text-white border-[#E1EAE5] dark:border-white/10 hover:border-[#1E3324]"
+                              }`}
+                          >
+                            <span>Annual</span>
+                            <span className="text-[10px] font-normal opacity-80">
+                              {yearlyAmt > 0 ? `₦${yearlyAmt.toLocaleString()} / yr` : "—"}
+                            </span>
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex-grow-0 w-24">
-                        <label>CVV</label>
-                        <input type="password" className="card-input" defaultValue="123" disabled />
+                    );
+                  })()}
+
+                  {/* Live Payment Breakdown */}
+                  {(() => {
+                    const baseRent = activeLease?.rent_amount ? parseFloat(activeLease.rent_amount) : 0;
+                    const payableAmt = rentCycle === "yearly" ? baseRent * 12 : baseRent;
+                    const unpaidInv = invoices.find(i => i.status === "unpaid");
+                    let nextDueStr = "—";
+                    if (unpaidInv?.due_date) {
+                      nextDueStr = new Date(unpaidInv.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                    } else if (activeLease) {
+                      const sd = new Date(activeLease.start_date || activeLease.created_at || Date.now());
+                      const now = new Date();
+                      let nd;
+                      if (rentCycle === "yearly") {
+                        nd = new Date(now.getFullYear(), sd.getMonth(), sd.getDate());
+                        if (nd <= now) nd.setFullYear(nd.getFullYear() + 1);
+                      } else {
+                        nd = new Date(now.getFullYear(), now.getMonth(), sd.getDate());
+                        if (nd <= now) nd.setMonth(nd.getMonth() + 1);
+                      }
+                      nextDueStr = nd.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                    }
+                    return (
+                      <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#0C1410] border border-[#E1EAE5] dark:border-white/10 space-y-2.5 text-xs">
+                        <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
+                          <span>Due Date</span>
+                          <span className="font-bold text-[#1C1917] dark:text-white">{nextDueStr}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
+                          <span>Rent ({rentCycle === "yearly" ? "Annual" : "Monthly"})</span>
+                          <span className="font-bold text-[#1C1917] dark:text-white">
+                            ₦{payableAmt > 0 ? payableAmt.toLocaleString() : "0"}
+                          </span>
+                        </div>
+                        <div className="pt-2 border-t border-[#E1EAE5] dark:border-white/10 flex justify-between items-center text-sm font-bold text-[#1C1917] dark:text-white">
+                          <span>Total Payable</span>
+                          <span className="text-[#1E3324] dark:text-[#E5C583] text-base">
+                            ₦{payableAmt > 0 ? payableAmt.toLocaleString() : "0"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   <Button
                     onClick={handlePayRentSubmit}
-                    className="w-full mt-6 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3.5 font-bold text-[13px]"
+                    className="w-full py-3.5 bg-[#1E3324] hover:bg-[#0B1510] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer mt-2"
                   >
-                    Authorize Payment (₦150,000)
+                    {(() => {
+                      const base = activeLease?.rent_amount ? parseFloat(activeLease.rent_amount) : 0;
+                      const amt = rentCycle === "yearly" ? base * 12 : base;
+                      return `Authorize Payment${amt > 0 ? ` (₦${amt.toLocaleString()})` : ""}`;
+                    })()}
                   </Button>
                 </div>
               </>
             )}
 
             {payingState === "processing" && (
-              <div className="modal-body-centered py-12">
-                <div className="payment-loader-ring"></div>
-                <h4 className="mt-4 font-bold text-[15px]">Processing Transaction</h4>
-                <p className="text-[12px] text-ink-400 dark:text-cream-100/60 mt-1">Connecting to secure gateway. Please don't close this modal.</p>
+              <div className="py-12 text-center space-y-4">
+                <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-[#2C4633] border-t-transparent dark:border-[#E5C583]"></div>
+                <h4 className="font-bold text-base text-[#1C1917] dark:text-white">Processing Rent Payment</h4>
+                <p className="text-xs text-[#71717A] dark:text-white/60">Connecting to bank payment gateway. Please hold on...</p>
               </div>
             )}
 
             {payingState === "success" && (
-              <div className="modal-body-centered py-10">
-                <div className="payment-success-badge flex items-center justify-center"><Check className="h-6 w-6" /></div>
-                <h4 className="mt-4 font-bold text-[16px] text-emerald-600 dark:text-emerald-400">Payment Successful!</h4>
-                <p className="text-[12.5px] text-ink-700 dark:text-cream-100/70 mt-1">Rent invoice paid successfully. Receipt added to your ledger.</p>
+              <div className="py-10 text-center space-y-4">
+                <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                  <Check className="h-6 w-6" />
+                </div>
+                <h4 className="font-bold text-lg text-emerald-700 dark:text-emerald-400">Payment Successful!</h4>
+                <p className="text-xs text-[#71717A] dark:text-white/70">Rent payment recorded. Verified receipt has been added to your ledger.</p>
               </div>
             )}
           </div>
@@ -1321,9 +1449,9 @@ export default function TenantDashboard() {
                           occupation: editOccupation,
                           monthly_income: editIncome
                         });
-                        
-                        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { 
-                          detail: { phone_number: editPhone, occupation: editOccupation, monthly_income: editIncome } 
+
+                        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", {
+                          detail: { phone_number: editPhone, occupation: editOccupation, monthly_income: editIncome }
                         }));
                         window.dispatchEvent(new Event("storage"));
                         setIsEditingProfile(false);
@@ -1465,11 +1593,10 @@ export default function TenantDashboard() {
                     <Button
                       disabled={!allowed}
                       onClick={() => handleNudgeLandlord(selectedTicket)}
-                      className={`w-full py-2.5 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all ${
-                        allowed 
-                          ? 'bg-[#2C4633] text-white hover:bg-moss-700 dark:bg-[#E5C583] dark:text-[#09090b] dark:hover:bg-[#E5C583]/90' 
-                          : 'bg-neutral-100 text-neutral-400 dark:bg-white/5 dark:text-neutral-500 cursor-not-allowed opacity-80'
-                      }`}
+                      className={`w-full py-2.5 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all ${allowed
+                        ? 'bg-[#2C4633] text-white hover:bg-moss-700 dark:bg-[#E5C583] dark:text-[#09090b] dark:hover:bg-[#E5C583]/90'
+                        : 'bg-neutral-100 text-neutral-400 dark:bg-white/5 dark:text-neutral-500 cursor-not-allowed opacity-80'
+                        }`}
                     >
                       <Bell className="w-4 h-4" />
                       Nudge Landlord for Update
@@ -1495,107 +1622,107 @@ export default function TenantDashboard() {
       )}
 
       {/* RELIABILITY RATINGS DETAILS POPUP */}
-      {showRatingModal && (
-        <div className="tenant-modal-backdrop" onClick={() => setShowRatingModal(false)}>
-          <div className="tenant-modal-content text-left" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Reliability Rating Details</h3>
-              <button className="close-btn" onClick={() => setShowRatingModal(false)}>&times;</button>
-            </div>
+      {showRatingModal && (() => {
+        const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || (user && (user.id || user.userId));
+        const currentUserEmail = (sessionStorage.getItem("lastLoggedInEmail") || (user && user.email) || "").toLowerCase();
+        const tenantReviewsData = ratingService.getTenantReviews(currentUserId, currentUserEmail);
+        const scoreVal = Number(tenantReviewsData.rating) || 0;
 
-            <div className="modal-scroll-area">
-              {/* Rating Big Number display */}
-              <div className="modal-body-centered py-2">
-                <h2 className="text-4xl font-extrabold text-[#2C4633] dark:text-[#E5C583] mb-1" style={{ fontSize: "36px" }}>
-                  {activeLease ? "4.8" : "New"}
-                </h2>
-                <div className="flex gap-1 mb-2">
-                  {activeLease ? (
-                    <>
-                      <span className="text-amber-500 text-lg">★</span>
-                      <span className="text-amber-500 text-lg">★</span>
-                      <span className="text-amber-500 text-lg">★</span>
-                      <span className="text-amber-500 text-lg">★</span>
-                      <span className="text-neutral-300 dark:text-neutral-700 text-lg">★</span>
-                    </>
-                  ) : (
-                    <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-[#07130D]merald-950/40">
-                      Verified Account
-                    </span>
-                  )}
-                </div>
-                <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] font-semibold">
-                  {activeLease ? "Excellent Tenant Standing" : "New Tenant Standing"}
-                </p>
+        return (
+          <div className="tenant-modal-backdrop" onClick={() => setShowRatingModal(false)}>
+            <div className="tenant-modal-content text-left" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3>Reliability Rating Details</h3>
+                <button className="close-btn" onClick={() => setShowRatingModal(false)}>&times;</button>
               </div>
 
-              {/* Breakdown cards */}
-              <div className="flex flex-col gap-3 mt-4">
-                <div className="invoice-summary" style={{ padding: "16px", gap: "10px" }}>
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#6C6E73] dark:text-[#A3BCA7]">Rating Breakdown</h4>
-
-                  {activeLease ? (
-                    <>
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex justify-between items-center text-[12.5px]">
-                          <span>Rent Payment Punctuality</span>
-                          <span className="font-bold">5.0 / 5.0</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-500" style={{ width: "100%" }} />
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1.5 mt-2">
-                        <div className="flex justify-between items-center text-[12.5px]">
-                          <span>Ledger Punctuality</span>
-                          <span className="font-bold">4.7 / 5.0</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-[#E5C583]" style={{ width: "94%" }} />
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] py-2">
-                      No rating history recorded yet. Reliability scores generate automatically as you make rental payments.
-                    </p>
-                  )}
+              <div className="modal-scroll-area">
+                {/* Rating Big Number display */}
+                <div className="modal-body-centered py-2">
+                  <h2 className="text-4xl font-extrabold text-[#2C4633] dark:text-[#E5C583] mb-1" style={{ fontSize: "36px" }}>
+                    {tenantReviewsData.hasReviews ? tenantReviewsData.rating : "New"}
+                  </h2>
+                  <div className="flex gap-1 mb-2 justify-center">
+                    {tenantReviewsData.hasReviews ? (
+                      [1, 2, 3, 4, 5].map((s) => (
+                        <span key={s} className={s <= Math.round(scoreVal) ? "text-amber-500 text-lg" : "text-neutral-300 dark:text-neutral-700 text-lg"}>★</span>
+                      ))
+                    ) : (
+                      <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40">
+                        Verified Account
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] font-semibold">
+                    {tenantReviewsData.hasReviews ? `${tenantReviewsData.count} Landlord Review(s)` : "New Tenant Standing"}
+                  </p>
                 </div>
 
-                {/* History timeline feed */}
-                <div className="mt-4">
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#6C6E73] dark:text-[#A3BCA7] mb-3">Verification History</h4>
+                {/* Breakdown cards */}
+                <div className="flex flex-col gap-3 mt-4">
+                  <div className="invoice-summary" style={{ padding: "16px", gap: "10px" }}>
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#6C6E73] dark:text-[#A3BCA7]">Rating Score Breakdown</h4>
 
-                  <div className="flex flex-col gap-3 max-h-[180px] overflow-y-auto pr-1">
-                    {activeLease ? (
-                      <div className="p-3 bg-neutral-50 dark:bg-[#07130D]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl">
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-[12px] font-bold">Landlord Review</span>
-                          <span className="text-[11px] text-amber-500 font-bold">★ 5.0</span>
+                    {tenantReviewsData.hasReviews ? (
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex justify-between items-center text-[12.5px]">
+                          <span>Landlord Reliability Rating</span>
+                          <span className="font-bold text-amber-500">★ {tenantReviewsData.rating} / 5.0</span>
                         </div>
-                        <p className="text-[11.5px] text-[#6C6E73] dark:text-[#A3BCA7] italic leading-relaxed">
-                          "Pays rent on time. Verified behavior."
-                        </p>
+                        <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
+                          <div className="h-full bg-amber-500" style={{ width: `${(scoreVal / 5) * 100}%` }} />
+                        </div>
                       </div>
                     ) : (
-                      <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] py-2 text-center">
-                        No reviews or tenancy checkouts recorded yet.
+                      <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] py-2">
+                        No rating history recorded yet. Reliability scores generate automatically as landlords submit reviews for your tenancy.
                       </p>
                     )}
                   </div>
+
+                  {/* History timeline feed */}
+                  <div className="mt-4">
+                    <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#6C6E73] dark:text-[#A3BCA7] mb-3">Verification History & Reviews</h4>
+
+                    <div className="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1">
+                      {tenantReviewsData.hasReviews && tenantReviewsData.reviews.length > 0 ? (
+                        tenantReviewsData.reviews.map((rev) => (
+                          <div key={rev.id} className="p-3 bg-neutral-50 dark:bg-[#07130D]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl space-y-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[12px] font-bold text-ink-900 dark:text-white">{rev.landlordName || "Landlord Review"}</span>
+                              <span className="text-[11px] text-amber-500 font-bold">★ {rev.rating}.0</span>
+                            </div>
+                            {rev.comment && (
+                              <p className="text-[11.5px] text-[#6C6E73] dark:text-[#A3BCA7] italic leading-relaxed">
+                                "{rev.comment}"
+                              </p>
+                            )}
+                            <div className="flex justify-between items-center text-[10.5px] text-neutral-400 pt-1">
+                              <span>Property: {rev.propertyTitle || "Leased Unit"}</span>
+                              <span>Would Rent Again: {rev.wouldRentAgain ? "Yes" : "No"}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] py-2 text-center">
+                          No reviews or tenancy checkouts recorded yet.
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <Button
-              onClick={() => setShowRatingModal(false)}
-              className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3.5 font-bold text-[13px] rounded-xl"
-            >
-              Close Details
-            </Button>
+              <Button
+                onClick={() => setShowRatingModal(false)}
+                className="w-full mt-6 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3.5 font-bold text-[13px] rounded-xl"
+              >
+                Close Details
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* QUICK REPAIR DISPATCH POPUP MODAL */}
       {showDispatchModal && (
@@ -1677,17 +1804,22 @@ export default function TenantDashboard() {
           </div>
         </div>
       )}
-      {/* ON-TIME PAYMENT STREAK CENTER POPUP MODAL */}
+      {/* ON-TIME PAYMENT STREAK CENTER POPUP MODAL WITH ENHANCED FIRE ANIMATION */}
       {showStreakModal && (
         <div className="tenant-modal-backdrop" onClick={() => setShowStreakModal(false)}>
           <div className="tenant-modal-content text-left max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header flex items-center justify-between pb-3 border-b border-ink-100/30 dark:border-white/10">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/15 dark:bg-[#07130D]mber-500/25 text-amber-500">
+                <div className="p-2 rounded-xl bg-amber-500/15 dark:bg-amber-500/25 text-amber-500">
                   <Flame className="h-5 w-5 fill-amber-500 animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-ink-900 dark:text-white">Residency Streak Details</h3>
+                  <h3 className="text-base font-bold text-ink-900 dark:text-white flex items-center gap-2">
+                    Residency Streak Details
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1">
+                      <Flame className="h-3 w-3 fill-amber-500 animate-bounce" /> Active
+                    </span>
+                  </h3>
                   <p className="text-[11px] text-ink-400 dark:text-cream-100/50">Lodale Verified Home Occupancy Ledger</p>
                 </div>
               </div>
@@ -1695,7 +1827,7 @@ export default function TenantDashboard() {
             </div>
 
             <div className="py-4 space-y-4">
-              {/* Main Metric Counter & Dynamic 6-Month Grid */}
+              {/* Fiery Animated Hero Banner */}
               {(() => {
                 const rawStartDate = activeLease?.start_date || activeLease?.created_at || activeLease?.tenant_signed_at;
                 let daysInHouse = 0;
@@ -1709,15 +1841,15 @@ export default function TenantDashboard() {
                   monthsInHouse = Math.floor(daysInHouse / 30);
                   remainingDays = daysInHouse % 30;
                 }
-                
+
                 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
                 const now = new Date();
                 const monthsList = [];
-                
+
                 for (let i = 5; i >= 0; i--) {
                   const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
                   const mName = monthNames[d.getMonth()];
-                  
+
                   const isPaid = invoices.some(inv => {
                     const invDate = new Date(inv.billing_period_start || inv.created_at);
                     return inv.status === 'paid' && invDate.getMonth() === d.getMonth() && invDate.getFullYear() === d.getFullYear();
@@ -1728,29 +1860,99 @@ export default function TenantDashboard() {
                   monthsList.push({ month: mName, status });
                 }
 
+                // Determine Tier Level
+                let tierTitle = "Bronze Flame Resident";
+                let targetDays = 90;
+                let prevTarget = 0;
+                if (daysInHouse >= 180) {
+                  tierTitle = "Diamond Flame Legend";
+                  targetDays = 365;
+                  prevTarget = 180;
+                } else if (daysInHouse >= 90) {
+                  tierTitle = "Gold Flame Master";
+                  targetDays = 180;
+                  prevTarget = 90;
+                } else if (daysInHouse >= 30) {
+                  tierTitle = "Silver Flame Resident";
+                  targetDays = 90;
+                  prevTarget = 30;
+                }
+
+                const progressPercent = Math.min(100, Math.max(15, Math.round(((daysInHouse - prevTarget) / Math.max(1, targetDays - prevTarget)) * 100)));
+
                 return (
                   <>
-                    <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-500/10 dark:bg-[#07130D]mber-500/15 border border-amber-500/20">
-                      <div>
-                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">Residency Streak</span>
-                        <div className="flex items-baseline gap-2 mt-0.5">
-                          <span className="text-3xl font-black text-ink-900 dark:text-white tracking-tight">
-                            {activeLease ? `${daysInHouse} Days` : "0 Days"}
-                          </span>
-                          {activeLease && (
-                            <span className="text-xs font-extrabold text-amber-600 dark:text-[#E5C583]">
-                              ({monthsInHouse > 0 ? `${monthsInHouse}m ${remainingDays}d` : `${daysInHouse}d`})
+                    <div className="relative overflow-hidden p-5 rounded-2xl bg-gradient-to-br from-amber-500/20 via-orange-500/15 to-amber-700/10 border border-amber-500/30 shadow-md">
+                      {/* Background Pulsing Fire Glow Backdrop */}
+                      <div className="absolute -right-6 -bottom-6 w-32 h-32 bg-amber-500/25 rounded-full blur-2xl animate-pulse pointer-events-none" />
+
+                      <div className="flex items-center justify-between relative z-10">
+                        <div>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Flame className="h-4 w-4 text-amber-500 fill-amber-500 animate-pulse" />
+                            <span className="text-[11px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                              Residency Fire Streak
                             </span>
-                          )}
+                          </div>
+
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-3xl font-black text-ink-900 dark:text-white tracking-tight">
+                              {activeLease ? `${daysInHouse} Days` : "0 Days"}
+                            </span>
+                            {activeLease && (
+                              <span className="text-xs font-extrabold text-amber-600 dark:text-amber-300">
+                                ({monthsInHouse > 0 ? `${monthsInHouse}m ${remainingDays}d` : `${daysInHouse}d`})
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-[11.5px] text-ink-600 dark:text-cream-100/70 mt-1 font-medium">
+                            {activeLease
+                              ? `Your occupancy flame is active at ${activeLease.propertyTitle || "your home"}.`
+                              : "No active lease residency streak record found."}
+                          </p>
                         </div>
-                        <p className="text-[11.5px] text-ink-600 dark:text-cream-100/70 mt-1">
-                          {activeLease
-                            ? `Days living in ${activeLease.propertyTitle || "your active rental home"}`
-                            : "No active lease residency record found."}
-                        </p>
+
+                        {/* Multi-layered Animated Fire Emblem */}
+                        <div className="relative p-3.5 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/40 flex items-center justify-center shadow-inner">
+                          <Flame className="h-9 w-9 fill-amber-500 animate-bounce filter drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+                          <Flame className="h-4 w-4 fill-orange-400 text-orange-400 animate-pulse absolute top-1 right-1 opacity-90" />
+                        </div>
                       </div>
-                      <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-500">
-                        <Flame className="h-8 w-8 fill-amber-500 animate-bounce" />
+
+                      {/* Tier Progress Bar */}
+                      <div className="mt-4 pt-3 border-t border-amber-500/20 relative z-10">
+                        <div className="flex justify-between items-center text-[11px] font-bold mb-1.5">
+                          <span className="text-amber-800 dark:text-amber-300">{tierTitle}</span>
+                          <span className="text-ink-500 dark:text-cream-100/60">{daysInHouse}/{targetDays} Days</span>
+                        </div>
+                        <div className="h-2 w-full bg-amber-500/20 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500"
+                            style={{ width: `${activeLease ? progressPercent : 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 6-Month On-Time Rent Flame Grid */}
+                    <div className="p-4 rounded-2xl bg-moss-50/50 dark:bg-white/5 border border-moss-200/50 dark:border-white/10">
+                      <div className="flex items-center justify-between mb-2.5">
+                        <span className="text-xs font-bold text-ink-800 dark:text-cream-100 flex items-center gap-1.5">
+                          <Flame className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> 6-Month Payment Ledger
+                        </span>
+                        <span className="text-[10.5px] font-semibold text-ink-400 dark:text-cream-100/50">Verified Rent Dues</span>
+                      </div>
+                      <div className="streak-months-grid">
+                        {monthsList.map((m, idx) => (
+                          <div key={idx} className={`streak-month-pill ${m.status}`}>
+                            <span className="month-lbl">{m.month}</span>
+                            <Flame className={`h-4 w-4 ${m.status === 'paid' ? 'text-amber-500 fill-amber-500 animate-pulse' : m.status === 'current' ? 'text-orange-400 fill-orange-400 animate-bounce' : 'text-ink-300 dark:text-white/20'}`} />
+                            <span className="text-[9px] font-bold tracking-tight opacity-75">
+                              {m.status === 'paid' ? 'Lit' : m.status === 'current' ? 'Due' : 'Upcoming'}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </>
@@ -1758,12 +1960,12 @@ export default function TenantDashboard() {
               })()}
 
               {/* Perks & Rewards */}
-              <div className="p-3.5 rounded-2xl bg-moss-50/50 dark:bg-white/5 border border-moss-200/50 dark:border-white/10 flex items-center justify-between text-[12px]">
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 flex items-center justify-between text-[12px]">
                 <div className="flex items-center gap-2">
                   <Award className="h-4 w-4 text-amber-500" />
-                  <span className="font-semibold text-ink-700 dark:text-cream-100/80">Next Reward: Tier 1 Verified Badge</span>
+                  <span className="font-semibold text-ink-700 dark:text-cream-100/80">Landlord Rating Boost</span>
                 </div>
-                <span className="font-extrabold text-moss-700 dark:text-[#E5C583]">{activeLease ? "+150 Pts" : "0 Pts"}</span>
+                <span className="font-extrabold text-amber-700 dark:text-amber-300">{activeLease ? "+150 Pts" : "0 Pts"}</span>
               </div>
             </div>
 
@@ -1827,530 +2029,439 @@ export default function TenantDashboard() {
 
         {/* INTERACTIVE PAGE DISPLAY */}
         {activeTab === 0 ? (
-          <main className="db-main-content" ref={mainContentRef}>
+          <main className="db-main-content p-0 h-full overflow-y-auto" ref={mainContentRef} style={{ padding: 0 }}>
 
-            {/* Main Area Sub-Header */}
-            <div className="db-sub-header-row">
-              <div className="db-page-header tour-welcome">
-                <div className="db-breadcrumb">
-                  <span
-                    className="cursor-pointer hover:underline hover:opacity-80 transition-all text-moss-700 dark:text-[#E5C583]"
-                    onClick={() => navigate("/explore")}
-                    title="Go to Public Guest Dashboard"
-                  >
-                    Home Page
-                  </span>
-                  <span>→</span>
-                  <span className="db-breadcrumb-active">Dashboard</span>
+            {/* TOP HEADER BAR (Green Block) */}
+            <div className="bg-[#1E3324] text-white px-6 md:px-8 pt-8 pb-10 rounded-[40px] m-4 md:m-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shadow-sm relative z-10">
+              <div>
+                <div className="text-[10px] font-bold text-[#E5C583] uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2">
+                  <span>Home Page</span>
+                  <ArrowRight className="h-2.5 w-2.5" />
+                  <span>Dashboard</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="db-title">Welcome, {firstName}!</h1>
-
-                  {loadingData && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-[#07130D]merald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-[#E5C583] text-[11.5px] font-extrabold animate-pulse shadow-xs shrink-0">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-[#E5C583]" />
-                      <span>Loading lease & ledgers...</span>
-                    </div>
-                  )}
-                </div>
+                <h1 className="text-3xl md:text-4xl font-bold font-serif">
+                  Welcome, {firstName}!
+                </h1>
               </div>
 
-              <div className="db-controls-group">
-                <div className="db-date-selector">
-                  <Calendar className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" />
-                  <span>{currentDateStr}</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 bg-white/10 dark:bg-[#14221B] px-4 py-2.5 rounded-2xl border border-white/20 dark:border-white/5 shadow-inner">
+                  <Calendar className="h-4 w-4 text-[#E5C583]" />
+                  <span className="text-xs font-bold">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
                 </div>
-
-                <div className="db-search-trigger" onClick={() => setActiveTab(1)} title="Search">
-                  <Search className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                </div>
-
-                <div className="db-icon-btn-wrapper" onClick={() => setShowNotificationsModal(true)} title="Notifications">
-                  <Bell className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                  {notifications.filter(n => !n.read).length > 0 && <span className="db-badge-dot" />}
-                </div>
-
-                <div className="db-icon-btn-wrapper" onClick={() => setActiveTab(2)} title="Messages">
-                  <MessageSquare className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />
-                  <span className="db-badge-dot" />
-                </div>
-
-                <div className="db-profile-avatar-wrapper" onClick={() => setShowProfileModal(true)} title="Profile settings">
-                  <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border border-[#07130D]/20 dark:border-[#E5C583]/30">
-                    {tenantAvatar ? (
-                      <img src={tenantAvatar} alt="Tenant Avatar" className="h-full w-full object-cover" />
-                    ) : (
-                      <User className="h-4.5 w-4.5 text-[#07130D] dark:text-[#E5C583]" />
-                    )}
-                  </div>
-                  <span className="db-online-indicator" />
-                </div>
-
-                <Button
-                  onClick={() => setShowDispatchModal(true)}
-                  className="flex items-center gap-1.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d8b672] text-white dark:text-[#09090b] px-3.5 py-2 text-[12.5px] font-bold transition-all duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer tour-dispatch"
+                <button className="h-10 w-10 rounded-full bg-white/10 dark:bg-[#14221B] flex items-center justify-center hover:bg-[#E5C583] hover:text-[#09090b] transition-colors border border-white/20 dark:border-white/5 shadow-inner shrink-0">
+                  <Bell className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setActiveTab(2)}
+                  className="h-10 w-10 rounded-full bg-white/10 dark:bg-[#14221B] flex items-center justify-center hover:bg-[#E5C583] hover:text-[#09090b] transition-colors border border-white/20 dark:border-white/5 shadow-inner shrink-0"
                 >
-                  <Wrench className="h-3.5 w-3.5" />
-                  <span>Quick Dispatch</span>
-                </Button>
-
-                <Button
-                  variant="secondary"
-                  onClick={handleDownloadSummary}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-[#07130D] hover:bg-moss-50 dark:hover:bg-white/10 text-[12.5px] font-bold text-moss-800 dark:text-cream-100 border border-moss-200 dark:border-white/10 rounded-xl transition-all cursor-pointer shadow-xs ml-1"
+                  <MessageSquare className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="h-10 w-10 rounded-full bg-white/10 dark:bg-[#14221B] flex items-center justify-center hover:bg-[#E5C583] hover:text-[#09090b] transition-colors border border-white/20 dark:border-white/5 shadow-inner shrink-0"
                 >
-                  <Download className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" />
-                  <span>Download Summary</span>
-                </Button>
+                  <User className="h-4 w-4" />
+                </button>
               </div>
             </div>
 
-            {/* LEASE EXPIRING SOON BANNER */}
-            {(() => {
-              if (!activeLease) return null;
-              const endDateStr = activeLease.end_date || activeLease.endDate;
-              if (!endDateStr) return null;
-              
-              const end = new Date(endDateStr);
-              const now = new Date();
-              const diffDays = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
-              
-              const settings = reminderService.getSettings();
-              const nudgeDays = settings?.autoNudgeDays || 60;
-              
-              if (diffDays < 0 || diffDays > nudgeDays) return null;
+            {/* MAIN 3-COLUMN MASONRY GRID */}
+            <div className="px-4 md:px-6 lg:px-8 pb-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
 
-              return (
-                <div className="mb-6 p-5 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-900 dark:text-indigo-100 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm animate-in slide-in-from-top duration-300">
-                  <div className="flex items-start md:items-center gap-4">
-                    <div className="p-3 bg-indigo-500 text-white rounded-xl shrink-0">
-                      <Clock className="h-6 w-6 animate-pulse" />
+                {/* COLUMN 1 */}
+                <div className="flex flex-col gap-6">
+
+                  {/* Current Property */}
+                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 md:p-8 text-[#1C1917] dark:text-white flex flex-col shadow-sm relative overflow-hidden transition-colors">
+                    <div className="flex items-center justify-between mb-6 relative z-10">
+                      <h3 className="font-bold text-lg md:text-xl tracking-tight">Current Property</h3>
+                      <Building2 className="h-6 w-6 text-[#1C1917]/30 dark:text-white/60" />
                     </div>
-                    <div>
-                      <h3 className="font-extrabold text-base text-indigo-950 dark:text-indigo-100 flex items-center gap-2">
-                        Your Lease is Expiring Soon
-                        <span className="bg-rose-500 text-white px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider">Action Required</span>
-                      </h3>
-                      <p className="text-sm text-indigo-800 dark:text-indigo-300 mt-1 max-w-xl leading-relaxed">
-                        Your current lease for <strong>{activeLease.propertyTitle || "your unit"}</strong> ends in <strong>{diffDays} days</strong> on {end.toLocaleDateString()}. Please let us know your intentions so your landlord can prepare.
-                      </p>
+
+                    <div className="bg-gradient-to-t from-stone-200 to-stone-100 dark:from-[#0B1510] dark:to-[#121F1A] rounded-3xl h-40 w-full mb-8 flex items-center justify-center relative overflow-hidden border border-black/5 dark:border-white/5 shadow-inner">
+                      {activeLease?.property_images && activeLease.property_images.length > 0 ? (
+                        <img 
+                          src={activeLease.property_images[0]} 
+                          alt={activeLease.propertyTitle || "Property"} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex items-end justify-center px-4 gap-3 w-full h-full relative z-10">
+                          <div className="absolute inset-0 bg-black/20 pointer-events-none"></div>
+                          <div className="w-10 bg-white/10 h-16 rounded-t-sm relative z-10"></div>
+                          <div className="w-10 bg-white/20 h-28 rounded-t-sm relative z-10"></div>
+                          <div className="w-10 bg-white/10 h-14 rounded-t-sm relative z-10"></div>
+                          <div className="w-10 bg-white/20 h-24 rounded-t-sm relative z-10"></div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0 mt-2 md:mt-0">
-                    <button
-                      onClick={async () => {
-                        const landlordName = activeLease.landlord || "Landlord";
-                        const landlordId = activeLease.landlord_id || activeLease.landlordId || `landlord-${landlordName.toLowerCase().replace(/\s+/g, '-')}`;
-                        try {
-                          await chatService.sendMessage(landlordId, `[SYSTEM LOG] Tenant intends to RENEW their lease for ${activeLease.propertyTitle}. Please send over the renewal offer terms.`, null, {
-                            partner_name: landlordName,
-                            partner_avatar: null
-                          });
-                          triggerToast("Renewal intent sent to landlord! They will provide a new offer soon.", "success");
-                        } catch(e) {
-                          triggerToast("Failed to send intent.", "error");
-                        }
-                      }}
-                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-xs cursor-pointer transition-all flex items-center justify-center gap-2"
-                    >
-                      <CheckCircle2 className="h-4 w-4" /> I Want to Renew
-                    </button>
-                    <button
-                      onClick={async () => {
-                        const landlordName = activeLease.landlord || "Landlord";
-                        const landlordId = activeLease.landlord_id || activeLease.landlordId || `landlord-${landlordName.toLowerCase().replace(/\s+/g, '-')}`;
-                        try {
-                          await chatService.sendMessage(landlordId, `[SYSTEM LOG] Tenant intends to MOVE OUT. Please schedule the move-out inspection checklist.`, null, {
-                            partner_name: landlordName,
-                            partner_avatar: null
-                          });
-                          triggerToast("Move-out intent recorded. We will send you a move-out checklist shortly.", "info");
-                          // Simulate dynamic Move-Out Checklist scheduling (Step 9)
-                          setTimeout(() => {
-                            triggerToast("Action Item: Complete Move-Out Checklist before your end date.", "info");
-                          }, 2500);
-                        } catch(e) {
-                          triggerToast("Failed to send intent.", "error");
-                        }
-                      }}
-                      className="px-5 py-2.5 bg-white dark:bg-white/10 hover:bg-neutral-100 dark:hover:bg-white/20 text-indigo-900 dark:text-white font-bold text-sm rounded-xl shadow-xs cursor-pointer border border-indigo-200 dark:border-white/20 transition-all flex items-center justify-center gap-2"
-                    >
-                      <LogOut className="h-4 w-4" /> Plan Move-Out
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
 
-            {/* DASHBOARD GRID CONTENT */}
-            <div className="db-grid">
-
-              {/* COLUMN 1: ACTIVE LEASE & REPAIR DISPATCH */}
-              <div className="db-col">
-
-                {/* Redesigned Glassmorphic Card */}
-                <section className="db-card pro-card">
-                  <div className="pro-card-header">
-                    <span className="pro-card-tag">
-                      {activeLease
-                        ? (activeLease.status === 'active'
-                          ? "Active Lease"
-                          : activeLease.tenant_signed_at
-                            ? "Pending Counter-Sign"
-                            : "Lease Pending Signature")
-                        : "No Active Lease"}
-                    </span>
-                  </div>
-
-                  <div className="pro-card-visual">
-                    <div className="pro-card-glow" />
-                    <svg width="110" height="110" viewBox="0 0 120 120" className="pro-card-prism">
-                      <defs>
-                        <radialGradient id="prism-glow" cx="50%" cy="50%" r="50%">
-                          <stop offset="0%" stopColor="#d4f216" stopOpacity="0.45" />
-                          <stop offset="100%" stopColor="#2c4633" stopOpacity="0" />
-                        </radialGradient>
-                        <linearGradient id="prism-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
-                          <stop offset="50%" stopColor="#e4eae1" stopOpacity="0.65" />
-                          <stop offset="100%" stopColor="#E5C583" stopOpacity="0.95" />
-                        </linearGradient>
-                      </defs>
-                      <circle cx="60" cy="85" r="30" fill="url(#prism-glow)" />
-                      <ellipse cx="60" cy="90" rx="35" ry="12" fill="#2c4633" opacity="0.3" />
-                      <ellipse cx="60" cy="85" rx="35" ry="12" fill="#1D3329" opacity="0.8" stroke="var(--tenant-charcoal)" strokeWidth="1.5" />
-                      <path d="M 25 85 L 25 100 A 35 12 0 0 0 95 100 L 95 85 Z" fill="#2c4633" stroke="var(--tenant-charcoal)" strokeWidth="1.5" />
-                      <polygon points="60,18 85,55 60,72 35,55" fill="url(#prism-grad)" stroke="var(--active-pill-bg)" strokeWidth="1.5" />
-                      <polygon points="60,18 60,72 85,55" fill="rgba(255, 255, 255, 0.35)" stroke="var(--active-pill-bg)" strokeWidth="1" />
-                    </svg>
-                  </div>
-
-                  <div className="pro-advantages-panel">
-                    <div className="pro-advantages-header">
-                      <h4 className="pro-advantages-title">{invoices.some(i => i.status === 'paid') ? "Reliability Rating" : "Tenant Rating"}</h4>
-                      <span className="pro-advantages-badge">{invoices.some(i => i.status === 'paid') ? "★ NO RATING YET" : "New Tenant"}</span>
-                    </div>
-                    <p className="pro-advantages-desc">
-                      {invoices.some(i => i.status === 'paid')
-                        ? "Based on automated rent checks, ledger punctuality, and landlord checkouts."
-                        : "Your Tenant Reliability Score will build automatically as you complete rental payments and lease terms."}
-                    </p>
-
-                    {activeLease && (
-                      <div style={{ marginTop: "8px", width: "100%", height: "36px" }}>
-                        <svg viewBox="0 0 200 45" style={{ width: "100%", height: "100%", overflow: "visible" }}>
-                          <defs>
-                            <linearGradient id="spark-grad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.35" />
-                              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-                            </linearGradient>
-                          </defs>
-                          <path d="M 0 35 Q 30 20 60 32 T 120 18 T 180 8" fill="none" stroke="#ffffff" strokeWidth="2.5" />
-                          <path d="M 0 35 Q 30 20 60 32 T 120 18 T 180 8 L 180 45 L 0 45 Z" fill="url(#spark-grad)" />
-                          <circle cx="180" cy="8" r="4.5" fill="#E5C583" />
-                        </svg>
+                    <div className="flex items-start justify-between mb-6 relative z-10">
+                      <div>
+                        <h2 className="text-xl md:text-2xl font-bold mb-1 tracking-tight">{activeLease?.property_title || activeLease?.propertyTitle || activeLease?.title || "No Active Lease"}</h2>
+                        <p className="text-sm text-[#71717A] dark:text-white/60 font-medium">{activeLease?.unit || "Unit -"}</p>
                       </div>
-                    )}
-
-                    <div className="pro-view-agreement-row mt-3">
-                      <span className="text-[12px] font-bold text-white/90">
-                        {activeLease ? "View Rating Details" : "Explore Property Listings"}
+                      <span className="text-[10px] font-bold text-[#1C1917] dark:text-white bg-white dark:bg-[#0B1510] px-3.5 py-2 rounded-full uppercase tracking-widest border border-black/5 dark:border-white/10 shadow-sm">
+                        {activeLease ? "Leased" : "Vacant"}
                       </span>
-                      <div
-                        className="pro-arrow-circle cursor-pointer"
-                        onClick={() => activeLease ? setShowRatingModal(true) : setActiveTab(1)}
-                        title={activeLease ? "View Rating Details" : "Search Listings"}
-                      >
-                        <ArrowRight className="h-3.5 w-3.5 text-white" />
-                      </div>
                     </div>
-                  </div>
-                </section>
 
-                {/* Small Rectangular Residency Streak Card (Triggers Center Popup) */}
-                <div
-                  className="db-card streak-widget-card tour-streak cursor-pointer hover:scale-[1.01] transition-all"
-                  onClick={() => setShowStreakModal(true)}
-                  title="Click to view residency streak details"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-2xl bg-amber-500/15 dark:bg-[#07130D]mber-500/25 text-amber-500">
-                        <Flame className="h-5 w-5 fill-amber-500 animate-pulse" />
+                    <div className="grid grid-cols-2 gap-y-6 gap-x-4 mb-8 pt-6 border-t border-black/5 dark:border-white/5 relative z-10">
+                      <div>
+                        <p className="text-[10px] text-[#71717A] dark:text-white/50 uppercase font-bold tracking-widest mb-1.5">Landlord</p>
+                        <p className="text-sm font-bold uppercase">{activeLease?.landlord_name || "L O D A L E"}</p>
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl font-black text-ink-900 dark:text-white tracking-tight">
-                            {(() => {
-                              if (!activeLease) return "0 Days";
-                              const rawStartDate = activeLease?.start_date || activeLease?.created_at || activeLease?.tenant_signed_at;
-                              const startDate = rawStartDate ? new Date(rawStartDate) : new Date(Date.now() - 142 * 86400000);
-                              const diffMs = Math.max(0, Date.now() - startDate.getTime());
-                              const days = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-                              return `${days} Days`;
-                            })()}
-                          </span>
-                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#E5C583] bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                            🔥 Residency Streak
-                          </span>
-                        </div>
-                        <p className="text-[11.5px] text-ink-400 dark:text-cream-100/60 font-medium mt-0.5">
-                          {activeLease ? `Days living in ${activeLease.propertyTitle || "current home"}` : "No active property residency"}
-                        </p>
+                        <p className="text-[10px] text-[#71717A] dark:text-white/50 uppercase font-bold tracking-widest mb-1.5">Monthly Rent</p>
+                        <p className="text-sm font-bold">₦{activeLease?.rent_amount ? parseFloat(activeLease.rent_amount).toLocaleString() : "0"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-[#71717A] dark:text-white/50 uppercase font-bold tracking-widest mb-1.5">Lease Start</p>
+                        <p className="text-sm font-bold">{activeLease?.start_date ? new Date(activeLease.start_date).toLocaleDateString('en-GB') : "-"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-[#71717A] dark:text-white/50 uppercase font-bold tracking-widest mb-1.5">Lease End</p>
+                        <p className="text-sm font-bold">{activeLease?.end_date ? new Date(activeLease.end_date).toLocaleDateString('en-GB') : "-"}</p>
                       </div>
                     </div>
-                    <div className="pro-arrow-circle">
-                      <ArrowRight className="h-3.5 w-3.5 text-white" />
+
+                    <button
+                      onClick={() => {
+                        if (activeLease) {
+                          sessionStorage.setItem("activeChatPartnerId", activeLease.landlord_id);
+                          sessionStorage.setItem("activeChatLandlordName", activeLease.landlord_name);
+                          setActiveTab(2);
+                        }
+                      }}
+                      className="w-full py-4 bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold text-sm rounded-2xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm relative z-10"
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                      Chat with Landlord
+                    </button>
+                  </div>
+
+                  {/* Residency Streak */}
+                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex items-center justify-between cursor-pointer hover:border-[#E5C583]/50 transition-colors shadow-sm" onClick={() => setShowStreakModal(true)}>
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-full bg-[#E5C583]/10 flex items-center justify-center shrink-0">
+                        <Flame className="h-6 w-6 text-[#E5C583]" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xl font-bold tracking-tight">27 Days</span>
+                          <span className="text-[10px] font-bold text-[#E5C583] uppercase tracking-widest flex items-center gap-1">Streak</span>
+                        </div>
+                        <p className="text-[11px] text-[#71717A] dark:text-white/60 font-medium">Days living in property</p>
+                      </div>
                     </div>
+                    <button className="h-10 w-10 rounded-full bg-white dark:bg-[#0B1510] flex items-center justify-center hover:bg-[#E5C583] hover:text-[#09090b] transition-colors border border-black/5 dark:border-white/5 shrink-0 shadow-sm">
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                </div>
+
+                {/* COLUMN 2 */}
+                <div className="flex flex-col gap-6">
+
+                  {/* Maintenance */}
+                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 md:p-8 text-[#1C1917] dark:text-white flex flex-col shadow-sm transition-colors relative overflow-hidden">
+                    <div className="flex items-center justify-between mb-8 relative z-10">
+                      <h3 className="font-bold text-lg md:text-xl tracking-tight">Maintenance</h3>
+                      <span className="text-[10px] font-bold text-[#71717A] dark:text-white/60 uppercase tracking-widest">{requests.filter(r => r.status !== 'Completed').length} Active</span>
+                    </div>
+
+                    <div className="flex-1 space-y-6 mb-8 relative z-10">
+                      {requests.length > 0 ? (
+                        requests.slice(0, 2).map((r, i) => (
+                          <div key={i} className="pb-6 border-b border-black/5 dark:border-white/5 last:border-0 last:pb-0 group cursor-default">
+                            <div className="flex items-start justify-between gap-4 mb-2">
+                              <h4 className="text-[13px] md:text-sm font-bold text-[#1C1917] dark:text-white uppercase leading-snug tracking-tight group-hover:text-emerald-700 dark:group-hover:text-[#E5C583] transition-colors pr-4">{r.title || r.details}</h4>
+                              <span className={`px-3 py-1.5 text-[9px] font-bold rounded-xl uppercase tracking-widest shrink-0 border ${r.status === 'Completed'
+                                ? 'bg-white dark:bg-[#0B1510] text-[#1C1917] dark:text-white border-black/5 dark:border-white/10 shadow-sm'
+                                : 'bg-[#E5C583]/10 text-amber-700 dark:text-[#E5C583] border-[#E5C583]/20 shadow-sm'
+                                }`}>
+                                {r.status || "Pending"}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-[#71717A] dark:text-white/50 font-medium">{r.type || "Routine"} • {new Date(r.created_at || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-6 opacity-60">
+                          <Wrench className="h-8 w-8 mx-auto mb-3" />
+                          <p className="text-[13px] font-bold uppercase tracking-wider">No Requests</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => setShowDispatchModal(true)}
+                      className="w-full py-4 mt-auto bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold text-sm rounded-2xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm relative z-10"
+                    >
+                      <Plus className="h-4 w-4" /> Add Maintenance Request
+                    </button>
+                  </div>
+
+                  {/* NEW: Days Remaining Stat Card */}
+                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex items-center justify-between shadow-sm transition-colors">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-2xl font-bold tracking-tight">
+                          {activeLease && activeLease.end_date
+                            ? Math.max(0, Math.ceil((new Date(activeLease.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                            : activeLease ? "365" : "0"}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-bold text-[#71717A] dark:text-white/60 uppercase tracking-widest">Days Remaining</p>
+                    </div>
+                    <div className="h-14 w-14 rounded-full bg-white dark:bg-[#0B1510] border border-black/5 dark:border-white/5 flex items-center justify-center shadow-sm">
+                      <Clock className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                  </div>
+
+                  {/* Reliability Rating */}
+                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex flex-col justify-between cursor-pointer group shadow-sm transition-colors" onClick={() => setShowRatingModal(true)}>
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-[#E5C583]/10 flex items-center justify-center shrink-0">
+                          <Award className="h-5 w-5 text-amber-600 dark:text-[#E5C583]" />
+                        </div>
+                        <h3 className="font-bold text-sm tracking-tight">Reliability Rating</h3>
+                      </div>
+                      <div className="flex items-center gap-1 text-[#1C1917] dark:text-white font-bold text-sm">
+                        ★ 3.0
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[#71717A] dark:text-white/60 mb-6 font-medium leading-relaxed pr-2">
+                      Based on verified landlord checkouts & rental payment punctuality.
+                    </p>
+                    <div className="w-full py-3.5 bg-white dark:bg-[#0B1510] border border-black/5 dark:border-white/5 rounded-2xl flex items-center justify-between px-5 group-hover:bg-[#E5C583] group-hover:text-[#09090b] transition-colors shadow-sm">
+                      <span className="font-bold text-[10px] uppercase tracking-widest">View Details</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* COLUMN 3 */}
+                <div className="flex flex-col gap-6">
+
+                  {/* Rent Payment (Visa Debit Style) */}
+                  {(() => {
+                    const baseRent = activeLease?.rent_amount ? parseFloat(activeLease.rent_amount) : 0;
+                    const payableAmt = rentCycle === "yearly" ? baseRent * 12 : baseRent;
+                    const unpaidInv = invoices.find(i => i.status === 'unpaid');
+
+                    let dueDateStr = "09/28";
+                    let isDue = !!unpaidInv;
+                    let displayAmt = unpaidInv ? parseFloat(unpaidInv.amount) : baseRent;
+
+                    if (unpaidInv && unpaidInv.due_date) {
+                      dueDateStr = new Date(unpaidInv.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+                    } else if (activeLease && activeLease.start_date) {
+                      const startDate = new Date(activeLease.start_date);
+                      const now = new Date();
+                      let nextDate = new Date(startDate);
+
+                      while (nextDate < now) {
+                        if (activeLease.rent_cycle === 'yearly') {
+                          nextDate.setFullYear(nextDate.getFullYear() + 1);
+                        } else {
+                          nextDate.setMonth(nextDate.getMonth() + 1);
+                        }
+                      }
+                      dueDateStr = nextDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+                    }
+
+                    return (
+                      <div className="bg-gradient-to-br from-[#192A1F] via-[#1E3324] to-[#2C2719] border border-[#2C4633]/50 rounded-[40px] p-6 md:p-8 text-white flex flex-col relative overflow-hidden shadow-md">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#E5C583]/5 to-[#E5C583]/15 pointer-events-none"></div>
+                        <div className="absolute top-0 right-0 w-40 h-40 bg-[#E5C583]/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#E5C583]/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/3 pointer-events-none"></div>
+
+                        <div className="flex items-center justify-between mb-8 relative z-10">
+                          <div className="flex items-center gap-2 font-bold text-[10px] tracking-widest uppercase">
+                            VISA DEBIT <CreditCard className="h-4 w-4" />
+                          </div>
+                          <span className={`text-[9px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-widest ${isDue ? 'bg-red-500 text-white' : 'bg-[#E5C583] text-[#09090b] shadow-sm'}`}>
+                            {isDue ? "Due" : "Settled"}
+                          </span>
+                        </div>
+
+                        <div className="mb-10 relative z-10">
+                          <p className="text-[10px] text-white/60 font-bold uppercase tracking-widest mb-1.5">Ledger Balance</p>
+                          <h2 className="text-3xl md:text-4xl font-black tracking-tight">₦{displayAmt.toLocaleString()}</h2>
+                        </div>
+
+                        <div className="w-full mb-8 relative z-10">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">Rent Paid</span>
+                            <span className="text-[10px] font-bold text-[#E5C583]">{isDue ? "0%" : "100%"}</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-[#0B1510]/50 rounded-full overflow-hidden border border-white/10 shadow-inner">
+                            <div className={`h-full rounded-full transition-all duration-1000 ${isDue ? 'w-0' : 'w-full bg-gradient-to-r from-[#D4B575] to-[#E5C583]'}`}></div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between relative z-10">
+                          <div className="flex items-center gap-2 opacity-60">
+                            <span className="h-1.5 w-1.5 rounded-full bg-white block"></span>
+                            <span className="h-1.5 w-1.5 rounded-full bg-white block"></span>
+                            <span className="h-1.5 w-1.5 rounded-full bg-white block"></span>
+                            <span className="h-1.5 w-1.5 rounded-full bg-white block"></span>
+                            <span className="text-xs font-mono tracking-widest ml-1">6802</span>
+                          </div>
+                          <button
+                            onClick={() => setShowPayModal(true)}
+                            className="text-[10px] font-bold uppercase tracking-widest hover:bg-[#E5C583] hover:text-[#09090b] transition-colors bg-[#0B1510] px-4 py-2.5 rounded-xl border border-[#E5C583]/20 cursor-pointer shadow-sm text-[#E5C583]"
+                          >
+                            {isDue ? "Pay Now" : dueDateStr}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* NEW: Account Balance Stat Card */}
+                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex items-center justify-between shadow-sm transition-colors">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xl md:text-2xl font-bold tracking-tight">
+                          {invoices.length > 0
+                            ? `₦${invoices.filter(i => i.status === 'unpaid').reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0).toLocaleString()}`
+                            : "₦0.00"}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-bold text-[#71717A] dark:text-white/60 uppercase tracking-widest">Unpaid Balance</p>
+                    </div>
+                    <div className="h-14 w-14 rounded-full bg-white dark:bg-[#0B1510] border border-black/5 dark:border-white/5 flex items-center justify-center shadow-sm">
+                      <CreditCard className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                    </div>
+                  </div>
+
+                  {/* Calendar & Reminders */}
+                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 md:p-8 text-[#1C1917] dark:text-white flex flex-col h-full shadow-sm transition-colors">
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="font-bold text-lg md:text-xl tracking-tight">Schedule</h3>
+                      <button
+                        onClick={() => setShowAddReminderForm(!showAddReminderForm)}
+                        className="p-2.5 rounded-xl bg-white dark:bg-[#0B1510] text-[#1E3324] dark:text-[#E5C583] hover:bg-emerald-50 dark:hover:bg-[#E5C583] dark:hover:text-[#09090b] transition-colors border border-black/5 dark:border-white/5 shadow-sm"
+                        title="Add Reminder"
+                      >
+                        {showAddReminderForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                      </button>
+                    </div>
+
+                    {/* View Toggle Pill */}
+                    <div className="flex p-1 bg-white dark:bg-[#0B1510] rounded-xl border border-black/5 dark:border-white/5 mb-6 relative z-10 shadow-inner">
+                      <button
+                        onClick={() => setScheduleView('events')}
+                        className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${scheduleView === 'events' ? 'bg-[#1E3324] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-sm' : 'text-[#71717A] dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'}`}
+                      >
+                        Events
+                      </button>
+                      <button
+                        onClick={() => setScheduleView('calendar')}
+                        className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${scheduleView === 'calendar' ? 'bg-[#1E3324] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-sm' : 'text-[#71717A] dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'}`}
+                      >
+                        Calendar
+                      </button>
+                    </div>
+
+                    {showAddReminderForm && (
+                      <div className="p-4 bg-white dark:bg-[#0B1510] rounded-2xl border border-[#E1EAE5] dark:border-white/5 mb-5 space-y-3 shadow-inner relative z-10">
+                        <input
+                          type="text" placeholder="Title..." value={newReminderTitle} onChange={e => setNewReminderTitle(e.target.value)}
+                          className="w-full text-[13px] p-3 rounded-xl border border-[#E1EAE5] dark:border-white/10 bg-[#F9FBFA] dark:bg-[#121F1A] text-[#1C1917] dark:text-white outline-none focus:border-emerald-700 dark:focus:border-[#E5C583] font-medium"
+                        />
+                        <div className="flex gap-3">
+                          <input
+                            type="date" value={newReminderDate} onChange={e => setNewReminderDate(e.target.value)}
+                            className="flex-1 text-[13px] p-3 rounded-xl border border-[#E1EAE5] dark:border-white/10 bg-[#F9FBFA] dark:bg-[#121F1A] text-[#1C1917] dark:text-white outline-none focus:border-emerald-700 dark:focus:border-[#E5C583] font-medium"
+                          />
+                          <button onClick={addUserReminder} className="px-5 py-3 bg-[#1E3324] dark:bg-[#E5C583] text-white dark:text-[#09090b] text-[13px] font-bold rounded-xl hover:bg-[#0B1510] dark:hover:bg-white transition-colors">
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {scheduleView === 'calendar' ? (
+                      /* Mini Calendar View */
+                      <div className="grid grid-cols-7 gap-1 text-center relative z-10 px-1">
+                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                          <div key={d} className="text-[9px] font-bold text-[#71717A] dark:text-white/50 uppercase tracking-widest py-1.5">{d}</div>
+                        ))}
+                        {(() => {
+                          const today = new Date();
+                          const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
+                          const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+                          const days = [];
+                          for (let i = 0; i < firstDay; i++) days.push(<div key={`empty-${i}`} className="p-1"></div>);
+                          for (let i = 1; i <= daysInMonth; i++) {
+                            const isToday = i === today.getDate();
+                            days.push(
+                              <div key={i} className={`p-1.5 flex items-center justify-center text-[11px] font-bold rounded-xl transition-colors cursor-default ${isToday ? 'bg-[#1E3324] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-md' : 'text-[#1C1917] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10'}`}>
+                                {i}
+                              </div>
+                            );
+                          }
+                          return days;
+                        })()}
+                      </div>
+                    ) : (
+                      /* Events View */
+                      <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-2 max-h-[160px] relative z-10">
+                        {(() => {
+                          const events = [];
+                          const unpaidInv = invoices.find(i => i.status === 'unpaid');
+                          if (unpaidInv && unpaidInv.due_date) {
+                            const d = new Date(unpaidInv.due_date);
+                            events.push({ id: 'sys_rent', date: d, title: "Rent Due", subtitle: `₦${parseFloat(unpaidInv.amount).toLocaleString()}`, sys: true });
+                          }
+                          userReminders.forEach(r => {
+                            events.push({ id: r.id, date: new Date(r.date + "T12:00:00"), title: r.title, subtitle: "Reminder", sys: false });
+                          });
+                          events.sort((a, b) => a.date - b.date);
+
+                          if (events.length > 0) {
+                            return events.slice(0, 2).map(ev => (
+                              <div key={ev.id} className="flex items-center gap-4 p-3.5 rounded-2xl bg-white dark:bg-[#0B1510] border border-black/5 dark:border-white/5 group relative overflow-hidden transition-colors hover:border-emerald-700/30 dark:hover:border-[#E5C583]/30 shadow-sm">
+                                <div className={`shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center border shadow-sm ${ev.sys ? 'bg-amber-50 dark:bg-[#E5C583]/10 border-amber-200 dark:border-[#E5C583]/20 text-amber-700 dark:text-[#E5C583]' : 'bg-[#F2F7F4] dark:bg-[#192A1F] border-[#E1EAE5] dark:border-white/10 text-[#1C1917] dark:text-white'}`}>
+                                  <span className="text-[9px] font-bold uppercase tracking-wider leading-none mb-0.5 opacity-80">{ev.date.toLocaleDateString('en-GB', { month: 'short' })}</span>
+                                  <span className="text-base font-black leading-none">{ev.date.getDate()}</span>
+                                </div>
+                                <div className="flex-1 min-w-0 py-1">
+                                  <p className="text-[13px] font-bold truncate text-[#1C1917] dark:text-white mb-0.5">{ev.title}</p>
+                                  <p className="text-[10px] text-[#71717A] dark:text-white/50 truncate uppercase tracking-wider font-bold">{ev.subtitle}</p>
+                                </div>
+                                {!ev.sys && (
+                                  <button onClick={() => deleteUserReminder(ev.id)} className="opacity-0 group-hover:opacity-100 p-2 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 rounded-xl transition-all shrink-0">
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                )}
+                              </div>
+                            ));
+                          }
+                          return (
+                            <div className="text-center py-6 opacity-50">
+                              <Calendar className="h-8 w-8 mx-auto mb-3" />
+                              <p className="text-[11px] font-bold uppercase tracking-wider">No Upcoming Events</p>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
                 </div>
 
               </div>
-
-              {/* COLUMN 2: UTILITY ACTIVITY & TOTAL SPENT LEDGER */}
-              <div className="db-col">
-
-                {/* Redesigned Current Property Card */}
-                <section className="db-card property-info-card tour-property">
-                  <div className="db-card-header">
-                    <h3 className="db-card-title">Current Property</h3>
-                    <Building2 className="h-4.5 w-4.5 text-moss-600 dark:text-[#E5C583]" />
-                  </div>
-
-                  {activeLease ? (
-                    <>
-                      <div className="property-visual-banner mt-2">
-                        <div className="property-banner-overlay" />
-                        <svg viewBox="0 0 300 100" className="property-banner-svg">
-                          <defs>
-                            <linearGradient id="building-grad" x1="0%" y1="100%" x2="0%" y2="0%">
-                              <stop offset="0%" stopColor="#2c4633" stopOpacity="0.85" />
-                              <stop offset="100%" stopColor="#a3bca7" stopOpacity="0.2" />
-                            </linearGradient>
-                          </defs>
-                          <path d="M 0 80 Q 150 70 300 80 L 300 100 L 0 100 Z" fill="#2c4633" opacity="0.15" />
-                          <rect x="30" y="30" width="40" height="70" rx="3" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1" />
-                          <rect x="80" y="15" width="50" height="85" rx="4" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1.2" />
-                          <rect x="140" y="40" width="35" height="60" rx="3" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1" />
-                          <rect x="185" y="25" width="45" height="75" rx="3" fill="url(#building-grad)" stroke="#2c4633" strokeWidth="1" />
-                        </svg>
-                      </div>
-
-                      <div className="property-details-body mt-4 text-left">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h4 className="property-name-title">{activeLease.propertyTitle || "Leased Unit"}</h4>
-                            <p className="property-unit-subtitle">{activeLease.unit || "Active Tenancy"}</p>
-                          </div>
-                          <span className="property-status-badge">Leased</span>
-                        </div>
-
-                        <div className="property-meta-grid mt-4">
-                          <div className="property-meta-item">
-                            <span className="meta-lbl">Landlord</span>
-                            <span className="meta-val">{activeLease.landlord || "Verified Landlord"}</span>
-                          </div>
-                          <div className="property-meta-item">
-                            <span className="meta-lbl">Monthly Rent</span>
-                            <span className="meta-val highlight-gold">{activeLease.price || "₦150,000"}</span>
-                          </div>
-                        </div>
-                        <div className="property-meta-grid mt-3">
-                          <div className="property-meta-item">
-                            <span className="meta-lbl">Lease Start</span>
-                            <span className="meta-val font-bold text-ink-900 dark:text-white">
-                              {activeLease.start_date || activeLease.created_at ? new Date(activeLease.start_date || activeLease.created_at).toLocaleDateString() : "Pending"}
-                            </span>
-                          </div>
-                          <div className="property-meta-item">
-                            <span className="meta-lbl">Lease End</span>
-                            <span className="meta-val font-bold text-ink-900 dark:text-white">
-                              {activeLease.end_date ? new Date(activeLease.end_date).toLocaleDateString() : (activeLease.start_date || activeLease.created_at ? new Date(new Date(activeLease.start_date || activeLease.created_at).setFullYear(new Date(activeLease.start_date || activeLease.created_at).getFullYear() + 1)).toLocaleDateString() : "Pending")}
-                            </span>
-                          </div>
-                        </div>
-                        <Button
-                          onClick={async () => {
-                            const landlordName = activeLease.landlord || "Landlord";
-                            const landlordId = activeLease.landlord_id || activeLease.landlordId || `landlord-${landlordName.toLowerCase().replace(/\s+/g, '-')}`;
-                            try {
-                              await chatService.sendMessage(landlordId, `Hello ${landlordName}, reaching out regarding my active lease for ${activeLease.propertyTitle || 'my unit'}.`, null, {
-                                partner_name: landlordName,
-                                partner_avatar: ""
-                              });
-                            } catch (e) { }
-                            sessionStorage.setItem("activeChatPartnerId", landlordId);
-                            setActiveTab(2); // Navigate to Chat tab
-                          }}
-                          className="w-full mt-3 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12px] font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          Chat with Landlord ({activeLease.landlord})
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="py-8 text-center px-4">
-                      <p className="text-[13px] font-bold text-ink-900 dark:text-white">No Active Property Lease</p>
-                      <p className="text-[12px] text-[#6C6E73] dark:text-[#A3BCA7] mt-1">
-                        You have not been assigned to a leased unit yet. Browse the directory to apply for a property.
-                      </p>
-                      <Button
-                        onClick={() => setActiveTab(1)}
-                        className="mt-4 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#09090b] text-[12px] px-4 py-2"
-                      >
-                        Search Properties
-                      </Button>
-                    </div>
-                  )}
-                </section>
-
-                {/* Sleek scrollable maintenance tickets timeline feed */}
-                <section className="db-card tour-tracker">
-                  <div className="db-card-header">
-                    <h3 className="db-card-title">Maintenance</h3>
-                    <span className="text-[12px] text-ink-400 dark:text-cream-100/50 font-bold">{requests.length} Active</span>
-                  </div>
-
-                  <div className="ticket-feed-list">
-                    {requests.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-8 flex-1 text-center">
-                        <p className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">No active maintenance requests filed.</p>
-                      </div>
-                    ) : (
-                      requests.map((r) => (
-                        <div key={r.id} className="ticket-feed-item">
-                          <div>
-                            <p
-                              className="ticket-feed-title clickable"
-                              onClick={() => {
-                                setSelectedTicket(r);
-                                setShowTicketModal(true);
-                              }}
-                            >
-                              {r.title || r.details || "Maintenance Request"}
-                            </p>
-                            <p className="ticket-feed-meta">{r.category || r.type || "General"} • {r.date}</p>
-                          </div>
-                          <span className={`ticket-feed-status ${r.status.toLowerCase().replace(" ", "-")}`}>
-                            {r.status}
-                          </span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </section>
-              </div>
-
-              {/* COLUMN 3: VIRTUAL CARD & RENT BREAKDOWN */}
-              <div className="db-col">
-
-                {/* Standalone Visa Debit Card Widget with Embedded Progress Bar */}
-                <section className="visa-card-widget tour-visa">
-                  <div className="visa-header">
-                    <div className="flex items-center gap-2">
-                      <span className="visa-brand">Visa Debit</span>
-                      <CreditCard className="h-4 w-4 opacity-80" />
-                    </div>
-                    <button
-                      className="visa-pay-btn"
-                      disabled={!activeLease || rentPaid}
-                      onClick={() => {
-                        if (!activeLease) {
-                          triggerToast("No active lease or rent due.", "warning", "Rent Status");
-                        } else if (rentPaid) {
-                          triggerToast("Rent for this period is already paid!", "info", "Rent Paid");
-                        } else {
-                          setShowPayModal(true);
-                        }
-                      }}
-                    >
-                      {!activeLease ? "No Rent Due" : rentPaid ? "Settled" : "Pay Rent"}
-                    </button>
-                  </div>
-
-                  <div className="visa-balance-group">
-                    <span className="visa-balance-sub">Ledger Balance</span>
-                    <div className="visa-balance">
-                      {!activeLease || rentPaid
-                        ? "₦0.00"
-                        : `₦${parseFloat(invoices.find(i => i.status === 'unpaid')?.amount || activeLease.rent_amount || 0).toLocaleString()}`}
-                    </div>
-                  </div>
-
-                  <div className="visa-progress-group">
-                    <div className="visa-progress-lbl">
-                      <span>Rent Paid</span>
-                      <span>{activeLease ? (rentPaid ? "100%" : "0%") : "0%"}</span>
-                    </div>
-                    <div className="visa-progress-track">
-                      <div
-                        className="visa-progress-fill"
-                        style={{ width: activeLease ? (rentPaid ? "100%" : "0%") : "0%" }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="visa-footer">
-                    <span>•••• 6802</span>
-                    <span>09/28</span>
-                  </div>
-                </section>
-
-                {/* Redesigned Doughnut Rent Breakdown */}
-                <section className="db-card breakdown-card tour-breakdown">
-                  <div className="db-card-header">
-                    <h3 className="db-card-title">Monthly Rent Breakdown</h3>
-                    <span className="text-[12px] text-ink-400 dark:text-cream-100/50 font-bold">{activeLease ? "Split" : "0 Active"}</span>
-                  </div>
-
-                  {activeLease ? (
-                    <>
-                      <div className="doughnut-chart-wrapper">
-                        <svg className="doughnut-chart-svg" viewBox="0 0 36 36">
-                          {/* Segment 1: Base Rent (86% = stroke-dasharray 86 14) */}
-                          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#2C4633" strokeWidth="3" strokeDasharray="86 14" strokeDashoffset="25" />
-                          {/* Segment 2: Utilities (10% = stroke-dasharray 10 90) */}
-                          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#E5C583" strokeWidth="3" strokeDasharray="10 90" strokeDashoffset="39" />
-                          {/* Segment 3: Service Charge (4% = stroke-dasharray 4 96) */}
-                          <circle cx="18" cy="18" r="15.915" fill="none" stroke="#8c8c86" strokeWidth="3" strokeDasharray="4 96" strokeDashoffset="49" />
-                        </svg>
-                        <div className="doughnut-center-text">
-                          <span className="doughnut-center-val">86%</span>
-                          <span className="doughnut-center-lbl">Rent Base</span>
-                        </div>
-                      </div>
-
-                      <div className="doughnut-legend">
-                        <div className="doughnut-legend-item">
-                          <span className="legend-color-dot" style={{ backgroundColor: "#2C4633" }} />
-                          <span>Rent (86%)</span>
-                        </div>
-                        <div className="doughnut-legend-item">
-                          <span className="legend-color-dot" style={{ backgroundColor: "#E5C583" }} />
-                          <span>Utilities (10%)</span>
-                        </div>
-                        <div className="doughnut-legend-item">
-                          <span className="legend-color-dot" style={{ backgroundColor: "#8c8c86" }} />
-                          <span>Service (4%)</span>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center flex-1 py-10 px-4 text-center my-auto">
-                      <div className="p-3 bg-moss-50 dark:bg-white/5 rounded-full text-moss-700 dark:text-[#E5C583] mb-2">
-                        <PieChart className="h-6 w-6" />
-                      </div>
-                      <h4 className="font-bold text-[13px] text-ink-900 dark:text-white mb-1">No Active Rent Breakdown</h4>
-                      <p className="text-[11.5px] text-ink-400 dark:text-cream-100/50 max-w-[220px] leading-relaxed">
-                        Monthly budget splits for rent and utilities will appear once you have an active lease.
-                      </p>
-                    </div>
-                  )}
-                </section>
-              </div>
-
             </div>
+
           </main>
         ) : activeTab === 1 ? (
           <TenantSearch
@@ -2506,3 +2617,4 @@ export default function TenantDashboard() {
     </div>
   );
 }
+

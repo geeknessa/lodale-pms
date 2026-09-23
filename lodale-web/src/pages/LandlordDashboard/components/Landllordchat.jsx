@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Search, Phone, Video, Send, Paperclip,
-  Building2, ArrowLeft, Trash2, Loader2
+  Building2, ArrowLeft, Trash2, Loader2, AlertTriangle, RotateCcw
 } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
 import { supportService } from "../../../services/supportService";
@@ -41,8 +41,11 @@ export default function LandlordChat() {
   };
 
   // Initial Data Fetching
+  const [chatError, setChatError] = useState(null);
+
   const fetchChatData = async () => {
     try {
+      setChatError(null);
       const [convos, apps] = await Promise.all([
         chatService.getConversations(),
         applicationService.getLandlordApplications()
@@ -62,6 +65,7 @@ export default function LandlordChat() {
       setChats(uniqueConvos);
     } catch (err) {
       console.error(err);
+      setChatError("Failed to sync conversations. Please check your connection.");
     } finally {
       setIsLoadingData(false);
     }
@@ -362,6 +366,17 @@ export default function LandlordChat() {
             <div className="flex flex-col items-center justify-center p-8 text-center space-y-3">
               <Loader2 className="h-6 w-6 animate-spin text-moss-700 dark:text-[#E5C583]" />
               <span className="text-xs font-bold text-ink-700 dark:text-cream-100">Syncing conversations...</span>
+            </div>
+          ) : chatError ? (
+            <div className="flex flex-col items-center justify-center p-6 text-center space-y-2">
+              <AlertTriangle className="h-8 w-8 text-rose-500" />
+              <p className="text-xs font-semibold text-rose-700 dark:text-rose-400">{chatError}</p>
+              <button
+                onClick={fetchChatData}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-moss-600 dark:bg-[#E5C583] text-white dark:text-[#263b33] text-xs font-bold rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Try Again
+              </button>
             </div>
           ) : filteredChats.length > 0 ? (
             filteredChats.map((chat, idx) => {

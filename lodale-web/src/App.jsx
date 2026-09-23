@@ -13,7 +13,6 @@ import { LandlordAccessPrompt, TenantAccessPrompt } from "./components/RoleAcces
 
 const GuestDashboard = lazy(() => import("./pages/GuestDashboard"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
-const About = lazy(() => import("./pages/About"));
 const Login = lazy(() => import("./pages/Login"));
 const SignUp = lazy(() => import("./pages/SignUp"));
 const Application = lazy(() => import("./pages/Application"));
@@ -289,8 +288,8 @@ export default function App() {
                 <Route path="/" element={<Navigate to="/explore" replace />} />
                 <Route path="/explore" element={<GuestDashboard />} />
                 <Route path="/listings/:id" element={<ListingDetailView />} />
-                <Route path="/how-it-works" element={<HowItWorks />} />
-                <Route path="/about" element={<About />} />
+                <Route path="/how-it-works" element={<Navigate to="/explore#how-it-works" replace />} />
+                <Route path="/about" element={<Navigate to="/explore" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<SignUp />} />
                 <Route path="/verify" element={<Navigate to="/signup" replace />} />

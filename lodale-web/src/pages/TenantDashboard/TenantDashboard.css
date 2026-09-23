@@ -8,18 +8,18 @@
   --tenant-text-main: #1A1A1A;
   --tenant-text-sec: #8A8D93;
   --tenant-border: rgba(38, 38, 38, 0.06);
-  --active-pill-bg: #2C4633;
+  --active-pill-bg: #1E3324;
 }
 
 body.dark {
-  --tenant-canvas: #0B120F;
-  --tenant-card-bg: #121F1A;
+  --tenant-canvas: #07130D;
+  --tenant-card-bg: #07130D;
   --tenant-charcoal: #E5C583;
   --tenant-light-grey: #07130D;
   --tenant-text-main: #FFFFFF;
   --tenant-text-sec: #A3BCA7;
   --tenant-border: rgba(255, 255, 255, 0.08);
-  --active-pill-bg: #3a5a40;
+  --active-pill-bg: #07130D;
 }
 
 .tenant-wrapper {
@@ -116,7 +116,7 @@ body.dark .tenant-sidebar-btn.active {
 .tenant-sidebar-tooltip {
   position: absolute;
   left: 65px;
-  background-color: #2C4633;
+  background-color: #1E3324;
   color: #FFFFFF;
   font-size: 11px;
   font-weight: 700;
@@ -262,6 +262,7 @@ body.dark .db-breadcrumb-active {
 @media (min-width: 1150px) {
   .db-grid {
     grid-template-columns: 1.05fr 1.2fr 1.1fr;
+    align-items: stretch;
   }
 }
 
@@ -269,6 +270,8 @@ body.dark .db-breadcrumb-active {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  height: 100%;
+  justify-content: space-between;
 }
 
 .db-card {
@@ -691,8 +694,8 @@ body.dark .wallet-progress-fill {
 }
 
 body.dark .visa-card-widget {
-  background: linear-gradient(135deg, #1C3326 0%, #2A4D3B 100%);
-  border: 1.5px solid rgba(229, 197, 131, 0.2);
+  background: #07130D;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
   color: #FFFFFF;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }
@@ -813,21 +816,32 @@ body.dark .visa-pay-btn {
 }
 
 /* Equalized heights for Column 1, 2, and 3 cards for perfect grid alignment */
-.pro-card {
-  min-height: 475px;
-}
+@media (min-width: 1150px) {
+  /* ALL THREE TOP CARDS END ON THE EXACT SAME LINE */
+  .property-info-card,
+  .tour-tracker,
+  .visa-card-widget {
+    height: 310px !important;
+    min-height: 310px !important;
+    max-height: 310px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box;
+    flex: 0 0 auto !important;
+  }
 
-.property-info-card,
-.visa-card-widget {
-  min-height: 275px;
-}
-
-.tour-tracker,
-.breakdown-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 285px;
+  /* ALL THREE BOTTOM CARDS START & END ON THE EXACT SAME LINES */
+  .streak-widget-card,
+  .reliability-rating-card,
+  .breakdown-card {
+    flex: 1 !important;
+    min-height: 160px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box;
+  }
 }
 
 /* Compact Rectangular Streak Preview Card */
@@ -1458,7 +1472,7 @@ body.dark .property-visual-banner {
 }
 
 .meta-val.highlight-gold {
-  color: #2C4633;
+  color: #1E3324;
 }
 
 body.dark .meta-val.highlight-gold {

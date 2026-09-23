@@ -28,7 +28,7 @@ export const PRESET_HOUSE_RULES = [
  * Returns a numerical tier (1 to 5) for income level comparisons.
  * Returns 0 if invalid or unspecified.
  */
-export function getIncomeTierLevel(rangeStr) {
+function getIncomeTierLevel(rangeStr) {
   if (!rangeStr || typeof rangeStr !== 'string') return 0;
   const str = rangeStr.trim();
   const lower = str.toLowerCase();
