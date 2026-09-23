@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info, ChevronDown, User, Edit3, Trash2, Loader2, Upload } from "lucide-react";
+import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info, ChevronDown, User, Edit3, Trash2, Loader2, Upload, RotateCcw } from "lucide-react";
 import { propertyService } from "../../services/propertyService";
 import { leaseService } from "../../services/leaseService";
 import { applicationService } from "../../services/applicationService";
@@ -419,11 +419,14 @@ export default function LandlordProperties() {
     }
   };
 
+  const [error, setError] = useState(null);
+
   useEffect(() => {
     async function loadProperties(isSilent = false) {
       if (!isSilent && properties.length === 0) {
         setIsLoading(true);
       }
+      setError(null);
       try {
         let currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "";
         try {
@@ -548,10 +551,14 @@ export default function LandlordProperties() {
             }
           } catch (err) {
             console.warn("Error fetching landlord properties from API:", err);
+            if (initialList.length === 0) {
+              setError("Failed to load property listings from backend server.");
+            }
           }
         }
       } catch (err) {
         console.warn("Error loading landlord properties:", err);
+        setError("Could not load your property portfolio. Please check your connection.");
       } finally {
         setIsLoading(false);
       }
@@ -721,6 +728,18 @@ export default function LandlordProperties() {
               <PropertyCardSkeleton />
               <PropertyCardSkeleton />
             </>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center bg-rose-50/60 dark:bg-rose-950/20 rounded-2xl border border-rose-200 dark:border-rose-900/40 max-w-md mx-auto my-6">
+              <AlertTriangle className="h-10 w-10 text-rose-500 mb-3" />
+              <h3 className="font-bold text-ink-800 dark:text-white mb-1">Failed to load property portfolio</h3>
+              <p className="text-sm text-rose-700 dark:text-rose-400 mb-4">{error}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="flex items-center gap-2 px-4 py-2 bg-moss-600 hover:bg-moss-700 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] text-sm font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+              >
+                <RotateCcw className="h-4 w-4" /> Reload Portfolio
+              </button>
+            </div>
           ) : filteredProperties.length > 0 ? (
             filteredProperties.slice(0, displayLimit).map((item, idx) => {
               const status = item.status || 'pending_review';

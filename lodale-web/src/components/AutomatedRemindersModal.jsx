@@ -17,7 +17,7 @@ const ToggleSwitch = ({ checked, onChange, label }) => (
       }`}
     >
       <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-[#1E1E1E] shadow-md ring-0 transition duration-200 ease-in-out ${
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-[#07130D] shadow-md ring-0 transition duration-200 ease-in-out ${
           checked ? 'translate-x-5' : 'translate-x-0'
         }`}
       />
@@ -145,7 +145,7 @@ export default function AutomatedRemindersModal({ isOpen, onClose, activeTenants
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink-950/70 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-white dark:bg-[#1E1E1E] border border-ink-100 dark:border-white/10 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] text-ink-900 dark:text-cream-100">
+      <div className="bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] text-ink-900 dark:text-cream-100">
         
         {/* MODAL HEADER */}
         <div className="p-5 sm:p-6 border-b border-ink-100 dark:border-white/10 flex items-center justify-between bg-ink-50/50 dark:bg-white/5">

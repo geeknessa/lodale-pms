@@ -1,7 +1,7 @@
 import { ArrowLeft, Bell, BellOff, HelpCircle, Building2, Layers, SlidersHorizontal, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Logo } from "../../Logo";
 
-export const stepsInfo = [
+const stepsInfo = [
   { step: 1, label: "Type & Location", icon: Building2, desc: "Establish building identity & street address" },
   { step: 2, label: "Units & Specifications", icon: Layers, desc: "Setup unit layout & rental pricing" },
   { step: 3, label: "Amenities & Guidelines", icon: SlidersHorizontal, desc: "Select utilities & property rules" },

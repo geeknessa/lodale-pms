@@ -45,7 +45,7 @@ export default function NavBar({ transparentMode = false }) {
     return () => window.removeEventListener("storage", handleAuth);
   }, [location]);
 
-  // Scroll listener: active status changes ONLY when scrolling into sections
+  // Scroll listener: active status updates dynamically as sections enter viewport
   useEffect(() => {
     const isHome = location.pathname === "/explore" || location.pathname === "/";
     if (!isHome) {
@@ -54,26 +54,24 @@ export default function NavBar({ transparentMode = false }) {
     }
 
     const handleScroll = () => {
-      const tenantElem = document.getElementById("for-tenants");
-      const landlordElem = document.getElementById("for-landlords");
-      const blogElem = document.getElementById("blog");
       const scrollPos = window.scrollY;
+      setIsScrolled(scrollPos > 40);
 
-      const tenantTop = tenantElem ? tenantElem.offsetTop - 180 : Infinity;
-      const landlordTop = landlordElem ? landlordElem.offsetTop - 180 : Infinity;
-      const blogTop = blogElem ? blogElem.offsetTop - 180 : Infinity;
+      const sections = ["faq", "for-landlords", "for-tenants", "how-it-works", "listings"];
+      let active = "";
 
-      setIsScrolled(scrollPos > 50);
-
-      if (scrollPos >= blogTop) {
-        setActiveSection("#blog");
-      } else if (scrollPos >= landlordTop) {
-        setActiveSection("#for-landlords");
-      } else if (scrollPos >= tenantTop) {
-        setActiveSection("#for-tenants");
-      } else {
-        setActiveSection("");
+      for (const id of sections) {
+        const elem = document.getElementById(id);
+        if (elem) {
+          const rect = elem.getBoundingClientRect();
+          if (rect.top <= window.innerHeight * 0.55 && rect.bottom >= 120) {
+            active = `#${id}`;
+            break;
+          }
+        }
       }
+
+      setActiveSection(active);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -131,17 +129,18 @@ export default function NavBar({ transparentMode = false }) {
   const desktopLinkClass = (path, hash = "") => {
     const isActive = checkIsActive(path, hash);
     const inactiveColor = isActuallyTransparent
-      ? (isDark ? "text-white/90 hover:text-white" : "text-[#405448]/90 hover:text-[#405448]")
-      : "text-[#405448] dark:text-cream-100 hover:text-moss-700 dark:hover:text-white";
+      ? (isDark ? "text-white/80 hover:text-white font-medium" : "text-[#405448]/80 hover:text-[#405448] font-medium")
+      : "text-[#405448] dark:text-cream-100/80 hover:text-moss-700 dark:hover:text-white font-medium";
     const activeColor = isActuallyTransparent
-      ? (isDark ? "text-white font-bold" : "text-[#405448] font-bold")
-      : "text-[#405448] font-bold dark:text-white";
+      ? (isDark ? "text-[#E5C583] font-bold" : "text-moss-800 font-bold")
+      : "text-moss-800 dark:text-[#E5C583] font-bold";
     const underlineColor = isActuallyTransparent
-      ? (isDark ? "after:bg-white" : "after:bg-[#405448]")
-      : "after:bg-[#405448] dark:after:bg-[#E5C583]";
+      ? (isDark ? "after:bg-[#E5C583]" : "after:bg-moss-800")
+      : "after:bg-moss-700 dark:after:bg-[#E5C583]";
 
-    return `relative transition-colors pb-1 text-[13px] font-medium focus-visible:ring-2 focus-visible:ring-moss-600 outline-none ${isActive ? activeColor : inactiveColor
-      } ${isActive ? `after:absolute after:-bottom-1 after:left-0 after:h-px after:w-full ${underlineColor}` : ""}`;
+    return `relative transition-all duration-200 pb-1 text-[13px] outline-none ${
+      isActive ? activeColor : inactiveColor
+    } ${isActive ? `after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-full ${underlineColor} after:rounded-full` : ""}`;
   };
 
 
@@ -197,16 +196,18 @@ export default function NavBar({ transparentMode = false }) {
     }
   }
 
-  const mobileLinkClass = (path, hash = "") => {
-    const active = checkIsActive(path, hash);
-    return `flex items-center justify-between py-2 text-[16px] font-semibold transition-colors ${active ? "text-moss-700 dark:text-[#E5C583]" : "text-theme-text"
+  const mobileLinkClass = (path, hash = null) => {
+    const isActive = checkIsActive(path, hash);
+    return `flex items-center justify-between py-2 text-base font-semibold cursor-pointer ${isActive
+      ? "text-moss-700 dark:text-[#E5C583] font-bold"
+      : "text-ink-700 dark:text-cream-100/80"
       }`;
   };
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ${isActuallyTransparent
-        ? "bg-transparent border-b border-white/20 pt-4 pb-4"
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isActuallyTransparent
+        ? "bg-transparent py-6"
         : "bg-white/90 dark:bg-[#263b33]/90 backdrop-blur-md border-b border-ink-200/30 py-4 shadow-sm"
         }`}
     >
@@ -225,6 +226,13 @@ export default function NavBar({ transparentMode = false }) {
             Home
           </Link>
           <Link
+            to="/explore#how-it-works"
+            onClick={(e) => handleSectionClick(e, "#how-it-works")}
+            className={desktopLinkClass("/explore", "#how-it-works")}
+          >
+            How It Works
+          </Link>
+          <Link
             to="/explore#for-tenants"
             onClick={(e) => handleSectionClick(e, "#for-tenants")}
             className={desktopLinkClass("/explore", "#for-tenants")}
@@ -239,17 +247,11 @@ export default function NavBar({ transparentMode = false }) {
             For Landlords
           </Link>
           <Link
-            to="/explore#blog"
-            onClick={(e) => handleSectionClick(e, "#blog")}
-            className={desktopLinkClass("/explore", "#blog")}
+            to="/explore#faq"
+            onClick={(e) => handleSectionClick(e, "#faq")}
+            className={desktopLinkClass("/explore", "#faq")}
           >
-            Blog
-          </Link>
-          <Link
-            to="/how-it-works"
-            className={desktopLinkClass("/how-it-works")}
-          >
-            How It Works
+            FAQ
           </Link>
         </nav>
 
@@ -346,6 +348,16 @@ export default function NavBar({ transparentMode = false }) {
             )}
           </Link>
           <Link
+            to="/explore#how-it-works"
+            onClick={(e) => handleSectionClick(e, "#how-it-works")}
+            className={mobileLinkClass("/explore", "#how-it-works")}
+          >
+            <span>How It Works</span>
+            {checkIsActive("/explore", "#how-it-works") && (
+              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
+            )}
+          </Link>
+          <Link
             to="/explore#for-tenants"
             onClick={(e) => handleSectionClick(e, "#for-tenants")}
             className={mobileLinkClass("/explore", "#for-tenants")}
@@ -366,22 +378,12 @@ export default function NavBar({ transparentMode = false }) {
             )}
           </Link>
           <Link
-            to="/explore#blog"
-            onClick={(e) => handleSectionClick(e, "#blog")}
-            className={mobileLinkClass("/explore", "#blog")}
+            to="/explore#faq"
+            onClick={(e) => handleSectionClick(e, "#faq")}
+            className={mobileLinkClass("/explore", "#faq")}
           >
-            <span>Blog</span>
-            {checkIsActive("/explore", "#blog") && (
-              <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
-            )}
-          </Link>
-          <Link
-            to="/how-it-works"
-            onClick={() => setIsOpen(false)}
-            className={mobileLinkClass("/how-it-works")}
-          >
-            <span>How It Works</span>
-            {checkIsActive("/how-it-works") && (
+            <span>FAQ</span>
+            {checkIsActive("/explore", "#faq") && (
               <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
             )}
           </Link>

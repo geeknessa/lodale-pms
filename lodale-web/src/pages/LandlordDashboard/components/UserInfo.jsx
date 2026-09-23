@@ -1,51 +1,38 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   X, Star, CheckCircle2, ArrowLeft,
-  Home, User, ShieldCheck
+  Home, User, ShieldCheck, Plus, MessageSquare
 } from "lucide-react";
 import Avatar from "../../../components/Avatar";
-
-// Helper to get detailed reliability score breakdown based on actual tenant data
-const getReliabilityDetails = (tenant) => {
-  const score = parseFloat(tenant.reliabilityScore) || 0;
-  
-  if (score === 0) {
-    return {
-      score: 0,
-      paymentHistory: null,
-      propertyCondition: null,
-      reviews: [],
-      rentAgain: "N/A"
-    };
-  }
-
-  return {
-    score: score,
-    paymentHistory: tenant.paymentHistory || null,
-    propertyCondition: tenant.propertyCondition || null,
-    reviews: tenant.customReviews || tenant.reviews || [],
-    rentAgain: tenant.rentAgain || "N/A"
-  };
-};
+import { ratingService } from "../../../services/ratingService";
+import RateTenantModal from "../../../components/RateTenantModal";
 
 export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
   const [activeTab, setActiveTab] = useState("application"); // "application", "history", "documents", "notes"
   const [showReliabilityDetails, setShowReliabilityDetails] = useState(false);
+  const [showRateModal, setShowRateModal] = useState(false);
+  const [reviewsData, setReviewsData] = useState({ hasReviews: false, rating: "New", count: 0, reviews: [] });
   
   if (!tenant) return null;
 
+  const tenantId = tenant.id || tenant.tenantId || tenant.userId || tenant.email;
+  const emailId = tenant.email || tenant.tenant_email || (tenant.tenant && tenant.tenant.email) || "";
+  const tenantName = tenant.name || tenant.tenantName || `${tenant.firstName || ''} ${tenant.lastName || ''}`.trim() || (tenant.tenant ? `${tenant.tenant.first_name || tenant.tenant.firstName || ''} ${tenant.tenant.last_name || tenant.tenant.lastName || ''}`.trim() : '') || "Applicant";
+
+  const refreshReviews = () => {
+    const data = ratingService.getTenantReviews(tenantId, emailId);
+    setReviewsData(data);
+  };
+
+  useEffect(() => {
+    refreshReviews();
+  }, [tenantId, emailId]);
+
   const isApplicant = Boolean(onApprove || onDecline || tenant.isApplicant || tenant.applicationId || tenant.status === "pending" || tenant.status === "application_received");
 
-  const scoreDetails = getReliabilityDetails(tenant);
-  
-  if (tenant.customReviews && Array.isArray(tenant.customReviews)) {
-    scoreDetails.reviews = [...tenant.customReviews, ...scoreDetails.reviews];
-  }
+  const effectiveScore = reviewsData.hasReviews ? reviewsData.rating : (tenant.reliabilityScore > 0 ? parseFloat(tenant.reliabilityScore).toFixed(1) : "New");
 
-  // Extract ONLY real system & user input fields (NO hardcoded fake fallbacks)
-  const tenantName = tenant.name || tenant.tenantName || `${tenant.firstName || ''} ${tenant.lastName || ''}`.trim() || (tenant.tenant ? `${tenant.tenant.first_name || tenant.tenant.firstName || ''} ${tenant.tenant.last_name || tenant.tenant.lastName || ''}`.trim() : '') || "Applicant";
   const contactNo = tenant.phone || tenant.contactNo || tenant.tenant_phone || (tenant.tenant && tenant.tenant.phone) || "Not Provided";
-  const emailId = tenant.email || tenant.tenant_email || (tenant.tenant && tenant.tenant.email) || "Not Provided";
   const occupation = tenant.occupation || (tenant.tenant && tenant.tenant.occupation) || "Not Provided";
   const emergencyContact = tenant.emergencyContact || tenant.emergency_contact || tenant.guarantorPhone || "Not Provided";
   const currentAddress = tenant.currentAddress || tenant.address || tenant.propertyTitle || "Not Provided";
@@ -89,7 +76,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
   return (
     <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-5xl bg-white dark:bg-[#1E1E1E] rounded-3xl p-6 sm:p-8 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[92vh] overflow-y-auto relative animate-in zoom-in-95 duration-200"
+        className="w-full max-w-5xl bg-white dark:bg-[#07130D] rounded-3xl p-6 sm:p-8 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[92vh] overflow-y-auto relative animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* TOP BAR WITH BREADCRUMB AND ACTIONS */}
@@ -134,14 +121,24 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
               </div>
             )}
 
+            <button
+              onClick={() => setShowRateModal(true)}
+              className="px-3 py-1.5 bg-moss-600 hover:bg-moss-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+              title="Add or update rating for this tenant"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Rate Tenant</span>
+            </button>
+
             <button 
               onClick={() => setShowReliabilityDetails(true)}
               className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
               title="Click to view detailed reliability history"
             >
               <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-              <span>★ {tenant.reliabilityScore > 0 ? tenant.reliabilityScore : "New"}</span>
+              <span>★ {effectiveScore} ({reviewsData.count})</span>
             </button>
+
             <button
               onClick={onClose}
               className="p-2 rounded-xl text-ink-400 hover:text-ink-800 dark:hover:text-white hover:bg-ink-100 dark:hover:bg-white/10 transition-colors"
@@ -186,7 +183,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
               <div>
                 <span className="text-xs text-ink-400 dark:text-cream-100/60 font-semibold block">Email Id :</span>
-                <span className="text-xs sm:text-sm font-bold text-ink-900 dark:text-cream-100 break-all">{emailId}</span>
+                <span className="text-xs sm:text-sm font-bold text-ink-900 dark:text-cream-100 break-all">{emailId || "Not Provided"}</span>
               </div>
 
               <div>
@@ -267,7 +264,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
                       : "text-ink-400 dark:text-cream-100/60 hover:text-ink-800"
                   }`}
                 >
-                  Notes & Comments
+                  Notes & Ratings
                   {activeTab === "notes" && (
                     <span className="absolute bottom-0 left-0 w-full h-0.5 bg-moss-700 dark:bg-[#E5C583] rounded-full" />
                   )}
@@ -330,7 +327,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
                     </div>
                   ) : (
                     rentalHistoryList.map((item, idx) => (
-                      <div key={idx} className="p-4 rounded-xl bg-white dark:bg-[#1E1E1E] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-4">
+                      <div key={idx} className="p-4 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-4">
                         <div>
                           <h4 className="font-bold text-sm text-ink-900 dark:text-cream-100">{item.title}</h4>
                           <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">Lease Term: {item.period}</p>
@@ -354,7 +351,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
                     </div>
                   ) : (
                     documentsList.map((doc, idx) => (
-                      <div key={idx} className="p-3.5 rounded-xl bg-white dark:bg-[#1E1E1E] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-3">
+                      <div key={idx} className="p-3.5 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                           <div>
@@ -372,7 +369,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
               {/* TAB 4: NOTES & COMMENTS */}
               {activeTab === "notes" && (
                 <div className="p-5 sm:p-6 rounded-2xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in duration-200">
-                  <div className="p-4 rounded-xl bg-white dark:bg-[#1E1E1E] border border-ink-100 dark:border-white/10">
+                  <div className="p-4 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10">
                     <h4 className="font-bold text-xs uppercase tracking-wider text-ink-400 mb-2">Background & Verification Notes</h4>
                     <p className="text-xs sm:text-sm text-ink-700 dark:text-cream-100/90 leading-relaxed italic">
                       "{tenant.notes || tenant.message || "No background notes provided by applicant."}"
@@ -382,14 +379,24 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
                   <div className="flex items-center justify-between p-4 rounded-xl bg-amber-500/10 border border-amber-300 dark:border-amber-700/50">
                     <div>
                       <h4 className="font-bold text-xs text-amber-900 dark:text-amber-200">Reliability Evaluation</h4>
-                      <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">Calculated from verified platform rental activity</p>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
+                        {reviewsData.hasReviews ? `★ ${reviewsData.rating} average from ${reviewsData.count} review(s)` : "No landlord reviews yet"}
+                      </p>
                     </div>
-                    <button
-                      onClick={() => setShowReliabilityDetails(true)}
-                      className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer"
-                    >
-                      View Breakdown
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowRateModal(true)}
+                        className="px-3 py-1.5 bg-moss-600 hover:bg-moss-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer flex items-center gap-1"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Rate
+                      </button>
+                      <button
+                        onClick={() => setShowReliabilityDetails(true)}
+                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer"
+                      >
+                        View Breakdown
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -412,7 +419,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
       {/* RELIABILITY BREAKDOWN SUB-MODAL */}
       {showReliabilityDetails && (
         <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowReliabilityDetails(false)}>
-          <div className="w-full max-w-md bg-white dark:bg-[#1E1E1E] rounded-3xl p-6 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[85vh] overflow-y-auto relative animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg bg-white dark:bg-[#07130D] rounded-3xl p-6 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[85vh] overflow-y-auto relative animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-white/10 mb-4">
               <h3 className="font-extrabold text-base text-ink-900 dark:text-cream-100">Reliability Breakdown</h3>
               <button 
@@ -423,19 +430,62 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 dark:border-amber-700/50 flex items-center gap-4 mb-4">
-              <Star className="h-8 w-8 fill-amber-500 text-amber-500 shrink-0" />
-              <div>
-                <span className="text-2xl font-black text-amber-950 dark:text-amber-200">{scoreDetails.score > 0 ? scoreDetails.score.toFixed(1) : "New"} <span className="text-xs text-amber-700 dark:text-amber-400 font-bold">{scoreDetails.score > 0 ? "/ 5.0" : ""}</span></span>
-                <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">Verified landlord rating computed from rental history and timely payments.</p>
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-300 dark:border-amber-700/50 flex items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-3">
+                <Star className="h-8 w-8 fill-amber-500 text-amber-500 shrink-0" />
+                <div>
+                  <span className="text-2xl font-black text-amber-950 dark:text-amber-200">
+                    {effectiveScore} {reviewsData.hasReviews ? <span className="text-xs text-amber-700 dark:text-amber-400 font-bold">/ 5.0 ({reviewsData.count} reviews)</span> : ""}
+                  </span>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">Verified landlord rating computed from rental history and feedback.</p>
+                </div>
               </div>
+              <button
+                onClick={() => {
+                  setShowReliabilityDetails(false);
+                  setShowRateModal(true);
+                }}
+                className="px-3 py-1.5 bg-moss-600 hover:bg-moss-700 text-white font-bold text-xs rounded-xl transition-all shrink-0 cursor-pointer flex items-center gap-1"
+              >
+                <Plus className="h-3.5 w-3.5" /> Rate
+              </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
-                <span className="font-bold text-ink-900 dark:text-cream-100 block mb-1">Platform Rating</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">{scoreDetails.score > 0 ? `${scoreDetails.score.toFixed(1)} Rating Score` : "New Platform Account"}</span>
-              </div>
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-cream-100/60">Landlord Reviews</h4>
+              
+              {!reviewsData.hasReviews || reviewsData.reviews.length === 0 ? (
+                <div className="p-4 text-center rounded-xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
+                  <p className="text-xs text-ink-500 dark:text-cream-100/70">No reviews submitted for this tenant yet.</p>
+                </div>
+              ) : (
+                reviewsData.reviews.map((rev) => (
+                  <div key={rev.id} className="p-3.5 rounded-xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star key={s} className={`h-3.5 w-3.5 ${s <= rev.rating ? 'fill-amber-400 text-amber-400' : 'text-ink-200 dark:text-white/20'}`} />
+                        ))}
+                        <span className="text-xs font-bold text-ink-900 dark:text-cream-100 ml-1.5">{rev.rating}.0</span>
+                      </div>
+                      <span className="text-[10px] text-ink-400 dark:text-cream-100/50">
+                        {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString() : ""}
+                      </span>
+                    </div>
+
+                    {rev.comment && (
+                      <p className="text-xs text-ink-700 dark:text-cream-100/90 italic">"{rev.comment}"</p>
+                    )}
+
+                    <div className="flex items-center justify-between text-[11px] text-ink-500 dark:text-cream-100/60 pt-1 border-t border-ink-100 dark:border-white/10">
+                      <span>By: <strong className="text-ink-800 dark:text-cream-100">{rev.landlordName || "Landlord"}</strong></span>
+                      <span className={rev.wouldRentAgain ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-500 font-bold"}>
+                        Would Rent Again: {rev.wouldRentAgain ? "Yes" : "No"}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <button 
@@ -446,6 +496,22 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* RATE TENANT MODAL */}
+      {showRateModal && (
+        <RateTenantModal
+          isOpen={showRateModal}
+          onClose={() => setShowRateModal(false)}
+          tenantId={tenantId}
+          tenantName={tenantName}
+          landlordId={sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "landlord"}
+          landlordName="Landlord"
+          propertyTitle={tenant.propertyTitle || ""}
+          onSuccess={() => {
+            refreshReviews();
+          }}
+        />
       )}
     </div>
   );

@@ -40,10 +40,11 @@ export function useTenantQualification(property, overrideProfile = null) {
   if (!property) {
     return { 
       loading: true, 
-      meetsAll: false,
-      meetsIncome: false,
-      meetsGuarantor: false,
-      meetsEmployment: false,
+      tenantProfile: {},
+      meetsIncome: true,
+      meetsGuarantor: true,
+      meetsEmployment: true,
+      meetsAll: true,
       requirements: {
         income: "No Minimum Income",
         guarantor: false,

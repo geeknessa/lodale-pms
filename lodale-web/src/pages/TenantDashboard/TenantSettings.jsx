@@ -896,7 +896,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               </div>
 
               <div className="settings-form-group full-width">
-                <label className="settings-input-label">Address</label>
+                <label className="settings-input-label">Address <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   maxLength={255}
@@ -904,6 +904,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                   onChange={(e) => setAddress(e.target.value)}
                   className="settings-form-input"
                   placeholder="Street address"
+                  required
                 />
               </div>
 

@@ -1,7 +1,7 @@
 import { formatCurrency } from "./formatters";
 import { propertyService } from "../services/propertyService";
 
-export const PRESET_PHOTOS = [
+const PRESET_PHOTOS = [
   { label: "Modern Villa", url: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80" },
   { label: "Luxury Apartment", url: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80" },
   { label: "Gated Residency", url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80" },
@@ -356,6 +356,7 @@ export async function handlePropertySubmit({
     console.warn("Failed to persist property locally:", localErr);
   }
 
+  sessionStorage.setItem("latestCreatedPropertyId", String(newPropertyObj.id));
   setIsSubmitted(true);
   return true;
 }

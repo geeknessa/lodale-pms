@@ -170,7 +170,7 @@ export const getMyLeases = async (req, res) => {
     if (role === 'landlord' || role === 'admin') {
       query = `
         SELECT l.*, 
-               p.title as property_title, p.address_line1 as property_address, p.state as property_location, p.city as property_city,
+               p.title as property_title, p.address_line1 as property_address, p.state as property_location, p.city as property_city, p.images as property_images,
                t.first_name || ' ' || t.last_name as tenant_name, t.email as tenant_email
         FROM leases l
         JOIN properties p ON l.property_id = p.id
@@ -181,7 +181,7 @@ export const getMyLeases = async (req, res) => {
     } else {
       query = `
         SELECT l.*, 
-               p.title as property_title, p.address_line1 as property_address, p.state as property_location, p.city as property_city,
+               p.title as property_title, p.address_line1 as property_address, p.state as property_location, p.city as property_city, p.images as property_images,
                ld.first_name || ' ' || ld.last_name as landlord_name, ld.email as landlord_email
         FROM leases l
         JOIN properties p ON l.property_id = p.id
@@ -206,7 +206,7 @@ export const getLeaseById = async (req, res) => {
 
     const leaseRes = await pool.query(`
       SELECT l.*, 
-             p.title as property_title, p.address_line1 as property_address, p.city as property_city,
+             p.title as property_title, p.address_line1 as property_address, p.city as property_city, p.images as property_images,
              t.first_name || ' ' || t.last_name as tenant_name, t.email as tenant_email,
              ld.first_name || ' ' || ld.last_name as landlord_name, ld.email as landlord_email
       FROM leases l

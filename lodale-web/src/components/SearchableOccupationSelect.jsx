@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Check } from 'lucide-react';
 
-export const OCCUPATIONS_LIST = [
+const OCCUPATIONS_LIST = [
   "Accountant",
   "Actor / Performing Artist",
   "Architect",

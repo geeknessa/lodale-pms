@@ -1,6 +1,6 @@
 // Nigerian Cities and State Coordinates Mapping for Dynamic Map Centering
 
-export const NIGERIAN_LOCATION_COORDINATES = {
+const NIGERIAN_LOCATION_COORDINATES = {
   // FCT - Abuja
   "abuja": [9.0765, 7.3986],
   "fct": [9.0765, 7.3986],

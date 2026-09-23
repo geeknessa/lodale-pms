@@ -5,7 +5,7 @@ import { propertyService } from "../../services/propertyService";
 import { chatService } from "../../services/chatService";
 import { notificationService } from "../../services/notificationService";
 
-export const GENERAL_UNIT_AMENITIES = [
+const GENERAL_UNIT_AMENITIES = [
   "24/7 Security",
   "Prepaid Meter",
   "Air Conditioning",
@@ -19,7 +19,7 @@ export const GENERAL_UNIT_AMENITIES = [
   "Elevator"
 ];
 
-export const GENERAL_UNIT_RULES = [
+const GENERAL_UNIT_RULES = [
   "No Pets Allowed",
   "No Smoking Inside",
   "No Parties / Loud Noise",

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, XCircle, ShieldCheck, Heart, MessageSquare, AlertTriangle, Loader2 } from "lucide-react";
+import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, XCircle, ShieldCheck, Heart, MessageSquare, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { applicationService } from "../../services/applicationService";
@@ -74,14 +74,14 @@ function LandlordCard({ landlord, onInspect }) {
           <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Base Location</span>
           <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
             <MapPin className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583] shrink-0" />
-            <span>{landlord.location.split(",")[0]}</span>
+            <span>{(landlord.location || "Lagos, Nigeria").split(",")[0]}</span>
           </span>
         </div>
 
         <div className="landlord-properties-list mb-4">
           <span className="text-[10px] uppercase font-bold tracking-wider text-[#6C6E73] dark:text-[#A3BCA7]">Managed Units</span>
           <div className="flex flex-col gap-1 mt-1">
-            {landlord.properties.map((p, idx) => (
+            {(Array.isArray(landlord.properties) ? landlord.properties : []).map((p, idx) => (
               <span key={idx} className="text-[11.5px] truncate text-neutral-700 dark:text-neutral-300">• {p}</span>
             ))}
           </div>
@@ -741,6 +741,18 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
             <p className="text-sm font-semibold text-ink-900 dark:text-white">Loading properties & marketplace...</p>
             <p className="text-xs text-ink-500 dark:text-cream-100/60 mt-1">Fetching latest listings from server</p>
           </div>
+        ) : listingsError ? (
+          <div className="flex flex-col items-center justify-center h-64 text-center p-6 rounded-2xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/60 dark:bg-rose-950/20 max-w-md mx-auto my-8">
+            <AlertTriangle className="h-10 w-10 text-rose-500 mb-3" />
+            <h3 className="font-bold text-ink-800 dark:text-white mb-1">Failed to load marketplace listings</h3>
+            <p className="text-sm text-rose-700 dark:text-rose-400 mb-4">{listingsError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="flex items-center gap-2 px-4 py-2 bg-moss-600 hover:bg-moss-700 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] text-sm font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+            >
+              <RotateCcw className="h-4 w-4" /> Reload Marketplace
+            </button>
+          </div>
         ) : !hasActiveFilters && !viewAllListings ? (
           searchType === "property" ? (
             <div className="recommendations-container text-left tour-search-results">
@@ -1189,7 +1201,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                     selectedProperty.amenities.map((a, i) => (
                       <span key={i} className="px-2.5 py-1 bg-neutral-50 dark:bg-[#07130D] text-[11.5px] font-semibold rounded-md border border-neutral-100 dark:border-neutral-800/40 flex items-center gap-1">
                         <Check className="h-3 w-3 text-moss-600 dark:text-[#E5C583]" />
-                        <span>{a}</span>
+                        <span>{a.replace(/^[{"]+|[}"]+$/g, '').trim()}</span>
                       </span>
                     ))
                   ) : (
@@ -1368,8 +1380,8 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
               const prof = JSON.parse(raw);
 
               const rulesList = Array.isArray(quickApplyProperty.house_rules) 
-                ? quickApplyProperty.house_rules 
-                : (typeof quickApplyProperty.rules === 'string' && quickApplyProperty.rules ? quickApplyProperty.rules.split(',').map(r => r.trim()) : []);
+                ? quickApplyProperty.house_rules.map(r => typeof r === 'string' ? r.replace(/^[{"]+|[}"]+$/g, '').trim() : r) 
+                : (typeof quickApplyProperty.rules === 'string' && quickApplyProperty.rules ? quickApplyProperty.rules.split(',').map(r => r.replace(/^[{"]+|[}"]+$/g, '').trim()) : []);
 
               return (
                 <div className="space-y-4">

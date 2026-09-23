@@ -26,13 +26,19 @@ function extractFirstAndLastName(fullName) {
 export function useSignUpForm(initialState = {}) {
   const navigate = useNavigate();
 
+  // Read URL query parameters for invited tenants
+  const searchParams = new URLSearchParams(window.location.search);
+  const invitedEmail = searchParams.get("invitedEmail") || searchParams.get("email") || initialState.invitedEmail || "";
+  const tenantName = searchParams.get("tenantName") || searchParams.get("name") || initialState.tenantName || "";
+  const nameParts = extractFirstAndLastName(tenantName);
+
   const presetRole = initialState.presetRole ?? "tenant";
   const skipRolePicker = initialState.skipRolePicker ?? false;
   const skipWelcome = initialState.skipWelcome ?? false;
   const listingId = initialState.listingId;
 
-  const [role, setRole] = useState(presetRole);
-  const [step, setStep] = useState(skipRolePicker ? 2 : 1);
+  const [role, setRole] = useState(invitedEmail ? "tenant" : presetRole);
+  const [step, setStep] = useState(invitedEmail || skipRolePicker ? 2 : 1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Step 2 NIN Verification States
@@ -45,9 +51,9 @@ export function useSignUpForm(initialState = {}) {
   const [verified, setVerified] = useState(false);
 
   // Step 3 Form States
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState(nameParts.first || "");
+  const [lastName, setLastName] = useState(nameParts.last || "");
+  const [email, setEmail] = useState(invitedEmail || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);
@@ -146,15 +152,21 @@ export function useSignUpForm(initialState = {}) {
       return;
     }
 
-    if (email.trim().toLowerCase() === "user@example.com") {
-      setInlineError('Email Already Registered: An account was previously created using this email address. Please try signing in.');
-      setIsSubmitting(false);
-      return;
-    }
-
     const cleanEmail = email.trim().toLowerCase();
     const cleanPassword = password.trim();
     const cleanName = `${firstName.trim()} ${lastName.trim()}`;
+
+    // Block duplicate email registration
+    const existingLocalUser = localStorage.getItem("userProfile_" + cleanEmail) ||
+                             sessionStorage.getItem("userProfile_" + cleanEmail) ||
+                             localStorage.getItem("tenantProfile_" + cleanEmail) ||
+                             sessionStorage.getItem("username_" + cleanEmail);
+
+    if (existingLocalUser || cleanEmail === "user@example.com") {
+      setInlineError("An account with this email address already exists. Only one user is allowed per email address. Please sign in instead.");
+      setIsSubmitting(false);
+      return;
+    }
 
     try {
       const res = await authService.signUp({
@@ -172,6 +184,8 @@ export function useSignUpForm(initialState = {}) {
       sessionStorage.setItem("userRole", role);
       sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
       sessionStorage.setItem("username_" + cleanEmail, cleanName);
+      sessionStorage.setItem("isNewSignUp", "true");
+      localStorage.setItem("isNewUserSignUp_" + cleanEmail, "true");
 
       const profileObj = {
         firstName: firstName.trim(),
@@ -198,7 +212,12 @@ export function useSignUpForm(initialState = {}) {
         navigate(`/dashboard/${role}`);
       }
     } catch (dbErr) {
-      setInlineError(dbErr.message || "Account creation failed. Please try again.");
+      const errMsg = dbErr.message || "Account creation failed. Please try again.";
+      if (errMsg.toLowerCase().includes("already exists") || errMsg.toLowerCase().includes("duplicate")) {
+        setInlineError("An account with this email address already exists. Only one user is allowed per email address. Please sign in instead.");
+      } else {
+        setInlineError(errMsg);
+      }
     } finally {
       setIsSubmitting(false);
     }

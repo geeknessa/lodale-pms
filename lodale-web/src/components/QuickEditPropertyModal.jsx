@@ -30,7 +30,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
   const [selectedAmenities, setSelectedAmenities] = useState(() => {
     if (!property.amenities) return [];
     if (Array.isArray(property.amenities)) {
-      return property.amenities.map(a => (typeof a === "string" ? a : a.name || a.title));
+      return property.amenities.map(a => (typeof a === "string" ? a.replace(/^[{"]+|[}"]+$/g, '').trim() : a.name || a.title));
     }
     return [];
   });
@@ -68,7 +68,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
       }
 
       if (Array.isArray(property.amenities)) {
-        setSelectedAmenities(property.amenities.map(a => (typeof a === "string" ? a : a.name || a.title)));
+        setSelectedAmenities(property.amenities.map(a => (typeof a === "string" ? a.replace(/^[{"]+|[}"]+$/g, '').trim() : a.name || a.title)));
       }
       setCoverImage(property.cover_image || property.image || "");
       if (Array.isArray(property.images) && property.images.length > 0) {

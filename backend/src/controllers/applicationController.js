@@ -210,7 +210,7 @@ export const getLandlordApplications = async (req, res) => {
          SELECT l.end_date as active_lease_end_date, lp.title as active_lease_property_title
          FROM leases l
          JOIN properties lp ON l.property_id = lp.id
-         WHERE l.tenant_id = a.tenant_id AND l.status IN ('active', 'leased', 'signed')
+         WHERE l.tenant_id = a.tenant_id AND l.status::text IN ('active', 'leased', 'signed')
          ORDER BY l.end_date DESC
          LIMIT 1
        ) al ON true
