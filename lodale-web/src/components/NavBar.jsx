@@ -57,7 +57,7 @@ export default function NavBar({ transparentMode = false }) {
       const scrollPos = window.scrollY;
       setIsScrolled(scrollPos > 40);
 
-      const sections = ["faq", "for-landlords", "for-tenants", "how-it-works", "listings"];
+      const sections = ["about", "features", "listings"];
       let active = "";
 
       for (const id of sections) {
@@ -138,16 +138,15 @@ export default function NavBar({ transparentMode = false }) {
       ? (isDark ? "after:bg-[#E5C583]" : "after:bg-moss-800")
       : "after:bg-moss-700 dark:after:bg-[#E5C583]";
 
-    return `relative transition-all duration-200 pb-1 text-[13px] outline-none ${
-      isActive ? activeColor : inactiveColor
-    } ${isActive ? `after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-full ${underlineColor} after:rounded-full` : ""}`;
+    return `relative transition-all duration-200 pb-1 text-[13px] outline-none ${isActive ? activeColor : inactiveColor
+      } ${isActive ? `after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-full ${underlineColor} after:rounded-full` : ""}`;
   };
 
 
 
   function handleSignOut() {
     const isCurrentAdmin = sessionStorage.getItem("userRole") === "admin";
-    
+
     if (isCurrentAdmin) {
       sessionStorage.removeItem("isAuthenticated");
       sessionStorage.removeItem("sessionExpiresAt");
@@ -178,7 +177,7 @@ export default function NavBar({ transparentMode = false }) {
     sessionStorage.removeItem("isAuthenticated");
     sessionStorage.removeItem("sessionExpiresAt");
     sessionStorage.removeItem("userRole");
-    
+
     setIsAuthenticated(false);
     setIsOpen(false);
     navigate("/explore", { replace: true });
@@ -226,32 +225,31 @@ export default function NavBar({ transparentMode = false }) {
             Home
           </Link>
           <Link
-            to="/explore#how-it-works"
-            onClick={(e) => handleSectionClick(e, "#how-it-works")}
-            className={desktopLinkClass("/explore", "#how-it-works")}
+            to="/explore#listings"
+            onClick={(e) => handleSectionClick(e, "#listings")}
+            className={desktopLinkClass("/explore", "#listings")}
           >
-            How It Works
+            Properties
           </Link>
           <Link
-            to="/explore#for-tenants"
-            onClick={(e) => handleSectionClick(e, "#for-tenants")}
-            className={desktopLinkClass("/explore", "#for-tenants")}
+            to="/explore#about"
+            onClick={(e) => handleSectionClick(e, "#about")}
+            className={desktopLinkClass("/explore", "#about")}
           >
-            For Tenants
+            About
           </Link>
           <Link
-            to="/explore#for-landlords"
-            onClick={(e) => handleSectionClick(e, "#for-landlords")}
-            className={desktopLinkClass("/explore", "#for-landlords")}
+            to="/explore#features"
+            onClick={(e) => handleSectionClick(e, "#features")}
+            className={desktopLinkClass("/explore", "#features")}
           >
-            For Landlords
+            Features
           </Link>
           <Link
-            to="/explore#faq"
-            onClick={(e) => handleSectionClick(e, "#faq")}
-            className={desktopLinkClass("/explore", "#faq")}
+            to="/contact"
+            className={desktopLinkClass("/contact")}
           >
-            FAQ
+            Contact
           </Link>
         </nav>
 
@@ -321,13 +319,13 @@ export default function NavBar({ transparentMode = false }) {
                 Log In
               </button>
               <Button
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/signup")}
                 className={`px-4 py-2 text-[13px] font-semibold transition-all rounded-full ${isActuallyTransparent
                   ? (isDark ? "bg-white text-ink-900 hover:bg-white/90" : "bg-moss-800 text-white hover:bg-moss-900")
                   : ""
                   }`}
               >
-                Sign In
+                Sign Up
               </Button>
             </div>
           )}
@@ -348,42 +346,41 @@ export default function NavBar({ transparentMode = false }) {
             )}
           </Link>
           <Link
-            to="/explore#how-it-works"
-            onClick={(e) => handleSectionClick(e, "#how-it-works")}
-            className={mobileLinkClass("/explore", "#how-it-works")}
+            to="/explore#listings"
+            onClick={(e) => handleSectionClick(e, "#listings")}
+            className={mobileLinkClass("/explore", "#listings")}
           >
-            <span>How It Works</span>
-            {checkIsActive("/explore", "#how-it-works") && (
+            <span>Properties</span>
+            {checkIsActive("/explore", "#listings") && (
               <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
             )}
           </Link>
           <Link
-            to="/explore#for-tenants"
-            onClick={(e) => handleSectionClick(e, "#for-tenants")}
-            className={mobileLinkClass("/explore", "#for-tenants")}
+            to="/explore#about"
+            onClick={(e) => handleSectionClick(e, "#about")}
+            className={mobileLinkClass("/explore", "#about")}
           >
-            <span>For Tenants</span>
-            {checkIsActive("/explore", "#for-tenants") && (
+            <span>About</span>
+            {checkIsActive("/explore", "#about") && (
               <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
             )}
           </Link>
           <Link
-            to="/explore#for-landlords"
-            onClick={(e) => handleSectionClick(e, "#for-landlords")}
-            className={mobileLinkClass("/explore", "#for-landlords")}
+            to="/explore#features"
+            onClick={(e) => handleSectionClick(e, "#features")}
+            className={mobileLinkClass("/explore", "#features")}
           >
-            <span>For Landlords</span>
-            {checkIsActive("/explore", "#for-landlords") && (
+            <span>Features</span>
+            {checkIsActive("/explore", "#features") && (
               <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
             )}
           </Link>
           <Link
-            to="/explore#faq"
-            onClick={(e) => handleSectionClick(e, "#faq")}
-            className={mobileLinkClass("/explore", "#faq")}
+            to="/contact"
+            className={mobileLinkClass("/contact")}
           >
-            <span>FAQ</span>
-            {checkIsActive("/explore", "#faq") && (
+            <span>Contact</span>
+            {checkIsActive("/contact") && (
               <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
             )}
           </Link>
@@ -424,7 +421,7 @@ export default function NavBar({ transparentMode = false }) {
                   navigate("/signup");
                 }}
               >
-                Sign Up
+                Create Account
               </Button>
             </div>
           )}

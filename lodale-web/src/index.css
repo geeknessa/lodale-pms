@@ -126,17 +126,17 @@ body.dark .logo-mark-svg .logo-bg {
 }
 
 body.dark .logo-mark-svg .logo-fg-stroke {
-  stroke: var(--color-moss-700) !important;
+  stroke: #E5C583 !important;
 }
 
 body.dark .logo-mark-svg .logo-fg-fill {
-  fill: var(--color-moss-700) !important;
+  fill: #E5C583 !important;
 }
 
 body.dark .bg-white,
 body.dark .bg-cream-50\/30 {
-  background: var(--color-moss-700) !important;
-  border-color: var(--color-moss-600) !important;
+  background: #192A1F !important;
+  border-color: #2C4633 !important;
 }
 
 body.dark .border-ink-200 {
@@ -146,9 +146,9 @@ body.dark .border-ink-200 {
 body.dark input,
 body.dark textarea,
 body.dark select {
-  background-color: var(--color-moss-700) !important;
+  background-color: #07130D !important;
   color: var(--color-white) !important;
-  border-color: var(--color-moss-600) !important;
+  border-color: #2C4633 !important;
 }
 
 /* Global placeholder styling: faint by default, disappears on focus & typing */
@@ -190,8 +190,8 @@ body.dark .onboarding-bg {
 }
 
 body.dark .onboarding-card {
-  background: var(--color-moss-700) !important;
-  border-color: var(--color-moss-600) !important;
+  background: #192A1F !important;
+  border-color: #2C4633 !important;
 }
 
 /* Custom Side Scrollbar Styling matching Lodale Theme */
