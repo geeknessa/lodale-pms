@@ -580,6 +580,7 @@ export default function SignUp() {
                       <input
                         id="email"
                         type="email"
+                        autoComplete="off"
                         maxLength={100}
                         placeholder="janedoe@example.com"
                         value={email}
@@ -605,6 +606,7 @@ export default function SignUp() {
                       <input
                         id="password"
                         type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
                         maxLength={128}
                         placeholder="••••••••"
                         value={password}

@@ -35,7 +35,8 @@ export const profileService = {
 
   checkProfileCompleteness(profile) {
     if (!profile) return { isComplete: false, percentage: 0, missingFields: ["Full Profile"] };
-    const requiredKeys = [
+    
+    let requiredKeys = [
       { key: 'firstName', label: 'First Name', alt: 'first_name' },
       { key: 'lastName', label: 'Last Name', alt: 'last_name' },
       { key: 'email', label: 'Email Address' },
@@ -43,6 +44,11 @@ export const profileService = {
       { key: 'address', label: 'Residential Address' },
       { key: 'occupation', label: 'Occupation' }
     ];
+
+    const empStatus = String(profile.employmentStatus || profile.employment_status || "").toLowerCase();
+    if (empStatus.includes('student')) {
+      requiredKeys = requiredKeys.filter(k => k.key !== 'occupation');
+    }
 
     const missingFields = [];
     let filledCount = 0;

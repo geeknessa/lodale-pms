@@ -297,7 +297,7 @@ export default function LandlordChat() {
       const dataUrl = dataMatch ? dataMatch[1].trim() : null;
 
       return (
-        <div className="p-3 bg-white/10 rounded-xl border border-white/20 my-1 space-y-2 text-left">
+        <div className="p-3 bg-[#FFFFFF]/10 rounded-xl border border-white/20 my-1 space-y-2 text-left">
           <div className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-current shrink-0" />
             <div>
@@ -311,7 +311,7 @@ export default function LandlordChat() {
               download={fileName}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-moss-900 dark:bg-[#07130D] dark:text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#FFFFFF] text-moss-900 dark:bg-[#07130D] dark:text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
             >
               <Download className="h-3.5 w-3.5" /> Download / View Document
             </a>

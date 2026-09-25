@@ -21,13 +21,12 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
     payments: []
   });
 
-  if (!tenant) return null;
-
-  const tenantId = tenant.id || tenant.tenantId || tenant.userId || tenant.email;
-  const emailId = tenant.email || tenant.tenant_email || (tenant.tenant && tenant.tenant.email) || "";
-  const tenantName = tenant.name || tenant.tenantName || `${tenant.firstName || ''} ${tenant.lastName || ''}`.trim() || (tenant.tenant ? `${tenant.tenant.first_name || tenant.tenant.firstName || ''} ${tenant.tenant.last_name || tenant.tenant.lastName || ''}`.trim() : '') || "Tenant";
+  const tenantId = tenant?.id || tenant?.tenantId || tenant?.userId || tenant?.email;
+  const emailId = tenant?.email || tenant?.tenant_email || (tenant?.tenant && tenant?.tenant?.email) || "";
+  const tenantName = tenant?.name || tenant?.tenantName || `${tenant?.firstName || ''} ${tenant?.lastName || ''}`.trim() || (tenant?.tenant ? `${tenant?.tenant?.first_name || tenant?.tenant?.firstName || ''} ${tenant?.tenant?.last_name || tenant?.tenant?.lastName || ''}`.trim() : '') || "Tenant";
 
   const refreshReviews = () => {
+    if (!tenantId) return;
     const data = ratingService.getTenantReviews(tenantId, emailId);
     setReviewsData(data);
   };
@@ -94,6 +93,8 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
     return () => { isMounted = false; };
   }, [tenantId, emailId, tenantName]);
 
+  if (!tenant) return null;
+
   // Derived Properties
   const appTenant = fetchedDetails.profile;
   const appMatch = fetchedDetails.appMatch;
@@ -150,7 +151,7 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER SECTION */}
-        <div className="p-6 md:p-8 bg-white dark:bg-white/5 border-b border-ink-100 dark:border-white/10 sticky top-0 z-10 flex items-center justify-between">
+        <div className="p-6 md:p-8 bg-[#FFFFFF] dark:bg-[#FFFFFF]/5 border-b border-ink-100 dark:border-white/10 sticky top-0 z-10 flex items-center justify-between">
            <div>
               <h2 className="text-xl md:text-2xl font-black text-ink-900 dark:text-white mb-6">Tenant Details</h2>
               <div className="flex items-center gap-4">
@@ -177,14 +178,14 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
            </div>
            
            <div className="flex flex-col items-end">
-              <button onClick={onClose} className="p-2 mb-6 rounded-full hover:bg-ink-100 dark:hover:bg-white/10 transition-colors text-ink-400 dark:text-white/60">
+              <button onClick={onClose} className="p-2 mb-6 rounded-full hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/10 transition-colors text-ink-400 dark:text-white/60">
                  <X className="w-5 h-5" />
               </button>
               <div className="flex items-center gap-3">
                  <span className="text-sm font-semibold text-ink-500 dark:text-white/60">Rent Details :</span>
                  <span className="text-2xl font-black text-ink-900 dark:text-white">{formattedRent}/{rentPeriod.replace(/ly$/, '')}</span>
                  {paymentStatus === "paid" ? (
-                   <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 rounded">Paid</span>
+                   <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-[#FFFFFF]/5 dark:text-cream-100 rounded">Paid</span>
                  ) : (
                    <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 rounded capitalize">{paymentStatus}</span>
                  )}
@@ -201,7 +202,7 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
               {/* Personal Details */}
               <section>
                  <h4 className="text-[15px] font-bold text-ink-900 dark:text-white mb-4">Personal Details</h4>
-                 <div className="bg-white dark:bg-white/5 border border-ink-100 dark:border-white/10 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-4">
+                 <div className="bg-[#FFFFFF] dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-4">
                     <div>
                        <div className="text-xs font-semibold text-ink-400 dark:text-white/50 mb-1.5">Contact No. :</div>
                        <div className="text-sm font-bold text-ink-900 dark:text-white">{contactNo}</div>
@@ -228,7 +229,7 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
               {/* Lease Agreement */}
               <section>
                  <h4 className="text-[15px] font-bold text-ink-900 dark:text-white mb-4">Lease Agreement</h4>
-                 <div className="bg-white dark:bg-white/5 border border-ink-100 dark:border-white/10 rounded-2xl p-6 flex flex-col md:flex-row gap-6">
+                 <div className="bg-[#FFFFFF] dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 rounded-2xl p-6 flex flex-col md:flex-row gap-6">
                     <div className="flex-1 space-y-6">
                        <div className="flex gap-4">
                          <div className="text-xs font-semibold text-ink-400 dark:text-white/50 w-24 shrink-0">Start Date :</div>
@@ -251,7 +252,7 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
                            onClick={() => {
                              if (leaseDoc.url) window.open(leaseDoc.url, "_blank");
                            }}
-                           className="border border-ink-100 dark:border-white/10 rounded-xl p-3 flex items-start gap-3 bg-[#FAFAFA] dark:bg-white/5 cursor-pointer hover:bg-ink-50 dark:hover:bg-white/10 transition-colors"
+                           className="border border-ink-100 dark:border-white/10 rounded-xl p-3 flex items-start gap-3 bg-[#FAFAFA] dark:bg-[#FFFFFF]/5 cursor-pointer hover:bg-ink-50 dark:hover:bg-[#FFFFFF]/10 transition-colors"
                          >
                            <FileText className="w-6 h-6 text-rose-500 shrink-0" />
                            <div>
@@ -277,9 +278,9 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
                     <button className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">View All</button>
                  </div>
                  
-                 <div className="bg-white dark:bg-white/5 border border-ink-100 dark:border-white/10 rounded-2xl overflow-x-auto">
+                 <div className="bg-[#FFFFFF] dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 rounded-2xl overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[400px]">
-                       <thead className="bg-[#FAFAFA] dark:bg-white/5 text-ink-500 dark:text-white/60 text-[11px] font-semibold border-b border-ink-100 dark:border-white/10">
+                       <thead className="bg-[#FAFAFA] dark:bg-[#FFFFFF]/5 text-ink-500 dark:text-white/60 text-[11px] font-semibold border-b border-ink-100 dark:border-white/10">
                           <tr>
                              <th className="px-5 py-3 font-semibold">Date ↕</th>
                              <th className="px-5 py-3 font-semibold">Issue Description ↕</th>
@@ -295,11 +296,11 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
                             </tr>
                           ) : (
                             maintenanceRequests.slice(0,3).map((req, i) => (
-                              <tr key={i} className="border-b border-ink-100 dark:border-white/5 last:border-0 hover:bg-ink-50/50 dark:hover:bg-white/5">
+                              <tr key={i} className="border-b border-ink-100 dark:border-white/5 last:border-0 hover:bg-ink-50/50 dark:hover:bg-[#FFFFFF]/5">
                                  <td className="px-5 py-4 whitespace-nowrap">{new Date(req.date).toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: '2-digit'})}</td>
                                  <td className="px-5 py-4">{req.description}</td>
                                  <td className="px-5 py-4 text-center">
-                                    <span className={`px-2.5 py-1 rounded-md text-[10px] ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'}`}>
+                                    <span className={`px-2.5 py-1 rounded-md text-[10px] ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-[#FFFFFF]/5 dark:text-cream-100'}`}>
                                       {req.status}
                                     </span>
                                  </td>
@@ -327,9 +328,9 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
                     <button className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer">View All</button>
                  </div>
                  
-                 <div className="bg-white dark:bg-white/5 border border-ink-100 dark:border-white/10 rounded-2xl overflow-x-auto">
+                 <div className="bg-[#FFFFFF] dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 rounded-2xl overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[400px]">
-                       <thead className="bg-[#FAFAFA] dark:bg-white/5 text-ink-500 dark:text-white/60 text-[11px] font-semibold border-b border-ink-100 dark:border-white/10">
+                       <thead className="bg-[#FAFAFA] dark:bg-[#FFFFFF]/5 text-ink-500 dark:text-white/60 text-[11px] font-semibold border-b border-ink-100 dark:border-white/10">
                           <tr>
                              <th className="px-5 py-3 font-semibold">Date ↕</th>
                              <th className="px-5 py-3 font-semibold text-center">Amount ↕</th>
@@ -344,12 +345,12 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
                             </tr>
                           ) : (
                             paymentHistory.slice(0,3).map((pay, i) => (
-                              <tr key={i} className="border-b border-ink-100 dark:border-white/5 last:border-0 hover:bg-ink-50/50 dark:hover:bg-white/5">
+                              <tr key={i} className="border-b border-ink-100 dark:border-white/5 last:border-0 hover:bg-ink-50/50 dark:hover:bg-[#FFFFFF]/5">
                                  <td className="px-5 py-4 whitespace-nowrap">{new Date(pay.date).toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>
                                  <td className="px-5 py-4 text-center">{pay.amount}</td>
                                  <td className="px-5 py-4 text-center">{pay.method}</td>
                                  <td className="px-5 py-4 text-center">
-                                    <span className={`px-2.5 py-1 rounded-md text-[10px] ${pay.status === 'Overdue' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'}`}>
+                                    <span className={`px-2.5 py-1 rounded-md text-[10px] ${pay.status === 'Overdue' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-[#FFFFFF]/5 dark:text-cream-100'}`}>
                                       {pay.status}
                                     </span>
                                  </td>
@@ -373,12 +374,12 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
                     </button>
                  </div>
                  
-                 <div className="bg-white dark:bg-white/5 border border-ink-100 dark:border-white/10 rounded-2xl p-6 space-y-4">
+                 <div className="bg-[#FFFFFF] dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 rounded-2xl p-6 space-y-4">
                     {!reviewsData.hasReviews || reviewsData.reviews.length === 0 ? (
                       <p className="text-xs text-ink-400 dark:text-white/50 py-2">No landlord reviews recorded yet for this tenant.</p>
                     ) : (
                       reviewsData.reviews.map((rev) => (
-                        <div key={rev.id} className="p-3.5 rounded-xl bg-[#FAFAFA] dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-1.5">
+                        <div key={rev.id} className="p-3.5 rounded-xl bg-[#FAFAFA] dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 space-y-1.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-1">
                               {[1, 2, 3, 4, 5].map((s) => (
@@ -396,8 +397,8 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
                           )}
 
                           <div className="flex items-center justify-between text-[11px] text-ink-500 dark:text-white/60 pt-1 border-t border-ink-100 dark:border-white/10">
-                            <span>Landlord: <strong className="text-ink-900 dark:text-white">{rev.landlordName || "Landlord"}</strong></span>
-                            <span className={rev.wouldRentAgain ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-500 font-bold"}>
+                            <span>Reviewed by: <strong className="text-ink-900 dark:text-white">Verified Landlord</strong></span>
+                            <span className={rev.wouldRentAgain ? "text-emerald-600 dark:text-cream-100 font-bold" : "text-rose-500 font-bold"}>
                               Would Rent Again: {rev.wouldRentAgain ? "Yes" : "No"}
                             </span>
                           </div>

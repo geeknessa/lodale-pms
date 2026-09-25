@@ -53,7 +53,7 @@ export function useSignUpForm(initialState = {}) {
   // Step 3 Form States
   const [firstName, setFirstName] = useState(nameParts.first || "");
   const [lastName, setLastName] = useState(nameParts.last || "");
-  const [email, setEmail] = useState(invitedEmail || "");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(false);

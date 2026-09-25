@@ -1210,42 +1210,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 </div>
               </div>
 
-              {/* Landlord Property Requirements & Qualification Section */}
-              {(() => {
-                const rawProf = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile");
-                const prof = rawProf ? JSON.parse(rawProf) : {};
 
-                const reqIncome = selectedProperty.minimum_income_required || selectedProperty.minimumIncome || "No Minimum Income";
-                const tenantIncome = prof.income || prof.monthlyIncome || "";
-                const meetsInc = doesIncomeMeetRequirement(tenantIncome, reqIncome);
-
-                return (
-                  <div className="flex flex-col gap-2.5 border-t border-neutral-100 dark:border-neutral-800/60 pt-3.5 mb-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[12px] font-bold uppercase tracking-wider text-moss-700 dark:text-[#E5C583]">Required Annual Income Range</span>
-                      <span className="text-[12px] font-bold">{reqIncome}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[11px]">
-                      <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Your Profile Qualification</span>
-                      {meetsInc ? (
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3" /> Meets Requirement
-                        </span>
-                      ) : (
-                        <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                          <XCircle className="h-3 w-3" /> Below Requirement
-                        </span>
-                      )}
-                    </div>
-                    {!meetsInc && (
-                      <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 text-rose-700 dark:text-rose-300 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 mt-1">
-                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                        <span>Your annual income ({tenantIncome || 'Not Provided'}) does not meet requirement. Quick Apply is blocked.</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
 
               {/* Landlord validation details */}
               <div className="flex flex-col gap-3 border-t border-neutral-100 dark:border-neutral-800/60 pt-3 mb-2">
@@ -1271,7 +1236,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
             <div className="flex flex-col gap-3 mt-6">
               <Button
                 onClick={() => {
-                  navigate(`/listings/${selectedProperty.id}`);
+                  navigate(`/listings/${selectedProperty.id}`, { state: { returnTo: "/dashboard/tenant?tab=1" } });
                 }}
                 className="w-full bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
               >
