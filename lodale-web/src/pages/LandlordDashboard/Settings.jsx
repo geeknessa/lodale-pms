@@ -20,11 +20,11 @@ const ToggleSwitch = ({ checked, onChange, label }) => (
       aria-checked={checked}
       onClick={onChange}
       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-        checked ? 'bg-emerald-600 dark:bg-[#E5C583]' : 'bg-ink-300 dark:bg-white/20'
+        checked ? 'bg-emerald-600 dark:bg-[#E5C583]' : 'bg-ink-300 dark:bg-[#FFFFFF]/20'
       }`}
     >
       <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-[#07130D] shadow-md ring-0 transition duration-200 ease-in-out ${
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-[#FFFFFF] dark:bg-[#07130D] shadow-md ring-0 transition duration-200 ease-in-out ${
           checked ? 'translate-x-5' : 'translate-x-0'
         }`}
       />
@@ -446,7 +446,7 @@ export default function Settings({ onShowReportModal }) {
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl bg-cream-50/60 dark:bg-white/5 border border-moss-700/20 dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+              <div className="p-6 rounded-2xl bg-cream-50/60 dark:bg-[#FFFFFF]/5 border border-moss-700/20 dark:border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
                 <div className="space-y-1">
                   <h3 className="font-extrabold text-sm text-ink-900 dark:text-white flex items-center gap-2">
                     <FileText className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" />
@@ -575,7 +575,7 @@ export default function Settings({ onShowReportModal }) {
                     <h3 className="text-sm font-bold text-ink-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                       🏦 Banking Details (Default Account for Invoices)
                     </h3>
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-cream-100 border border-emerald-500/20">
                       ★ Auto-prefilled on Digital Invoices
                     </span>
                   </div>
@@ -837,7 +837,7 @@ export default function Settings({ onShowReportModal }) {
                             handleReminderSettingChange("autoNudgeDays", parseInt(e.target.value));
                           }
                         }}
-                        className="w-full max-w-[200px] p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-indigo-950/50 text-xs font-bold text-ink-900 dark:text-indigo-100 focus:outline-none focus:border-indigo-500"
+                        className="w-full max-w-[200px] p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-[#FFFFFF] dark:bg-indigo-950/50 text-xs font-bold text-ink-900 dark:text-indigo-100 focus:outline-none focus:border-indigo-500"
                       >
                         <option value={30}>30 Days before end</option>
                         <option value={45}>45 Days before end</option>
@@ -853,7 +853,7 @@ export default function Settings({ onShowReportModal }) {
                             min="1"
                             value={reminderSettings.autoNudgeDays}
                             onChange={(e) => handleReminderSettingChange("autoNudgeDays", parseInt(e.target.value) || 0)}
-                            className="w-20 p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-indigo-950/50 text-xs font-bold text-ink-900 dark:text-indigo-100 focus:outline-none focus:border-indigo-500 text-center"
+                            className="w-20 p-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-[#FFFFFF] dark:bg-indigo-950/50 text-xs font-bold text-ink-900 dark:text-indigo-100 focus:outline-none focus:border-indigo-500 text-center"
                           />
                           <span className="text-[11px] font-bold text-indigo-800 dark:text-indigo-300">Days</span>
                         </div>
@@ -882,7 +882,7 @@ export default function Settings({ onShowReportModal }) {
                           type="number"
                           value={reminderSettings.gracePeriodDays}
                           onChange={(e) => handleReminderSettingChange("gracePeriodDays", parseInt(e.target.value) || 0)}
-                          className="w-full p-2.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-rose-950/50 text-xs font-bold text-ink-900 dark:text-rose-100 focus:outline-none focus:border-rose-500"
+                          className="w-full p-2.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-[#FFFFFF] dark:bg-rose-950/50 text-xs font-bold text-ink-900 dark:text-rose-100 focus:outline-none focus:border-rose-500"
                         />
                       </div>
                       <div>
@@ -890,7 +890,7 @@ export default function Settings({ onShowReportModal }) {
                         <select
                           value={reminderSettings.lateFeeType}
                           onChange={(e) => handleReminderSettingChange("lateFeeType", e.target.value)}
-                          className="w-full p-2.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-rose-950/50 text-xs font-bold text-ink-900 dark:text-rose-100 focus:outline-none focus:border-rose-500"
+                          className="w-full p-2.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-[#FFFFFF] dark:bg-rose-950/50 text-xs font-bold text-ink-900 dark:text-rose-100 focus:outline-none focus:border-rose-500"
                         >
                           <option value="flat">Flat Amount (₦)</option>
                           <option value="percentage">Percentage (%)</option>
@@ -902,7 +902,7 @@ export default function Settings({ onShowReportModal }) {
                           type="number"
                           value={reminderSettings.lateFeeAmount}
                           onChange={(e) => handleReminderSettingChange("lateFeeAmount", parseInt(e.target.value) || 0)}
-                          className="w-full p-2.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-white dark:bg-rose-950/50 text-xs font-bold text-ink-900 dark:text-rose-100 focus:outline-none focus:border-rose-500"
+                          className="w-full p-2.5 rounded-xl border border-rose-200 dark:border-rose-800 bg-[#FFFFFF] dark:bg-rose-950/50 text-xs font-bold text-ink-900 dark:text-rose-100 focus:outline-none focus:border-rose-500"
                         />
                       </div>
                     </div>
@@ -925,7 +925,7 @@ export default function Settings({ onShowReportModal }) {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {leases.map(lease => (
-                    <div key={lease.id} className="bg-white dark:bg-[#07130D] border border-[#E4EAE1] dark:border-white/10 rounded-xl p-5 shadow-sm">
+                    <div key={lease.id} className="bg-[#FFFFFF] dark:bg-[#07130D] border border-[#E4EAE1] dark:border-white/10 rounded-xl p-5 shadow-sm">
                       <div className="flex justify-between items-start mb-2">
                         <h3 className="font-bold text-ink-900 dark:text-white">{lease.property_title}</h3>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${lease.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
@@ -962,7 +962,7 @@ export default function Settings({ onShowReportModal }) {
       {/* Signing Modal */}
       {selectedLeaseToSign && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#07130D] rounded-2xl w-full max-w-md p-6 shadow-2xl my-8">
+          <div className="bg-[#FFFFFF] dark:bg-[#07130D] rounded-2xl w-full max-w-md p-6 shadow-2xl my-8">
             <h3 className="text-xl font-bold text-ink-900 dark:text-white mb-1 flex items-center gap-2">
               <Lock className="h-5 w-5 text-moss-600" /> Sign Lease Agreement
             </h3>
@@ -978,7 +978,7 @@ export default function Settings({ onShowReportModal }) {
                   placeholder="e.g. Engr. Clement Okoro"
                   value={signatureInput}
                   onChange={(e) => setSignatureInput(e.target.value)}
-                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-sm text-ink-900 dark:text-white bg-cream-50 dark:bg-white/5 outline-none focus:border-moss-600 font-serif italic"
+                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-sm text-ink-900 dark:text-white bg-cream-50 dark:bg-[#FFFFFF]/5 outline-none focus:border-moss-600 font-serif italic"
                 />
               </div>
               <label className="flex items-start gap-2 text-xs text-ink-700 dark:text-cream-100 cursor-pointer">

@@ -427,24 +427,24 @@ export default function LandlordApplications({ setActiveTab }) {
 
   // Dynamic Action Bar with Lifecycle Progressive Primary Button
   const renderActionBar = () => (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-white dark:bg-[#07130D] rounded-2xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
+    <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-[#FFFFFF] dark:bg-[#07130D] rounded-2xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
       <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
         <button 
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-white/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
+          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-[#FFFFFF]/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
           onClick={() => initiateChat(activeApp)}
         >
           <MessageSquare className="h-4 w-4" /> Message
         </button>
 
         <button
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-white/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
+          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-[#FFFFFF]/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
           onClick={() => setShowRequestModal(true)}
         >
           <FileText className="h-4 w-4" /> Request Docs
         </button>
 
         <button
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-white/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
+          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-[#FFFFFF]/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
           onClick={() => {
             setInspectionForm({
               date: new Date().toISOString().split("T")[0],
@@ -526,7 +526,7 @@ export default function LandlordApplications({ setActiveTab }) {
             <Key className="h-4 w-4" /> Finalize Move-in
           </button>
         ) : (
-          <span className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-50 dark:bg-[#07130D]merald-900/20 text-emerald-800 dark:text-emerald-300 font-semibold text-sm rounded-xl border border-emerald-200 dark:border-emerald-800/40 flex items-center justify-center gap-2 shadow-sm">
+          <span className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-50 dark:bg-[#07130D]merald-900/20 text-emerald-800 dark:text-cream-100 font-semibold text-sm rounded-xl border border-emerald-200 dark:border-white/10 flex items-center justify-center gap-2 shadow-sm">
             <CheckCircle2 className="h-4 w-4" /> Completed
           </span>
         )}
@@ -539,7 +539,7 @@ export default function LandlordApplications({ setActiveTab }) {
     return (
       <div className="space-y-6 animate-in fade-in duration-200 text-left">
         {/* HEADER BAR */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#07130D] p-6 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#FFFFFF] dark:bg-[#07130D] p-6 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-black text-ink-900 dark:text-white tracking-tight">Rental Applications</h1>
@@ -569,7 +569,7 @@ export default function LandlordApplications({ setActiveTab }) {
               placeholder="Search by applicant name, email, or property..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#07130D] text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 shadow-xs"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-ink-200 dark:border-white/10 bg-[#FFFFFF] dark:bg-[#07130D] text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 shadow-xs"
             />
           </div>
 
@@ -582,7 +582,7 @@ export default function LandlordApplications({ setActiveTab }) {
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${
                   statusFilter === statusKey
                     ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-[#263b33] shadow-xs"
-                    : "bg-white dark:bg-[#07130D] text-ink-600 dark:text-cream-100/70 border border-ink-200/80 dark:border-white/10 hover:bg-neutral-50"
+                    : "bg-[#FFFFFF] dark:bg-[#07130D] text-ink-600 dark:text-cream-100/70 border border-ink-200/80 dark:border-white/10 hover:bg-neutral-50"
                 }`}
               >
                 {statusKey}
@@ -593,12 +593,12 @@ export default function LandlordApplications({ setActiveTab }) {
 
         {/* APPLICANT CARDS GRID */}
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center p-16 text-center space-y-3 bg-white dark:bg-[#07130D] rounded-3xl border border-ink-200/80 dark:border-white/10">
+          <div className="flex flex-col items-center justify-center p-16 text-center space-y-3 bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl border border-ink-200/80 dark:border-white/10">
             <Loader2 className="h-8 w-8 animate-spin text-moss-700 dark:text-[#E5C583]" />
             <span className="text-xs font-extrabold text-ink-900 dark:text-white">Syncing applicant profiles & documents...</span>
           </div>
         ) : filteredApplications.length === 0 ? (
-          <div className="p-12 text-center rounded-3xl border border-dashed border-ink-200 dark:border-white/10 bg-white dark:bg-[#07130D]">
+          <div className="p-12 text-center rounded-3xl border border-dashed border-ink-200 dark:border-white/10 bg-[#FFFFFF] dark:bg-[#07130D]">
             <FileText className="h-10 w-10 text-ink-300 dark:text-cream-100/40 mx-auto mb-2" />
             <h3 className="font-extrabold text-sm text-ink-900 dark:text-white">No Matching Applications Found</h3>
             <p className="text-xs text-ink-500 dark:text-cream-100/60 mt-1">Try adjusting your search terms or filters.</p>
@@ -616,7 +616,7 @@ export default function LandlordApplications({ setActiveTab }) {
                     setActiveApplicantId(app.id);
                     setViewMode("detail");
                   }}
-                  className="bg-white dark:bg-[#07130D] p-5 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-sm hover:shadow-md hover:border-moss-500/50 transition-all cursor-pointer flex flex-col justify-between group"
+                  className="bg-[#FFFFFF] dark:bg-[#07130D] p-5 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-sm hover:shadow-md hover:border-moss-500/50 transition-all cursor-pointer flex flex-col justify-between group"
                 >
                   <div className="space-y-4">
                     {/* TOP ROW: AVATAR, NAME, STATUS */}
@@ -632,7 +632,7 @@ export default function LandlordApplications({ setActiveTab }) {
                       </div>
                       <span className={`text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold tracking-wider ${
                         app.status === 'pending' ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30' :
-                        app.status === 'approved' ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30' :
+                        app.status === 'approved' ? 'bg-emerald-500/15 text-emerald-800 dark:text-cream-100 border border-emerald-500/30' :
                         app.status === 'declined' ? 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30' :
                         'bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-500/30'
                       }`}>
@@ -641,11 +641,11 @@ export default function LandlordApplications({ setActiveTab }) {
                     </div>
 
                     {/* PROPERTY DETAILS */}
-                    <div className="p-3 bg-cream-50/70 dark:bg-white/5 rounded-2xl border border-ink-100 dark:border-white/5 space-y-1">
+                    <div className="p-3 bg-cream-50/70 dark:bg-[#FFFFFF]/5 rounded-2xl border border-ink-100 dark:border-white/5 space-y-1">
                       <span className="text-[10px] text-ink-400 dark:text-cream-100/50 uppercase font-extrabold tracking-wider block">Property Listing</span>
                       <p className="font-bold text-xs text-ink-900 dark:text-white line-clamp-1">{app.propertyTitle}</p>
                       {prof.monthlyIncome > 0 && (
-                        <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 pt-0.5">
+                        <p className="text-[11px] font-semibold text-emerald-600 dark:text-cream-100 pt-0.5">
                           Income: ₦{prof.monthlyIncome.toLocaleString()} / yr
                         </p>
                       )}
@@ -693,11 +693,11 @@ export default function LandlordApplications({ setActiveTab }) {
     <div className="space-y-6 animate-in fade-in duration-200 text-left">
       
       {/* TOP DETAIL BREADCRUMB & BACK NAVIGATION */}
-      <div className="flex items-center justify-between bg-white dark:bg-[#07130D] p-4 sm:p-5 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
+      <div className="flex items-center justify-between bg-[#FFFFFF] dark:bg-[#07130D] p-4 sm:p-5 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setViewMode("list")}
-            className="px-4 py-2 bg-cream-100 dark:bg-white/10 hover:bg-cream-200 dark:hover:bg-white/20 text-ink-900 dark:text-white font-extrabold text-xs sm:text-sm rounded-xl flex items-center gap-2 transition-all cursor-pointer border border-ink-200/60 dark:border-white/10"
+            className="px-4 py-2 bg-cream-100 dark:bg-[#FFFFFF]/10 hover:bg-cream-200 dark:hover:bg-[#FFFFFF]/20 text-ink-900 dark:text-white font-extrabold text-xs sm:text-sm rounded-xl flex items-center gap-2 transition-all cursor-pointer border border-ink-200/60 dark:border-white/10"
           >
             <ArrowLeft className="h-4 w-4" /> Back to Applications
           </button>
@@ -717,7 +717,7 @@ export default function LandlordApplications({ setActiveTab }) {
       </div>
 
       {/* STAGE PROGRESS TRACKER BAR */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs space-y-3">
+      <div className="p-4 sm:p-5 rounded-3xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-extrabold text-ink-400 dark:text-cream-100/60 uppercase tracking-wider">
             Application Onboarding Progress Tracker
@@ -730,7 +730,7 @@ export default function LandlordApplications({ setActiveTab }) {
         <div className="grid grid-cols-4 gap-2 text-center text-xs">
           {/* Step 1 */}
           <div className={`p-2.5 rounded-xl border transition-all ${
-            activeInvoice ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : "bg-moss-50 dark:bg-white/5 border-moss-300 dark:border-white/10 text-moss-800 font-bold"
+            activeInvoice ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 font-bold" : "bg-moss-50 dark:bg-[#FFFFFF]/5 border-moss-300 dark:border-white/10 text-moss-800 font-bold"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">1. Invoice</span>
             <span className="truncate block mt-0.5">{activeInvoice ? (isInvoicePaid ? "Paid ✓" : "Issued ⏳") : "Review"}</span>
@@ -738,7 +738,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
           {/* Step 2 */}
           <div className={`p-2.5 rounded-xl border transition-all ${
-            isInvoicePaid ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : isPaymentProofUploaded ? "bg-amber-50 dark:bg-[#07130D]mber-950/30 border-amber-300 text-amber-900 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
+            isInvoicePaid ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 font-bold" : isPaymentProofUploaded ? "bg-amber-50 dark:bg-[#07130D]mber-950/30 border-amber-300 text-amber-900 font-bold" : "bg-neutral-50 dark:bg-[#FFFFFF]/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">2. Payment</span>
             <span className="truncate block mt-0.5">{isInvoicePaid ? "Verified ✓" : isPaymentProofUploaded ? "Receipt Uploaded!" : "Pending"}</span>
@@ -746,7 +746,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
           {/* Step 3 */}
           <div className={`p-2.5 rounded-xl border transition-all ${
-            isLeaseSigned ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : activeLease ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 text-indigo-900 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
+            isLeaseSigned ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 font-bold" : activeLease ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 text-indigo-900 font-bold" : "bg-neutral-50 dark:bg-[#FFFFFF]/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">3. Lease</span>
             <span className="truncate block mt-0.5">{isLeaseSigned ? "Signed ✓" : activeLease ? "Awaiting Signature" : "Pending"}</span>
@@ -754,7 +754,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
           {/* Step 4 */}
           <div className={`p-2.5 rounded-xl border transition-all ${
-            isMoveInSet ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
+            isMoveInSet ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 font-bold" : "bg-neutral-50 dark:bg-[#FFFFFF]/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">4. Move-in</span>
             <span className="truncate block mt-0.5">{isMoveInSet ? "Rules Issued ✓" : "Pending"}</span>
@@ -763,7 +763,7 @@ export default function LandlordApplications({ setActiveTab }) {
       </div>
 
       {/* HEADER: APPLICANT & PROPERTY BANNER */}
-      <div className="bg-white dark:bg-[#07130D] p-6 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+      <div className="bg-[#FFFFFF] dark:bg-[#07130D] p-6 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
         <div className="flex items-center gap-4">
           <div className="relative">
             <Avatar src={tProf.avatar} name={tProf.fullName} className="h-16 w-16 sm:h-20 sm:w-20 rounded-full text-2xl font-bold border-2 border-moss-700/20 dark:border-[#E5C583]/30 object-cover shadow-sm" />
@@ -780,7 +780,7 @@ export default function LandlordApplications({ setActiveTab }) {
               </h2>
               <span className={`text-[10.5px] px-3 py-0.5 rounded-full uppercase font-extrabold tracking-wider ${
                 activeApp.status === 'pending' ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30' :
-                activeApp.status === 'approved' ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30' :
+                activeApp.status === 'approved' ? 'bg-emerald-500/15 text-emerald-800 dark:text-cream-100 border border-emerald-500/30' :
                 activeApp.status === 'declined' ? 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30' :
                 'bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-500/30'
               }`}>
@@ -833,7 +833,7 @@ export default function LandlordApplications({ setActiveTab }) {
           </button>
         </div>
       ) : isInvoicePaid && !activeLease ? (
-        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 flex items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
             <div>
@@ -849,7 +849,7 @@ export default function LandlordApplications({ setActiveTab }) {
           </button>
         </div>
       ) : isLeaseSigned && !isMoveInSet ? (
-        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 flex items-center justify-between gap-3 text-xs shadow-xs">
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 flex items-center justify-between gap-3 text-xs shadow-xs">
           <div className="flex items-center gap-3">
             <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
             <div>
@@ -901,7 +901,7 @@ export default function LandlordApplications({ setActiveTab }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         {/* LEFT COLUMN: PERSONAL DETAILS CARD */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 rounded-3xl p-6 flex flex-col shadow-xs">
+        <div className="lg:col-span-4 bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 rounded-3xl p-6 flex flex-col shadow-xs">
           <div className="flex flex-col items-center text-center pb-5 border-b border-ink-100 dark:border-white/10">
             <Avatar src={tProf.avatar} name={tProf.fullName} className="w-20 h-20 rounded-full border-4 border-cream-50 dark:border-[#07130D] shadow-md object-cover mb-3" />
             <h3 className="text-base font-extrabold text-ink-900 dark:text-white">{tProf.fullName}</h3>
@@ -940,13 +940,13 @@ export default function LandlordApplications({ setActiveTab }) {
 
             <div>
               <span className="text-xs text-ink-400 dark:text-cream-100/60 font-semibold block mb-0.5">Annual Income Range :</span>
-              <span className="text-xs sm:text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{tProf.incomeRange}</span>
+              <span className="text-xs sm:text-sm font-extrabold text-emerald-600 dark:text-cream-100">{tProf.incomeRange}</span>
             </div>
           </div>
         </div>
 
         {/* RIGHT COLUMN: TABBED INFORMATION CONTAINER */}
-        <div className="lg:col-span-8 bg-white dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
+        <div className="lg:col-span-8 bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 rounded-3xl p-6 flex flex-col justify-between shadow-xs">
           <div>
             {/* TAB NAVIGATION HEADER */}
             <div className="flex items-center gap-5 border-b border-ink-100 dark:border-white/10 pb-3 mb-6 overflow-x-auto">
@@ -987,7 +987,7 @@ export default function LandlordApplications({ setActiveTab }) {
                 }`}
               >
                 Rental History
-                <span className="px-1.5 py-0.2 bg-ink-100 dark:bg-white/10 text-ink-700 dark:text-cream-100 text-[10px] font-extrabold rounded-full">
+                <span className="px-1.5 py-0.2 bg-ink-100 dark:bg-[#FFFFFF]/10 text-ink-700 dark:text-cream-100 text-[10px] font-extrabold rounded-full">
                   {String(tProf.rentalHistory.length).padStart(2, '0')}
                 </span>
                 {activeDetailTab === "history" && (
@@ -1004,7 +1004,7 @@ export default function LandlordApplications({ setActiveTab }) {
                 }`}
               >
                 Documents
-                <span className="px-1.5 py-0.2 bg-ink-100 dark:bg-white/10 text-ink-700 dark:text-cream-100 text-[10px] font-extrabold rounded-full">
+                <span className="px-1.5 py-0.2 bg-ink-100 dark:bg-[#FFFFFF]/10 text-ink-700 dark:text-cream-100 text-[10px] font-extrabold rounded-full">
                   {String(tProf.documents.length).padStart(2, '0')}
                 </span>
                 {activeDetailTab === "documents" && (
@@ -1029,7 +1029,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
             {/* TAB 1: APPLICATION DETAILS */}
             {activeDetailTab === "application" && (
-              <div className="p-5 sm:p-6 rounded-2xl bg-cream-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 animate-in fade-in duration-200">
+              <div className="p-5 sm:p-6 rounded-2xl bg-cream-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 animate-in fade-in duration-200">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-8 text-xs sm:text-sm">
                   <div>
                     <span className="text-ink-400 dark:text-cream-100/60 font-semibold block mb-1">Application Date :</span>
@@ -1068,7 +1068,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
                   <div>
                     <span className="text-ink-400 dark:text-cream-100/60 font-semibold block mb-1">Annual Income Range :</span>
-                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">{tProf.incomeRange}</span>
+                    <span className="font-extrabold text-emerald-600 dark:text-cream-100 text-sm">{tProf.incomeRange}</span>
                   </div>
                 </div>
               </div>
@@ -1079,14 +1079,14 @@ export default function LandlordApplications({ setActiveTab }) {
               <div className="space-y-5 animate-in fade-in duration-200">
                 
                 {/* Financial Evaluation Box */}
-                <div className="bg-cream-50/60 dark:bg-white/5 p-5 rounded-2xl border border-ink-100 dark:border-white/10 space-y-4">
+                <div className="bg-cream-50/60 dark:bg-[#FFFFFF]/5 p-5 rounded-2xl border border-ink-100 dark:border-white/10 space-y-4">
                   <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-2.5">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-[#A3BCA7] flex items-center gap-1.5">
                       <Wallet className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" /> Financials & Income
                     </h3>
                     {meetsIncome ? (
-                      <span className="text-[10.5px] font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> Meets Requirement
+                      <span className="text-[10.5px] font-bold bg-emerald-500/15 text-emerald-800 dark:text-cream-100 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-cream-100" /> Meets Requirement
                       </span>
                     ) : (
                       <span className="text-[10.5px] font-bold bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
@@ -1126,14 +1126,14 @@ export default function LandlordApplications({ setActiveTab }) {
                 </div>
 
                 {/* Guarantor Requirement Box */}
-                <div className="bg-cream-50/60 dark:bg-white/5 p-5 rounded-2xl border border-ink-100 dark:border-white/10 space-y-4">
+                <div className="bg-cream-50/60 dark:bg-[#FFFFFF]/5 p-5 rounded-2xl border border-ink-100 dark:border-white/10 space-y-4">
                   <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-2.5">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-ink-700 dark:text-[#A3BCA7] flex items-center gap-1.5">
                       <ShieldCheck className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" /> Guarantor Information
                     </h3>
                     {hasGuarantor ? (
-                      <span className="text-[10.5px] font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" /> Meets Requirement
+                      <span className="text-[10.5px] font-bold bg-emerald-500/15 text-emerald-800 dark:text-cream-100 border border-emerald-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-cream-100" /> Meets Requirement
                       </span>
                     ) : (
                       <span className="text-[10.5px] font-bold bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30 px-2.5 py-0.5 rounded-full flex items-center gap-1">
@@ -1179,18 +1179,18 @@ export default function LandlordApplications({ setActiveTab }) {
 
             {/* TAB 3: RENTAL HISTORY */}
             {activeDetailTab === "history" && (
-              <div className="p-5 sm:p-6 rounded-2xl bg-cream-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in duration-200">
+              <div className="p-5 sm:p-6 rounded-2xl bg-cream-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in duration-200">
                 {tProf.rentalHistory.length === 0 ? (
                   <div className="text-center py-8 text-ink-400 dark:text-cream-100/60">
                     <p className="text-xs font-semibold">No prior rental history recorded for this tenant.</p>
                   </div>
                 ) : (
                   tProf.rentalHistory.map((item, idx) => (
-                    <div key={idx} className="p-4 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-4 shadow-xs">
+                    <div key={idx} className="p-4 rounded-xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-4 shadow-xs">
                       <div>
                         <h4 className="font-bold text-sm text-ink-900 dark:text-white">{item.title}</h4>
                         <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">Lease Term: {item.period}</p>
-                        <span className="inline-block mt-2 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-[#07130D]merald-950/60 border border-emerald-200 dark:border-emerald-800/40 px-2.5 py-0.5 rounded-full capitalize">
+                        <span className="inline-block mt-2 text-[11px] font-bold text-emerald-700 dark:text-cream-100 bg-emerald-50 dark:bg-[#07130D]merald-950/60 border border-emerald-200 dark:border-white/10 px-2.5 py-0.5 rounded-full capitalize">
                           {item.status}
                         </span>
                       </div>
@@ -1203,19 +1203,19 @@ export default function LandlordApplications({ setActiveTab }) {
 
             {/* TAB 4: DOCUMENTS */}
             {activeDetailTab === "documents" && (
-              <div className="p-5 sm:p-6 rounded-2xl bg-cream-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-3 animate-in fade-in duration-200">
+              <div className="p-5 sm:p-6 rounded-2xl bg-cream-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 space-y-3 animate-in fade-in duration-200">
                 {tProf.documents.length === 0 ? (
                   <div className="text-center py-8 text-ink-400 dark:text-cream-100/60">
                     <p className="text-xs font-semibold">No verification documents attached to this application.</p>
                   </div>
                 ) : (
                   tProf.documents.map((doc, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-3 shadow-xs">
+                    <div key={idx} className="p-3.5 rounded-xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-3 shadow-xs">
                       <div className="flex items-center gap-3">
-                        <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                        <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-cream-100" />
                         <div>
                           <h4 className="font-bold text-xs sm:text-sm text-ink-900 dark:text-white">{doc.name}</h4>
-                          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">{doc.status}</p>
+                          <p className="text-[11px] text-emerald-600 dark:text-cream-100 font-semibold">{doc.status}</p>
                         </div>
                       </div>
                       <span className="text-xs font-bold text-ink-400 uppercase">{doc.type || "Doc"}</span>
@@ -1227,12 +1227,12 @@ export default function LandlordApplications({ setActiveTab }) {
 
             {/* TAB 5: NOTES & COMMENTS */}
             {activeDetailTab === "notes" && (
-              <div className="p-5 sm:p-6 rounded-2xl bg-cream-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in duration-200">
-                <div className="p-4 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 shadow-xs">
+              <div className="p-5 sm:p-6 rounded-2xl bg-cream-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in duration-200">
+                <div className="p-4 rounded-xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-100 dark:border-white/10 shadow-xs">
                   <h4 className="font-bold text-xs uppercase tracking-wider text-ink-400 dark:text-cream-100/60 mb-2 flex items-center gap-1.5">
                     <FileText className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" /> Note from Applicant
                   </h4>
-                  <p className="text-xs sm:text-sm text-ink-800 dark:text-cream-100 leading-relaxed italic bg-[#FAF8F5] dark:bg-white/5 p-3.5 rounded-xl border border-ink-100 dark:border-white/5">
+                  <p className="text-xs sm:text-sm text-ink-800 dark:text-cream-100 leading-relaxed italic bg-[#FAF8F5] dark:bg-[#FFFFFF]/5 p-3.5 rounded-xl border border-ink-100 dark:border-white/5">
                     "{tProf.notes || "No custom note provided by applicant."}"
                   </p>
                 </div>
@@ -1276,11 +1276,11 @@ export default function LandlordApplications({ setActiveTab }) {
       {/* RELIABILITY BREAKDOWN SUB-MODAL */}
       {showReliabilityDetails && (
         <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowReliabilityDetails(false)}>
-          <div className="w-full max-w-md bg-white dark:bg-[#07130D] rounded-3xl p-6 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[85vh] overflow-y-auto relative animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl p-6 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[85vh] overflow-y-auto relative animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-white/10 mb-4">
               <h3 className="font-extrabold text-base text-ink-900 dark:text-white">Reliability Breakdown</h3>
               <button 
-                className="p-1 rounded-lg text-ink-400 hover:bg-ink-100 dark:hover:bg-white/10 cursor-pointer" 
+                className="p-1 rounded-lg text-ink-400 hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/10 cursor-pointer" 
                 onClick={() => setShowReliabilityDetails(false)}
               >
                 <X className="h-5 w-5" />
@@ -1299,16 +1299,16 @@ export default function LandlordApplications({ setActiveTab }) {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="p-3 rounded-xl bg-cream-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
+              <div className="p-3 rounded-xl bg-cream-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10">
                 <span className="font-bold text-ink-900 dark:text-white block mb-1">Platform Rating</span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">
+                <span className="text-emerald-600 dark:text-cream-100 font-extrabold">
                   {tProf.reliabilityScore > 0 ? `${tProf.reliabilityScore.toFixed(1)} Rating Score` : "New Platform Account"}
                 </span>
               </div>
             </div>
 
             <button 
-              className="w-full mt-5 py-2.5 bg-ink-900 text-white dark:bg-white dark:text-ink-950 font-bold text-xs rounded-xl cursor-pointer" 
+              className="w-full mt-5 py-2.5 bg-ink-900 text-white dark:bg-[#FFFFFF] dark:text-ink-950 font-bold text-xs rounded-xl cursor-pointer" 
               onClick={() => setShowReliabilityDetails(false)}
             >
               Close Breakdown
@@ -1320,7 +1320,7 @@ export default function LandlordApplications({ setActiveTab }) {
       {/* SCHEDULE INSPECTION MODAL */}
       {showScheduleInspectionModal && (
         <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#07130D] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-ink-100 dark:border-white/10 space-y-4 text-left">
+          <div className="bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl max-w-md w-full p-6 shadow-2xl border border-ink-100 dark:border-white/10 space-y-4 text-left">
             <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-3">
               <h3 className="font-bold text-base text-ink-900 dark:text-white flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" /> Schedule Property Inspection
@@ -1341,7 +1341,7 @@ export default function LandlordApplications({ setActiveTab }) {
                     required
                     value={inspectionForm.date}
                     onChange={(e) => setInspectionForm(prev => ({ ...prev, date: e.target.value }))}
-                    className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-white/5 outline-none focus:border-moss-600"
+                    className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#FFFFFF]/5 outline-none focus:border-moss-600"
                   />
                 </div>
                 <div>
@@ -1349,7 +1349,7 @@ export default function LandlordApplications({ setActiveTab }) {
                   <select
                     value={inspectionForm.time}
                     onChange={(e) => setInspectionForm(prev => ({ ...prev, time: e.target.value }))}
-                    className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-white/5 outline-none focus:border-moss-600"
+                    className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#FFFFFF]/5 outline-none focus:border-moss-600"
                   >
                     <option value="09:00 AM">09:00 AM</option>
                     <option value="10:00 AM">10:00 AM</option>
@@ -1369,7 +1369,7 @@ export default function LandlordApplications({ setActiveTab }) {
                   placeholder="e.g. Property Front Entrance, Flat 4..."
                   value={inspectionForm.location}
                   onChange={(e) => setInspectionForm(prev => ({ ...prev, location: e.target.value }))}
-                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-white/5 outline-none focus:border-moss-600"
+                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#FFFFFF]/5 outline-none focus:border-moss-600"
                 />
               </div>
 
@@ -1380,7 +1380,7 @@ export default function LandlordApplications({ setActiveTab }) {
                   placeholder="e.g. Please bring original government ID or NIN card..."
                   value={inspectionForm.notes}
                   onChange={(e) => setInspectionForm(prev => ({ ...prev, notes: e.target.value }))}
-                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-white/5 outline-none focus:border-moss-600 resize-none"
+                  className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#FFFFFF]/5 outline-none focus:border-moss-600 resize-none"
                 />
               </div>
 
@@ -1408,7 +1408,7 @@ export default function LandlordApplications({ setActiveTab }) {
       {/* REQUEST DOCUMENTS MODAL */}
       {showRequestModal && (
         <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-md w-full p-6 shadow-xl border border-ink-200 dark:border-white/10 space-y-4">
+          <div className="bg-[#FFFFFF] dark:bg-[#07130D] rounded-2xl max-w-md w-full p-6 shadow-xl border border-ink-200 dark:border-white/10 space-y-4">
             <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-3">
               <h3 className="font-bold text-base text-ink-900 dark:text-white flex items-center gap-2">
                 <FileText className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" /> Request Information from Tenant
@@ -1423,7 +1423,7 @@ export default function LandlordApplications({ setActiveTab }) {
             <div className="grid grid-cols-1 gap-2.5">
               <button
                 onClick={() => handleSendRequest("Proof of Employment / Recent 3 Months Payslips")}
-                className="p-3 text-left text-xs font-semibold bg-cream-50 dark:bg-white/5 hover:bg-moss-50 dark:hover:bg-moss-900/30 rounded-xl border border-ink-100 dark:border-white/10 text-ink-800 dark:text-cream-100 flex items-center justify-between cursor-pointer"
+                className="p-3 text-left text-xs font-semibold bg-cream-50 dark:bg-[#FFFFFF]/5 hover:bg-moss-50 dark:hover:bg-moss-900/30 rounded-xl border border-ink-100 dark:border-white/10 text-ink-800 dark:text-cream-100 flex items-center justify-between cursor-pointer"
               >
                 <span>📄 Request Proof of Employment / Payslips</span>
                 <span className="text-moss-700 dark:text-[#E5C583] font-bold">Send →</span>
@@ -1431,7 +1431,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
               <button
                 onClick={() => handleSendRequest("Bank Statement / Financial Proof")}
-                className="p-3 text-left text-xs font-semibold bg-cream-50 dark:bg-white/5 hover:bg-moss-50 dark:hover:bg-moss-900/30 rounded-xl border border-ink-100 dark:border-white/10 text-ink-800 dark:text-cream-100 flex items-center justify-between cursor-pointer"
+                className="p-3 text-left text-xs font-semibold bg-cream-50 dark:bg-[#FFFFFF]/5 hover:bg-moss-50 dark:hover:bg-moss-900/30 rounded-xl border border-ink-100 dark:border-white/10 text-ink-800 dark:text-cream-100 flex items-center justify-between cursor-pointer"
               >
                 <span>💼 Request Bank Statement (6 Months)</span>
                 <span className="text-moss-700 dark:text-[#E5C583] font-bold">Send →</span>
@@ -1445,7 +1445,7 @@ export default function LandlordApplications({ setActiveTab }) {
                 placeholder="Type specific details or additional documents you require..."
                 value={customRequestText}
                 onChange={(e) => setCustomRequestText(e.target.value)}
-                className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-white/5 outline-none focus:border-moss-600"
+                className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#FFFFFF]/5 outline-none focus:border-moss-600"
               />
               <div className="flex justify-end gap-2 pt-1">
                 <button
@@ -1470,7 +1470,7 @@ export default function LandlordApplications({ setActiveTab }) {
       {/* DECLINE MODAL */}
       {showDeclineModal && (
         <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-md w-full p-6 shadow-xl border border-ink-100 dark:border-white/10 space-y-4">
+          <div className="bg-[#FFFFFF] dark:bg-[#07130D] rounded-2xl max-w-md w-full p-6 shadow-xl border border-ink-100 dark:border-white/10 space-y-4">
             <h3 className="font-bold text-lg text-ink-900 dark:text-white">Decline Application</h3>
             <p className="text-xs text-ink-600 dark:text-cream-100/70">
               Are you sure you want to decline <strong>{tProf.fullName}</strong>'s application for <strong>{activeApp.propertyTitle}</strong>?
@@ -1482,7 +1482,7 @@ export default function LandlordApplications({ setActiveTab }) {
                 value={declineReason} 
                 onChange={(e) => setDeclineReason(e.target.value)} 
                 placeholder="e.g. Income below requirement, property already leased..."
-                className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-white/5 outline-none focus:border-moss-600"
+                className="w-full rounded-xl border border-ink-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-cream-50 dark:bg-[#FFFFFF]/5 outline-none focus:border-moss-600"
               />
             </div>
             <div className="flex justify-end gap-3 pt-2">

@@ -20,14 +20,14 @@
 }
 
 body.dark {
-  --db-bg: #09090b;
-  --card-bg: #07130D;
-  --active-pill-bg: #E5C583;
+  --db-bg: #07130D;
+  --card-bg: #192A1F;
+  --active-pill-bg: #14221B;
   --active-btn-bg: #E5C583;
-  --border-light: rgba(255, 255, 255, 0.08);
+  --border-light: #2C4633;
   --text-primary: #FFFFFF;
   --text-secondary: #A3BCA7;
-  --text-muted: #6A7E6E;
+  --text-muted: #A3BCA7;
   --accent-green-light: rgba(229, 197, 131, 0.15);
   --scrollbar-thumb: rgba(229, 197, 131, 0.2);
   /* Soft gold/cream thumb */
@@ -689,8 +689,7 @@ body.dark .db-sidebar-tooltip {
 
 /* Dark Advantages Overlay Panel */
 .pro-advantages-panel {
-  background-color: #2C4633;
-  /* Lodale dark green */
+  background-color: #2C4633; /* Light mode color */
   border-radius: 32px;
   padding: 28px;
   color: #FFFFFF;
@@ -703,6 +702,11 @@ body.dark .db-sidebar-tooltip {
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
+}
+
+body.dark .pro-advantages-panel {
+  background-color: var(--card-bg); /* #192A1F in dark mode */
+  border: 1.5px solid var(--border-light); /* #2C4633 in dark mode */
 }
 
 .pro-advantages-header {

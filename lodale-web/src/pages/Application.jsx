@@ -29,7 +29,6 @@ export default function Application() {
   const [hasApplied, setHasApplied] = useState(false);
   const [appStatus, setAppStatus] = useState("");
   const [isFirstTimeRenting, setIsFirstTimeRenting] = useState(false);
-  const [tenantProfile, setTenantProfile] = useState(null);
 
   // Application Form State
   const [formData, setFormData] = useState({
@@ -70,7 +69,6 @@ export default function Application() {
     if (rawProf) {
       try {
         const prof = JSON.parse(rawProf);
-        setTenantProfile(prof);
         setFormData(prev => ({
           ...prev,
           maritalStatus: prof.maritalStatus || prof.marital_status || prev.maritalStatus,
@@ -120,7 +118,7 @@ export default function Application() {
   }, [listingId, initialUnit]);
 
   // Requirements & qualification checks
-  const { meetsIncome, requirements, tenantStats } = useTenantQualification(listing);
+  const { meetsIncome, requirements, tenantStats, tenantProfile } = useTenantQualification(listing);
   const requiredIncome = requirements?.income || 'No Minimum Income';
   const requiresGuarantor = listing?.requires_guarantor ?? listing?.requiresGuarantor ?? true;
 

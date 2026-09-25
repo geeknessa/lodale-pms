@@ -1482,8 +1482,6 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
     handleDeletePhoto,
     handleDocFileUpload,
     handleDeleteDoc,
-    formError,
-    setFormError,
     errors: { general: formError },
     isSubmitting,
     showConfirmModal,

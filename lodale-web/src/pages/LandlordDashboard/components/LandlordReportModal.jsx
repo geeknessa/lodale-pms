@@ -46,7 +46,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
     if (isLive) {
       return {
         label: "Live Vacant",
-        badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950 dark:text-emerald-300",
+        badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950 dark:text-cream-100",
         isVerified: true
       };
     }
@@ -143,7 +143,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 text-left text-ink-900 dark:text-white font-sans animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 text-left text-ink-900 dark:text-white font-sans animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Bar */}
         <div className="flex items-center justify-between p-5 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#07130D]">
@@ -162,7 +162,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950/40 dark:text-emerald-300 font-bold text-xs rounded-xl border border-emerald-200 dark:border-emerald-900/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950/40 dark:text-cream-100 font-bold text-xs rounded-xl border border-emerald-200 dark:border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
               title="Download CSV Spreadsheet"
             >
               <Download className="h-3.5 w-3.5" /> Export CSV
@@ -178,7 +178,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl bg-ink-100 hover:bg-ink-200 dark:bg-white/10 dark:hover:bg-white/20 text-ink-600 dark:text-cream-100 transition-colors cursor-pointer ml-1"
+              className="p-1.5 rounded-xl bg-ink-100 hover:bg-ink-200 dark:bg-[#FFFFFF]/10 dark:hover:bg-[#FFFFFF]/20 text-ink-600 dark:text-cream-100 transition-colors cursor-pointer ml-1"
             >
               <X className="h-5 w-5" />
             </button>
@@ -203,27 +203,27 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
 
           {/* Key Portfolio Indicators (KPIs) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#FFFFFF]/5 border border-slate-200 dark:border-white/10">
               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Properties</span>
               <span className="text-xl font-black text-ink-900 dark:text-white">{totalProperties}</span>
               <span className="text-[10px] text-slate-400 block mt-0.5">{totalUnits} total units</span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#FFFFFF]/5 border border-slate-200 dark:border-white/10">
               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Occupancy Rate</span>
-              <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">{occupancyRate}%</span>
+              <span className="text-xl font-black text-emerald-600 dark:text-cream-100">{occupancyRate}%</span>
               <span className="text-[10px] text-slate-400 block mt-0.5">{occupiedCount} occupied</span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#FFFFFF]/5 border border-slate-200 dark:border-white/10">
               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Gross Annual Value</span>
               <span className="text-base sm:text-lg font-black text-moss-800 dark:text-[#E5C583]">₦{totalAnnualRent.toLocaleString()}</span>
               <span className="text-[10px] text-slate-400 block mt-0.5">Est. gross rent/yr</span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#FFFFFF]/5 border border-slate-200 dark:border-white/10">
               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Ledger Health</span>
-              <span className={`text-xl font-black flex items-center gap-1 ${verifiedPercentage === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              <span className={`text-xl font-black flex items-center gap-1 ${verifiedPercentage === 100 ? 'text-emerald-600 dark:text-cream-100' : 'text-amber-600 dark:text-amber-400'}`}>
                 <CheckCircle2 className="h-4 w-4 inline" /> {verifiedPercentage}%
               </span>
               <span className="text-[10px] text-slate-400 block mt-0.5">{verifiedCount} of {totalProperties} verified</span>
@@ -244,7 +244,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
             ) : (
               <div className="overflow-x-auto border border-slate-200 dark:border-white/10 rounded-xl">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[10.5px]">
+                  <thead className="bg-slate-100 dark:bg-[#FFFFFF]/10 text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider text-[10.5px]">
                     <tr>
                       <th className="p-3">Property Title</th>
                       <th className="p-3">Location</th>
@@ -257,7 +257,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
                       const details = getPropertyStatusDetails(p);
 
                       return (
-                        <tr key={p.id || idx} className="hover:bg-slate-50 dark:hover:bg-white/5">
+                        <tr key={p.id || idx} className="hover:bg-slate-50 dark:hover:bg-[#FFFFFF]/5">
                           <td className="p-3 font-bold">{p.title}</td>
                           <td className="p-3 text-slate-500 dark:text-slate-400">{p.location}</td>
                           <td className="p-3 font-bold text-moss-700 dark:text-[#E5C583]">{p.price}</td>
@@ -276,7 +276,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
           </div>
 
           {/* Certification Footer Notice */}
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 flex items-start gap-2.5">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#FFFFFF]/5 border border-slate-200 dark:border-white/10 text-xs text-slate-500 dark:text-slate-400 flex items-start gap-2.5">
             <ShieldCheck className="h-5 w-5 text-moss-700 dark:text-[#E5C583] shrink-0 mt-0.5" />
             <div>
               <span className="font-bold text-ink-900 dark:text-white block mb-0.5">Official Lodale System Statement Certification</span>

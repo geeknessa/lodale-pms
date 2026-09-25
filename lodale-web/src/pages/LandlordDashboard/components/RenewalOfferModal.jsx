@@ -96,22 +96,22 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-      <div className="bg-white dark:bg-[#07130D] rounded-3xl border border-ink-200 dark:border-white/10 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl relative custom-scrollbar">
+      <div className="bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl border border-ink-200 dark:border-white/10 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl relative custom-scrollbar">
         
-        <div className="sticky top-0 bg-white/90 dark:bg-[#07130D]/90 backdrop-blur-md p-6 border-b border-ink-100 dark:border-white/10 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-[#FFFFFF]/90 dark:bg-[#07130D]/90 backdrop-blur-md p-6 border-b border-ink-100 dark:border-white/10 flex items-center justify-between z-10">
           <h2 className="text-xl font-black text-ink-900 dark:text-white flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-moss-600 dark:text-[#E5C583]" /> Offer Lease Renewal
           </h2>
           <button 
             onClick={onClose}
-            className="p-2 bg-ink-50 hover:bg-ink-100 dark:bg-white/5 dark:hover:bg-white/10 rounded-full transition-colors"
+            className="p-2 bg-ink-50 hover:bg-ink-100 dark:bg-[#FFFFFF]/5 dark:hover:bg-[#FFFFFF]/10 rounded-full transition-colors"
           >
             <X className="w-5 h-5 text-ink-600 dark:text-cream-100" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="p-4 bg-moss-50 dark:bg-white/5 rounded-2xl border border-moss-100 dark:border-white/10 flex items-start gap-3">
+          <div className="p-4 bg-moss-50 dark:bg-[#FFFFFF]/5 rounded-2xl border border-moss-100 dark:border-white/10 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-moss-600 dark:text-[#E5C583] shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-bold text-moss-800 dark:text-white mb-1">
@@ -133,7 +133,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
                   required
                   value={newStartDate}
                   onChange={e => setNewStartDate(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl bg-ink-50 dark:bg-white/5 border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white focus:ring-2 focus:ring-moss-600 outline-none"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white focus:ring-2 focus:ring-moss-600 outline-none"
                 />
               </div>
             </div>
@@ -146,7 +146,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
                   required
                   value={newEndDate}
                   onChange={e => setNewEndDate(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl bg-ink-50 dark:bg-white/5 border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white focus:ring-2 focus:ring-moss-600 outline-none"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white focus:ring-2 focus:ring-moss-600 outline-none"
                 />
               </div>
             </div>
@@ -162,7 +162,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
                   required
                   value={newRentAmount}
                   onChange={e => setNewRentAmount(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 text-sm font-bold rounded-xl bg-ink-50 dark:bg-white/5 border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white focus:ring-2 focus:ring-moss-600 outline-none"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm font-bold rounded-xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white focus:ring-2 focus:ring-moss-600 outline-none"
                 />
               </div>
             </div>
@@ -171,7 +171,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
               <select 
                 value={rentPeriod}
                 onChange={e => setRentPeriod(e.target.value)}
-                className="w-32 px-3 py-2.5 text-sm font-bold rounded-xl bg-ink-50 dark:bg-white/5 border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white focus:ring-2 focus:ring-moss-600 outline-none"
+                className="w-32 px-3 py-2.5 text-sm font-bold rounded-xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white focus:ring-2 focus:ring-moss-600 outline-none"
               >
                 <option value="Yearly">Yearly</option>
                 <option value="Monthly">Monthly</option>
@@ -180,7 +180,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
           </div>
 
           {settings?.loyaltyRewardsEnabled && (
-            <div className="p-4 border border-ink-100 dark:border-white/10 rounded-2xl bg-ink-50/50 dark:bg-white/5">
+            <div className="p-4 border border-ink-100 dark:border-white/10 rounded-2xl bg-ink-50/50 dark:bg-[#FFFFFF]/5">
               <label className="flex items-center gap-3 cursor-pointer mb-3">
                 <input 
                   type="checkbox"
@@ -201,7 +201,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
                     value={loyaltyDiscountAmount}
                     onChange={e => setLoyaltyDiscountAmount(e.target.value)}
                     placeholder="e.g. 20000"
-                    className="w-full px-3 py-2 text-sm rounded-xl bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white"
+                    className="w-full px-3 py-2 text-sm rounded-xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white"
                   />
                 </div>
               )}
@@ -209,7 +209,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
           )}
 
           {settings?.lateFeeAmount > 0 && (
-             <div className="text-[11px] text-ink-500 dark:text-cream-100/60 flex items-start gap-1.5 p-3 rounded-xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/5">
+             <div className="text-[11px] text-ink-500 dark:text-cream-100/60 flex items-start gap-1.5 p-3 rounded-xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/5">
                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                <p>Your configured late fee clause ({settings.lateFeeType === 'percentage' ? `${settings.lateFeeAmount}%` : `₦${settings.lateFeeAmount}`} after {settings.gracePeriodDays} days) will be explicitly injected into this lease agreement.</p>
              </div>

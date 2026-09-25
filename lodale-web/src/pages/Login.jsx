@@ -211,8 +211,12 @@ export default function Login() {
 
         // Signal dashboard to show profile completeness guidance banner and open Settings tab
         sessionStorage.setItem("justSignedInToCompleteProfile", "true");
+        if (res.isInvited) {
+          sessionStorage.setItem("promptPasswordChange", "true");
+        }
+
         if (userRole === "tenant") {
-          navigate(`/dashboard/${userRole}`);
+          navigate(`/dashboard/${userRole}`, { state: { initialTab: res.isInvited ? 3 : undefined } });
         } else if (userRole === "landlord") {
           navigate(`/dashboard/${userRole}`);
         } else {

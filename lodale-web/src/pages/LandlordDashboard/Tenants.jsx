@@ -17,41 +17,41 @@ import "./Tenants.css";
 const TenantsSkeleton = () => (
   <div className="tenants-grid">
     {[1, 2, 3, 4, 5, 6].map((n) => (
-      <div key={n} className="tenant-card animate-pulse border border-slate-200/80 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 p-5 rounded-2xl">
+      <div key={n} className="tenant-card animate-pulse border border-slate-200/80 dark:border-white/10 bg-slate-50/50 dark:bg-[#FFFFFF]/5 p-5 rounded-2xl">
         <div className="flex items-center justify-between pb-4 border-b border-slate-200/60 dark:border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-slate-200 dark:bg-white/10 shrink-0" />
+            <div className="w-11 h-11 rounded-full bg-slate-200 dark:bg-[#FFFFFF]/10 shrink-0" />
             <div className="space-y-2">
-              <div className="h-4 w-32 bg-slate-200 dark:bg-white/10 rounded-md" />
-              <div className="h-3 w-20 bg-slate-200 dark:bg-white/10 rounded-md" />
+              <div className="h-4 w-32 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-md" />
+              <div className="h-3 w-20 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-md" />
             </div>
           </div>
-          <div className="h-4 w-12 bg-slate-200 dark:bg-white/10 rounded-md" />
+          <div className="h-4 w-12 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-md" />
         </div>
 
         <div className="py-4 space-y-3">
           <div className="flex justify-between items-center">
-            <div className="h-3.5 w-16 bg-slate-200 dark:bg-white/10 rounded" />
-            <div className="h-3.5 w-32 bg-slate-200 dark:bg-white/10 rounded" />
+            <div className="h-3.5 w-16 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
+            <div className="h-3.5 w-32 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
           </div>
           <div className="flex justify-between items-center">
-            <div className="h-3.5 w-14 bg-slate-200 dark:bg-white/10 rounded" />
-            <div className="h-3.5 w-36 bg-slate-200 dark:bg-white/10 rounded" />
+            <div className="h-3.5 w-14 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
+            <div className="h-3.5 w-36 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
           </div>
           <div className="flex justify-between items-center">
-            <div className="h-3.5 w-16 bg-slate-200 dark:bg-white/10 rounded" />
-            <div className="h-3.5 w-24 bg-slate-200 dark:bg-white/10 rounded" />
+            <div className="h-3.5 w-16 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
+            <div className="h-3.5 w-24 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
           </div>
           <div className="flex justify-between items-center">
-            <div className="h-3.5 w-20 bg-slate-200 dark:bg-white/10 rounded" />
-            <div className="h-3.5 w-14 bg-slate-200 dark:bg-white/10 rounded" />
+            <div className="h-3.5 w-20 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
+            <div className="h-3.5 w-14 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
           </div>
         </div>
 
         <div className="pt-3 border-t border-slate-200/60 dark:border-white/10 flex gap-2">
-          <div className="h-9 flex-1 bg-slate-200 dark:bg-white/10 rounded-xl" />
-          <div className="h-9 flex-1 bg-slate-200 dark:bg-white/10 rounded-xl" />
-          <div className="h-9 flex-1 bg-slate-200 dark:bg-white/10 rounded-xl" />
+          <div className="h-9 flex-1 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-xl" />
+          <div className="h-9 flex-1 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-xl" />
+          <div className="h-9 flex-1 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-xl" />
         </div>
       </div>
     ))}
@@ -511,7 +511,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
   };
 
   // Add Tenant Submit & Generate Invitation Link
-  const handleAddTenant = (e) => {
+  const handleAddTenant = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.propertyId) {
       triggerToast("Please fill in all required fields (Name, Email, and Property)", "warning", "Missing Fields");
@@ -525,6 +525,26 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
 
     if (existingTenant) {
       triggerToast(`A tenant entry with email (${formData.email}) already exists for this property. Each tenant must have a unique email address.`, "warning", "Duplicate Email Blocked");
+      return;
+    }
+
+    let defaultPassword = "LodaleTenant2026!";
+    try {
+      const nameParts = formData.name.trim().split(" ");
+      const res = await apiClient.post("/users/invite-tenant", {
+        firstName: nameParts[0] || "",
+        lastName: nameParts.length > 1 ? nameParts.slice(1).join(" ") : "",
+        email: cleanEmail
+      });
+      if (res && res.defaultPassword) {
+        defaultPassword = res.defaultPassword;
+      }
+    } catch (err) {
+      if (err.message && err.message.includes("User already exists")) {
+        triggerToast("An account with this email already exists on Lodale. Please ask the tenant to sign in.", "warning", "User Exists");
+      } else {
+        triggerToast("Failed to provision invited tenant. Please try again.", "error", "Invite Failed");
+      }
       return;
     }
 
@@ -744,7 +764,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
                           <Star className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" title="Perfect Payment History" />
                         )}
                       </div>
-                      <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
+                      <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950/40 dark:text-cream-100' : 'bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
                         {tenant.leaseStatus || (tenant.status === 'active' ? "Active Tenant" : "Pending Sign & Pay")}
                       </span>
                     </div>
@@ -1060,7 +1080,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
       {/* ONBOARDING INVITATION DISPATCHED MODAL */}
       {createdInvite && (
         <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in" onClick={() => setCreatedInvite(null)}>
-          <div className="bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/15 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 text-center relative" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/15 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 text-center relative" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => setCreatedInvite(null)}
               className="absolute top-4 right-4 text-ink-400 hover:text-ink-900 dark:hover:text-white p-1 rounded-full cursor-pointer bg-transparent border-none"
@@ -1068,7 +1088,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
               <X className="h-5 w-5" />
             </button>
 
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shadow-inner">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 dark:bg-[#FFFFFF]/5 text-emerald-700 dark:text-cream-100 flex items-center justify-center shadow-inner">
               <Send className="h-7 w-7" />
             </div>
 
@@ -1079,14 +1099,14 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-white/5 border border-ink-100 dark:border-white/10 text-left space-y-2">
+            <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 text-left space-y-2">
               <span className="text-[11px] font-bold text-ink-500 dark:text-cream-100/60 uppercase tracking-wider block">Direct Shareable Link</span>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   readOnly
                   value={createdInvite.link}
-                  className="w-full text-xs bg-white dark:bg-black/40 border border-ink-200 dark:border-white/15 rounded-xl px-3 py-2.5 text-ink-800 dark:text-cream-100 select-all font-mono truncate"
+                  className="w-full text-xs bg-[#FFFFFF] dark:bg-black/40 border border-ink-200 dark:border-white/15 rounded-xl px-3 py-2.5 text-ink-800 dark:text-cream-100 select-all font-mono truncate"
                 />
                 <button
                   type="button"

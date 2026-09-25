@@ -713,7 +713,7 @@ export default function TenantApplications({ setActiveTab }) {
                                 name: `${app.landlordFirstName || 'Landlord'} ${app.landlordLastName || ''}`.trim(),
                                 propertyTitle: app.propertyTitle
                               }));
-                              if (setActiveTab) setActiveTab("chat");
+                              if (setActiveTab) setActiveTab(2);
                             }}
                             className="px-3 py-1.5 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0C1410] font-medium text-xs rounded-md hover:bg-[#1E3324] transition-colors flex items-center gap-1.5 cursor-pointer"
                           >
@@ -761,7 +761,7 @@ export default function TenantApplications({ setActiveTab }) {
                                 name: `${app.landlordFirstName || 'Landlord'} ${app.landlordLastName || ''}`.trim(),
                                 propertyTitle: app.propertyTitle
                               }));
-                              if (setActiveTab) setActiveTab("chat");
+                              if (setActiveTab) setActiveTab(2);
                             }}
                             className="px-3 py-1.5 bg-white dark:bg-[#14221B] border border-[#E7E5E0] dark:border-white/15 text-[#1C1917] dark:text-white font-medium text-xs rounded-md hover:border-[#2C4633] transition-colors flex items-center gap-1.5 cursor-pointer"
                           >

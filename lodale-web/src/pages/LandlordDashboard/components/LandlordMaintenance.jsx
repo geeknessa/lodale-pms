@@ -77,7 +77,7 @@ export default function LandlordMaintenance() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#07130D] p-6 rounded-3xl border border-ink-100 dark:border-white/10 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#FFFFFF] dark:bg-[#07130D] p-6 rounded-3xl border border-ink-100 dark:border-white/10 shadow-sm">
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-3">
             <Wrench className="h-6 w-6 text-moss-700 dark:text-[#E5C583]" />
@@ -98,7 +98,7 @@ export default function LandlordMaintenance() {
             placeholder="Search by tenant or repair issue..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl text-xs text-ink-900 dark:text-cream-100 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-moss-600/30"
+            className="w-full pl-10 pr-4 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl text-xs text-ink-900 dark:text-cream-100 placeholder:text-ink-400 focus:outline-none focus:ring-2 focus:ring-moss-600/30"
           />
         </div>
 
@@ -110,7 +110,7 @@ export default function LandlordMaintenance() {
               className={`px-3.5 py-2 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer whitespace-nowrap ${
                 filterStatus === status
                   ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
-                  : "bg-white dark:bg-[#07130D] text-ink-600 dark:text-cream-100/70 hover:bg-ink-100 dark:hover:bg-white/5 border border-ink-100 dark:border-white/10"
+                  : "bg-[#FFFFFF] dark:bg-[#07130D] text-ink-600 dark:text-cream-100/70 hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10"
               }`}
             >
               {status === "all" ? "All Requests" : status}
@@ -121,7 +121,7 @@ export default function LandlordMaintenance() {
 
       {/* Requests List */}
       {loading ? (
-        <div className="py-16 text-center text-ink-400 space-y-2 bg-white dark:bg-[#07130D] rounded-3xl border border-ink-100 dark:border-white/10">
+        <div className="py-16 text-center text-ink-400 space-y-2 bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl border border-ink-100 dark:border-white/10">
           <Loader2 className="h-7 w-7 mx-auto animate-spin text-moss-700 dark:text-[#E5C583]" />
           <p className="text-xs font-bold">Loading maintenance requests...</p>
         </div>
@@ -138,7 +138,7 @@ export default function LandlordMaintenance() {
           </button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-[#07130D] rounded-3xl border border-dashed border-ink-200 dark:border-white/10 space-y-3">
+        <div className="p-12 text-center bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl border border-dashed border-ink-200 dark:border-white/10 space-y-3">
           <Wrench className="h-10 w-10 mx-auto text-ink-300 dark:text-cream-100/30" />
           <h3 className="text-base font-bold text-ink-900 dark:text-cream-100">No maintenance requests found</h3>
           <p className="text-xs text-ink-500 dark:text-cream-100/70 max-w-md mx-auto">
@@ -155,13 +155,13 @@ export default function LandlordMaintenance() {
             return (
               <div
                 key={req.id}
-                className="bg-white dark:bg-[#07130D] p-5 rounded-3xl border border-ink-100 dark:border-white/10 shadow-sm flex flex-col justify-between space-y-4 hover:border-moss-600/30 transition-all"
+                className="bg-[#FFFFFF] dark:bg-[#07130D] p-5 rounded-3xl border border-ink-100 dark:border-white/10 shadow-sm flex flex-col justify-between space-y-4 hover:border-moss-600/30 transition-all"
               >
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-3">
                     <span className={`px-2.5 py-1 text-[11px] font-extrabold rounded-full ${
                       st === "resolved"
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950 dark:text-emerald-300"
+                        ? "bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950 dark:text-cream-100"
                         : st === "in progress"
                         ? "bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950 dark:text-amber-300"
                         : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
@@ -212,7 +212,7 @@ export default function LandlordMaintenance() {
                   )}
                   <button
                     onClick={() => setSelectedRequest(req)}
-                    className="py-2 px-3 bg-ink-100 dark:bg-white/10 hover:bg-ink-200 dark:hover:bg-white/20 text-ink-800 dark:text-cream-100 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                    className="py-2 px-3 bg-ink-100 dark:bg-[#FFFFFF]/10 hover:bg-ink-200 dark:hover:bg-[#FFFFFF]/20 text-ink-800 dark:text-cream-100 font-bold text-xs rounded-xl transition-all cursor-pointer"
                   >
                     Inspect
                   </button>

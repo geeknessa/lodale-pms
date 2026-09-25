@@ -35,14 +35,14 @@ function CustomSelect({ value, onChange, options, placeholder }) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center justify-between gap-2 px-4 py-2.5 bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 text-ink-900 dark:text-white rounded-xl text-[12.5px] font-bold cursor-pointer transition-all duration-200 hover:border-ink-400 dark:hover:border-white/30 hover:bg-ink-50/50 dark:hover:bg-white/5 outline-none select-none min-w-[130px]"
+        className="flex items-center justify-between gap-2 px-4 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-100 dark:border-white/10 text-ink-900 dark:text-white rounded-xl text-[12.5px] font-bold cursor-pointer transition-all duration-200 hover:border-ink-400 dark:hover:border-white/30 hover:bg-ink-50/50 dark:hover:bg-[#FFFFFF]/5 outline-none select-none min-w-[130px]"
       >
         <span>{selectedOption ? selectedOption.label : placeholder}</span>
         <ChevronDown className={`h-3.5 w-3.5 text-ink-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 mt-1.5 w-full min-w-[160px] bg-white dark:bg-[#07130D] border border-[#E4EAE1] dark:border-white/10 rounded-xl shadow-lg z-50 py-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="absolute left-0 mt-1.5 w-full min-w-[160px] bg-[#FFFFFF] dark:bg-[#07130D] border border-[#E4EAE1] dark:border-white/10 rounded-xl shadow-lg z-50 py-1.5 animate-in fade-in slide-in-from-top-1 duration-150">
           {options.map((option) => {
             const isSelected = option.value === value;
             return (
@@ -55,7 +55,7 @@ function CustomSelect({ value, onChange, options, placeholder }) {
                 }}
                 className={`w-full text-left px-4 py-2 text-[12.5px] cursor-pointer transition-colors duration-150 flex items-center justify-between select-none ${isSelected
                     ? "bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#263b33] font-bold"
-                    : "text-ink-700 dark:text-cream-100/80 hover:bg-ink-50 dark:hover:bg-white/5"
+                    : "text-ink-700 dark:text-cream-100/80 hover:bg-ink-50 dark:hover:bg-[#FFFFFF]/5"
                   }`}
               >
                 <span>{option.label}</span>
@@ -90,23 +90,23 @@ const TYPE_OPTIONS = [
 ];
 
 const PropertyCardSkeleton = () => (
-  <div className="ap-property-card bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs animate-pulse flex flex-col sm:flex-row items-center gap-4">
-    <div className="ap-card-visual shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-slate-200 dark:bg-white/10" />
+  <div className="ap-property-card bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs animate-pulse flex flex-col sm:flex-row items-center gap-4">
+    <div className="ap-card-visual shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-slate-200 dark:bg-[#FFFFFF]/10" />
     <div className="ap-card-details flex-1 min-w-0 space-y-3 w-full">
       <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-white/10" />
-        <div className="h-4 w-24 bg-slate-200 dark:bg-white/10 rounded-md" />
+        <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-[#FFFFFF]/10" />
+        <div className="h-4 w-24 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-md" />
       </div>
-      <div className="h-5 w-3/4 bg-slate-200 dark:bg-white/10 rounded-md" />
-      <div className="h-3 w-1/2 bg-slate-200 dark:bg-white/10 rounded-md" />
+      <div className="h-5 w-3/4 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-md" />
+      <div className="h-3 w-1/2 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-md" />
       <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5">
-        <div className="h-4 w-24 bg-slate-200 dark:bg-white/10 rounded-md" />
-        <div className="h-4 w-16 bg-slate-200 dark:bg-white/10 rounded-full" />
+        <div className="h-4 w-24 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-md" />
+        <div className="h-4 w-16 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-full" />
       </div>
     </div>
     <div className="ap-card-actions flex items-center gap-2 w-full sm:w-auto shrink-0">
-      <div className="h-9 w-16 bg-slate-200 dark:bg-white/10 rounded-xl" />
-      <div className="h-9 w-20 bg-slate-200 dark:bg-white/10 rounded-xl" />
+      <div className="h-9 w-16 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-xl" />
+      <div className="h-9 w-20 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-xl" />
     </div>
   </div>
 );
@@ -718,10 +718,10 @@ export default function LandlordProperties() {
                 <div
                   key={item.id ? `prop-${item.id}` : `prop-idx-${idx}`}
                   style={{ animationDelay: `${(idx % 8) * 45}ms` }}
-                  className="ap-property-card bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
+                  className="ap-property-card bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
                 >
                   {/* Real Property Photo */}
-                  <div className="ap-card-visual flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-ink-100 dark:bg-white/10 relative">
+                  <div className="ap-card-visual flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-ink-100 dark:bg-[#FFFFFF]/10 relative">
                     <img
                       src={imgUrl}
                       alt={item.title}
@@ -773,7 +773,7 @@ export default function LandlordProperties() {
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <h3 className="ap-property-title text-base font-bold text-ink-900 dark:text-white truncate">{item.title}</h3>
                       {item.property_type && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-moss-100 dark:bg-white/10 text-moss-800 dark:text-[#E5C583] uppercase tracking-wider">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-moss-100 dark:bg-[#FFFFFF]/10 text-moss-800 dark:text-[#E5C583] uppercase tracking-wider">
                           {item.property_type.replace(/_/g, ' ')}
                         </span>
                       )}
@@ -825,7 +825,7 @@ export default function LandlordProperties() {
                         }
                         if (isLive) {
                           return (
-                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-[#07130D]merald-950/80 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-[#07130D]merald-950/80 text-emerald-800 dark:text-cream-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
                               <CheckCircle2 className="h-3 w-3" /> Live
                             </span>
                           );
@@ -872,7 +872,7 @@ export default function LandlordProperties() {
                       }}
                       className={`px-3 py-2 text-xs font-bold rounded-xl border transition-colors flex items-center gap-1 cursor-pointer ${
                         isOccupiedCard
-                          ? "bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-white/10 opacity-70"
+                          ? "bg-slate-100 dark:bg-[#FFFFFF]/5 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-white/10 opacity-70"
                           : "bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-900/40"
                       }`}
                       title={isOccupiedCard ? "Occupied property cannot be deleted" : "Delete property"}
@@ -945,7 +945,7 @@ export default function LandlordProperties() {
               ) : (
                 <div className="ap-popup-list space-y-2">
                   {getTenantsForProperty(showTenantsPopupForProperty.id, showTenantsPopupForProperty).map((tenant) => (
-                    <div key={tenant.id} className="ap-popup-item flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10 hover:border-moss-300 transition-all">
+                    <div key={tenant.id} className="ap-popup-item flex items-center gap-3 p-3 rounded-xl bg-slate-50 dark:bg-[#FFFFFF]/5 border border-slate-100 dark:border-white/10 hover:border-moss-300 transition-all">
                       <Avatar
                         src={tenant.avatar}
                         name={tenant.name}
@@ -1003,7 +1003,7 @@ export default function LandlordProperties() {
           onClick={() => !isDeleting && setPropertyToDelete(null)}
         >
           <div
-            className="bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+            className="bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-3 text-rose-600 dark:text-rose-400">
@@ -1042,7 +1042,7 @@ export default function LandlordProperties() {
                 type="button"
                 disabled={isDeleting}
                 onClick={() => setPropertyToDelete(null)}
-                className="px-4 py-2 text-xs font-bold text-ink-700 dark:text-cream-100/80 hover:bg-ink-100 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-ink-200 dark:border-white/10"
+                className="px-4 py-2 text-xs font-bold text-ink-700 dark:text-cream-100/80 hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/5 rounded-xl transition-colors cursor-pointer border border-ink-200 dark:border-white/10"
               >
                 Cancel
               </button>
@@ -1058,7 +1058,7 @@ export default function LandlordProperties() {
                     onClick={handleDeleteProperty}
                     className={`px-4 py-2 text-xs font-bold text-white rounded-xl transition-colors flex items-center gap-1.5 shadow-md ${
                       isOccupied
-                        ? "bg-slate-400 dark:bg-white/10 text-slate-200 cursor-not-allowed opacity-60"
+                        ? "bg-slate-400 dark:bg-[#FFFFFF]/10 text-slate-200 cursor-not-allowed opacity-60"
                         : "bg-rose-600 hover:bg-rose-700 cursor-pointer"
                     }`}
                     title={isOccupied ? "Occupied property cannot be deleted" : "Delete Property"}

@@ -14,11 +14,11 @@ const ToggleSwitch = ({ checked, onChange, label }) => (
       aria-checked={checked}
       onClick={onChange}
       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-        checked ? 'bg-emerald-600 dark:bg-[#E5C583]' : 'bg-ink-300 dark:bg-white/20'
+        checked ? 'bg-emerald-600 dark:bg-[#E5C583]' : 'bg-ink-300 dark:bg-[#FFFFFF]/20'
       }`}
     >
       <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white dark:bg-[#07130D] shadow-md ring-0 transition duration-200 ease-in-out ${
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-[#FFFFFF] dark:bg-[#07130D] shadow-md ring-0 transition duration-200 ease-in-out ${
           checked ? 'translate-x-5' : 'translate-x-0'
         }`}
       />
@@ -222,7 +222,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
       if (dayEvents.length > 0) {
         const primaryColor = dayEvents[0].color;
         if (primaryColor === 'purple') eventColorClass = 'bg-purple-100 dark:bg-purple-900/40 border-purple-200 dark:border-purple-800/60 font-bold';
-        else if (primaryColor === 'emerald') eventColorClass = 'bg-emerald-100 dark:bg-[#07130D]merald-900/40 border-emerald-200 dark:border-emerald-800/60 font-bold';
+        else if (primaryColor === 'emerald') eventColorClass = 'bg-emerald-100 dark:bg-[#07130D]merald-900/40 border-emerald-200 dark:border-white/10 font-bold';
         else if (primaryColor === 'blue') eventColorClass = 'bg-blue-100 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800/60 font-bold';
       }
       
@@ -237,15 +237,15 @@ export default function LandlordCalendar({ activeTenants = [] }) {
             relative flex flex-col items-center justify-center p-1 cursor-pointer transition-all rounded-lg border
             ${isMini ? 'h-8' : 'h-10 sm:h-12 hover:opacity-80'}
             ${isSelected ? 'ring-2 ring-moss-600 dark:ring-[#E5C583] ring-offset-1 dark:ring-offset-[#07130D] shadow-sm' : ''}
-            ${dayEvents.length > 0 ? eventColorClass : 'border-transparent bg-white dark:bg-[#07130D] hover:bg-moss-50 dark:hover:bg-white/5'}
-            ${isToday && dayEvents.length === 0 ? 'bg-ink-50 dark:bg-white/10 font-black' : ''}
+            ${dayEvents.length > 0 ? eventColorClass : 'border-transparent bg-[#FFFFFF] dark:bg-[#07130D] hover:bg-moss-50 dark:hover:bg-[#FFFFFF]/5'}
+            ${isToday && dayEvents.length === 0 ? 'bg-ink-50 dark:bg-[#FFFFFF]/10 font-black' : ''}
           `}
         >
           <span className={`${isMini ? 'text-[10px]' : 'text-xs sm:text-sm'} ${isToday && dayEvents.length === 0 ? 'text-moss-700 dark:text-[#E5C583]' : (dayEvents.length > 0 ? 'text-ink-900 dark:text-white' : 'text-ink-700 dark:text-cream-100')}`}>
             {i}
           </span>
           {dayEvents.length > 1 && !isMini && (
-            <span className="absolute bottom-1 right-1 flex items-center justify-center w-3 h-3 rounded-full bg-ink-900 dark:bg-white text-white dark:text-ink-900 text-[8px] font-bold">
+            <span className="absolute bottom-1 right-1 flex items-center justify-center w-3 h-3 rounded-full bg-ink-900 dark:bg-[#FFFFFF] text-white dark:text-ink-900 text-[8px] font-bold">
               +{dayEvents.length - 1}
             </span>
           )}
@@ -292,7 +292,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
         <div className="flex items-center gap-3">
           <Button 
             onClick={() => setIsSettingsModalOpen(true)}
-            className="px-4 py-2 bg-moss-50 dark:bg-white/5 hover:bg-moss-100 dark:hover:bg-white/10 text-moss-700 dark:text-[#E5C583] border border-moss-200 dark:border-white/10 rounded-xl flex items-center gap-2 text-sm font-bold transition-colors"
+            className="px-4 py-2 bg-moss-50 dark:bg-[#FFFFFF]/5 hover:bg-moss-100 dark:hover:bg-[#FFFFFF]/10 text-moss-700 dark:text-[#E5C583] border border-moss-200 dark:border-white/10 rounded-xl flex items-center gap-2 text-sm font-bold transition-colors"
           >
             <Settings className="w-4 h-4" /> Configuration Rules
           </Button>
@@ -303,7 +303,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
       <div className="grid grid-cols-1 lg:grid-cols-[60%_1fr] gap-6">
         
         {/* LEFT COLUMN: CALENDAR */}
-        <div className="bg-white dark:bg-[#07130D] rounded-3xl p-6 border border-ink-100 dark:border-white/10 shadow-sm flex flex-col">
+        <div className="bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl p-6 border border-ink-100 dark:border-white/10 shadow-sm flex flex-col">
           {/* Calendar Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
@@ -313,16 +313,16 @@ export default function LandlordCalendar({ activeTenants = [] }) {
                   : currentDate.getFullYear()
                 }
               </h3>
-              <div className="flex items-center bg-ink-50 dark:bg-white/5 rounded-lg p-1">
+              <div className="flex items-center bg-ink-50 dark:bg-[#FFFFFF]/5 rounded-lg p-1">
                 <button 
                   onClick={() => setViewMode('month')}
-                  className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all ${viewMode === 'month' ? 'bg-white dark:bg-white/10 text-ink-900 dark:text-white shadow-sm' : 'text-ink-500'}`}
+                  className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all ${viewMode === 'month' ? 'bg-[#FFFFFF] dark:bg-[#FFFFFF]/10 text-ink-900 dark:text-white shadow-sm' : 'text-ink-500'}`}
                 >
                   Monthly
                 </button>
                 <button 
                   onClick={() => setViewMode('year')}
-                  className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all ${viewMode === 'year' ? 'bg-white dark:bg-white/10 text-ink-900 dark:text-white shadow-sm' : 'text-ink-500'}`}
+                  className={`px-3 py-1 text-[11px] font-bold rounded-md transition-all ${viewMode === 'year' ? 'bg-[#FFFFFF] dark:bg-[#FFFFFF]/10 text-ink-900 dark:text-white shadow-sm' : 'text-ink-500'}`}
                 >
                   Yearly
                 </button>
@@ -330,13 +330,13 @@ export default function LandlordCalendar({ activeTenants = [] }) {
             </div>
             
             <div className="flex items-center gap-2">
-              <button onClick={viewMode === 'month' ? prevMonth : prevYear} className="p-2 rounded-xl bg-ink-50 hover:bg-ink-100 dark:bg-white/5 dark:hover:bg-white/10 transition-colors">
+              <button onClick={viewMode === 'month' ? prevMonth : prevYear} className="p-2 rounded-xl bg-ink-50 hover:bg-ink-100 dark:bg-[#FFFFFF]/5 dark:hover:bg-[#FFFFFF]/10 transition-colors">
                 <ChevronLeft className="w-4 h-4 text-ink-700 dark:text-cream-100" />
               </button>
-              <button onClick={() => { setCurrentDate(new Date()); setSelectedDate(null); }} className="px-3 py-1.5 rounded-xl bg-ink-50 hover:bg-ink-100 dark:bg-white/5 dark:hover:bg-white/10 text-xs font-bold text-ink-700 dark:text-cream-100 transition-colors">
+              <button onClick={() => { setCurrentDate(new Date()); setSelectedDate(null); }} className="px-3 py-1.5 rounded-xl bg-ink-50 hover:bg-ink-100 dark:bg-[#FFFFFF]/5 dark:hover:bg-[#FFFFFF]/10 text-xs font-bold text-ink-700 dark:text-cream-100 transition-colors">
                 Today
               </button>
-              <button onClick={viewMode === 'month' ? nextMonth : nextYear} className="p-2 rounded-xl bg-ink-50 hover:bg-ink-100 dark:bg-white/5 dark:hover:bg-white/10 transition-colors">
+              <button onClick={viewMode === 'month' ? nextMonth : nextYear} className="p-2 rounded-xl bg-ink-50 hover:bg-ink-100 dark:bg-[#FFFFFF]/5 dark:hover:bg-[#FFFFFF]/10 transition-colors">
                 <ChevronRight className="w-4 h-4 text-ink-700 dark:text-cream-100" />
               </button>
             </div>
@@ -375,7 +375,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
           </div>
 
           {/* Feed Content */}
-          <div className="flex-1 bg-white dark:bg-[#07130D] rounded-3xl p-6 border border-ink-100 dark:border-white/10 shadow-sm overflow-y-auto custom-scrollbar">
+          <div className="flex-1 bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl p-6 border border-ink-100 dark:border-white/10 shadow-sm overflow-y-auto custom-scrollbar">
             
             {/* Upcoming Feed */}
             <div className="space-y-4 h-full">
@@ -398,7 +398,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
                     ) : (
                       <div className="space-y-3">
                         {recentMaintenance.map((req, idx) => (
-                          <div key={req.id || idx} className="p-4 rounded-xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
+                          <div key={req.id || idx} className="p-4 rounded-xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10">
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
                                 {req.type || 'Maintenance'}
@@ -417,7 +417,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
                 </div>
               ) : (
                 feedEvents.map(event => (
-                <div key={event.id} className="p-4 rounded-2xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10 flex flex-col gap-3">
+                <div key={event.id} className="p-4 rounded-2xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 flex flex-col gap-3">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <div className={`w-2 h-10 rounded-full ${event.color}`} />
@@ -464,15 +464,15 @@ export default function LandlordCalendar({ activeTenants = [] }) {
       {/* SETTINGS MODAL */}
       {isSettingsModalOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-[#07130D] rounded-3xl border border-ink-200 dark:border-white/10 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative custom-scrollbar">
+          <div className="bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl border border-ink-200 dark:border-white/10 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl relative custom-scrollbar">
             
-            <div className="sticky top-0 bg-white/90 dark:bg-[#07130D]/90 backdrop-blur-md p-6 border-b border-ink-100 dark:border-white/10 flex items-center justify-between z-10">
+            <div className="sticky top-0 bg-[#FFFFFF]/90 dark:bg-[#07130D]/90 backdrop-blur-md p-6 border-b border-ink-100 dark:border-white/10 flex items-center justify-between z-10">
               <h2 className="text-xl font-black text-ink-900 dark:text-white flex items-center gap-2">
                 <Settings className="w-5 h-5 text-moss-600 dark:text-[#E5C583]" /> Configuration Rules
               </h2>
               <button 
                 onClick={() => setIsSettingsModalOpen(false)}
-                className="p-2 bg-ink-50 hover:bg-ink-100 dark:bg-white/5 dark:hover:bg-white/10 rounded-full transition-colors"
+                className="p-2 bg-ink-50 hover:bg-ink-100 dark:bg-[#FFFFFF]/5 dark:hover:bg-[#FFFFFF]/10 rounded-full transition-colors"
               >
                 <X className="w-5 h-5 text-ink-600 dark:text-cream-100" />
               </button>
@@ -489,13 +489,13 @@ export default function LandlordCalendar({ activeTenants = [] }) {
                     reminderService.saveSettings(newSettings);
                   }} />
                 </div>
-                <div className="p-4 rounded-2xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
+                <div className="p-4 rounded-2xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10">
                   <p className="text-xs text-ink-500 dark:text-cream-100/70 mb-3">Trigger automated notices before due date:</p>
                   <div className="flex flex-wrap gap-2 items-center">
                     {(settings.rentLeadDays || []).concat([7, 5, 3, 1]).filter((v, i, a) => a.indexOf(v) === i).sort((a,b)=>b-a).map((day) => {
                       const isActive = (settings.rentLeadDays || []).includes(day);
                       return (
-                        <button key={`rent-${day}`} onClick={() => toggleRentLeadDay(day)} className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${isActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-white dark:bg-white/5 border-ink-200 dark:border-white/10 text-ink-600 dark:text-cream-100'}`}>
+                        <button key={`rent-${day}`} onClick={() => toggleRentLeadDay(day)} className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${isActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-[#FFFFFF] dark:bg-[#FFFFFF]/5 border-ink-200 dark:border-white/10 text-ink-600 dark:text-cream-100'}`}>
                           {day} {day === 1 ? 'Day Before' : 'Days Before'}
                         </button>
                       );
@@ -507,7 +507,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
                         placeholder="Custom" 
                         value={customRentDay} 
                         onChange={(e) => setCustomRentDay(e.target.value)}
-                        className="w-20 p-1.5 rounded-xl text-xs border border-ink-200 dark:border-white/10 bg-white dark:bg-[#07130D] text-center focus:outline-none focus:border-emerald-500"
+                        className="w-20 p-1.5 rounded-xl text-xs border border-ink-200 dark:border-white/10 bg-[#FFFFFF] dark:bg-[#07130D] text-center focus:outline-none focus:border-emerald-500"
                       />
                       <button 
                         onClick={() => {
@@ -517,7 +517,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
                             setCustomRentDay("");
                           }
                         }}
-                        className="px-2 py-1.5 bg-ink-100 hover:bg-ink-200 dark:bg-white/10 dark:hover:bg-white/20 rounded-xl text-xs font-bold"
+                        className="px-2 py-1.5 bg-ink-100 hover:bg-ink-200 dark:bg-[#FFFFFF]/10 dark:hover:bg-[#FFFFFF]/20 rounded-xl text-xs font-bold"
                       >
                         Add
                       </button>
@@ -536,13 +536,13 @@ export default function LandlordCalendar({ activeTenants = [] }) {
                     reminderService.saveSettings(newSettings);
                   }} />
                 </div>
-                <div className="p-4 rounded-2xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
+                <div className="p-4 rounded-2xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10">
                   <p className="text-xs text-ink-500 dark:text-cream-100/70 mb-3">Trigger inspection notices before scheduled date:</p>
                   <div className="flex flex-wrap gap-2 items-center">
                     {(settings.inspectionLeadDays || []).concat([7, 3, 1]).filter((v, i, a) => a.indexOf(v) === i).sort((a,b)=>b-a).map((day) => {
                       const isActive = (settings.inspectionLeadDays || []).includes(day);
                       return (
-                        <button key={`insp-${day}`} onClick={() => toggleInspectionLeadDay(day)} className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white dark:bg-white/5 border-ink-200 dark:border-white/10 text-ink-600 dark:text-cream-100'}`}>
+                        <button key={`insp-${day}`} onClick={() => toggleInspectionLeadDay(day)} className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-[#FFFFFF] dark:bg-[#FFFFFF]/5 border-ink-200 dark:border-white/10 text-ink-600 dark:text-cream-100'}`}>
                           {day} {day === 1 ? 'Day Before' : 'Days Before'}
                         </button>
                       );
@@ -554,7 +554,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
                         placeholder="Custom" 
                         value={customInspectionDay} 
                         onChange={(e) => setCustomInspectionDay(e.target.value)}
-                        className="w-20 p-1.5 rounded-xl text-xs border border-ink-200 dark:border-white/10 bg-white dark:bg-[#07130D] text-center focus:outline-none focus:border-blue-500"
+                        className="w-20 p-1.5 rounded-xl text-xs border border-ink-200 dark:border-white/10 bg-[#FFFFFF] dark:bg-[#07130D] text-center focus:outline-none focus:border-blue-500"
                       />
                       <button 
                         onClick={() => {
@@ -564,7 +564,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
                             setCustomInspectionDay("");
                           }
                         }}
-                        className="px-2 py-1.5 bg-ink-100 hover:bg-ink-200 dark:bg-white/10 dark:hover:bg-white/20 rounded-xl text-xs font-bold"
+                        className="px-2 py-1.5 bg-ink-100 hover:bg-ink-200 dark:bg-[#FFFFFF]/10 dark:hover:bg-[#FFFFFF]/20 rounded-xl text-xs font-bold"
                       >
                         Add
                       </button>
@@ -574,7 +574,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-white dark:bg-[#07130D] p-4 border-t border-ink-100 dark:border-white/10 flex justify-end">
+            <div className="sticky bottom-0 bg-[#FFFFFF] dark:bg-[#07130D] p-4 border-t border-ink-100 dark:border-white/10 flex justify-end">
               <Button onClick={() => {
                 reminderService.saveSettings(settings);
                 triggerToast("Templates saved", "success");

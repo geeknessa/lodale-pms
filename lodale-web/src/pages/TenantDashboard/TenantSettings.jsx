@@ -104,6 +104,15 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  useEffect(() => {
+    if (sessionStorage.getItem("promptPasswordChange") === "true") {
+      setActiveTab("security");
+      setFeedbackMessage({ type: "warning", text: "You are using a default password. Please update it to secure your account." });
+      triggerToast("You are using a default password. Please update it now.", "warning", "Security Alert");
+      sessionStorage.removeItem("promptPasswordChange");
+    }
+  }, []);
+
   // Documents & E-Signing State Management
   const [documents, setDocuments] = useState([]);
 

@@ -76,11 +76,11 @@ export default function RequestInfo({ request, onClose, onUpdateStatus }) {
             if (isResolved) {
               return (
                 <div className="ui-notes-section">
-                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-emerald-300 flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 dark:text-cream-100 flex items-center gap-3">
+                    <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-cream-100 shrink-0" />
                     <div>
-                      <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-900 dark:text-emerald-200">Request Resolved</h4>
-                      <p className="text-xs text-emerald-700 dark:text-emerald-300/80 mt-0.5">This issue has been marked as completed and resolved.</p>
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-900 dark:text-cream-100">Request Resolved</h4>
+                      <p className="text-xs text-emerald-700 dark:text-cream-100/80 mt-0.5">This issue has been marked as completed and resolved.</p>
                     </div>
                   </div>
                 </div>
