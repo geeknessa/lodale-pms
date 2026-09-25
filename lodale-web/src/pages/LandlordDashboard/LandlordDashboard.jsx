@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { triggerToast } from "../../context/ToastContext";
+import { useTheme } from "../../context/ThemeContext";
 import { ratingService } from "../../services/ratingService";
 import gsap from "gsap";
 import {
-  LayoutDashboard,
+  LayoutDashboard, Sun, Moon,
   Building2,
   Users,
   MessageSquare,
@@ -216,6 +217,7 @@ const TOUR_STEPS = [
 
 export default function LandlordDashboard() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Retrieve username with per-tab sessionStorage priority & localStorage fallback
@@ -687,7 +689,7 @@ export default function LandlordDashboard() {
 
   // Sidebar navigation items
   const sidebarItems = [
-    { id: "dashboard", icon: LayoutDashboard, label: "Dashboard Home", tabIndex: 0, action: () => { setActiveTab(0); setActivePill("Overview"); } },
+    { id: "dashboard", icon: LayoutDashboard, Sun, Moon, label: "Dashboard Home", tabIndex: 0, action: () => { setActiveTab(0); setActivePill("Overview"); } },
     { id: "properties", icon: Building2, label: "Properties", tabIndex: 1, action: () => setActiveTab(1) },
     { id: "tenants", icon: Users, label: "Tenants", tabIndex: 2, action: () => setActiveTab(2) },
     { id: "applications", icon: ClipboardList, label: "Applications", tabIndex: 0, action: () => { setActiveTab(0); setActivePill("Applications"); } },
@@ -742,9 +744,6 @@ export default function LandlordDashboard() {
       if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) {
         return;
       }
-      if (currentName && pLandlordName && !pLandlordName.includes(currentName) && !currentName.includes(pLandlordName)) {
-        return;
-      }
 
       const sig = `${(p.title || "").trim().toLowerCase()}|${(p.address_line1 || p.address || p.location || "").trim().toLowerCase()}`;
       if (propMap.has(p.id)) {
@@ -791,8 +790,12 @@ export default function LandlordDashboard() {
   // Dynamic calculation for dashboard numbers & activity
   const activeTenantsList = getActiveTenantsList();
   const activeTenantsCount = activeTenantsList.length;
-  const totalPropertiesCount = displayProperties.length;
-  const occupancyRate = totalPropertiesCount === 0 ? 0 : Math.min(100, Math.round((activeTenantsCount / Math.max(1, totalPropertiesCount)) * 100));
+  const totalUnitsCount = displayProperties.reduce((acc, p) => {
+    if (Array.isArray(p.units) && p.units.length > 0) return acc + p.units.length;
+    if (p.units_count) return acc + parseInt(p.units_count, 10) || 1;
+    return acc + 1;
+  }, 0);
+  const occupancyRate = totalUnitsCount === 0 ? 0 : Math.min(100, Math.round((activeTenantsCount / Math.max(1, totalUnitsCount)) * 100));
 
   const parseTenantRent = (t) => {
     if (t.rentAmount && !isNaN(Number(t.rentAmount))) return Number(t.rentAmount);
@@ -902,7 +905,7 @@ export default function LandlordDashboard() {
       <header className="db-header">
         <div className="db-header-left flex items-center gap-3">
           <button
-            className="md:hidden p-2 rounded-xl text-ink-700 dark:text-white hover:bg-ink-50 dark:hover:bg-white/10 transition-colors cursor-pointer mr-1 shrink-0 border-none bg-transparent outline-none flex items-center justify-center"
+            className="md:hidden p-2 rounded-xl text-ink-700 dark:text-white hover:bg-ink-50 dark:hover:bg-[#FFFFFF]/10 transition-colors cursor-pointer mr-1 shrink-0 border-none bg-transparent outline-none flex items-center justify-center"
             onClick={() => setSidebarOpen(prev => !prev)}
             aria-label="Toggle navigation menu"
             title="Toggle sidebar menu"
@@ -1002,8 +1005,8 @@ export default function LandlordDashboard() {
 
             {/* Notification Dropdown */}
             {showNotifDropdown && (
-              <div className="absolute right-0 top-12 z-[100] w-80 sm:w-[380px] rounded-3xl bg-white/95 dark:bg-[#07130D]/95 border border-[#E4EAE1] dark:border-white/10 shadow-2xl p-5 space-y-4 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-200 ease-out">
-                <div className="flex items-center justify-between pb-3 border-b border-[#E4EAE1] dark:border-white/10">
+              <div className="absolute right-0 top-12 z-[100] w-80 sm:w-[380px] rounded-3xl bg-[#FFFFFF]/95 dark:bg-[#192A1F]/95 border border-[#E4EAE1] dark:border-[#2C4633] shadow-2xl p-5 space-y-4 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-200 ease-out">
+                <div className="flex items-center justify-between pb-3 border-b border-[#E4EAE1] dark:border-[#2C4633]">
                   <h3 className="font-bold text-sm text-ink-900 dark:text-white flex items-center gap-2">
                     <Bell className="h-4.5 w-4.5 text-moss-700 dark:text-[#E5C583]" />
                     <span>Notifications</span>
@@ -1037,7 +1040,7 @@ export default function LandlordDashboard() {
                 <div className="max-h-80 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-moss-700/20">
                   {notifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-10 text-center space-y-2">
-                      <div className="p-3 bg-ink-50 dark:bg-white/5 rounded-full text-ink-300 dark:text-cream-100/30">
+                      <div className="p-3 bg-ink-50 dark:bg-[#FFFFFF]/5 rounded-full text-ink-300 dark:text-cream-100/30">
                         <BellOff className="h-6 w-6" />
                       </div>
                       <h4 className="font-bold text-[13px] text-ink-900 dark:text-white">All caught up!</h4>
@@ -1048,10 +1051,10 @@ export default function LandlordDashboard() {
                       const isSuccess = notif.type === 'success';
                       const isWarning = notif.type === 'warning';
                       const borderClass = isSuccess
-                        ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 dark:bg-[#07130D]merald-950/10"
+                        ? "border-l-4 border-l-emerald-500 bg-emerald-50/30 dark:bg-#07130D/10"
                         : isWarning
                           ? "border-l-4 border-l-rose-500 bg-rose-50/30 dark:bg-rose-950/10"
-                          : "border-l-4 border-l-moss-700 dark:border-l-[#E5C583] bg-cream-50/30 dark:bg-white/5";
+                          : "border-l-4 border-l-moss-700 dark:border-l-[#E5C583] bg-cream-50/30 dark:bg-[#FFFFFF]/5";
 
                       const IconComponent = isSuccess
                         ? CheckCircle2
@@ -1060,15 +1063,15 @@ export default function LandlordDashboard() {
                           : Info;
 
                       const iconColorClass = isSuccess
-                        ? "text-emerald-600 dark:text-emerald-400 bg-emerald-100/40 dark:bg-[#07130D]merald-950/30"
+                        ? "text-emerald-600 dark:text-cream-100 bg-emerald-100/40 dark:bg-#07130D/30"
                         : isWarning
                           ? "text-rose-600 dark:text-rose-400 bg-rose-100/40 dark:bg-rose-950/30"
-                          : "text-moss-700 dark:text-[#E5C583] bg-[#E4EAE1]/50 dark:bg-white/10";
+                          : "text-moss-700 dark:text-[#E5C583] bg-[#E4EAE1]/50 dark:bg-[#FFFFFF]/10";
 
                       return (
                         <div
                           key={notif.id}
-                          className={`group relative p-3.5 rounded-2xl border border-ink-100/60 dark:border-white/5 flex items-start gap-3 transition-all duration-150 hover:bg-ink-50/30 dark:hover:bg-white/10 ${borderClass}`}
+                          className={`group relative p-3.5 rounded-2xl border border-ink-100/60 dark:border-white/5 flex items-start gap-3 transition-all duration-150 hover:bg-ink-50/30 dark:hover:bg-[#FFFFFF]/10 ${borderClass}`}
                         >
                           <div className={`p-1.5 rounded-lg shrink-0 flex items-center justify-center ${iconColorClass}`}>
                             <IconComponent className="h-4 w-4" />
@@ -1088,7 +1091,7 @@ export default function LandlordDashboard() {
                                   const target = displayProperties.find(p => notif.message?.includes(p.title) || notif.title?.includes(p.title)) || displayProperties.find(p => (p.status || "").toLowerCase().includes("info") || (p.status || "").toLowerCase().includes("proof")) || displayProperties[0];
                                   if (target) setSelectedProofProperty(target);
                                 }}
-                                className="mt-2 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 hover:bg-amber-200 dark:bg-[#07130D]mber-950/60 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                                className="mt-2 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 hover:bg-amber-200 dark:bg-[#192A1F]mber-950/60 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
                               >
                                 <Upload className="h-3.5 w-3.5" /> Upload Document Now &rarr;
                               </button>
@@ -1129,7 +1132,7 @@ export default function LandlordDashboard() {
             onClick={() => setShowLandlordProfileModal(true)}
             title="View landlord details"
           >
-            <div className="db-user-avatar overflow-hidden rounded-full flex items-center justify-center bg-[#3A5A40]/10 dark:bg-[#07130D] text-[#2C4633] dark:text-[#E5C583] border border-[#2C4633]/20 dark:border-white/20">
+            <div className="db-user-avatar overflow-hidden rounded-full flex items-center justify-center bg-[#3A5A40]/10 dark:bg-[#192A1F] text-[#2C4633] dark:text-[#E5C583] border border-[#2C4633]/20 dark:border-white/20">
               {landlordAvatar ? (
                 <img src={landlordAvatar} alt="Landlord profile" className="h-full w-full object-cover" />
               ) : (
@@ -1183,6 +1186,15 @@ export default function LandlordDashboard() {
 
           <div className="db-sidebar-bottom">
             <button
+              className="db-sidebar-btn theme-toggle-btn mb-1"
+              onClick={() => { toggleTheme(); setSidebarOpen(false); }}
+              title="Toggle Theme"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
+              <span className="db-sidebar-label">{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+              {isSidebarCollapsed && <span className="db-sidebar-tooltip">Toggle Theme</span>}
+            </button>
+            <button
               onClick={() => {
                 setTourStep(0);
                 setRunTour(true);
@@ -1219,7 +1231,7 @@ export default function LandlordDashboard() {
                 <div className="db-page-header tour-welcome">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h1 className="text-xl sm:text-2xl font-black text-ink-900 dark:text-cream-100 flex items-center gap-2">
+                      <h1 className="text-xl sm:text-2xl font-black font-display text-ink-900 dark:text-cream-100 flex items-center gap-2">
                         Welcome, {username || "Landlord"}
                       </h1>
                       <p className="text-xs sm:text-sm text-ink-500 dark:text-cream-100/70 mt-0.5">
@@ -1228,7 +1240,7 @@ export default function LandlordDashboard() {
                     </div>
 
                     {loadingData && (
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-[#07130D]merald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-[#E5C583] text-[11.5px] font-extrabold animate-pulse shadow-xs shrink-0">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-#07130D/40 border border-emerald-500/30 text-emerald-700 dark:text-[#E5C583] text-[11.5px] font-extrabold animate-pulse shadow-xs shrink-0">
                         <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-600 dark:text-[#E5C583]" />
                         <span>Loading portfolio data...</span>
                       </div>
@@ -1251,10 +1263,10 @@ export default function LandlordDashboard() {
             ) : activePill === "Payments" ? (
               <div className="mt-4 space-y-6 animate-in fade-in duration-300">
                 {/* RENT PAYMENTS & REVENUE HISTORY FULL SECTION */}
-                <div className="bg-white dark:bg-[#07130D] rounded-3xl p-6 sm:p-8 border border-ink-100 dark:border-white/10 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-ink-100 dark:border-white/10">
+                <div className="bg-[#FFFFFF] dark:bg-[#192A1F] rounded-3xl p-6 sm:p-8 border border-ink-100 dark:border-[#2C4633] shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-ink-100 dark:border-[#2C4633]">
                     <div>
-                      <h2 className="text-xl sm:text-2xl font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-3">
+                      <h2 className="text-xl sm:text-2xl font-extrabold font-display text-ink-900 dark:text-cream-100 flex items-center gap-3">
                         <CreditCard className="h-7 w-7 text-moss-600 dark:text-[#E5C583]" />
                         Rent Payments & Revenue History
                       </h2>
@@ -1265,7 +1277,7 @@ export default function LandlordDashboard() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setActivePill("Overview")}
-                        className="px-4 py-2 bg-ink-100 dark:bg-white/10 hover:bg-ink-200 dark:hover:bg-white/20 text-ink-800 dark:text-cream-100 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                        className="px-4 py-2 bg-ink-100 dark:bg-[#FFFFFF]/10 hover:bg-ink-200 dark:hover:bg-[#FFFFFF]/20 text-ink-800 dark:text-cream-100 font-bold text-xs rounded-xl transition-all cursor-pointer"
                       >
                         Back to Overview
                       </button>
@@ -1287,10 +1299,10 @@ export default function LandlordDashboard() {
 
                     return (
                       <div className={`grid grid-cols-1 sm:grid-cols-2 ${expiringLeases.length > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4 mb-8`}>
-                        <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-[#07130D]merald-950/40 border border-emerald-200 dark:border-emerald-800/40">
-                          <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 block mb-1">Collected Rent (This Month)</span>
-                          <span className="text-2xl font-black text-emerald-900 dark:text-emerald-200">₦{collectedAmount.toLocaleString()}</span>
-                          <span className="text-[11px] text-emerald-700 dark:text-emerald-400 block mt-1">From {paidTenants.length} paid lease contract{paidTenants.length === 1 ? '' : 's'}</span>
+                        <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-#07130D/40 border border-emerald-200 dark:border-[#2C4633]">
+                          <span className="text-xs font-semibold text-emerald-800 dark:text-cream-100 block mb-1">Collected Rent (This Month)</span>
+                          <span className="text-2xl font-black text-emerald-900 dark:text-cream-100">₦{collectedAmount.toLocaleString()}</span>
+                          <span className="text-[11px] text-emerald-700 dark:text-cream-100 block mt-1">From {paidTenants.length} paid lease contract{paidTenants.length === 1 ? '' : 's'}</span>
                         </div>
 
                         <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40">
@@ -1325,12 +1337,12 @@ export default function LandlordDashboard() {
                   })()}
 
                   {/* FILTER TABS */}
-                  <div className="flex items-center justify-between gap-4 mb-6 border-b border-ink-100 dark:border-white/10 pb-4">
+                  <div className="flex items-center justify-between gap-4 mb-6 border-b border-ink-100 dark:border-[#2C4633] pb-4">
                     <div className="flex items-center gap-2">
                       <button
                         className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${paymentSubTab === "Paid"
                           ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
-                          : "bg-ink-100 dark:bg-white/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
+                          : "bg-ink-100 dark:bg-[#FFFFFF]/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
                           }`}
                         onClick={() => setPaymentSubTab("Paid")}
                       >
@@ -1339,7 +1351,7 @@ export default function LandlordDashboard() {
                       <button
                         className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${paymentSubTab === "Outstanding"
                           ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
-                          : "bg-ink-100 dark:bg-white/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
+                          : "bg-ink-100 dark:bg-[#FFFFFF]/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
                           }`}
                         onClick={() => setPaymentSubTab("Outstanding")}
                       >
@@ -1352,7 +1364,7 @@ export default function LandlordDashboard() {
                   <div className="space-y-3">
                     {paymentSubTab === "Paid" ? (
                       paidTenants.length === 0 ? (
-                        <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-ink-50 dark:bg-white/5 rounded-2xl border border-dashed border-ink-200 dark:border-white/10">
+                        <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-ink-50 dark:bg-[#FFFFFF]/5 rounded-2xl border border-dashed border-ink-200 dark:border-[#2C4633]">
                           <CreditCard className="h-10 w-10 mx-auto text-ink-300 dark:text-white/20 mb-3" />
                           <p className="text-sm font-semibold">No collected rent payments recorded yet.</p>
                           <p className="text-xs mt-1 opacity-70">When active tenants pay their rent, full payment records will appear here.</p>
@@ -1361,9 +1373,9 @@ export default function LandlordDashboard() {
                         paidTenants.map((t, idx) => {
                           const amount = parseTenantRent(t);
                           return (
-                            <div key={t.id || idx} className="p-4 rounded-2xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-500/30 transition-all">
+                            <div key={t.id || idx} className="p-4 rounded-2xl bg-ink-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-[#2C4633] flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-500/30 transition-all">
                               <div className="flex items-center gap-3.5">
-                                <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl font-black text-sm">
+                                <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-cream-100 rounded-xl font-black text-sm">
                                   ✓
                                 </div>
                                 <div>
@@ -1373,10 +1385,10 @@ export default function LandlordDashboard() {
                               </div>
                               <div className="flex items-center justify-between sm:justify-end gap-6">
                                 <div className="text-left sm:text-right">
-                                  <span className="font-black text-base text-emerald-600 dark:text-emerald-400 block">+₦{amount.toLocaleString()}</span>
+                                  <span className="font-black text-base text-emerald-600 dark:text-cream-100 block">+₦{amount.toLocaleString()}</span>
                                   <span className="text-[11px] font-semibold text-ink-400 dark:text-cream-100/60 block">Paid • {t.dueDate || "Monthly Rent"}</span>
                                 </div>
-                                <span className="px-3 py-1 bg-emerald-100 dark:bg-[#07130D]merald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] rounded-full border border-emerald-300 dark:border-emerald-800">
+                                <span className="px-3 py-1 bg-emerald-100 dark:bg-#07130D text-emerald-800 dark:text-cream-100 font-bold text-[11px] rounded-full border border-emerald-300 dark:border-[#2C4633]">
                                   Completed
                                 </span>
                               </div>
@@ -1386,10 +1398,10 @@ export default function LandlordDashboard() {
                       )
                     ) : (
                       overdueTenants.length === 0 ? (
-                        <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-emerald-50/50 dark:bg-[#07130D]merald-950/20 rounded-2xl border border-dashed border-emerald-200 dark:border-emerald-800/30">
+                        <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-emerald-50/50 dark:bg-#07130D/20 rounded-2xl border border-dashed border-emerald-200 dark:border-[#2C4633]">
                           <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500 mb-3" />
-                          <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">All tenant payments are up to date! 🎉</p>
-                          <p className="text-xs mt-1 text-emerald-600 dark:text-emerald-400 opacity-80">There are currently no overdue or outstanding rent balances.</p>
+                          <p className="text-sm font-bold text-emerald-800 dark:text-cream-100">All tenant payments are up to date! 🎉</p>
+                          <p className="text-xs mt-1 text-emerald-600 dark:text-cream-100 opacity-80">There are currently no overdue or outstanding rent balances.</p>
                         </div>
                       ) : (
                         overdueTenants.map((t, idx) => {
@@ -1428,14 +1440,14 @@ export default function LandlordDashboard() {
 
                 {/* GETTING STARTED CHECKLIST (ONLY FOR NEW LANDLORDS ON SIGN UP) */}
                 {isNewSignUpUser && !isGettingStartedDismissed && displayProperties.length === 0 && !loadingData && (
-                  <div className="relative bg-[#0B2519] dark:bg-[#071911] text-white p-6 sm:p-8 rounded-3xl border border-[#1B4D35] dark:border-[#133A27] shadow-xl space-y-6 animate-in fade-in duration-300">
+                  <div className="relative bg-[#0B2519] dark:bg-[#192A1F] text-white p-6 sm:p-8 rounded-3xl border border-[#1B4D35] dark:border-[#2C4633] shadow-xl space-y-6 animate-in fade-in duration-300">
                     {/* Exit / Dismiss Button */}
                     <button
                       type="button"
                       onClick={handleDismissGettingStarted}
                       aria-label="Close getting started guide"
                       title="Dismiss guide"
-                      className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/90 hover:text-white transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#E5C583]"
+                      className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-full bg-[#FFFFFF]/10 hover:bg-[#FFFFFF]/20 text-white/90 hover:text-white transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-[#E5C583]"
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -1587,7 +1599,7 @@ export default function LandlordDashboard() {
                   </div>
 
                   {/* BOX 2: Weekly Activity Bar Chart Card */}
-                  <section className="db-card activity-card tour-occupancy">
+                  <div className="db-card activity-card tour-occupancy">
                     {(() => {
                       const todayDayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()];
                       const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -1621,8 +1633,8 @@ export default function LandlordDashboard() {
                               const dayStats = weeklyStats[day] || { views: 0, saves: 0 };
                               const totalInteractions = dayStats.views + dayStats.saves;
                               const fillPercent = (totalInteractions / maxInteractions) * 100;
-                              
-                              const barHeight = totalInteractions > 0 ? `${fillPercent}%` : "8%";
+                              const adjustedFill = totalInteractions > 0 ? 8 + (fillPercent * 0.92) : 8;
+                              const barHeight = `${adjustedFill}%`;
 
                               return (
                                 <div key={day} className="activity-bar-col" onClick={() => { setSelectedActivityDay(day); setShowActivityModal(true); }} style={{ cursor: "pointer" }}>
@@ -1640,7 +1652,7 @@ export default function LandlordDashboard() {
                         </>
                       );
                     })()}
-                  </section>
+                  </div>
 
                 </div>
 
@@ -1648,7 +1660,7 @@ export default function LandlordDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                   {/* LEFT: TENANT REQUESTS CARD */}
-                  <div className="bg-white dark:bg-[#07130D] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-white/10 shadow-sm space-y-4 tour-requests flex flex-col justify-between">
+                  <div className="bg-[#FFFFFF] dark:bg-[#192A1F] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-[#2C4633] shadow-sm space-y-4 tour-requests flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <h3 className="text-base sm:text-lg font-bold text-[#1E293B] dark:text-cream-100">
@@ -1660,7 +1672,7 @@ export default function LandlordDashboard() {
                             setActiveTab(6);
                             setActivePill("Maintenance");
                           }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-cream-100 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-cream-100 hover:bg-slate-100 dark:hover:bg-[#FFFFFF]/10 transition-colors cursor-pointer"
                           title="View All Maintenance Requests"
                         >
                           <MoreVertical className="h-5 w-5" />
@@ -1727,10 +1739,10 @@ export default function LandlordDashboard() {
                                       <div
                                         key={req.id}
                                         onClick={() => setSelectedRequestForDetails(req)}
-                                        className="p-2.5 sm:p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all flex items-center justify-between gap-3 cursor-pointer group border border-transparent hover:border-slate-200/60 dark:hover:border-white/10"
+                                        className="p-2.5 sm:p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-[#FFFFFF]/5 transition-all flex items-center justify-between gap-3 cursor-pointer group border border-transparent hover:border-slate-200/60 dark:hover:border-white/10"
                                       >
                                         <div className="flex items-center gap-3 min-w-0">
-                                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-cream-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-[#FFFFFF]/10 text-slate-600 dark:text-cream-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                                             <Briefcase className="h-4 sm:h-4.5 w-4 sm:w-4.5 text-slate-600 dark:text-cream-100" />
                                           </div>
 
@@ -1761,7 +1773,7 @@ export default function LandlordDashboard() {
                     {tenantRequests.length > 2 && (
                       <button
                         onClick={() => setShowAllRequests(!showAllRequests)}
-                        className="w-full py-2 text-xs font-bold text-moss-700 dark:text-[#E5C583] hover:underline text-center cursor-pointer pt-2 mt-2 border-t border-slate-100 dark:border-white/10"
+                        className="w-full py-2 text-xs font-bold text-moss-700 dark:text-[#E5C583] hover:underline text-center cursor-pointer pt-2 mt-2 border-t border-slate-100 dark:border-[#2C4633]"
                       >
                         {showAllRequests ? "Show Less" : "Show More Requests (" + tenantRequests.length + ")"}
                       </button>
@@ -1769,7 +1781,7 @@ export default function LandlordDashboard() {
                   </div>
 
                   {/* RIGHT: PORTFOLIO OCCUPANCY DONUT CHART CARD */}
-                  <div className="bg-white dark:bg-[#07130D] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-white/10 shadow-sm space-y-4 flex flex-col justify-between">
+                  <div className="bg-[#FFFFFF] dark:bg-[#192A1F] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-[#2C4633] shadow-sm space-y-4 flex flex-col justify-between">
                     <div className="flex items-center justify-between">
                       <h3 className="text-base sm:text-lg font-bold text-[#1E293B] dark:text-cream-100 flex items-center gap-2">
                         <Building2 className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" />
@@ -1784,18 +1796,31 @@ export default function LandlordDashboard() {
                     </div>
 
                     {(() => {
-                      const totalProperties = displayProperties.length;
-                      const occupiedCount = displayProperties.filter(p => {
-                        const st = (p.status || "").toLowerCase();
-                        return st === "occupied" || st === "active_occupied";
-                      }).length;
+                      const totalUnits = displayProperties.reduce((acc, p) => {
+                        if (Array.isArray(p.units) && p.units.length > 0) return acc + p.units.length;
+                        if (p.units_count) return acc + parseInt(p.units_count, 10) || 1;
+                        return acc + 1;
+                      }, 0);
 
-                      const vacantCount = Math.max(0, totalProperties - occupiedCount);
-                      const occRate = totalProperties > 0 ? Math.round((occupiedCount / totalProperties) * 100) : 0;
+                      const occupiedCount = displayProperties.reduce((acc, p) => {
+                        const st = (p.status || "").toLowerCase();
+                        if (st === "occupied" || st === "active_occupied") {
+                          if (Array.isArray(p.units) && p.units.length > 0) return acc + p.units.length;
+                          if (p.units_count) return acc + parseInt(p.units_count, 10) || 1;
+                          return acc + 1;
+                        }
+                        if (Array.isArray(p.units) && p.units.length > 0) {
+                          return acc + p.units.filter(u => (u.status || "").toLowerCase() === "occupied").length;
+                        }
+                        return acc;
+                      }, 0);
+
+                      const vacantCount = Math.max(0, totalUnits - occupiedCount);
+                      const occRate = totalUnits > 0 ? Math.round((occupiedCount / totalUnits) * 100) : 0;
 
                       const radius = 38;
                       const circumference = 2 * Math.PI * radius;
-                      const occupiedDash = totalProperties > 0 ? (occRate / 100) * circumference : 0;
+                      const occupiedDash = totalUnits > 0 ? (occRate / 100) * circumference : 0;
 
                       return (
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 py-2 my-auto">
@@ -1841,9 +1866,9 @@ export default function LandlordDashboard() {
                             <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
                               <div className="flex items-center gap-2.5">
                                 <span className="w-3 h-3 rounded-full bg-[#10B981] shrink-0" />
-                                <span className="text-xs font-bold text-slate-800 dark:text-emerald-300">Occupied Units</span>
+                                <span className="text-xs font-bold text-slate-800 dark:text-cream-100">Occupied Units</span>
                               </div>
-                              <span className="text-sm font-black text-emerald-700 dark:text-emerald-300">{occupiedCount}</span>
+                              <span className="text-sm font-black text-emerald-700 dark:text-cream-100">{occupiedCount}</span>
                             </div>
 
                             <div className="p-3 rounded-2xl bg-[#E5C583]/15 border border-[#E5C583]/30 flex items-center justify-between">
@@ -1864,10 +1889,10 @@ export default function LandlordDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                   {/* LEFT: RENT PAYMENTS HISTORY */}
-                  <div className="db-card p-4 sm:p-5 rounded-3xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 shadow-sm box-border tour-vault overflow-hidden flex flex-col justify-between min-h-[220px]">
+                  <div className="db-card p-4 sm:p-5 rounded-3xl bg-[#FFFFFF] dark:bg-[#192A1F] border border-ink-100 dark:border-[#2C4633] shadow-sm box-border tour-vault overflow-hidden flex flex-col justify-between min-h-[220px]">
                     <div>
                       {/* Header with top Full History link */}
-                      <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-ink-100 dark:border-white/10">
+                      <div className="flex items-center justify-between gap-2 mb-3 pb-2 border-b border-ink-100 dark:border-[#2C4633]">
                         <h3 className="text-xs font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-1.5 truncate">
                           <CreditCard className="h-4 w-4 text-moss-700 dark:text-[#E5C583] shrink-0" />
                           Rent Payments
@@ -1883,11 +1908,11 @@ export default function LandlordDashboard() {
                       {/* Top Financial Stats Grid */}
                       <div className="grid grid-cols-2 gap-2 mb-3">
                         <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col justify-between">
-                          <span className="text-[9.5px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">Collected</span>
-                          <span className="text-sm font-black text-emerald-900 dark:text-emerald-300 block truncate mt-0.5">
+                          <span className="text-[9.5px] font-bold text-emerald-800 dark:text-cream-100 uppercase tracking-wider block">Collected</span>
+                          <span className="text-sm font-black text-emerald-900 dark:text-cream-100 block truncate mt-0.5">
                             ₦{collectedAmount.toLocaleString()}
                           </span>
-                          <span className="text-[10px] text-emerald-700 dark:text-emerald-400/80 block mt-0.5">
+                          <span className="text-[10px] text-emerald-700 dark:text-cream-100/80 block mt-0.5">
                             {paidTenants.length} paid
                           </span>
                         </div>
@@ -1904,11 +1929,11 @@ export default function LandlordDashboard() {
                       </div>
 
                       {/* Subtab Toggle Buttons */}
-                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 p-1 rounded-xl w-fit">
+                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#FFFFFF]/5 p-1 rounded-xl w-fit">
                         <button
                           className={`px-2.5 py-0.5 text-[10.5px] font-bold rounded-lg transition-all cursor-pointer ${
                             paymentSubTab === "Paid"
-                              ? "bg-white dark:bg-[#07130D] text-moss-800 dark:text-[#E5C583] shadow-xs"
+                              ? "bg-[#FFFFFF] dark:bg-[#192A1F] text-moss-800 dark:text-[#E5C583] shadow-xs"
                               : "text-slate-500 dark:text-cream-100/60 hover:text-slate-800 dark:hover:text-white"
                           }`}
                           onClick={() => setPaymentSubTab("Paid")}
@@ -1918,7 +1943,7 @@ export default function LandlordDashboard() {
                         <button
                           className={`px-2.5 py-0.5 text-[10.5px] font-bold rounded-lg transition-all cursor-pointer ${
                             paymentSubTab === "Outstanding"
-                              ? "bg-white dark:bg-rose-950/80 text-rose-600 dark:text-rose-300 shadow-xs"
+                              ? "bg-[#FFFFFF] dark:bg-rose-950/80 text-rose-600 dark:text-rose-300 shadow-xs"
                               : "text-slate-500 dark:text-cream-100/60 hover:text-slate-800 dark:hover:text-white"
                           }`}
                           onClick={() => setPaymentSubTab("Outstanding")}
@@ -1930,8 +1955,8 @@ export default function LandlordDashboard() {
                   </div>
 
                   {/* RIGHT: QUICK ACTIONS */}
-                  <div className="bg-white dark:bg-[#07130D] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-white/10 shadow-sm space-y-3 flex flex-col justify-between min-h-[220px]">
-                    <div className="flex items-center justify-between border-b border-ink-100 dark:border-white/10 pb-2">
+                  <div className="bg-[#FFFFFF] dark:bg-[#192A1F] rounded-3xl p-5 sm:p-6 border border-ink-100 dark:border-[#2C4633] shadow-sm space-y-3 flex flex-col justify-between min-h-[220px]">
+                    <div className="flex items-center justify-between border-b border-ink-100 dark:border-[#2C4633] pb-2">
                       <h3 className="text-base font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-2">
                         <SlidersHorizontal className="h-4.5 w-4.5 text-moss-700 dark:text-[#E5C583]" />
                         Quick Actions
@@ -1941,7 +1966,7 @@ export default function LandlordDashboard() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <button
                         onClick={() => navigate("/dashboard/landlord/add-property")}
-                        className="w-full flex items-center justify-between p-3 px-3.5 rounded-2xl border border-ink-100 dark:border-white/10 bg-neutral-50 dark:bg-white/5 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 text-ink-900 dark:text-cream-100 font-bold text-xs transition-all duration-200 cursor-pointer shadow-2xs group"
+                        className="w-full flex items-center justify-between p-3 px-3.5 rounded-2xl border border-ink-100 dark:border-[#2C4633] bg-neutral-50 dark:bg-[#FFFFFF]/5 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 text-ink-900 dark:text-cream-100 font-bold text-xs transition-all duration-200 cursor-pointer shadow-2xs group"
                       >
                         <div className="flex items-center gap-2 truncate">
                           <Building2 className="h-4 w-4 text-moss-700 dark:text-[#E5C583] group-hover:text-current transition-colors shrink-0" />
@@ -1952,7 +1977,7 @@ export default function LandlordDashboard() {
 
                       <button
                         onClick={() => { setActiveTab(0); setActivePill("Applications"); }}
-                        className="w-full flex items-center justify-between p-3 px-3.5 rounded-2xl border border-ink-100 dark:border-white/10 bg-neutral-50 dark:bg-white/5 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 text-ink-900 dark:text-cream-100 font-bold text-xs transition-all duration-200 cursor-pointer shadow-2xs group"
+                        className="w-full flex items-center justify-between p-3 px-3.5 rounded-2xl border border-ink-100 dark:border-[#2C4633] bg-neutral-50 dark:bg-[#FFFFFF]/5 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 text-ink-900 dark:text-cream-100 font-bold text-xs transition-all duration-200 cursor-pointer shadow-2xs group"
                       >
                         <div className="flex items-center gap-2 truncate">
                           <ClipboardList className="h-4 w-4 text-moss-700 dark:text-[#E5C583] group-hover:text-current transition-colors shrink-0" />
@@ -1970,7 +1995,7 @@ export default function LandlordDashboard() {
 
                       <button
                         onClick={() => { setActiveTab(0); setActivePill("Payments"); }}
-                        className="w-full flex items-center justify-between p-3 px-3.5 rounded-2xl border border-ink-100 dark:border-white/10 bg-neutral-50 dark:bg-white/5 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 text-ink-900 dark:text-cream-100 font-bold text-xs transition-all duration-200 cursor-pointer shadow-2xs group"
+                        className="w-full flex items-center justify-between p-3 px-3.5 rounded-2xl border border-ink-100 dark:border-[#2C4633] bg-neutral-50 dark:bg-[#FFFFFF]/5 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 text-ink-900 dark:text-cream-100 font-bold text-xs transition-all duration-200 cursor-pointer shadow-2xs group"
                       >
                         <div className="flex items-center gap-2 truncate">
                           <CreditCard className="h-4 w-4 text-moss-700 dark:text-[#E5C583] group-hover:text-current transition-colors shrink-0" />
@@ -1984,7 +2009,7 @@ export default function LandlordDashboard() {
                           setAutoOpenAddTenantModal(true);
                           setActiveTab(2);
                         }}
-                        className="w-full flex items-center justify-between p-3 px-3.5 rounded-2xl border border-ink-100 dark:border-white/10 bg-neutral-50 dark:bg-white/5 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 text-ink-900 dark:text-cream-100 font-bold text-xs transition-all duration-200 cursor-pointer shadow-2xs group"
+                        className="w-full flex items-center justify-between p-3 px-3.5 rounded-2xl border border-ink-100 dark:border-[#2C4633] bg-neutral-50 dark:bg-[#FFFFFF]/5 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 text-ink-900 dark:text-cream-100 font-bold text-xs transition-all duration-200 cursor-pointer shadow-2xs group"
                       >
                         <div className="flex items-center gap-2 truncate">
                           <UserPlus className="h-4 w-4 text-moss-700 dark:text-[#E5C583] group-hover:text-current transition-colors shrink-0" />
@@ -2000,7 +2025,7 @@ export default function LandlordDashboard() {
 
 
                 {/* 4. MY PROPERTIES PORTFOLIO CARD */}
-                <section className="db-card properties-list-card tour-property-list">
+                <div className="db-card properties-list-card tour-property-list">
                   <div className="activity-header">
                     <h3 className="activity-title" style={{ cursor: "pointer" }} onClick={() => setActiveTab(1)}>My Properties</h3>
                     <button
@@ -2040,7 +2065,7 @@ export default function LandlordDashboard() {
                       return liveAndOccupiedProps.map((property) => {
                         const hasTenants = leases.some(l => String(l.property_id || l.propertyId) === String(property.id) && (l.status === 'active' || l.status === 'leased')) || property.status === "occupied" || property.status === "active_occupied";
                         return (
-                          <div key={property.id} className="p-4 rounded-2xl border border-ink-100 dark:border-white/10 bg-slate-50/70 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-all flex flex-col justify-between gap-3.5 min-w-0">
+                          <div key={property.id} className="p-4 rounded-2xl border border-ink-100 dark:border-[#2C4633] bg-slate-50/70 dark:bg-[#FFFFFF]/5 hover:bg-slate-100 dark:hover:bg-[#FFFFFF]/10 transition-all flex flex-col justify-between gap-3.5 min-w-0">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-center gap-3 min-w-0 flex-1">
                                 <div className="w-10 h-10 rounded-xl bg-moss-700/10 dark:bg-[#E5C583]/15 text-moss-700 dark:text-[#E5C583] flex items-center justify-center shrink-0">
@@ -2058,14 +2083,14 @@ export default function LandlordDashboard() {
 
                               <button
                                 onClick={() => navigate(`/dashboard/landlord/properties/${property.id}`)}
-                                className="p-1.5 rounded-xl bg-white dark:bg-white/10 text-ink-700 dark:text-cream-100 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 transition-all cursor-pointer border border-ink-100 dark:border-white/10 shadow-xs shrink-0"
+                                className="p-1.5 rounded-xl bg-[#FFFFFF] dark:bg-[#FFFFFF]/10 text-ink-700 dark:text-cream-100 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 transition-all cursor-pointer border border-ink-100 dark:border-[#2C4633] shadow-xs shrink-0"
                                 title="View property details"
                               >
                                 <ArrowUpRight className="h-4 w-4" />
                               </button>
                             </div>
 
-                            <div className="flex items-center justify-between pt-2.5 border-t border-ink-100/60 dark:border-white/10">
+                            <div className="flex items-center justify-between pt-2.5 border-t border-ink-100/60 dark:border-[#2C4633]">
                               <span className="text-xs font-black text-moss-700 dark:text-[#E5C583]">
                                 {property.price}
                               </span>
@@ -2074,7 +2099,7 @@ export default function LandlordDashboard() {
                                   <Users className="h-3.5 w-3.5" /> Occupied
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1.5 text-[10.5px] font-black uppercase bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-1 rounded-full border border-emerald-500/20 shrink-0">
+                                <span className="inline-flex items-center gap-1.5 text-[10.5px] font-black uppercase bg-emerald-500/15 text-emerald-700 dark:text-cream-100 px-2.5 py-1 rounded-full border border-emerald-500/20 shrink-0">
                                   <CheckCircle2 className="h-3.5 w-3.5" /> Live
                                 </span>
                               )}
@@ -2084,7 +2109,7 @@ export default function LandlordDashboard() {
                       });
                     })()}
                   </div>
-                </section>
+                </div>
 
               </div>
             )
@@ -2140,9 +2165,9 @@ export default function LandlordDashboard() {
 
       {showActivityModal && selectedActivityDay && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-[#07130D] rounded-3xl border border-[#E4EAE1] dark:border-white/10 max-w-sm w-full p-8 shadow-2xl relative text-center">
+          <div className="bg-[#FFFFFF] dark:bg-[#192A1F] rounded-3xl border border-[#E4EAE1] dark:border-[#2C4633] max-w-sm w-full p-8 shadow-2xl relative text-center">
             <button
-              className="absolute top-4 right-4 text-ink-400 dark:text-cream-100 hover:text-ink-900 dark:hover:text-white text-xl font-bold p-1 bg-[#FAF8F6] dark:bg-white/5 rounded-full h-8 w-8 flex items-center justify-center cursor-pointer transition-colors border-none outline-none"
+              className="absolute top-4 right-4 text-ink-400 dark:text-cream-100 hover:text-ink-900 dark:hover:text-white text-xl font-bold p-1 bg-[#FAF8F6] dark:bg-[#FFFFFF]/5 rounded-full h-8 w-8 flex items-center justify-center cursor-pointer transition-colors border-none outline-none"
               onClick={() => setShowActivityModal(false)}
             >
               &times;
@@ -2160,7 +2185,7 @@ export default function LandlordDashboard() {
             </div>
             
             <div className="space-y-3 mt-6 text-left">
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-[#2C4633]">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-300">
                     <span className="text-lg">👁️</span>
@@ -2175,7 +2200,7 @@ export default function LandlordDashboard() {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-[#2C4633]">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-xl bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-300">
                     <span className="text-lg">❤️</span>
@@ -2196,17 +2221,17 @@ export default function LandlordDashboard() {
 
       {showRatingModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
-          <div className="bg-white dark:bg-[#07130D] rounded-3xl border border-[#E4EAE1] dark:border-white/10 max-w-md w-full p-8 shadow-2xl relative text-center">
+          <div className="bg-[#FFFFFF] dark:bg-[#192A1F] rounded-3xl border border-[#E4EAE1] dark:border-[#2C4633] max-w-md w-full p-8 shadow-2xl relative text-center">
             {/* Close Button */}
             <button
-              className="absolute top-4 right-4 text-ink-400 dark:text-cream-100 hover:text-ink-900 dark:hover:text-white text-xl font-bold p-1 bg-[#FAF8F6] dark:bg-white/5 rounded-full h-8 w-8 flex items-center justify-center cursor-pointer transition-colors border-none outline-none"
+              className="absolute top-4 right-4 text-ink-400 dark:text-cream-100 hover:text-ink-900 dark:hover:text-white text-xl font-bold p-1 bg-[#FAF8F6] dark:bg-[#FFFFFF]/5 rounded-full h-8 w-8 flex items-center justify-center cursor-pointer transition-colors border-none outline-none"
               onClick={() => setShowRatingModal(false)}
             >
               &times;
             </button>
 
             <div className="flex justify-center mb-3">
-              <div className="bg-amber-100 dark:bg-[#07130D]mber-900/20 p-3.5 rounded-full text-amber-500">
+              <div className="bg-amber-100 dark:bg-[#192A1F]mber-900/20 p-3.5 rounded-full text-amber-500">
                 <Star className="h-8 w-8 fill-current" />
               </div>
             </div>
@@ -2222,7 +2247,7 @@ export default function LandlordDashboard() {
               </p>
             )}
 
-            <div className="space-y-4 text-left max-h-[300px] overflow-y-auto pr-1 border-t border-[#E4EAE1] dark:border-white/10 pt-4">
+            <div className="space-y-4 text-left max-h-[300px] overflow-y-auto pr-1 border-t border-[#E4EAE1] dark:border-[#2C4633] pt-4">
               {!ratingData.hasReviews ? (
                 <div className="text-center py-8 text-ink-400 dark:text-cream-100/60 space-y-2">
                   <Star className="h-8 w-8 mx-auto text-amber-400/40" />
@@ -2235,7 +2260,7 @@ export default function LandlordDashboard() {
                 ratingData.reviews.map((rev, i) => (
                   <div key={i} className="border-b border-[#E4EAE1]/60 dark:border-white/5 pb-3">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[13px] font-bold text-ink-900 dark:text-white">{rev.tenantName || rev.author || "Anonymous Tenant"}</span>
+                      <span className="text-[13px] font-bold text-ink-900 dark:text-white">Verified Tenant</span>
                       <span className="text-[11px] text-[#D69E2E] font-bold flex items-center gap-1">
                         <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0 inline" /> {rev.rating || "5.0"}
                       </span>
@@ -2261,10 +2286,10 @@ export default function LandlordDashboard() {
 
       {showLandlordProfileModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4">
-          <div className="bg-white dark:bg-[#07130D] rounded-3xl border border-[#E4EAE1] dark:border-white/10 max-w-sm w-full p-8 shadow-2xl relative text-center">
+          <div className="bg-[#FFFFFF] dark:bg-[#192A1F] rounded-3xl border border-[#E4EAE1] dark:border-[#2C4633] max-w-sm w-full p-8 shadow-2xl relative text-center">
             {/* Close Button */}
             <button
-              className="absolute top-4 right-4 text-ink-400 dark:text-cream-100 hover:text-ink-900 dark:hover:text-white text-xl font-bold p-1 bg-[#FAF8F6] dark:bg-white/5 rounded-full h-8 w-8 flex items-center justify-center cursor-pointer transition-colors border-none outline-none"
+              className="absolute top-4 right-4 text-ink-400 dark:text-cream-100 hover:text-ink-900 dark:hover:text-white text-xl font-bold p-1 bg-[#FAF8F6] dark:bg-[#FFFFFF]/5 rounded-full h-8 w-8 flex items-center justify-center cursor-pointer transition-colors border-none outline-none"
               onClick={() => setShowLandlordProfileModal(false)}
             >
               &times;
@@ -2272,7 +2297,7 @@ export default function LandlordDashboard() {
 
             {/* Profile Avatar */}
             <div className="relative mx-auto w-24 h-24 mb-4">
-              <div className="w-full h-full flex items-center justify-center bg-moss-100 dark:bg-forest-900/60 rounded-full border-4 border-[#E4EAE1] dark:border-white/10 text-moss-800 dark:text-[#E5C583] overflow-hidden">
+              <div className="w-full h-full flex items-center justify-center bg-moss-100 dark:bg-forest-900/60 rounded-full border-4 border-[#E4EAE1] dark:border-[#2C4633] text-moss-800 dark:text-[#E5C583] overflow-hidden">
                 {landlordAvatar ? (
                   <img src={landlordAvatar} alt="Landlord profile" className="w-full h-full object-cover" />
                 ) : (
@@ -2289,7 +2314,7 @@ export default function LandlordDashboard() {
             </span>
 
             {/* Details List */}
-            <div className="space-y-3.5 text-left border-t border-[#E4EAE1] dark:border-white/10 pt-5">
+            <div className="space-y-3.5 text-left border-t border-[#E4EAE1] dark:border-[#2C4633] pt-5">
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Email Address</span>
                 <span className="text-ink-900 dark:text-white font-semibold">
@@ -2475,8 +2500,8 @@ export default function LandlordDashboard() {
       {/* ADMIN REJECTION & FEEDBACK MODAL */}
       {selectedFeedbackProperty && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-[#07130D] border border-ink-200 dark:border-white/15 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-white/10">
+          <div className="bg-[#FFFFFF] dark:bg-[#192A1F] border border-ink-200 dark:border-white/15 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-[#2C4633]">
               <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
                 <AlertTriangle className="h-5 w-5" />
                 <h3 className="font-bold text-base text-ink-900 dark:text-white">Admin Review Feedback</h3>
@@ -2520,7 +2545,7 @@ export default function LandlordDashboard() {
                   setSelectedFeedbackProperty(null);
                   navigate("/dashboard/landlord/add-property");
                 }}
-                className="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 rounded-xl cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-[#FFFFFF]/10 dark:hover:bg-[#FFFFFF]/20 rounded-xl cursor-pointer"
               >
                 Full Re-submission
               </button>

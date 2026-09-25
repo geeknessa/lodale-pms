@@ -76,7 +76,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
   return (
     <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-5xl bg-white dark:bg-[#07130D] rounded-3xl p-6 sm:p-8 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[92vh] overflow-y-auto relative animate-in zoom-in-95 duration-200"
+        className="w-full max-w-5xl bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl p-6 sm:p-8 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[92vh] overflow-y-auto relative animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* TOP BAR WITH BREADCRUMB AND ACTIONS */}
@@ -84,14 +84,14 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-3.5 py-1.5 bg-ink-100 dark:bg-white/10 hover:bg-ink-200 dark:hover:bg-white/20 text-ink-800 dark:text-cream-100 font-bold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer"
+              className="px-3.5 py-1.5 bg-ink-100 dark:bg-[#FFFFFF]/10 hover:bg-ink-200 dark:hover:bg-[#FFFFFF]/20 text-ink-800 dark:text-cream-100 font-bold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer"
             >
               <ArrowLeft className="h-4 w-4" /> Back
             </button>
             <div className="flex items-center gap-1.5 text-xs text-ink-400 dark:text-cream-100/60 font-semibold">
               <span className="flex items-center gap-1"><Home className="h-3.5 w-3.5" /> {isApplicant ? "Applications" : "Tenants"}</span>
               <span>/</span>
-              <span className="text-moss-700 dark:text-[#E5C583] font-bold flex items-center gap-1 bg-moss-50 dark:bg-white/10 px-2 py-0.5 rounded-lg">
+              <span className="text-moss-700 dark:text-[#E5C583] font-bold flex items-center gap-1 bg-moss-50 dark:bg-[#FFFFFF]/10 px-2 py-0.5 rounded-lg">
                 <User className="h-3.5 w-3.5" /> Tenant Details
               </span>
             </div>
@@ -141,7 +141,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-ink-400 hover:text-ink-800 dark:hover:text-white hover:bg-ink-100 dark:hover:bg-white/10 transition-colors"
+              className="p-2 rounded-xl text-ink-400 hover:text-ink-800 dark:hover:text-white hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/10 transition-colors"
             >
               <X className="h-5 w-5" />
             </button>
@@ -157,7 +157,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
 
           {/* LEFT COLUMN: PERSONAL DETAILS CARD */}
-          <div className="md:col-span-4 bg-ink-50/50 dark:bg-white/5 border border-ink-100 dark:border-white/10 rounded-2xl p-6 flex flex-col items-center text-center shadow-xs">
+          <div className="md:col-span-4 bg-ink-50/50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 rounded-2xl p-6 flex flex-col items-center text-center shadow-xs">
             <div className="relative mb-4">
               <Avatar src={tenant.avatar} name={tenantName} className="w-24 h-24 rounded-full border-4 border-white dark:border-[#2A2A2A] shadow-md object-cover" />
               {(tenant.nin_verified || tenant.ninVerified) && (
@@ -204,7 +204,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
           </div>
 
           {/* RIGHT COLUMN: TABBED DETAILS CONTAINER */}
-          <div className="md:col-span-8 bg-white dark:bg-[#242424] border border-ink-100 dark:border-white/10 rounded-2xl p-6 flex flex-col justify-between shadow-xs">
+          <div className="md:col-span-8 bg-[#FFFFFF] dark:bg-[#242424] border border-ink-100 dark:border-white/10 rounded-2xl p-6 flex flex-col justify-between shadow-xs">
             <div>
               {/* TAB NAVIGATION HEADER */}
               <div className="flex items-center gap-6 border-b border-ink-100 dark:border-white/10 pb-3 mb-6 overflow-x-auto">
@@ -231,7 +231,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
                   }`}
                 >
                   Rental History
-                  <span className="px-1.5 py-0.2 bg-ink-100 dark:bg-white/10 text-ink-700 dark:text-cream-100 text-[10px] font-extrabold rounded-full">
+                  <span className="px-1.5 py-0.2 bg-ink-100 dark:bg-[#FFFFFF]/10 text-ink-700 dark:text-cream-100 text-[10px] font-extrabold rounded-full">
                     {String(rentalHistoryList.length).padStart(2, '0')}
                   </span>
                   {activeTab === "history" && (
@@ -248,7 +248,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
                   }`}
                 >
                   Documents
-                  <span className="px-1.5 py-0.2 bg-ink-100 dark:bg-white/10 text-ink-700 dark:text-cream-100 text-[10px] font-extrabold rounded-full">
+                  <span className="px-1.5 py-0.2 bg-ink-100 dark:bg-[#FFFFFF]/10 text-ink-700 dark:text-cream-100 text-[10px] font-extrabold rounded-full">
                     {String(documentsList.length).padStart(2, '0')}
                   </span>
                   {activeTab === "documents" && (
@@ -273,7 +273,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
               {/* TAB 1: APPLICATION DETAILS */}
               {activeTab === "application" && (
-                <div className="p-5 sm:p-6 rounded-2xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 animate-in fade-in duration-200">
+                <div className="p-5 sm:p-6 rounded-2xl bg-ink-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 animate-in fade-in duration-200">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-5 gap-x-8 text-xs sm:text-sm">
                     <div>
                       <span className="text-ink-400 dark:text-cream-100/60 font-semibold block mb-1">Application Date :</span>
@@ -312,7 +312,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
                     <div>
                       <span className="text-ink-400 dark:text-cream-100/60 font-semibold block mb-1">Monthly Income :</span>
-                      <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm sm:text-base">{monthlyIncome}</span>
+                      <span className="font-extrabold text-emerald-600 dark:text-cream-100 text-sm sm:text-base">{monthlyIncome}</span>
                     </div>
                   </div>
                 </div>
@@ -320,18 +320,18 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
               {/* TAB 2: RENTAL HISTORY */}
               {activeTab === "history" && (
-                <div className="p-5 sm:p-6 rounded-2xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in duration-200">
+                <div className="p-5 sm:p-6 rounded-2xl bg-ink-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in duration-200">
                   {rentalHistoryList.length === 0 ? (
                     <div className="text-center py-8 text-ink-400 dark:text-cream-100/60">
                       <p className="text-xs font-semibold">No prior rental history recorded for this tenant.</p>
                     </div>
                   ) : (
                     rentalHistoryList.map((item, idx) => (
-                      <div key={idx} className="p-4 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-4">
+                      <div key={idx} className="p-4 rounded-xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-4">
                         <div>
                           <h4 className="font-bold text-sm text-ink-900 dark:text-cream-100">{item.title}</h4>
                           <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">Lease Term: {item.period}</p>
-                          <span className="inline-block mt-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-[#07130D]merald-950 px-2.5 py-0.5 rounded-full capitalize">
+                          <span className="inline-block mt-2 text-[11px] font-bold text-emerald-600 dark:text-cream-100 bg-emerald-100 dark:bg-[#07130D]merald-950 px-2.5 py-0.5 rounded-full capitalize">
                             {item.status}
                           </span>
                         </div>
@@ -344,19 +344,19 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
               {/* TAB 3: DOCUMENTS */}
               {activeTab === "documents" && (
-                <div className="p-5 sm:p-6 rounded-2xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-3 animate-in fade-in duration-200">
+                <div className="p-5 sm:p-6 rounded-2xl bg-ink-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 space-y-3 animate-in fade-in duration-200">
                   {documentsList.length === 0 ? (
                     <div className="text-center py-8 text-ink-400 dark:text-cream-100/60">
                       <p className="text-xs font-semibold">No verification documents attached to this application.</p>
                     </div>
                   ) : (
                     documentsList.map((doc, idx) => (
-                      <div key={idx} className="p-3.5 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-3">
+                      <div key={idx} className="p-3.5 rounded-xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-100 dark:border-white/10 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
-                          <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                          <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-cream-100" />
                           <div>
                             <h4 className="font-bold text-xs sm:text-sm text-ink-900 dark:text-cream-100">{doc.name}</h4>
-                            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">{doc.status}</p>
+                            <p className="text-[11px] text-emerald-600 dark:text-cream-100 font-semibold">{doc.status}</p>
                           </div>
                         </div>
                         <span className="text-xs font-bold text-ink-400 uppercase">{doc.type || "Doc"}</span>
@@ -368,8 +368,8 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
               {/* TAB 4: NOTES & COMMENTS */}
               {activeTab === "notes" && (
-                <div className="p-5 sm:p-6 rounded-2xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in duration-200">
-                  <div className="p-4 rounded-xl bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10">
+                <div className="p-5 sm:p-6 rounded-2xl bg-ink-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in duration-200">
+                  <div className="p-4 rounded-xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-100 dark:border-white/10">
                     <h4 className="font-bold text-xs uppercase tracking-wider text-ink-400 mb-2">Background & Verification Notes</h4>
                     <p className="text-xs sm:text-sm text-ink-700 dark:text-cream-100/90 leading-relaxed italic">
                       "{tenant.notes || tenant.message || "No background notes provided by applicant."}"
@@ -406,7 +406,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
             <div className="mt-6 pt-4 border-t border-ink-100 dark:border-white/10 flex items-center justify-end gap-3">
               <button
                 onClick={onClose}
-                className="px-5 py-2.5 bg-ink-100 dark:bg-white/10 hover:bg-ink-200 dark:hover:bg-white/20 text-ink-800 dark:text-cream-100 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                className="px-5 py-2.5 bg-ink-100 dark:bg-[#FFFFFF]/10 hover:bg-ink-200 dark:hover:bg-[#FFFFFF]/20 text-ink-800 dark:text-cream-100 font-bold text-xs rounded-xl transition-all cursor-pointer"
               >
                 Close
               </button>
@@ -419,11 +419,11 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
       {/* RELIABILITY BREAKDOWN SUB-MODAL */}
       {showReliabilityDetails && (
         <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowReliabilityDetails(false)}>
-          <div className="w-full max-w-lg bg-white dark:bg-[#07130D] rounded-3xl p-6 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[85vh] overflow-y-auto relative animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg bg-[#FFFFFF] dark:bg-[#07130D] rounded-3xl p-6 shadow-2xl border border-ink-100 dark:border-white/10 max-h-[85vh] overflow-y-auto relative animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-white/10 mb-4">
               <h3 className="font-extrabold text-base text-ink-900 dark:text-cream-100">Reliability Breakdown</h3>
               <button 
-                className="p-1 rounded-lg text-ink-400 hover:bg-ink-100 dark:hover:bg-white/10" 
+                className="p-1 rounded-lg text-ink-400 hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/10" 
                 onClick={() => setShowReliabilityDetails(false)}
               >
                 <X className="h-5 w-5" />
@@ -455,12 +455,12 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
               <h4 className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-cream-100/60">Landlord Reviews</h4>
               
               {!reviewsData.hasReviews || reviewsData.reviews.length === 0 ? (
-                <div className="p-4 text-center rounded-xl bg-ink-50 dark:bg-white/5 border border-ink-100 dark:border-white/10">
+                <div className="p-4 text-center rounded-xl bg-ink-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10">
                   <p className="text-xs text-ink-500 dark:text-cream-100/70">No reviews submitted for this tenant yet.</p>
                 </div>
               ) : (
                 reviewsData.reviews.map((rev) => (
-                  <div key={rev.id} className="p-3.5 rounded-xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-1.5">
+                  <div key={rev.id} className="p-3.5 rounded-xl bg-ink-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         {[1, 2, 3, 4, 5].map((s) => (
@@ -478,8 +478,8 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
                     )}
 
                     <div className="flex items-center justify-between text-[11px] text-ink-500 dark:text-cream-100/60 pt-1 border-t border-ink-100 dark:border-white/10">
-                      <span>By: <strong className="text-ink-800 dark:text-cream-100">{rev.landlordName || "Landlord"}</strong></span>
-                      <span className={rev.wouldRentAgain ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-500 font-bold"}>
+                      <span>Reviewed by: <strong className="text-ink-800 dark:text-cream-100">Verified Landlord</strong></span>
+                      <span className={rev.wouldRentAgain ? "text-emerald-600 dark:text-cream-100 font-bold" : "text-rose-500 font-bold"}>
                         Would Rent Again: {rev.wouldRentAgain ? "Yes" : "No"}
                       </span>
                     </div>
@@ -489,7 +489,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
             </div>
 
             <button 
-              className="w-full mt-5 py-2.5 bg-ink-900 text-white dark:bg-white dark:text-ink-950 font-bold text-xs rounded-xl cursor-pointer" 
+              className="w-full mt-5 py-2.5 bg-ink-900 text-white dark:bg-[#FFFFFF] dark:text-ink-950 font-bold text-xs rounded-xl cursor-pointer" 
               onClick={() => setShowReliabilityDetails(false)}
             >
               Close Breakdown

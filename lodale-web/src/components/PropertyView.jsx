@@ -118,7 +118,9 @@ export function PropertyDetailView() {
           <Button onClick={() => window.location.reload()} className="bg-[#E5C583] text-[#09090b] font-bold px-6 py-2.5 rounded-xl cursor-pointer">
             Retry
           </Button>
-          <Button onClick={() => navigate(-1)} variant="outline" className="border-white/20 text-white font-bold px-6 py-2.5 rounded-xl cursor-pointer">
+          <Button onClick={() => {
+            if (location.state?.returnTo) { navigate(location.state.returnTo); } else { navigate(-1); }
+          }} variant="outline" className="border-white/20 text-white font-bold px-6 py-2.5 rounded-xl cursor-pointer">
             Go Back
           </Button>
         </div>
@@ -131,7 +133,9 @@ export function PropertyDetailView() {
       <div className="min-h-screen bg-[#0F1715] text-white flex flex-col items-center justify-center p-6">
         <h2 className="text-2xl font-bold mb-2">Property Not Found</h2>
         <p className="text-sm text-cream-100/60 mb-6">The property listing you requested could not be located.</p>
-        <Button onClick={() => navigate(-1)} className="bg-[#E5C583] text-[#09090b] font-bold px-6 py-2.5 rounded-xl">
+        <Button onClick={() => {
+          if (location.state?.returnTo) { navigate(location.state.returnTo); } else { navigate(-1); }
+        }} className="bg-[#E5C583] text-[#09090b] font-bold px-6 py-2.5 rounded-xl">
           Go Back
         </Button>
       </div>
@@ -185,7 +189,7 @@ export function PropertyDetailView() {
       const completeness = profileService.checkProfileCompleteness(userProf);
       if (!completeness.isComplete) {
         localStorage.setItem("pendingQuickApplyPropertyId", property.id);
-        triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) in Settings before applying for a property.`, "error", "Profile Incomplete");
+        triggerToast(`Please take a moment to complete your profile before applying. We just need your: ${completeness.missingFields.join(", ")}.`, "info", "Profile Setup Required");
         localStorage.setItem("tenantActiveTab", "3");
         navigate("/dashboard/tenant");
         return;
@@ -206,7 +210,9 @@ export function PropertyDetailView() {
       <header className="sticky top-0 z-50 bg-white/80 dark:bg-[#07130D]/80 backdrop-blur-md border-b border-ink-100 dark:border-white/10 px-6 py-4 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (location.state?.returnTo) { navigate(location.state.returnTo); } else { navigate(-1); }
+            }}
             className="p-2 rounded-xl bg-ink-100 hover:bg-ink-200 dark:bg-white/5 dark:hover:bg-white/10 border border-ink-200 dark:border-white/10 text-ink-900 dark:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -590,7 +596,7 @@ export function PropertyDetailView() {
                 {landlordRatingData.reviews.map((rev) => (
                   <div key={rev.id} className="p-4 rounded-xl bg-cream-50/70 dark:bg-white/5 border border-ink-100 dark:border-white/10 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-ink-900 dark:text-white">{rev.tenantName}</span>
+                      <span className="text-xs font-bold text-ink-900 dark:text-white">Verified Tenant</span>
                       <div className="flex items-center gap-1 text-amber-500 font-bold text-xs">
                         <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
                         <span>{rev.rating}.0</span>

@@ -197,6 +197,11 @@ export default function TenantDashboard() {
   });
   const firstName = username.split(" ")[0];
 
+  const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
+  const currentUserEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+  const tenantReviewsData = ratingService.getTenantReviews(currentUserId, currentUserEmail);
+  const scoreVal = Number(tenantReviewsData.rating) || 0;
+
   // Dynamic real-time date formatting
   const currentDateStr = new Date().toLocaleDateString("en-GB", {
     weekday: "long",
@@ -1210,48 +1215,6 @@ export default function TenantDashboard() {
                 </div>
 
                 <div className="modal-body space-y-5">
-                  {/* Payment Schedule Selector */}
-                  {(() => {
-                    const baseRent = activeLease?.rent_amount ? parseFloat(activeLease.rent_amount) : 0;
-                    const monthlyAmt = baseRent;
-                    const yearlyAmt = baseRent * 12;
-                    return (
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[#71717A] dark:text-white/60 mb-2">
-                          Payment Schedule
-                        </label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setRentCycle("monthly")}
-                            className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center transition-all cursor-pointer ${rentCycle === "monthly"
-                              ? "bg-[#1E3324] text-white border-[#1E3324] dark:bg-[#E5C583] dark:text-[#0C1410] dark:border-[#E5C583]"
-                              : "bg-[#FAF8F5] dark:bg-[#0C1410] text-[#1C1917] dark:text-white border-[#E1EAE5] dark:border-white/10 hover:border-[#1E3324]"
-                              }`}
-                          >
-                            <span>Monthly</span>
-                            <span className="text-[10px] font-normal opacity-80">
-                              {monthlyAmt > 0 ? `₦${monthlyAmt.toLocaleString()} / mo` : "—"}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setRentCycle("yearly")}
-                            className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex flex-col items-center justify-center transition-all cursor-pointer ${rentCycle === "yearly"
-                              ? "bg-[#1E3324] text-white border-[#1E3324] dark:bg-[#E5C583] dark:text-[#0C1410] dark:border-[#E5C583]"
-                              : "bg-[#FAF8F5] dark:bg-[#0C1410] text-[#1C1917] dark:text-white border-[#E1EAE5] dark:border-white/10 hover:border-[#1E3324]"
-                              }`}
-                          >
-                            <span>Annual</span>
-                            <span className="text-[10px] font-normal opacity-80">
-                              {yearlyAmt > 0 ? `₦${yearlyAmt.toLocaleString()} / yr` : "—"}
-                            </span>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
                   {/* Live Payment Breakdown */}
                   {(() => {
                     const baseRent = activeLease?.rent_amount ? parseFloat(activeLease.rent_amount) : 0;
@@ -1622,14 +1585,8 @@ export default function TenantDashboard() {
       )}
 
       {/* RELIABILITY RATINGS DETAILS POPUP */}
-      {showRatingModal && (() => {
-        const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || (user && (user.id || user.userId));
-        const currentUserEmail = (sessionStorage.getItem("lastLoggedInEmail") || (user && user.email) || "").toLowerCase();
-        const tenantReviewsData = ratingService.getTenantReviews(currentUserId, currentUserEmail);
-        const scoreVal = Number(tenantReviewsData.rating) || 0;
-
-        return (
-          <div className="tenant-modal-backdrop" onClick={() => setShowRatingModal(false)}>
+      {showRatingModal && (
+        <div className="tenant-modal-backdrop" onClick={() => setShowRatingModal(false)}>
             <div className="tenant-modal-content text-left" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h3>Reliability Rating Details</h3>
@@ -1689,7 +1646,7 @@ export default function TenantDashboard() {
                         tenantReviewsData.reviews.map((rev) => (
                           <div key={rev.id} className="p-3 bg-neutral-50 dark:bg-[#07130D]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl space-y-1">
                             <div className="flex justify-between items-center">
-                              <span className="text-[12px] font-bold text-ink-900 dark:text-white">{rev.landlordName || "Landlord Review"}</span>
+                              <span className="text-[12px] font-bold text-ink-900 dark:text-white">Verified Landlord</span>
                               <span className="text-[11px] text-amber-500 font-bold">★ {rev.rating}.0</span>
                             </div>
                             {rev.comment && (
@@ -1721,8 +1678,7 @@ export default function TenantDashboard() {
               </Button>
             </div>
           </div>
-        );
-      })()}
+      )}
 
       {/* QUICK REPAIR DISPATCH POPUP MODAL */}
       {showDispatchModal && (
@@ -1797,7 +1753,7 @@ export default function TenantDashboard() {
                   type="submit"
                   className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3 font-bold text-[13px]"
                 >
-                  Send Dispatch
+                  Submit Request
                 </Button>
               </div>
             </form>
@@ -2112,7 +2068,7 @@ export default function TenantDashboard() {
                     <div className="grid grid-cols-2 gap-y-6 gap-x-4 mb-8 pt-6 border-t border-black/5 dark:border-white/5 relative z-10">
                       <div>
                         <p className="text-[10px] text-[#71717A] dark:text-white/50 uppercase font-bold tracking-widest mb-1.5">Landlord</p>
-                        <p className="text-sm font-bold uppercase">{activeLease?.landlord_name || "L O D A L E"}</p>
+                        <p className="text-sm font-bold uppercase">{activeLease?.landlord_name || "-"}</p>
                       </div>
                       <div>
                         <p className="text-[10px] text-[#71717A] dark:text-white/50 uppercase font-bold tracking-widest mb-1.5">Monthly Rent</p>
@@ -2151,7 +2107,7 @@ export default function TenantDashboard() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xl font-bold tracking-tight">27 Days</span>
+                          <span className="text-xl font-bold tracking-tight">{activeLease ? daysInHouse : 0} Days</span>
                           <span className="text-[10px] font-bold text-[#E5C583] uppercase tracking-widest flex items-center gap-1">Streak</span>
                         </div>
                         <p className="text-[11px] text-[#71717A] dark:text-white/60 font-medium">Days living in property</p>
@@ -2233,7 +2189,7 @@ export default function TenantDashboard() {
                         <h3 className="font-bold text-sm tracking-tight">Reliability Rating</h3>
                       </div>
                       <div className="flex items-center gap-1 text-[#1C1917] dark:text-white font-bold text-sm">
-                        ★ 3.0
+                        ★ {tenantReviewsData.hasReviews ? (Math.round(tenantReviewsData.averageScore * 10) / 10).toFixed(1) : "0.0"}
                       </div>
                     </div>
                     <p className="text-[11px] text-[#71717A] dark:text-white/60 mb-6 font-medium leading-relaxed pr-2">
@@ -2256,7 +2212,7 @@ export default function TenantDashboard() {
                     const payableAmt = rentCycle === "yearly" ? baseRent * 12 : baseRent;
                     const unpaidInv = invoices.find(i => i.status === 'unpaid');
 
-                    let dueDateStr = "09/28";
+                    let dueDateStr = "-";
                     let isDue = !!unpaidInv;
                     let displayAmt = unpaidInv ? parseFloat(unpaidInv.amount) : baseRent;
 
@@ -2267,12 +2223,10 @@ export default function TenantDashboard() {
                       const now = new Date();
                       let nextDate = new Date(startDate);
 
-                      while (nextDate < now) {
-                        if (activeLease.rent_cycle === 'yearly') {
-                          nextDate.setFullYear(nextDate.getFullYear() + 1);
-                        } else {
-                          nextDate.setMonth(nextDate.getMonth() + 1);
-                        }
+                      if (activeLease.rent_cycle === 'yearly') {
+                        nextDate.setFullYear(nextDate.getFullYear() + 1);
+                      } else {
+                        nextDate.setMonth(nextDate.getMonth() + 1);
                       }
                       dueDateStr = nextDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
                     }
@@ -2300,10 +2254,10 @@ export default function TenantDashboard() {
                         <div className="w-full mb-8 relative z-10">
                           <div className="flex items-center justify-between mb-3">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">Rent Paid</span>
-                            <span className="text-[10px] font-bold text-[#E5C583]">{isDue ? "0%" : "100%"}</span>
+                            <span className="text-[10px] font-bold text-[#E5C583]">{(!activeLease || isDue) ? "0%" : "100%"}</span>
                           </div>
                           <div className="w-full h-1.5 bg-[#0B1510]/50 rounded-full overflow-hidden border border-white/10 shadow-inner">
-                            <div className={`h-full rounded-full transition-all duration-1000 ${isDue ? 'w-0' : 'w-full bg-gradient-to-r from-[#D4B575] to-[#E5C583]'}`}></div>
+                            <div className={`h-full rounded-full transition-all duration-1000 ${(!activeLease || isDue) ? 'w-0' : 'w-full bg-gradient-to-r from-[#D4B575] to-[#E5C583]'}`}></div>
                           </div>
                         </div>
 
