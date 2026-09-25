@@ -15,6 +15,8 @@ import {
   AlertCircle,
   Check,
   Minus,
+  CheckCircle2,
+  HelpCircle,
 } from "lucide-react";
 import { Logo, VerifiedBadge } from "../components/Logo";
 import Button from "../components/Button";
@@ -41,10 +43,30 @@ const LOADING_MESSAGES = [
   "Synchronizing digital identity trace profile...",
 ];
 
+const MOCK_NIN_NAMES = [
+  "Chukwudi Emmanuel Abubakar",
+  "Amina Aisha Bello",
+  "Oluwaseun David Adebayo",
+  "Chioma Grace Okonkwo",
+  "Babajide Funsho Ogundipe",
+  "Fatima Zahra Ibrahim",
+];
+
+// Helper to extract First Name (first word) and Last Name (last word), ignoring middle names
+function extractFirstAndLastName(fullName) {
+  if (!fullName) return { first: "", last: "" };
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: "", last: "" };
+  if (parts.length === 1) return { first: parts[0], last: "" };
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+  return { first, last };
+}
+
 export default function SignUp() {
   useTheme();
   const { state } = useLocation();
-
+  const navigate = useNavigate();
 
   const cardRef = useRef(null);
   const logoRef = useRef(null);
@@ -63,36 +85,40 @@ export default function SignUp() {
       { opacity: 1, scale: 1, duration: 0.6, delay: 0.15, ease: "power2.out" }
     );
   }, []);
+
   const presetRole = state?.presetRole ?? "tenant";
   const skipRolePicker = state?.skipRolePicker ?? false;
   const skipWelcome = state?.skipWelcome ?? false;
   const listingId = state?.listingId;
 
   const [role, setRole] = useState(presetRole);
+
+  // Sign up workflow: Step 1 (Who are you?) -> Step 2 (Verify ID) -> Step 3 (Your details)
   const [step, setStep] = useState(skipRolePicker ? 2 : 1);
 
-  // Step 2 Form States
+  // Step 2 NIN Verification States
+  const [nin, setNin] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [pulledFullName, setPulledFullName] = useState("");
+  const [showIdentityConfirmation, setShowIdentityConfirmation] = useState(false);
+  const [verified, setVerified] = useState(false);
+
+  // Step 3 Form States (First Name and Last Name prefilled via NIN)
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  // Step 3 Verification States
-  const [nin, setNin] = useState("");
-  const [verified, setVerified] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [loadingStep, setLoadingStep] = useState(0);
-
   // Validation / Error alerts
   const [inlineError, setInlineError] = useState("");
 
-
-  // Google sign up simulation
+  // Google sign up simulation state
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // GSAP slide transition when step changes
+  // GSAP slide transition when step changes or confirmation view toggles
   useEffect(() => {
     if (stepContainerRef.current) {
       gsap.killTweensOf(stepContainerRef.current);
@@ -102,33 +128,9 @@ export default function SignUp() {
         { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }
       );
     }
-  }, [step]);
+  }, [step, showIdentityConfirmation]);
 
-  function handleGoogleSignUp() {
-    setGoogleLoading(true);
-    setInlineError("");
-
-    setTimeout(() => {
-      setGoogleLoading(false);
-      const rng = Math.random();
-
-      if (rng < 0.25) {
-        setInlineError("Google sign-up was cancelled.");
-      } else if (rng < 0.4) {
-        setInlineError("Google authentication failed. Please try again.");
-      } else {
-        // Pre-fill fields from Google account
-        setFirstName("Google");
-        setLastName("User");
-        setEmail("google.user@example.com");
-        // Automatically jump to Step 3 for NIN verification
-        setStep(3);
-      }
-    }, 1200);
-  }
-
-  const navigate = useNavigate();
-
+  // Password validation requirements
   const hasMinLength = password.length >= 8;
   const hasUppercase = /[A-Z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
@@ -137,49 +139,14 @@ export default function SignUp() {
     hasMinLength && hasUppercase && hasNumber && hasSpecialChar;
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
-  function handleGoToStep3() {
-    setInlineError("");
-
-    // Validate inputs in step 2
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
-      setInlineError(
-        "Missing Information: Please ensure all fields are completely filled out before proceeding.",
-      );
-      return;
-    }
-
-    if (!isEmailValid) {
-      setInlineError(
-        "Invalid Email Address: Please enter a valid email address (e.g. name@example.com) before proceeding.",
-      );
-      return;
-    }
-
-    if (!isPasswordValid) {
-      setInlineError(
-        "Password Not Secure Enough: It needs to include at least 8 characters, an uppercase letter, a number, and a special symbol.",
-      );
-      return;
-    }
-
-    if (email.trim().toLowerCase() === "user@example.com") {
-      setInlineError(
-        'Email Already Registered: An account was previously created using this email address. Please try signing in with this email, or click the "Log In" toggle at the top of the form.',
-      );
-      return;
-    }
-
-    // All checks passed, proceed to step 3 (Verify ID)
-    setStep(3);
-  }
-
+  // Trigger NIN Verification Progress Animation (Step 2)
   function handleVerify(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setInlineError("");
 
     if (nin.length !== 11) {
       setInlineError(
-        "Invalid NIN: Please enter your complete 11-digit National Identification Number to verify your identity.",
+        "Invalid NIN: Please enter your complete 11-digit National Identification Number to verify your identity."
       );
       return;
     }
@@ -191,7 +158,7 @@ export default function SignUp() {
     const targetObj = { val: 0 };
     gsap.to(targetObj, {
       val: 100,
-      duration: 2.8,
+      duration: 2.5,
       ease: "power1.inOut",
       onUpdate: () => {
         const currentProgress = Math.round(targetObj.val);
@@ -205,60 +172,182 @@ export default function SignUp() {
           setLoadingStep(0);
         }
       },
-      onComplete: async () => {
+      onComplete: () => {
         setIsVerifying(false);
-        setVerified(true);
-
-        const cleanEmail = email.trim().toLowerCase();
-        const cleanPassword = password.trim();
-        const cleanName = `${firstName.trim()} ${lastName.trim()}`;
-
-        sessionStorage.setItem("isAuthenticated", "true");
-        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
-        sessionStorage.setItem("username", cleanName);
-        sessionStorage.setItem("userRole", role);
-        sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
-
-        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
-        sessionStorage.setItem("username_" + cleanEmail, cleanName);
-        localStorage.setItem("isNewSignUp", "true");
-
-        const profileObj = {
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: cleanEmail,
-          phone: "",
-          role,
-          address: "",
-          dob: "",
-          location: "",
-          postalCode: "",
-          nin: nin || ""
-        };
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
-
-        // Persist user to PostgreSQL Database via authService
-        try {
-          const res = await authService.signUp({
-            email: cleanEmail,
-            password: cleanPassword,
-            firstName: firstName.trim(),
-            lastName: lastName.trim(),
-            role: role,
-            phone: ""
-          });
-          if (res && res.user) {
-            sessionStorage.setItem("db_user_id", res.user.id);
-          }
-        } catch (dbErr) {
-          console.warn("Database user persist warning:", dbErr);
-        }
+        // Retrieve identity record full name from NIMC simulation
+        const nameIdx = Math.abs(parseInt(nin.slice(-2) || "0", 10)) % MOCK_NIN_NAMES.length;
+        const pulled = MOCK_NIN_NAMES[nameIdx] || "Chukwudi Emmanuel Abubakar";
+        setPulledFullName(pulled);
+        setShowIdentityConfirmation(true);
       },
     });
   }
 
-  function handleCompleteSignUp() {
+  // User confirms "Is this you?" -> Yes, this is me
+  function handleConfirmIdentity() {
+    const { first, last } = extractFirstAndLastName(pulledFullName);
+    setFirstName(first);
+    setLastName(last);
+    setVerified(true);
+    setShowIdentityConfirmation(false);
+    setStep(3); // Advance to Step 3: Your details
+  }
+
+  // User rejects "Is this you?" -> No, try again
+  function handleRejectIdentity() {
+    setShowIdentityConfirmation(false);
+    setVerified(false);
+    setNin("");
+    setInlineError("Verification reset. Please re-enter your 11-digit NIN.");
+  }
+
+  // Handle Google Sign Up Simulation
+  function handleGoogleSignUp() {
+    setGoogleLoading(true);
+    setInlineError("");
+
+    setTimeout(() => {
+      setGoogleLoading(false);
+      setEmail("google.user@example.com");
+      setPassword("Pass@word123!");
+    }, 1000);
+  }
+
+  // Submit Sign-Up Form (Step 3)
+  async function handleCompleteSignUp(e) {
+    if (e) e.preventDefault();
+    setInlineError("");
+
+    if (!email.trim() || !password) {
+      setInlineError(
+        "Missing Information: Please enter your email address and password to complete registration."
+      );
+      return;
+    }
+
+    if (!isEmailValid) {
+      setInlineError(
+        "Invalid Email Address: Please enter a valid email address (e.g. name@example.com)."
+      );
+      return;
+    }
+
+    if (!isPasswordValid) {
+      setInlineError(
+        "Password Not Secure Enough: It needs to include at least 8 characters, an uppercase letter, a number, and a special symbol."
+      );
+      return;
+    }
+
+    if (email.trim().toLowerCase() === "user@example.com") {
+      setInlineError(
+        'Email Already Registered: An account was previously created using this email address. Please try signing in.'
+      );
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+    const cleanName = `${firstName.trim()} ${lastName.trim()}`;
+
+    sessionStorage.setItem("isAuthenticated", "true");
+    sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
+    sessionStorage.setItem("username", cleanName);
+    sessionStorage.setItem("userRole", role);
+    sessionStorage.setItem(
+      "sessionExpiresAt",
+      (Date.now() + 24 * 60 * 60 * 1000).toString()
+    );
+
+    sessionStorage.setItem("username_" + cleanEmail, cleanName);
+    localStorage.setItem("isNewSignUp", "true");
+
+    const profileObj = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: cleanEmail,
+      phone: "",
+      role,
+      address: "",
+      dob: "",
+      location: "",
+      postalCode: "",
+      nin: nin || ""
+    };
+    sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
+    sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
+
+    // Persist user to PostgreSQL Database via authService
+    try {
+      const res = await authService.signUp({
+        email: cleanEmail,
+        password: cleanPassword,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        role: role,
+        phone: ""
+      });
+      if (res && res.user) {
+        sessionStorage.setItem("db_user_id", res.user.id);
+      }
+    } catch (dbErr) {
+      console.warn("Database user persist warning:", dbErr);
+    }
+
+    // Check if this tenant had a pending invitation in propertyTenants
+    try {
+      const rawPropTenants = localStorage.getItem("propertyTenants");
+      if (rawPropTenants) {
+        const tenantsMap = JSON.parse(rawPropTenants);
+        let updatedAny = false;
+        let matchedTenantName = cleanName;
+
+        Object.keys(tenantsMap).forEach((pId) => {
+          if (Array.isArray(tenantsMap[pId])) {
+            tenantsMap[pId] = tenantsMap[pId].map((t) => {
+              if (!t) return t;
+              const isEmailMatch = t.email && t.email.toLowerCase() === cleanEmail.toLowerCase();
+              const isNameMatch = t.name && t.name.toLowerCase() === cleanName.toLowerCase();
+              const isPending = t.status === "pending" || (t.leaseStatus && t.leaseStatus.toLowerCase().includes("pending"));
+
+              if ((isEmailMatch || isNameMatch) && isPending) {
+                updatedAny = true;
+                matchedTenantName = t.name || cleanName;
+                return {
+                  ...t,
+                  status: "active",
+                  leaseStatus: "Active Tenant",
+                  email: cleanEmail,
+                  onboardedAt: new Date().toISOString()
+                };
+              }
+              return t;
+            });
+          }
+        });
+
+        if (updatedAny) {
+          localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
+
+          // Notify Landlord via landlordNotifications
+          const savedNotifs = localStorage.getItem("landlordNotifications");
+          const notifList = savedNotifs ? JSON.parse(savedNotifs) : [];
+          notifList.unshift({
+            id: "notif-tenant-joined-" + Date.now(),
+            title: "Tenant Joined App",
+            message: `Your tenant ${matchedTenantName} has accepted the invitation and joined the app!`,
+            time: "Just now",
+            type: "success",
+            read: false
+          });
+          localStorage.setItem("landlordNotifications", JSON.stringify(notifList));
+          window.dispatchEvent(new Event("storage"));
+        }
+      }
+    } catch (e) {
+      console.warn("Tenant invitation onboarding update error:", e);
+    }
+
     if (skipWelcome && listingId) {
       navigate(`/apply/${listingId}`);
     } else {
@@ -278,11 +367,17 @@ export default function SignUp() {
     >
       {/* Background Overlay */}
       <div className="absolute inset-0 bg-[#FAF8F6]/55 dark:bg-[#263b33]/90 transition-colors duration-200" />
+      
       {/* Floating Back Button */}
       <button
+        type="button"
         onClick={() => {
-          if (step > 1) {
-            setStep(step - 1);
+          if (showIdentityConfirmation) {
+            setShowIdentityConfirmation(false);
+          } else if (step === 3) {
+            setStep(2);
+          } else if (step === 2) {
+            setStep(1);
           } else {
             navigate(-1);
           }
@@ -322,7 +417,7 @@ export default function SignUp() {
             </div>
           )}
 
-          {/* Steps Progress Tracker */}
+          {/* Steps Progress Tracker: 1. Who are you? -> 2. Verify ID -> 3. Your details */}
           <div className="flex items-center justify-between gap-1.5 sm:gap-2 text-[11px] sm:text-[13px] tracking-wide text-ink-700 dark:text-cream-100/70 mb-4 sm:mb-6 w-full">
             {/* Step 1 */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -363,8 +458,8 @@ export default function SignUp() {
                   : "text-ink-700 dark:text-cream-100/70"
                   }`}
               >
-                <span className="hidden sm:inline">Your details</span>
-                <span className="inline sm:hidden">Details</span>
+                <span className="hidden sm:inline">Verify ID</span>
+                <span className="inline sm:hidden">Verify</span>
               </span>
             </div>
 
@@ -386,14 +481,15 @@ export default function SignUp() {
                   : "text-ink-700 dark:text-cream-100/70"
                   }`}
               >
-                <span className="hidden sm:inline">Verify ID</span>
-                <span className="inline sm:hidden">Verify</span>
+                <span className="hidden sm:inline">Your details</span>
+                <span className="inline sm:hidden">Details</span>
               </span>
             </div>
           </div>
 
           {/* Form Step Content Container */}
           <div ref={stepContainerRef} className="w-full relative">
+            {/* STEP 1: Who Are You? */}
             {step === 1 && (
               <div className="space-y-4 sm:space-y-6 animate-fade-in">
                 <div>
@@ -401,8 +497,7 @@ export default function SignUp() {
                     You are a...
                   </h1>
                   <p className="text-[12px] sm:text-[13px] text-ink-700 dark:text-cream-100/70 mt-1 sm:mt-2">
-                    Your role shapes what you see and how your record is
-                    built.
+                    Your role shapes what you see and how your record is built.
                   </p>
                 </div>
 
@@ -475,7 +570,188 @@ export default function SignUp() {
                 </Link>
               </p>
             )}
+
+            {/* STEP 2: Verify ID */}
             {step === 2 && (
+              <div className="space-y-4 sm:space-y-6 animate-fade-in">
+                <div>
+                  <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-normal text-ink-900 dark:text-white leading-tight flex items-center gap-2 sm:gap-3">
+                    <ShieldCheck className="h-6 w-6 sm:h-8 sm:w-8 text-moss-700 dark:text-[#E5C583]" />
+                    Verify ID
+                  </h1>
+                  <p className="text-[12px] sm:text-[13px] text-ink-700 dark:text-cream-100/70 mt-1.5 sm:mt-2">
+                    Enter your National Identification Number to retrieve your verified identity record.
+                  </p>
+                </div>
+
+                {inlineError && (
+                  <div className="p-2.5 sm:p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 rounded-xl text-[12px] sm:text-[13px] leading-relaxed flex items-start gap-2 sm:gap-2.5 animate-fade-in">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>{inlineError}</span>
+                  </div>
+                )}
+
+                {/* State 1: Verification Progress Bar */}
+                {isVerifying ? (
+                  <div className="space-y-3 sm:space-y-4 py-2 sm:py-4 animate-fade-in">
+                    <div className="flex justify-between items-center text-[12px] sm:text-[13px] text-ink-700 dark:text-cream-100/70">
+                      <span className="animate-pulse">
+                        {LOADING_MESSAGES[loadingStep]}
+                      </span>
+                      <span className="font-bold text-moss-700 dark:text-[#E5C583]">
+                        {progress}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-moss-100 dark:bg-[#101F1A] border border-ink-200 dark:border-[#23372B]/60 h-2 sm:h-2.5 rounded-full overflow-hidden relative">
+                      <div
+                        className="bg-moss-700 dark:bg-[#E5C583] h-full rounded-full transition-all duration-75"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : verified ? (
+                  /* State 2: Already Verified Status Card (When navigating back from Step 3) */
+                  <div className="space-y-4 sm:space-y-6 animate-fade-in">
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-950/30 p-4 sm:p-5 space-y-3 shadow-sm">
+                      <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                        <CheckCircle2 className="h-5 w-5 shrink-0" />
+                        <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase">
+                          NIN Verification Complete
+                        </span>
+                      </div>
+
+                      <div className="bg-white/80 dark:bg-[#101F1A]/90 border border-emerald-500/20 rounded-xl p-3.5 sm:p-4 flex items-center gap-3.5">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-lg shrink-0">
+                          <User className="h-5 w-5 sm:h-6 sm:w-6" />
+                        </div>
+                        <div className="overflow-hidden">
+                          <span className="block text-[10px] sm:text-[11px] font-bold text-ink-400 dark:text-cream-100/50 uppercase tracking-wider">
+                            Verified Identity Name
+                          </span>
+                          <div className="font-display font-bold text-ink-900 dark:text-white text-base sm:text-lg truncate">
+                            {firstName} {lastName}
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="text-[11.5px] sm:text-[12.5px] text-ink-700 dark:text-cream-100/80 leading-relaxed">
+                        Your National Identification Number has been verified. Your verified name will automatically prefill your registration details.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        onClick={() => setStep(3)}
+                        className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2.5 sm:py-3 text-[13px] sm:text-[14px] rounded-xl cursor-pointer transition-all shadow-md"
+                      >
+                        Continue to Details
+                      </Button>
+                      
+                      <div className="text-center pt-1">
+                        <button
+                          type="button"
+                          onClick={handleRejectIdentity}
+                          className="text-[11px] sm:text-[12px] font-semibold text-ink-700 dark:text-cream-100/60 hover:text-rose-600 dark:hover:text-rose-400 underline transition-colors cursor-pointer outline-none"
+                        >
+                          Change or Re-verify NIN
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : showIdentityConfirmation ? (
+                  /* State 3: "Is this you?" Identity Confirmation Card */
+                  <div className="space-y-4 sm:space-y-6 animate-fade-in">
+                    <div className="rounded-2xl border border-moss-700/30 dark:border-[#E5C583]/30 bg-moss-100/40 dark:bg-[#1C3328]/40 p-4 sm:p-5 space-y-3 shadow-sm">
+                      <div className="flex items-center gap-2 text-moss-700 dark:text-[#E5C583]">
+                        <ShieldCheck className="h-4.5 w-4.5 sm:h-5 sm:w-5 shrink-0" />
+                        <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase">
+                          NIMC Identity Record Retrieved
+                        </span>
+                      </div>
+
+                      <div className="bg-white/80 dark:bg-[#101F1A]/90 border border-ink-200/80 dark:border-white/10 rounded-xl p-3.5 sm:p-4 flex items-center gap-3.5">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-moss-700/10 text-moss-700 dark:text-[#E5C583] flex items-center justify-center font-bold text-lg shrink-0">
+                          <User className="h-5 w-5 sm:h-6 sm:w-6" />
+                        </div>
+                        <div className="overflow-hidden">
+                          <span className="block text-[10px] sm:text-[11px] font-bold text-ink-400 dark:text-cream-100/50 uppercase tracking-wider">
+                            Full Verified Name
+                          </span>
+                          <div className="font-display font-bold text-ink-900 dark:text-white text-base sm:text-lg truncate">
+                            {pulledFullName}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-1">
+                        <h3 className="font-bold text-ink-900 dark:text-white text-base sm:text-lg">
+                          Is this you?
+                        </h3>
+                        <p className="text-[11.5px] sm:text-[12.5px] text-ink-700 dark:text-cream-100/70 mt-0.5 leading-relaxed">
+                          Confirming will link your verified official identity to your account. Your first and last name will be automatically populated.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={handleRejectIdentity}
+                        className="w-full py-2.5 sm:py-3 px-3 sm:px-4 rounded-xl border border-ink-200 dark:border-white/15 text-ink-700 dark:text-cream-100 hover:bg-black/5 dark:hover:bg-white/5 font-semibold text-[12.5px] sm:text-[13.5px] transition-all cursor-pointer outline-none"
+                      >
+                        No, try again
+                      </button>
+                      <Button
+                        type="button"
+                        onClick={handleConfirmIdentity}
+                        className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2.5 sm:py-3 text-[12.5px] sm:text-[13.5px] rounded-xl cursor-pointer transition-all shadow-md"
+                      >
+                        Yes, this is me
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  /* State 4: Enter 11-Digit NIN Form */
+                  <form onSubmit={handleVerify} className="space-y-3 sm:space-y-4">
+                    <div>
+                      <label
+                        htmlFor="signup-nin"
+                        className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-ink-700 dark:text-[#A3BCA7] uppercase mb-1 sm:mb-1.5"
+                      >
+                        11-Digit National Identification Number (NIN)
+                      </label>
+                      <div className="relative">
+                        <Shield className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 sm:h-5 sm:w-5 text-ink-400 dark:text-cream-100/40 pointer-events-none" />
+                        <input
+                          id="signup-nin"
+                          type="text"
+                          maxLength={11}
+                          placeholder="12345678901"
+                          value={nin}
+                          onInput={(e) => (e.target.value = e.target.value.replace(/[^0-9]/g, ""))}
+                          onChange={(e) => {
+                            setNin(e.target.value);
+                            setInlineError("");
+                          }}
+                          required
+                          className="w-full h-[42px] sm:h-[50px] pl-10 sm:pl-11 pr-4 rounded-xl border border-ink-200 hover:border-ink-400 dark:border-white/15 dark:hover:border-white/25 bg-transparent text-ink-900 dark:text-white placeholder-ink-400 dark:placeholder-white/30 text-[14px] sm:text-[15px] outline-none focus:border-moss-700 dark:focus:border-[#E5C583] focus-visible:ring-1 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] transition-all duration-200 hover:scale-[1.005]"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
+                    >
+                      Verify Now
+                    </Button>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {/* STEP 3: Your Details */}
+            {step === 3 && (
               <div className="space-y-4 sm:space-y-6 animate-fade-in">
                 <div>
                   <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-normal text-ink-900 dark:text-white leading-tight">
@@ -489,14 +765,7 @@ export default function SignUp() {
                     <span className="text-moss-700 dark:text-[#E5C583] font-medium">
                       {role}
                     </span>
-                    .{" "}
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="underline font-semibold text-ink-900 dark:text-white hover:text-moss-700 dark:text-[#E5C583] transition-colors cursor-pointer outline-none"
-                    >
-                      Change
-                    </button>
+                    . Your name has been verified and pre-filled via NIN.
                   </p>
                 </div>
 
@@ -508,47 +777,52 @@ export default function SignUp() {
                 )}
 
                 <div className="space-y-3 sm:space-y-4">
-                  {/* First Name & Last Name */}
+                  {/* First Name & Last Name (Read-Only & Lock Indicator) */}
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <label
-                        htmlFor="firstName"
-                        className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-ink-700 dark:text-[#A3BCA7] uppercase mb-1 sm:mb-1.5"
-                      >
-                        First Name
-                      </label>
+                      <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+                        <label
+                          htmlFor="firstName"
+                          className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-ink-700 dark:text-[#A3BCA7] uppercase"
+                        >
+                          First Name
+                        </label>
+                        <span className="text-[9.5px] sm:text-[10px] font-bold text-emerald-600 dark:text-[#E5C583] flex items-center gap-1">
+                          <Lock className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> NIN
+                        </span>
+                      </div>
                       <div className="relative">
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 sm:h-5 sm:w-5 text-ink-400 dark:text-cream-100/40 pointer-events-none" />
                         <input
                           id="firstName"
                           type="text"
-                          maxLength={50}
-                          placeholder="Jane"
+                          readOnly
                           value={firstName}
-                          onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
-                          onChange={(e) => setFirstName(e.target.value)}
-                          className="w-full h-[42px] sm:h-[50px] pl-10 sm:pl-11 pr-4 rounded-xl border border-ink-200 hover:border-ink-400 dark:border-white/15 dark:hover:border-white/25 bg-transparent text-ink-900 dark:text-white placeholder-ink-400 dark:placeholder-white/30 text-[14px] sm:text-[15px] outline-none focus:border-moss-700 dark:focus:border-[#E5C583] focus-visible:ring-1 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] transition-all duration-200 hover:scale-[1.005]"
+                          className="w-full h-[42px] sm:h-[50px] pl-10 sm:pl-11 pr-4 rounded-xl border border-ink-200/80 dark:border-white/10 bg-black/5 dark:bg-white/5 text-ink-900/90 dark:text-white/90 font-medium text-[14px] sm:text-[15px] outline-none cursor-not-allowed select-none"
                         />
                       </div>
                     </div>
+
                     <div>
-                      <label
-                        htmlFor="lastName"
-                        className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-ink-700 dark:text-[#A3BCA7] uppercase mb-1 sm:mb-1.5"
-                      >
-                        Last Name
-                      </label>
+                      <div className="flex items-center justify-between mb-1 sm:mb-1.5">
+                        <label
+                          htmlFor="lastName"
+                          className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-ink-700 dark:text-[#A3BCA7] uppercase"
+                        >
+                          Last Name
+                        </label>
+                        <span className="text-[9.5px] sm:text-[10px] font-bold text-emerald-600 dark:text-[#E5C583] flex items-center gap-1">
+                          <Lock className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> NIN
+                        </span>
+                      </div>
                       <div className="relative">
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 sm:h-5 sm:w-5 text-ink-400 dark:text-cream-100/40 pointer-events-none" />
                         <input
                           id="lastName"
                           type="text"
-                          maxLength={50}
-                          placeholder="Doe"
+                          readOnly
                           value={lastName}
-                          onInput={(e) => e.target.value = e.target.value.replace(/[0-9]/g, '')}
-                          onChange={(e) => setLastName(e.target.value)}
-                          className="w-full h-[42px] sm:h-[50px] pl-10 sm:pl-11 pr-4 rounded-xl border border-ink-200 hover:border-ink-400 dark:border-white/15 dark:hover:border-white/25 bg-transparent text-ink-900 dark:text-white placeholder-ink-400 dark:placeholder-white/30 text-[14px] sm:text-[15px] outline-none focus:border-moss-700 dark:focus:border-[#E5C583] focus-visible:ring-1 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] transition-all duration-200 hover:scale-[1.005]"
+                          className="w-full h-[42px] sm:h-[50px] pl-10 sm:pl-11 pr-4 rounded-xl border border-ink-200/80 dark:border-white/10 bg-black/5 dark:bg-white/5 text-ink-900/90 dark:text-white/90 font-medium text-[14px] sm:text-[15px] outline-none cursor-not-allowed select-none"
                         />
                       </div>
                     </div>
@@ -692,10 +966,10 @@ export default function SignUp() {
 
                 <Button
                   type="button"
-                  onClick={handleGoToStep3}
-                  className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
+                  onClick={handleCompleteSignUp}
+                  className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2.5 sm:py-3 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  Continue
+                  Complete Sign Up
                 </Button>
 
                 {/* Separator */}
@@ -744,110 +1018,6 @@ export default function SignUp() {
                     Sign up with Google
                   </span>
                 </button>
-              </div>
-            )}
-
-            {step === 3 && (
-              <div className="space-y-4 sm:space-y-6 animate-fade-in">
-                <div>
-                  <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-normal text-ink-900 dark:text-white leading-tight flex items-center gap-2 sm:gap-3">
-                    <ShieldCheck className="h-6 w-6 sm:h-8 sm:w-8 text-moss-700 dark:text-[#E5C583]" />
-                    Verify ID
-                  </h1>
-                  <p className="text-[12px] sm:text-[13px] text-ink-700 dark:text-cream-100/70 mt-1.5 sm:mt-2">
-                    We check your National Identification Number automatically in the background to ensure security and trust.
-                  </p>
-                </div>
-
-                {inlineError && (
-                  <div className="p-2.5 sm:p-3.5 bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 rounded-xl text-[12px] sm:text-[13px] leading-relaxed flex items-start gap-2 sm:gap-2.5 animate-fade-in">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span>{inlineError}</span>
-                  </div>
-                )}
-
-                {isVerifying ? (
-                  <div className="space-y-3 sm:space-y-4 py-2 sm:py-4 animate-fade-in">
-                    <div className="flex justify-between items-center text-[12px] sm:text-[13px] text-ink-700 dark:text-cream-100/70">
-                      <span className="animate-pulse">
-                        {LOADING_MESSAGES[loadingStep]}
-                      </span>
-                      <span className="font-bold text-moss-700 dark:text-[#E5C583]">
-                        {progress}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-moss-100 dark:bg-[#101F1A] border border-ink-200 dark:border-[#23372B]/60 h-2 sm:h-2.5 rounded-full overflow-hidden relative">
-                      <div
-                        className="bg-moss-700 dark:bg-[#E5C583] h-full rounded-full transition-all duration-75"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-                ) : !verified ? (
-                  <form onSubmit={handleVerify} className="space-y-3 sm:space-y-4">
-                    <div>
-                      <label
-                        htmlFor="signup-nin"
-                        className="block text-[10px] sm:text-[11px] font-bold tracking-wider text-ink-700 dark:text-[#A3BCA7] uppercase mb-1 sm:mb-1.5"
-                      >
-                        11-Digit National Identification Number (NIN)
-                      </label>
-                      <div className="relative">
-                        <Shield className="absolute left-4 top-1/2 -translate-y-1/2 h-4.5 w-4.5 sm:h-5 sm:w-5 text-ink-400 dark:text-cream-100/40 pointer-events-none" />
-                        <input
-                          id="signup-nin"
-                          type="text"
-                          maxLength={11}
-                          placeholder="12345678901"
-                          value={nin}
-                          onInput={(e) => e.target.value = e.target.value.replace(/[^0-9]/g, '')}
-                          onChange={(e) => {
-                            setNin(e.target.value);
-                            setInlineError("");
-                          }}
-                          required
-                          className="w-full h-[42px] sm:h-[50px] pl-10 sm:pl-11 pr-4 rounded-xl border border-ink-200 hover:border-ink-400 dark:border-white/15 dark:hover:border-white/25 bg-transparent text-ink-900 dark:text-white placeholder-ink-400 dark:placeholder-white/30 text-[14px] sm:text-[15px] outline-none focus:border-moss-700 dark:focus:border-[#E5C583] focus-visible:ring-1 focus-visible:ring-moss-700 dark:focus-visible:ring-[#E5C583] transition-all duration-200 hover:scale-[1.005]"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      type="submit"
-                      className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
-                    >
-                      Verify Now
-                    </Button>
-                  </form>
-                ) : (
-                  <div className="space-y-4 sm:space-y-6 animate-fade-in">
-                    <div className="rounded-xl border border-ink-200 dark:border-[#23372B]/60 bg-[#FAF8F6]/75 dark:bg-[#101F1A]/70 p-4 sm:p-5">
-                      <span className="text-[10px] sm:text-[11px] font-medium text-ink-700 dark:text-[#A3BCA7]/60">
-                        DIGITAL LEDGER PREVIEW
-                      </span>
-                      <div className="mt-2.5 sm:mt-3 flex items-center gap-3">
-                        <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-moss-100 dark:bg-[#101F1A] border border-ink-200 dark:border-[#23372B]/60 flex items-center justify-center">
-                          <User className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-moss-700 dark:text-[#E5C583]" />
-                        </div>
-                        <div>
-                          <div className="font-bold text-ink-900 dark:text-white text-[14px] sm:text-[15px]">
-                            {firstName} {lastName}
-                          </div>
-                          <VerifiedBadge className="mt-0.5 sm:mt-1 bg-moss-100 dark:bg-[#101F1A] text-moss-700 dark:text-[#E5C583] border border-ink-200 dark:border-[#23372B]/60" />
-                        </div>
-                      </div>
-                      <p className="mt-2.5 sm:mt-3.5 text-[11.5px] sm:text-[12.5px] text-ink-700 dark:text-cream-100/70 leading-relaxed">
-                        ID verified securely. Profile record successfully
-                        initialized on Lodale.
-                      </p>
-                    </div>
-
-                    <Button
-                      onClick={handleCompleteSignUp}
-                      className="w-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] border-0 font-bold py-2 sm:py-2.5 mt-1 sm:mt-2 focus-visible:ring-2 focus-visible:ring-moss-700 dark:focus-visible:ring-white focus-visible:ring-offset-2 outline-none rounded-xl cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99]"
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                )}
               </div>
             )}
           </div>

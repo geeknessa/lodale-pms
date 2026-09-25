@@ -16,5 +16,19 @@ export const userService = {
       method: 'PUT',
       body: profileData,
     });
+  },
+
+  async deactivateMyAccount(reason = '') {
+    return await apiClient('/users/me/deactivate', {
+      method: 'POST',
+      body: { reason },
+    });
+  },
+
+  async payRestorationFee(paymentReference = '') {
+    return await apiClient('/users/me/pay-restoration-fee', {
+      method: 'POST',
+      body: { paymentReference },
+    });
   }
 };

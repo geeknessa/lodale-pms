@@ -1,7 +1,7 @@
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import app from '../src/server.js';
-import { pool } from '../src/config/db.js';
+import { pool } from '../src/db/db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'lodale_secret_key_2026';
 
@@ -13,7 +13,7 @@ describe('Admin API Endpoints', () => {
   beforeAll(async () => {
     // Generate admin token
     adminToken = jwt.sign(
-      { id: 'constant_admin_id', email: 'admin@lodale.com', role: 'admin' },
+      { id: 'constant_admin_id', email: 'admin', role: 'admin' },
       JWT_SECRET,
       { expiresIn: '1h' }
     );

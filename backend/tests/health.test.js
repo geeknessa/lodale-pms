@@ -1,6 +1,6 @@
 import request from 'supertest';
 import app from '../src/server.js';
-import { pool } from '../src/config/db.js';
+import { pool } from '../src/db/db.js';
 
 describe('Health Check API', () => {
   afterAll(async () => {

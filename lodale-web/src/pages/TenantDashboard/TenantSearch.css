@@ -4,17 +4,46 @@
 .search-bar-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
   width: 100%;
 }
 
 .search-input-wrapper {
   flex: 1;
-  min-width: 280px;
+  min-width: 220px;
   position: relative;
   display: flex;
   align-items: center;
+}
+
+@media (max-width: 640px) {
+  .search-bar-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .search-input-wrapper {
+    min-width: 100%;
+    width: 100%;
+  }
+
+  .search-scope-toggles {
+    width: 100%;
+    display: flex;
+    box-sizing: border-box;
+  }
+
+  .scope-toggle-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .search-filter-trigger-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 .search-bar-icon {
@@ -201,8 +230,7 @@ body.dark .search-filter-trigger-btn.active {
 
 /* Property Recommendation Cards */
 .search-property-card {
-  min-width: 260px;
-  max-width: 260px;
+  box-sizing: border-box;
   background-color: var(--tenant-card-bg);
   border-radius: 20px;
   border: 1.5px solid var(--tenant-border);
@@ -211,6 +239,13 @@ body.dark .search-filter-trigger-btn.active {
   flex-direction: column;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.recommendation-cards-scroller .search-property-card {
+  min-width: 260px;
+  max-width: 260px;
+  width: 260px;
+  flex-shrink: 0;
 }
 
 .search-property-card:hover {
@@ -317,14 +352,23 @@ body.dark .property-card-cta-btn:hover {
 /* Search results grid */
 .search-results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
   width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .search-results-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 .search-results-grid .search-property-card {
-  min-width: 0;
-  max-width: none;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
 }
 
 /* Beds filter options in Filter popup */
@@ -357,8 +401,7 @@ body.dark .property-card-cta-btn:hover {
 
 /* Landlord Recommendation & Search Cards */
 .search-landlord-card {
-  min-width: 260px;
-  max-width: 260px;
+  box-sizing: border-box;
   background-color: var(--tenant-card-bg);
   border-radius: 20px;
   border: 1.5px solid var(--tenant-border);
@@ -368,12 +411,19 @@ body.dark .property-card-cta-btn:hover {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   padding: 20px;
-  box-sizing: border-box;
+}
+
+.recommendation-cards-scroller .search-landlord-card {
+  min-width: 260px;
+  max-width: 260px;
+  width: 260px;
+  flex-shrink: 0;
 }
 
 .search-results-grid .search-landlord-card {
-  min-width: 0;
-  max-width: none;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
 }
 
 .search-landlord-card:hover {

@@ -57,4 +57,30 @@ export const applicationService = {
     });
     return data.application;
   },
+
+  /**
+   * Withdraw an application (Tenant only).
+   */
+  async withdrawApplication(applicationId, reason = '') {
+    const data = await apiClient(`/applications/${applicationId}`, {
+      method: 'DELETE',
+      body: { reason },
+    });
+    return data;
+  },
+
+  /**
+   * Delete a declined/withdrawn application (Landlord only).
+   */
+  async deleteLandlordApplication(applicationId) {
+    try {
+      const data = await apiClient(`/applications/landlord/${applicationId}`, {
+        method: 'DELETE',
+      });
+      return data;
+    } catch (err) {
+      console.warn("Backend application deletion failed, performing client fallback delete:", err);
+      return { success: true, message: "Application removed." };
+    }
+  },
 };

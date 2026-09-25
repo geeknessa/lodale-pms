@@ -1,6 +1,10 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'lodale_secret_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('[FATAL] JWT_SECRET environment variable is required.');
+  process.exit(1);
+}
 
 export const requireAuth = (req, res, next) => {
   try {

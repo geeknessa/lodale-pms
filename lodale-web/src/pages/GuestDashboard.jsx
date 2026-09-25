@@ -225,6 +225,7 @@ export default function GuestDashboard() {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [displayLimit, setDisplayLimit] = useState(9);
   const listingsGridRef = useRef(null);
 
   const [allListings, setAllListings] = useState([]);
@@ -315,12 +316,12 @@ export default function GuestDashboard() {
             landlordObj = {
               id: l.id || null,
               name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
-              score: l.score ?? 5.0,
-              reviews: l.reviews ?? 1,
+              score: l.score ?? "New",
+              reviews: l.reviews ?? 0,
               phone_number: l.phone_number || null
             };
           } else {
-            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 5.0, reviews: 1, phone_number: null };
+            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: "New", reviews: 0, phone_number: null };
           }
           
           return {
@@ -367,6 +368,10 @@ export default function GuestDashboard() {
     const landlordMatch = listing.landlord?.name?.toLowerCase().includes(query);
     return titleMatch || locMatch || landlordMatch;
   });
+
+  useEffect(() => {
+    setDisplayLimit(9);
+  }, [searchQuery]);
 
   function signUpAs(role) {
     navigate("/signup", { state: { presetRole: role } });
@@ -503,11 +508,27 @@ export default function GuestDashboard() {
             ))}
           </div>
         ) : filteredListings.length > 0 ? (
-          <div ref={listingsGridRef} className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredListings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
+          <>
+            <div ref={listingsGridRef} className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredListings.slice(0, displayLimit).map((listing) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+
+            {filteredListings.length > displayLimit && (
+              <div className="flex flex-col items-center justify-center pt-12 pb-4">
+                <button
+                  onClick={() => setDisplayLimit((prev) => prev + 9)}
+                  className="px-8 py-3 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs tracking-wider uppercase shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  Load More Listings ({filteredListings.length - displayLimit} remaining)
+                </button>
+                <span className="text-[12px] text-ink-500 dark:text-cream-100/60 mt-3 font-medium">
+                  Showing {Math.min(displayLimit, filteredListings.length)} of {filteredListings.length} listings
+                </span>
+              </div>
+            )}
+          </>
         ) : (
           <div className="mt-12 text-center p-8 bg-transparent border-0 flex flex-col items-center justify-center max-w-sm mx-auto">
             <div className="h-16 w-16 rounded-2xl bg-transparent border border-ink-200/40 dark:border-white/10 flex items-center justify-center mb-4 text-ink-400 dark:text-cream-100/40">

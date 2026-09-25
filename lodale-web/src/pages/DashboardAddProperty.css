@@ -18,16 +18,16 @@ body.dark .dap-saas-page {
   color: #FFFFFF;
 }
 
-/* Large 500-character non-resizable text boxes */
+/* Compact, auto-expanding text boxes */
 textarea,
 .dap-saas-page textarea {
   resize: none !important;
-  height: 220px !important;
-  max-height: 220px !important;
-  min-height: 220px !important;
-  overflow-y: auto;
-  line-height: 1.6;
+  height: auto;
+  min-height: 44px !important;
+  max-height: 300px !important;
+  line-height: 1.5;
   font-size: 13px;
+  transition: height 0.15s ease-out;
 }
 
 /* ─────────────────────────────────────────────────────────────

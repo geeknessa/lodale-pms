@@ -20,7 +20,7 @@ import {
   Sun,
   Moon,
   ChevronDown,
-  Sparkles,
+  ListChecks,
   Calendar,
   HelpCircle,
   Bell,
@@ -40,6 +40,10 @@ import TenantSearch from "./TenantSearch";
 import TenantChat from "./TenantChat";
 import TenantSettings from "./TenantSettings";
 import TenantApplications from "./TenantApplications";
+import { leaseService } from "../../services/leaseService";
+import { rentService } from "../../services/rentService";
+import { maintenanceService } from "../../services/maintenanceService";
+import { chatService } from "../../services/chatService";
 
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
@@ -288,47 +292,11 @@ export default function TenantDashboard() {
     ];
   });
 
-  const [activeLease, setActiveLease] = useState(() => {
-    const saved = localStorage.getItem("tenantLease");
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { }
-    }
-    const apps = localStorage.getItem("propertyApplications");
-    if (apps) {
-      try {
-        const parsed = JSON.parse(apps);
-        const approved = parsed.find(a => a.status === "Approved" || a.status === "Leased");
-        if (approved) return approved;
-      } catch (e) { }
-    }
-    return null;
-  });
-
-  // Quick Requests State (initialized with requests loaded from localStorage and filtered by active tenant)
-  const [requests, setRequests] = useState(() => {
-    const saved = localStorage.getItem("tenantRequests");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const currentName = (sessionStorage.getItem("username") || "Tunde").toLowerCase();
-        return parsed.filter(r => {
-          if (!r) return false;
-          const reqUser = (r.tenantName || r.name || "").toLowerCase();
-          return reqUser.includes(currentName) || currentName.includes(reqUser);
-        });
-      } catch (e) {
-        return [];
-      }
-    }
-    return [];
-  });
-
-  // Payments Ledger
-  const [payments, setPayments] = useState(() => {
-    const saved = localStorage.getItem("tenantPayments");
-    if (saved) return JSON.parse(saved);
-    return [];
-  });
+  const [activeLease, setActiveLease] = useState(null);
+  const [requests, setRequests] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [invoices, setInvoices] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
 
   // Rent payment state
   const [rentPaid, setRentPaid] = useState(false);
@@ -355,6 +323,321 @@ export default function TenantDashboard() {
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [showStreakModal, setShowStreakModal] = useState(false);
 
+  const handleDownloadSummary = () => {
+    try {
+      const tenantEmail = sessionStorage.getItem("lastLoggedInEmail") || "tenant@lodale.com";
+      const reportRef = `LODALE-TS-${Math.floor(100000 + Math.random() * 900000)}`;
+      const issueDate = new Date().toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' });
+
+      // Construct high-end printable PDF HTML template
+      const pdfHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tenancy & Ledger Summary - ${username}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    @page {
+      size: A4;
+      margin: 15mm;
+    }
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: #12221C;
+      margin: 0;
+      padding: 24px;
+      background: #ffffff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 3px solid #1E382A;
+      margin-bottom: 24px;
+    }
+    
+    .brand {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #1E382A;
+    }
+    
+    .brand span {
+      color: #C59A45;
+    }
+    
+    .doc-type {
+      text-align: right;
+    }
+    
+    .doc-type h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+      color: #1E382A;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    .doc-type p {
+      margin: 4px 0 0 0;
+      font-size: 11px;
+      color: #64748B;
+      font-weight: 600;
+    }
+    
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    
+    .card {
+      background: #F8FAF7;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    
+    .card-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #1E382A;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #CBD5E1;
+    }
+    
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12.5px;
+      margin-bottom: 8px;
+    }
+    
+    .info-row:last-child {
+      margin-bottom: 0;
+    }
+    
+    .info-label {
+      color: #64748B;
+      font-weight: 500;
+    }
+    
+    .info-val {
+      font-weight: 700;
+      color: #0F172A;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 10.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      background: #DCFCE7;
+      color: #166534;
+    }
+    
+    section {
+      margin-bottom: 24px;
+    }
+    
+    .section-header {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #1E382A;
+      margin-bottom: 10px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    
+    th {
+      background: #1E382A;
+      color: #ffffff;
+      font-weight: 700;
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    th:first-child {
+      border-top-left-radius: 8px;
+    }
+    th:last-child {
+      border-top-right-radius: 8px;
+    }
+    
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #E2E8F0;
+      color: #334155;
+    }
+    
+    tr:nth-child(even) td {
+      background: #F8FAFC;
+    }
+
+    .footer {
+      margin-top: 36px;
+      padding-top: 16px;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #94A3B8;
+    }
+
+    .footer-stamp {
+      font-weight: 700;
+      color: #1E382A;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">Lodale<span>.</span></div>
+    <div class="doc-type">
+      <h2>Tenancy & Ledger Summary</h2>
+      <p>Ref: ${reportRef} | Issued: ${issueDate}</p>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Tenant Information</div>
+      <div class="info-row"><span class="info-label">Full Name</span><span class="info-val">${username}</span></div>
+      <div class="info-row"><span class="info-label">Email Address</span><span class="info-val">${tenantEmail}</span></div>
+      <div class="info-row"><span class="info-label">Account Status</span><span class="info-val"><span class="badge">Verified Tenant</span></span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Active Property & Lease</div>
+      <div class="info-row"><span class="info-label">Property</span><span class="info-val">${activeLease ? (activeLease.property_title || activeLease.title || 'Leased Property') : 'No Active Lease'}</span></div>
+      <div class="info-row"><span class="info-label">Lease Status</span><span class="info-val">${activeLease ? (activeLease.status || 'Active') : 'N/A'}</span></div>
+      <div class="info-row"><span class="info-label">Rent Rate</span><span class="info-val">${activeLease ? formatCurrency(activeLease.rent_amount || activeLease.rent || 0, activeLease.rent_period || 'annually') : 'N/A'}</span></div>
+    </div>
+  </div>
+
+  <section>
+    <div class="section-header">Payment & Rent Ledger History</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Invoice / Reference</th>
+          <th>Billing Date</th>
+          <th>Amount</th>
+          <th>Payment Method</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Array.isArray(invoices) && invoices.length > 0 ? invoices.map(inv => `
+          <tr>
+            <td><strong>${inv.reference_number || inv.id || "INV"}</strong></td>
+            <td>${inv.due_date ? new Date(inv.due_date).toLocaleDateString() : (inv.created_at ? new Date(inv.created_at).toLocaleDateString() : "N/A")}</td>
+            <td><strong>${inv.amount ? formatCurrency(inv.amount) : "N/A"}</strong></td>
+            <td>${inv.payment_method || "System Transfer"}</td>
+            <td><span class="badge">${(inv.status || "Paid").toUpperCase()}</span></td>
+          </tr>
+        `).join('') : `
+          <tr>
+            <td colspan="5" style="text-align: center; color: #64748B; padding: 16px; font-weight: 500;">No payment invoice records found in system.</td>
+          </tr>
+        `}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <div class="section-header">Maintenance & Repair Requests Summary</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Ticket Title</th>
+          <th>Priority</th>
+          <th>Date Logged</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Array.isArray(requests) && requests.length > 0 ? requests.map(req => `
+          <tr>
+            <td><strong>${req.title || 'Maintenance Request'}</strong></td>
+            <td>${req.priority || "Medium"}</td>
+            <td>${req.created_at ? new Date(req.created_at).toLocaleDateString() : "N/A"}</td>
+            <td>${req.status || "Resolved"}</td>
+          </tr>
+        `).join('') : `
+          <tr>
+            <td colspan="4" style="text-align: center; color: #94A3B8; padding: 16px;">No maintenance requests filed to date.</td>
+          </tr>
+        `}
+      </tbody>
+    </table>
+  </section>
+
+  <div class="footer">
+    <div class="footer-stamp">Verified Official Tenancy Ledger — Lodale Real Estate PMS</div>
+    <div>Page 1 of 1</div>
+  </div>
+</body>
+</html>
+      `;
+
+      // Trigger browser PDF Print window via invisible iframe
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const docObj = iframe.contentWindow.document;
+      docObj.open();
+      docObj.write(pdfHTML);
+      docObj.close();
+
+      setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(() => {
+          try {
+            document.body.removeChild(iframe);
+          } catch (e) {}
+        }, 1000);
+      }, 300);
+
+      triggerToast("Opening PDF export dialog for your summary statement...", "success", "PDF Ready");
+    } catch (err) {
+      console.error("Failed to generate PDF tenant summary:", err);
+      triggerToast("Failed to generate PDF tenancy summary.", "error", "PDF Error");
+    }
+  };
+
   // GSAP animation references
   const mainContentRef = useRef(null);
 
@@ -372,37 +655,79 @@ export default function TenantDashboard() {
       setActiveTab(1);
     };
     window.addEventListener("resumeQuickApply", handleResumeApply);
-    
+
     return () => {
       window.removeEventListener("resumeQuickApply", handleResumeApply);
     };
   }, []);
 
-  // Load tenant specific requests
-  const loadRequests = () => {
-    const saved = localStorage.getItem("tenantRequests");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const currentName = (sessionStorage.getItem("username") || "Tunde").toLowerCase();
-        const filtered = parsed.filter(r => {
-          if (!r) return false;
-          const reqUser = (r.tenantName || r.name || "").toLowerCase();
-          return reqUser.includes(currentName) || currentName.includes(reqUser);
+  const fetchAllData = async () => {
+    try {
+      setLoadingData(true);
+      // Fetch active lease
+      const leases = await leaseService.getMyLeases();
+      const active = leases.find(l => l.status === 'active' || l.tenant_signed_at || l.status === 'draft' || l.status === 'pending_tenant');
+      if (active) {
+        setActiveLease({
+          ...active,
+          propertyTitle: active.property_title,
+          unit: "Unit 1",
+          landlord: active.landlord_name,
+          price: `₦${parseFloat(active.rent_amount).toLocaleString()}`
         });
-        setRequests(filtered);
-      } catch (e) {
-        setRequests([]);
+      } else {
+        setActiveLease(null);
       }
-    } else {
-      setRequests([]);
+
+      // Fetch invoices
+      const invs = await rentService.getMyInvoices();
+      setInvoices(invs);
+
+      const unpaid = invs.find(i => i.status === 'unpaid');
+      setRentPaid(!unpaid);
+
+      const formattedPayments = invs
+        .filter(i => i.status === 'paid')
+        .map(i => ({
+          id: i.id,
+          month: new Date(i.billing_period_start || i.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+          amount: `₦${parseFloat(i.amount).toLocaleString()}`,
+          date: new Date(i.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+          status: "Paid",
+          method: "Simulated"
+        }));
+      setPayments(formattedPayments);
+
+      // Fetch requests
+      const reqs = await maintenanceService.getMyRequests();
+      const statusMap = {
+        open: 'Pending',
+        pending: 'Pending',
+        acknowledged: 'In Progress',
+        in_progress: 'In Progress',
+        pending_inspection: 'In Progress',
+        resolved: 'Completed',
+        closed: 'Completed'
+      };
+      setRequests(reqs.map(r => ({
+        id: r.id,
+        title: r.title,
+        category: r.priority === 'emergency' ? 'Emergency' : 'Routine',
+        urgency: r.priority ? r.priority.charAt(0).toUpperCase() + r.priority.slice(1) : 'Medium',
+        details: r.description && r.description !== "No description provided." ? r.description : r.title,
+        status: statusMap[r.status?.toLowerCase()] || 'Pending',
+        date: new Date(r.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short' }),
+        tenantName: r.tenant_name,
+      })));
+    } catch (err) {
+      console.error("Failed to load tenant dashboard data:", err);
+    } finally {
+      setLoadingData(false);
     }
   };
 
   useEffect(() => {
-    loadRequests();
-    window.addEventListener("storage", loadRequests);
-    return () => window.removeEventListener("storage", loadRequests);
+    fetchAllData();
   }, []);
 
   // Animate welcome screen
@@ -582,76 +907,58 @@ export default function TenantDashboard() {
   }, [runTour, activeTab]);
 
   // Submit quick request
-  const handleSubmitRequest = (e) => {
+  const handleSubmitRequest = async (e) => {
     e.preventDefault();
     if (!reqTitle.trim()) return;
-
-    const newRequest = {
-      id: "req-" + Date.now(),
-      title: reqTitle,
-      details: reqTitle,
-      category: reqCategory,
-      type: reqCategory,
-      urgency: reqUrgency,
-      status: "Pending",
-      date: "Just now",
-      desc: reqDesc || "No description provided.",
-      description: reqDesc || "No description provided.",
-      tenantName: username,
-      name: username,
-      avatar: "",
-    };
-
-    // Load full list to preserve other requests
-    const saved = localStorage.getItem("tenantRequests");
-    let allRequests = [];
-    if (saved) {
-      try {
-        allRequests = JSON.parse(saved);
-      } catch (e) {
-        allRequests = [];
-      }
+    if (!activeLease) {
+      triggerToast("You need an active lease to submit a maintenance request.", "error");
+      return;
     }
-    const updatedRequests = [newRequest, ...allRequests];
-    localStorage.setItem("tenantRequests", JSON.stringify(updatedRequests));
 
-    // Update local state
-    const currentName = username.toLowerCase();
-    const filtered = updatedRequests.filter(r => {
-      if (!r) return false;
-      const reqUser = (r.tenantName || r.name || "").toLowerCase();
-      return reqUser.includes(currentName) || currentName.includes(reqUser);
-    });
-    setRequests(filtered);
+    try {
+      await maintenanceService.createRequest({
+        propertyId: activeLease.property_id,
+        title: reqTitle,
+        description: reqDesc || reqTitle,
+        priority: reqUrgency.toLowerCase(),
+      });
 
-    // Reset fields
-    setReqTitle("");
-    setReqDesc("");
-
-    triggerToast(`Maintenance request for "${newRequest.title}" submitted to landlord!`, "success", "Work Order Logged");
-    window.dispatchEvent(new Event("storage"));
+      setReqTitle("");
+      setReqDesc("");
+      triggerToast(`Maintenance request for "${reqTitle}" submitted to landlord!`, "success", "Work Order Logged");
+      await fetchAllData();
+    } catch (err) {
+      console.error(err);
+      triggerToast("Failed to submit request", "error");
+    }
   };
 
   // Pay rent simulation
-  const handlePayRentSubmit = () => {
+  const handlePayRentSubmit = async () => {
+    const unpaidInvoice = invoices.find(inv => inv.status === 'unpaid');
+    if (!unpaidInvoice) {
+      triggerToast("No unpaid invoices found.", "error");
+      return;
+    }
+
     setPayingState("processing");
-    setTimeout(() => {
+    try {
+      await rentService.recordPayment(unpaidInvoice.id, {
+        paymentMethod: 'card',
+        amount: unpaidInvoice.amount
+      });
+
       setPayingState("success");
-      setTimeout(() => {
-        const newPayment = {
-          id: "pay-" + Date.now(),
-          month: currentMonthYearStr,
-          amount: "₦150,000",
-          date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-          status: "Paid",
-          method: "Card"
-        };
-        setPayments((prev) => [newPayment, ...prev]);
-        setRentPaid(true);
+      setTimeout(async () => {
+        await fetchAllData();
         setShowPayModal(false);
         setPayingState("idle");
       }, 1500);
-    }, 2000);
+    } catch (err) {
+      console.error(err);
+      triggerToast("Payment failed", "error");
+      setPayingState("idle");
+    }
   };
 
   const handleSignOut = () => {
@@ -753,7 +1060,7 @@ export default function TenantDashboard() {
         <div className="tenant-welcome-overlay" ref={overlayRef}>
           <div className="tenant-welcome-card" ref={contentRef}>
             <div className="welcome-sparkle-icon">
-              <Sparkles className="h-6 w-6 text-[#E5C583]" />
+              <ListChecks className="h-6 w-6 text-[#E5C583]" />
             </div>
             <h2 className="welcome-title font-display">Welcome to Lodale, {firstName}!</h2>
             <p className="welcome-subtitle">Your tenant portal is completely setup. Here is what we have customized for you:</p>
@@ -809,7 +1116,7 @@ export default function TenantDashboard() {
                 <p className="text-sm text-ink-400 dark:text-cream-100/50 py-4 text-center">No new notifications.</p>
               )}
             </div>
-            
+
             <div className="flex gap-3 mt-6">
               {notifications.length > 0 && (
                 <Button
@@ -1025,7 +1332,14 @@ export default function TenantDashboard() {
                       prof.occupation = editOccupation;
                       prof.income = editIncome;
                       sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(prof));
-                      if (emailKey) localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(prof));
+                      sessionStorage.setItem("currentUserProfile", JSON.stringify(prof));
+                      if (emailKey) {
+                        const lsProf = { ...prof };
+                        if (lsProf.avatar && lsProf.avatar.startsWith("data:")) delete lsProf.avatar;
+                        if (lsProf.avatar_url && lsProf.avatar_url.startsWith("data:")) delete lsProf.avatar_url;
+                        localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(lsProf));
+                      }
+                      window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: prof }));
                       window.dispatchEvent(new Event("storage"));
                       setIsEditingProfile(false);
                       triggerToast("Profile updated successfully!", "success", "Profile Saved");
@@ -1357,73 +1671,75 @@ export default function TenantDashboard() {
                   <Flame className="h-5 w-5 fill-amber-500 animate-pulse" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-ink-900 dark:text-white">Payment Streak Details</h3>
-                  <p className="text-[11px] text-ink-400 dark:text-cream-100/50">Lodale Verified Punctuality Ledger</p>
+                  <h3 className="text-base font-bold text-ink-900 dark:text-white">Residency Streak Details</h3>
+                  <p className="text-[11px] text-ink-400 dark:text-cream-100/50">Lodale Verified Home Occupancy Ledger</p>
                 </div>
               </div>
               <button className="close-btn text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold" onClick={() => setShowStreakModal(false)}>&times;</button>
             </div>
 
             <div className="py-4 space-y-4">
-              {/* Main Metric Counter */}
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20">
-                <div>
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">Active Streak</span>
-                  <div className="flex items-baseline gap-2 mt-0.5">
-                    <span className="text-3xl font-black text-ink-900 dark:text-white tracking-tight">
-                      {activeLease ? "184 Days" : "0 Days"}
-                    </span>
-                    <span className="text-xs font-extrabold text-amber-600 dark:text-[#E5C583]">
-                      ({activeLease ? "6 Months" : "0 Months"})
-                    </span>
-                  </div>
-                  <p className="text-[11.5px] text-ink-600 dark:text-cream-100/70 mt-1">
-                    {activeLease ? "No late payments recorded in 2026" : "Complete your next rent payment on time to build your streak."}
-                  </p>
-                </div>
-                <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-500">
-                  <Flame className="h-8 w-8 fill-amber-500 animate-bounce" />
-                </div>
-              </div>
+              {/* Main Metric Counter & Dynamic 6-Month Grid */}
+              {(() => {
+                const rawStartDate = activeLease?.start_date || activeLease?.created_at || activeLease?.tenant_signed_at;
+                let daysInHouse = 0;
+                let monthsInHouse = 0;
+                let remainingDays = 0;
 
-              {/* 6-Month Cowrywise Grid */}
-              <div>
-                <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-400 dark:text-cream-100/60 mb-2">
-                  Monthly Punctuality History
-                </h4>
-                <div className="streak-months-grid">
-                  {[
-                    { month: "Mar", status: "paid" },
-                    { month: "Apr", status: "paid" },
-                    { month: "May", status: "paid" },
-                    { month: "Jun", status: "paid" },
-                    { month: "Jul", status: "paid" },
-                    { month: "Aug", status: activeLease ? "current" : "upcoming" }
-                  ].map((item, i) => (
-                    <div
-                      key={i}
-                      className={`streak-month-pill ${
-                        item.status === "paid"
-                          ? "paid"
-                          : item.status === "current"
-                          ? "current"
-                          : "upcoming"
-                      }`}
-                    >
-                      <span className="month-lbl">{item.month}</span>
-                      <div className="status-dot">
-                        {item.status === "paid" ? (
-                          <Check className="h-3 w-3 text-emerald-700 dark:text-emerald-300 stroke-[3]" />
-                        ) : item.status === "current" ? (
-                          <Flame className="h-3 w-3 text-amber-500 fill-amber-500 animate-bounce" />
-                        ) : (
-                          <span className="h-1.5 w-1.5 rounded-full bg-ink-200 dark:bg-white/20" />
-                        )}
+                if (activeLease) {
+                  const startDate = rawStartDate ? new Date(rawStartDate) : new Date(Date.now() - 142 * 86400000);
+                  const diffMs = Math.max(0, Date.now() - startDate.getTime());
+                  daysInHouse = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+                  monthsInHouse = Math.floor(daysInHouse / 30);
+                  remainingDays = daysInHouse % 30;
+                }
+                
+                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                const now = new Date();
+                const monthsList = [];
+                
+                for (let i = 5; i >= 0; i--) {
+                  const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                  const mName = monthNames[d.getMonth()];
+                  
+                  const isPaid = invoices.some(inv => {
+                    const invDate = new Date(inv.billing_period_start || inv.created_at);
+                    return inv.status === 'paid' && invDate.getMonth() === d.getMonth() && invDate.getFullYear() === d.getFullYear();
+                  });
+
+                  const isCurrentMonth = i === 0;
+                  const status = isPaid ? "paid" : (isCurrentMonth && activeLease && !rentPaid ? "current" : "upcoming");
+                  monthsList.push({ month: mName, status });
+                }
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20">
+                      <div>
+                        <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300">Residency Streak</span>
+                        <div className="flex items-baseline gap-2 mt-0.5">
+                          <span className="text-3xl font-black text-ink-900 dark:text-white tracking-tight">
+                            {activeLease ? `${daysInHouse} Days` : "0 Days"}
+                          </span>
+                          {activeLease && (
+                            <span className="text-xs font-extrabold text-amber-600 dark:text-[#E5C583]">
+                              ({monthsInHouse > 0 ? `${monthsInHouse}m ${remainingDays}d` : `${daysInHouse}d`})
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11.5px] text-ink-600 dark:text-cream-100/70 mt-1">
+                          {activeLease
+                            ? `Days living in ${activeLease.propertyTitle || "your active rental home"}`
+                            : "No active lease residency record found."}
+                        </p>
+                      </div>
+                      <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-500">
+                        <Flame className="h-8 w-8 fill-amber-500 animate-bounce" />
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </>
+                );
+              })()}
 
               {/* Perks & Rewards */}
               <div className="p-3.5 rounded-2xl bg-moss-50/50 dark:bg-white/5 border border-moss-200/50 dark:border-white/10 flex items-center justify-between text-[12px]">
@@ -1555,10 +1871,11 @@ export default function TenantDashboard() {
 
                 <Button
                   variant="secondary"
-                  onClick={() => triggerToast("Creating tenant ledger summary PDF export...", "info", "Ledger Export")}
-                  className="px-4 py-2 bg-white dark:bg-[#12221C] text-[12.5px] ml-1"
+                  onClick={handleDownloadSummary}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-[#12221C] hover:bg-moss-50 dark:hover:bg-white/10 text-[12.5px] font-bold text-moss-800 dark:text-cream-100 border border-moss-200 dark:border-white/10 rounded-xl transition-all cursor-pointer shadow-xs ml-1"
                 >
-                  Download Summary
+                  <Download className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" />
+                  <span>Download Summary</span>
                 </Button>
               </div>
             </div>
@@ -1572,7 +1889,15 @@ export default function TenantDashboard() {
                 {/* Redesigned Glassmorphic Card */}
                 <section className="db-card pro-card">
                   <div className="pro-card-header">
-                    <span className="pro-card-tag">{activeLease ? "Active Lease" : "No Active Lease"}</span>
+                    <span className="pro-card-tag">
+                      {activeLease
+                        ? (activeLease.status === 'active'
+                          ? "Active Lease"
+                          : activeLease.tenant_signed_at
+                            ? "Pending Counter-Sign"
+                            : "Lease Pending Signature")
+                        : "No Active Lease"}
+                    </span>
                   </div>
 
                   <div className="pro-card-visual">
@@ -1600,11 +1925,11 @@ export default function TenantDashboard() {
 
                   <div className="pro-advantages-panel">
                     <div className="pro-advantages-header">
-                      <h4 className="pro-advantages-title">{activeLease ? "Reliability Rating" : "Tenant Rating"}</h4>
-                      <span className="pro-advantages-badge">{activeLease ? "★ 4.8" : "New Tenant"}</span>
+                      <h4 className="pro-advantages-title">{invoices.some(i => i.status === 'paid') ? "Reliability Rating" : "Tenant Rating"}</h4>
+                      <span className="pro-advantages-badge">{invoices.some(i => i.status === 'paid') ? "★ NO RATING YET" : "New Tenant"}</span>
                     </div>
                     <p className="pro-advantages-desc">
-                      {activeLease
+                      {invoices.some(i => i.status === 'paid')
                         ? "Based on automated rent checks, ledger punctuality, and landlord checkouts."
                         : "Your Tenant Reliability Score will build automatically as you complete rental payments and lease terms."}
                     </p>
@@ -1640,11 +1965,11 @@ export default function TenantDashboard() {
                   </div>
                 </section>
 
-                {/* Small Rectangular Payment Streak Card (Triggers Center Popup) */}
+                {/* Small Rectangular Residency Streak Card (Triggers Center Popup) */}
                 <div
                   className="db-card streak-widget-card tour-streak cursor-pointer hover:scale-[1.01] transition-all"
                   onClick={() => setShowStreakModal(true)}
-                  title="Click to view payment streak details"
+                  title="Click to view residency streak details"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -1654,14 +1979,21 @@ export default function TenantDashboard() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-xl font-black text-ink-900 dark:text-white tracking-tight">
-                            {activeLease ? "184 Days" : "0 Days"}
+                            {(() => {
+                              if (!activeLease) return "0 Days";
+                              const rawStartDate = activeLease?.start_date || activeLease?.created_at || activeLease?.tenant_signed_at;
+                              const startDate = rawStartDate ? new Date(rawStartDate) : new Date(Date.now() - 142 * 86400000);
+                              const diffMs = Math.max(0, Date.now() - startDate.getTime());
+                              const days = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+                              return `${days} Days`;
+                            })()}
                           </span>
                           <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-[#E5C583] bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                            🔥 Streak
+                            🔥 Residency Streak
                           </span>
                         </div>
                         <p className="text-[11.5px] text-ink-400 dark:text-cream-100/60 font-medium mt-0.5">
-                          {activeLease ? "On-Time Rent Payment Record" : "Start your on-time payment streak"}
+                          {activeLease ? `Days living in ${activeLease.propertyTitle || "current home"}` : "No active property residency"}
                         </p>
                       </div>
                     </div>
@@ -1721,6 +2053,25 @@ export default function TenantDashboard() {
                             <span className="meta-val highlight-gold">{activeLease.price || "₦150,000"}</span>
                           </div>
                         </div>
+                        <Button
+                          onClick={async () => {
+                            const landlordName = activeLease.landlord || "Landlord";
+                            const landlordId = activeLease.landlord_id || activeLease.landlordId || `landlord-${landlordName.toLowerCase().replace(/\s+/g, '-')}`;
+                            try {
+                              await chatService.sendMessage(landlordId, `Hello ${landlordName}, reaching out regarding my active lease for ${activeLease.propertyTitle || 'my unit'}.`, null, {
+                                partner_name: landlordName,
+                                partner_avatar: ""
+                              });
+                            } catch (e) { }
+                            sessionStorage.setItem("activeChatPartnerId", landlordId);
+                            localStorage.setItem("activeChatPartnerId", landlordId);
+                            setActiveTab(2); // Navigate to Chat tab
+                          }}
+                          className="w-full mt-3 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] text-[12px] font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Chat with Landlord ({activeLease.landlord})
+                        </Button>
                       </div>
                     </>
                   ) : (
@@ -1806,7 +2157,9 @@ export default function TenantDashboard() {
                   <div className="visa-balance-group">
                     <span className="visa-balance-sub">Ledger Balance</span>
                     <div className="visa-balance">
-                      {!activeLease || rentPaid ? "₦0.00" : "₦150,000"}
+                      {!activeLease || rentPaid
+                        ? "₦0.00"
+                        : `₦${parseFloat(invoices.find(i => i.status === 'unpaid')?.amount || activeLease.rent_amount || 0).toLocaleString()}`}
                     </div>
                   </div>
 
@@ -1896,7 +2249,7 @@ export default function TenantDashboard() {
           />
         ) : activeTab === 2 ? (
           <main className="db-main-content chat-tab-active">
-            <TenantChat />
+            <TenantChat setActiveTab={setActiveTab} />
           </main>
         ) : activeTab === 3 ? (
           <main className="db-main-content">
@@ -1918,7 +2271,7 @@ export default function TenantDashboard() {
           /* TAB 5+: UNDER DEVELOPMENT VIEWS */
           <div className="under-development-wrapper flex-1 flex items-center justify-center">
             <div className="under-dev-card text-center">
-              <div className="sparkle-icon flex justify-center"><Sparkles className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>
+              <div className="sparkle-icon flex justify-center"><ListChecks className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>
               <span className="tag mb-2 inline-block">Under Development</span>
               <h2 className="font-display text-2xl font-bold text-ink-900 dark:text-white mb-2">
                 {getTabName()} Section
@@ -1943,7 +2296,7 @@ export default function TenantDashboard() {
             <div className="tour-ask-backdrop">
               <div className="tour-ask-card">
                 <div className="tour-ask-icon">
-                  <Sparkles className="h-6 w-6" />
+                  <ListChecks className="h-6 w-6" />
                 </div>
                 <h3 className="tour-ask-title">Dashboard Onboarding</h3>
                 <p className="tour-ask-desc">
@@ -1993,7 +2346,7 @@ export default function TenantDashboard() {
 
                 {/* Floating hand/pointer direction arrows */}
                 <div className={`tour-pointer-arrow tour-pointer-${TOUR_STEPS[tourStep].placement}`}>
-                  <Sparkles className="h-3 w-3 text-white" />
+                  <ListChecks className="h-3 w-3 text-white" />
                 </div>
 
                 <div className="tour-tooltip-actions">

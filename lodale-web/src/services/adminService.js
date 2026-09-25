@@ -49,6 +49,28 @@ export const adminService = {
   },
 
   /**
+   * Fetch all soft-deleted users and properties in the Recycle Bin
+   */
+  async getRecycleBinItems() {
+    try {
+      return await apiClient('/admin/recycle-bin');
+    } catch (error) {
+      console.warn('[AdminService] Failed to fetch recycle bin items:', error.message);
+      return { deletedUsers: [], deletedProperties: [] };
+    }
+  },
+
+  /**
+   * Restore a soft-deleted user account or property listing
+   */
+  async restoreRecycleBinItem(itemType, itemId, restorationFee = 0, isFeePaidManually = true) {
+    return await apiClient('/admin/recycle-bin/restore', {
+      method: 'POST',
+      body: { itemType, itemId, restorationFee, isFeePaidManually },
+    });
+  },
+
+  /**
    * Delete a registered user account
    */
   async deleteUser(userId) {

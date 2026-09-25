@@ -1,4 +1,4 @@
-import { pool } from '../src/config/db.js';
+import { pool } from '../src/db/db.js';
 
 describe('Inspect DB Properties', () => {
   it('should query all property records in properties table', async () => {

@@ -43,23 +43,6 @@ export const formatDate = (dateVal, options = { day: "numeric", month: "long", y
   }
 };
 
-/**
- * Formats a date string or Date object to a short US format.
- * Example: '01/01/2026' -> 'Jan 1, 2026'
- * 
- * @param {string|Date} dateVal - The date to format
- * @returns {string} Formatted date string
- */
-export const formatDateShort = (dateVal) => {
-  if (!dateVal) return "";
-  try {
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return String(dateVal);
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return String(dateVal);
-  }
-};
 
 /**
  * Formats a date into relative time from now (e.g. 'Just now', '1 day ago', '4 days ago', '2 weeks ago').

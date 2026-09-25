@@ -20,10 +20,54 @@ import {
 } from "lucide-react";
 import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
+import SearchableOccupationSelect from "../../components/SearchableOccupationSelect";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
+<<<<<<< HEAD
 import { safeSetLocalStorage, safeSetSessionStorage, compressImageForStorage } from "../../utils/storageUtils";
+=======
+import { profileService } from "../../services/profileService";
+import { leaseService } from "../../services/leaseService";
+import { INCOME_RANGES } from "../../utils/incomeRanges";
+>>>>>>> 1542f63fec6cadb4ba347f059445da9b835dd9be
 import "./TenantSettings.css";
+
+// One-time cleanup: strip base64 avatar data from bloated tenantProfile_ localStorage entries
+// This runs synchronously on module load to free space before any component renders
+(() => {
+  try {
+    // Clean up bloated tenantProfile_ keys
+    const keysToClean = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith("tenantProfile_")) keysToClean.push(key);
+    }
+    for (const key of keysToClean) {
+      const val = localStorage.getItem(key);
+      if (val && val.length > 100000) { // > 100KB means it likely has base64 embedded
+        try {
+          const parsed = JSON.parse(val);
+          let changed = false;
+          if (parsed.avatar && parsed.avatar.startsWith("data:")) { delete parsed.avatar; changed = true; }
+          if (parsed.avatar_url && parsed.avatar_url.startsWith("data:")) { delete parsed.avatar_url; changed = true; }
+          if (changed) {
+            try {
+              localStorage.setItem(key, JSON.stringify(parsed));
+            } catch (e) {
+              // If we still can't write, just remove the key entirely to free space
+              localStorage.removeItem(key);
+            }
+          }
+        } catch (e) { /* ignore parse errors */ }
+      }
+    }
+    // Clean up stale tenantAvatarUrl that contains base64
+    const tenantAvatarUrl = localStorage.getItem("tenantAvatarUrl");
+    if (tenantAvatarUrl && tenantAvatarUrl.startsWith("data:")) {
+      localStorage.removeItem("tenantAvatarUrl");
+    }
+  } catch (e) { /* ignore if localStorage is inaccessible */ }
+})();
 
 export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChange, onProfileUpdate }) {
   const [activeTab, setActiveTab] = useState("personal"); // "personal" | "security" | "documents"
@@ -34,7 +78,18 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
     try {
       const raw = sessionStorage.getItem("tenantCurrentProfile") || (emailKey ? localStorage.getItem("tenantProfile_" + emailKey) : null);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const prof = JSON.parse(raw);
+        // Re-attach avatar from separate localStorage key if not present in profile
+        if (!prof.avatar && !prof.avatar_url && emailKey) {
+          const savedAvatar = localStorage.getItem("tenantAvatar_" + emailKey);
+          if (savedAvatar) {
+            prof.avatar = savedAvatar;
+            prof.avatar_url = savedAvatar;
+          }
+        }
+        return prof;
+      }
     } catch (e) { }
     return null;
   };
@@ -80,6 +135,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [dob, setDob] = useState(initialDob);
   const [location, setLocation] = useState(initialLocation);
   const [postalCode, setPostalCode] = useState(initialPostalCode);
+  const initialEmploymentStatus = initialProf?.employmentStatus || initialProf?.employment_status || "Employed (Full-time)";
+  const [employmentStatus, setEmploymentStatus] = useState(initialEmploymentStatus);
   const [occupation, setOccupation] = useState(initialOccupation);
   const [income, setIncome] = useState(initialIncome);
   const [avatarUrl, setAvatarUrl] = useState(initialAvatar);
@@ -103,28 +160,33 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [confirmPassword, setConfirmPassword] = useState("");
 
   // Documents & E-Signing State Management
-  const [documents, setDocuments] = useState(() => {
-    const saved = localStorage.getItem("tenantLegalDocuments");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (e) { }
-    }
-    return [
-      {
-        id: "doc-1",
-        refCode: "DOC-2026-LOD-84920",
-        title: "Tenancy Lease Agreement (2026-2027)",
+  const [documents, setDocuments] = useState([]);
+
+  const fetchLeases = async () => {
+    try {
+      const leases = await leaseService.getMyLeases();
+      const formatted = leases.map(l => ({
+        id: l.id,
+        refCode: `LOD-${l.id.substring(0, 8).toUpperCase()}`,
+        title: `Tenancy Lease Agreement (${l.property_title})`,
         type: "Lease Agreement",
-        propertyName: "Modern Luxury Villa, Lekki Phase 1",
-        landlordName: "Skyline Realty / Engr. Clement Okoro",
-        dateSent: "07 Aug 2026",
-        status: "pending",
-        content: `RESIDENTIAL TENANCY LEASE AGREEMENT (2026 - 2027)\n\n1. PARTIES & DEMISED PREMISES:\nThis Tenancy Lease Agreement is made between Engr. Clement Okoro (Landlord/Lessor) and the Tenant for the property: Modern Luxury Villa, Lekki Phase 1, Lagos, Nigeria.\n\n2. TERM & COMMENCEMENT:\nThe lease term shall be for a duration of Twelve (12) calendar months commencing immediately upon execution.\n\n3. RENT & SERVICE CHARGES:\nRent is agreed at ₦3,500,000 per annum, payable in advance. Service charges cover 24/7 security, central water filtration, and backup power generator servicing.\n\n4. COVENANTS & CARE OF PREMISES:\nThe Tenant agrees to keep the demised property in good, tenantable condition, refrain from unauthorized structural alterations, and report maintenance requests promptly.\n\n5. GOVERNING LAW & JURISDICTION:\nThis Agreement is governed by the tenancy laws of the Federal Republic of Nigeria.`
-      }
-    ];
-  });
+        propertyName: l.property_title,
+        landlordName: l.landlord_name,
+        dateSent: new Date(l.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }),
+        signedAt: l.tenant_signed_at ? new Date(l.tenant_signed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : new Date(l.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        status: (l.status === 'active' || l.status === 'signed' || l.tenant_signed_at) ? 'signed' : 'pending',
+        content: `RESIDENTIAL TENANCY LEASE AGREEMENT\n\n1. PARTIES & DEMISED PREMISES:\nThis Tenancy Lease Agreement is made between ${l.landlord_name} (Landlord/Lessor) and ${l.tenant_name} (Tenant) for the property: ${l.property_title}, ${l.property_address}, ${l.property_city}, Nigeria.\n\n2. TERM & COMMENCEMENT:\nThe lease term shall commence on ${new Date(l.start_date).toLocaleDateString()} and end on ${new Date(l.end_date).toLocaleDateString()}.\n\n3. RENT & SERVICE CHARGES:\nRent is agreed at ₦${parseFloat(l.rent_amount).toLocaleString()} ${l.rent_period === 'monthly' ? 'per month' : 'per annum'}, payable in advance.\n\n4. COVENANTS & CARE OF PREMISES:\nThe Tenant agrees to keep the demised property in good, tenantable condition.\n- Pets: ${l.include_pets ? "Permitted" : "No unauthorized pets allowed"}\n- Smoking: ${l.include_smoking ? "Permitted in designated outdoor areas only" : "Strictly prohibited indoors"}\n- Late Penalty: ${l.include_late_fee ? "10% charge if rent is unpaid after 5 days" : "Standard billing policies apply"}\n${l.custom_clauses ? `\n- Additional Clauses:\n${l.custom_clauses}\n` : ""}\n5. GOVERNING LAW & JURISDICTION:\nThis Agreement is governed by the tenancy laws of the Federal Republic of Nigeria.`,
+        backendLease: l
+      }));
+      setDocuments(formatted);
+    } catch (err) {
+      console.error("Failed to fetch leases", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLeases();
+  }, []);
 
   // Modal E-Signing states
   const [selectedDocToSign, setSelectedDocToSign] = useState(null);
@@ -142,6 +204,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           if (profile.last_name) setLastName(profile.last_name);
           if (profile.email) setEmail(profile.email);
           if (profile.phone_number) setPhone(profile.phone_number);
+          if (profile.location) setLocation(profile.location);
           if (profile.avatar_url && !avatarUrl) {
             setAvatarUrl(profile.avatar_url);
           }
@@ -153,22 +216,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     loadProfile();
   }, []);
 
-  // Listen to cross-tab storage changes for tenant documents
-  useEffect(() => {
-    const syncDocs = () => {
-      const saved = localStorage.getItem("tenantLegalDocuments");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed)) {
-            setDocuments(parsed);
-          }
-        } catch (e) { }
-      }
-    };
-    window.addEventListener("storage", syncDocs);
-    return () => window.removeEventListener("storage", syncDocs);
-  }, []);
+
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -227,6 +275,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
       console.warn("Tenant avatar processing fallback:", err);
       const reader = new FileReader();
       reader.onload = (evt) => {
+<<<<<<< HEAD
         const rawBase64 = evt.target.result;
         setAvatarUrl(rawBase64);
         const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
@@ -235,6 +284,22 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         }
         safeSetSessionStorage("tenantAvatarUrl", rawBase64);
         safeSetLocalStorage("tenantAvatarUrl", rawBase64);
+=======
+        const base64Data = evt.target.result;
+        setAvatarUrl(base64Data);
+
+        const emailKey = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+        try {
+          if (emailKey) {
+            // Tenant-scoped avatar key — does not overwrite landlord avatar
+            localStorage.setItem("tenantAvatar_" + emailKey, base64Data);
+          }
+          // Session-level quick sync keys
+          sessionStorage.setItem("tenantAvatarUrl", base64Data);
+        } catch (storageErr) {
+          console.warn("[TenantSettings] Could not save avatar to localStorage (quota):", storageErr?.message);
+        }
+>>>>>>> 1542f63fec6cadb4ba347f059445da9b835dd9be
 
         const updatedProf = {
           ...userProfile,
@@ -258,7 +323,15 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         safeSetSessionStorage("currentUserProfile", JSON.stringify(updatedProf));
         safeSetLocalStorage("currentUserProfile", JSON.stringify(updatedProf));
         if (emailKey) {
+<<<<<<< HEAD
           safeSetLocalStorage("userProfile_" + emailKey, JSON.stringify(updatedProf));
+=======
+          // Strip base64 avatar from localStorage profile to avoid quota exceeded errors
+          const lsProf = { ...updatedProf };
+          if (lsProf.avatar && lsProf.avatar.startsWith("data:")) delete lsProf.avatar;
+          if (lsProf.avatar_url && lsProf.avatar_url.startsWith("data:")) delete lsProf.avatar_url;
+          localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(lsProf));
+>>>>>>> 1542f63fec6cadb4ba347f059445da9b835dd9be
         }
 
         onAvatarChange?.(rawBase64);
@@ -307,17 +380,30 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           location: location,
           postalCode: postalCode.trim(),
           occupation: occupation.trim(),
+          employmentStatus: employmentStatus.trim(),
           income: income.trim(),
           avatar: avatarUrl || userProfile.avatar || ""
         };
         sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(profToSave));
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(profToSave));
         if (curEmail) {
-          localStorage.setItem("tenantProfile_" + curEmail, JSON.stringify(profToSave));
+          // Strip base64 avatar from localStorage profile to avoid quota exceeded errors
+          const lsProf = { ...profToSave };
+          if (lsProf.avatar && lsProf.avatar.startsWith("data:")) delete lsProf.avatar;
+          if (lsProf.avatar_url && lsProf.avatar_url.startsWith("data:")) delete lsProf.avatar_url;
+          localStorage.setItem("tenantProfile_" + curEmail, JSON.stringify(lsProf));
         }
         if (avatarUrl) {
-          if (curEmail) localStorage.setItem("tenantAvatar_" + curEmail, avatarUrl);
+          try {
+            if (curEmail) localStorage.setItem("tenantAvatar_" + curEmail, avatarUrl);
+          } catch (storageErr) {
+            console.warn("[TenantSettings] Could not save avatar to localStorage (quota):", storageErr?.message);
+          }
           sessionStorage.setItem("tenantAvatarUrl", avatarUrl);
-          localStorage.setItem("tenantAvatarUrl", avatarUrl);
+          // Only store URL (not base64) in localStorage to save space
+          if (!avatarUrl.startsWith("data:")) {
+            try { localStorage.setItem("tenantAvatarUrl", avatarUrl); } catch (e) { /* quota */ }
+          }
         }
 
         // Notify parent / sidebar / header
@@ -325,20 +411,25 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         onProfileUpdate?.(newFullName, avatarUrl);
 
         // Notify sidebar and search header to refresh immediately
-        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: newFullName, avatar: avatarUrl } }));
+        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: newFullName, avatar: avatarUrl, location: location } }));
         window.dispatchEvent(new Event("storage"));
 
         // Step 2: Try to sync with backend — fail gracefully if session has expired
-        const token = sessionStorage.getItem("lodale_token") || sessionStorage.getItem("lodale_token");
+        const token = sessionStorage.getItem("lodale_token");
         if (token) {
           try {
-            // Only send avatar_url to the backend if it's a real URL (not a >1MB base64 blob)
             const isBase64 = avatarUrl && avatarUrl.startsWith("data:");
             const updatedProfile = await userService.updateProfile({
               first_name: firstName.trim(),
               last_name: lastName.trim(),
               phone_number: phone.trim(),
               avatar_url: isBase64 ? undefined : (avatarUrl || undefined)
+            });
+
+            await profileService.updateMyProfile({
+              occupation: occupation.trim(),
+              employment_status: employmentStatus.trim(),
+              monthly_income: income.trim()
             });
 
             if (updatedProfile) {
@@ -433,75 +524,26 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   };
 
   // Submit E-Signature Handler
-  const handleSignDocument = (e) => {
+  const handleSignDocument = async (e) => {
     e.preventDefault();
-    if (!signatureInput.trim()) {
-      triggerToast("Please enter your full name as your digital signature.", "warning", "Signature Required");
+    if (!signatureInput.trim() || !confirmCheck) {
+      triggerToast("Please provide your signature and check the confirmation box.", "warning");
       return;
     }
-    if (!confirmCheck) {
-      triggerToast("Please check the box to confirm legal agreement.", "warning", "Confirmation Required");
-      return;
-    }
-
-    const nowStr = new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    }) + ", " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    const updated = documents.map((doc) => {
-      if (doc.id === selectedDocToSign.id) {
-        return {
-          ...doc,
-          status: "signed",
-          signedAt: nowStr,
-          signedName: signatureInput.trim()
-        };
-      }
-      return doc;
-    });
-
-    setDocuments(updated);
-    localStorage.setItem("tenantLegalDocuments", JSON.stringify(updated));
 
     try {
-      const savedLandlordDocs = localStorage.getItem("landlordDocuments");
-      const landlordDocs = savedLandlordDocs ? JSON.parse(savedLandlordDocs) : [];
-      const tenantName = (sessionStorage.getItem("username") || sessionStorage.getItem("username") || `${firstName} ${lastName}`).trim();
-      const updatedLandlord = [
-        ...landlordDocs.filter(d => d.id !== selectedDocToSign.id),
-        {
-          id: selectedDocToSign.id,
-          title: selectedDocToSign.title,
-          tenantName: tenantName,
-          landlordName: selectedDocToSign.landlordName,
-          dateSigned: nowStr,
-          signedName: signatureInput.trim(),
-          status: "Signed"
-        }
-      ];
-      localStorage.setItem("landlordDocuments", JSON.stringify(updatedLandlord));
+      await leaseService.signLease(selectedDocToSign.id);
 
-      const savedLandlordNotifs = localStorage.getItem("landlordNotifications");
-      const landlordNotifs = savedLandlordNotifs ? JSON.parse(savedLandlordNotifs) : [];
-      landlordNotifs.unshift({
-        id: "notif-signed-" + Date.now(),
-        title: "Agreement Signed",
-        message: `${tenantName} has signed the tenancy agreement for ${selectedDocToSign.propertyName || "the property"}.`,
-        time: "Just now",
-        type: "success",
-        read: false
-      });
-      localStorage.setItem("landlordNotifications", JSON.stringify(landlordNotifs));
-    } catch (err) { }
+      triggerToast("Document signed successfully & returned to landlord!", "success", "Document Signed");
+      setSelectedDocToSign(null);
+      setSignatureInput("");
+      setConfirmCheck(false);
+      setDocSubTab("signed");
 
-    window.dispatchEvent(new Event("storage"));
-    triggerToast("Document signed successfully & returned to landlord!", "success", "Document Signed");
-    setSelectedDocToSign(null);
-    setSignatureInput("");
-    setConfirmCheck(false);
-    setDocSubTab("signed");
+      fetchLeases();
+    } catch (err) {
+      triggerToast("Failed to sign lease", "error");
+    }
   };
 
   // PDF Generator HTML Template
@@ -510,7 +552,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
     const refCode = doc.refCode || "DOC-2026-LOD-84920";
     const propertyName = doc.propertyName || "Modern Luxury Villa, Lekki Phase 1";
     const landlordName = doc.landlordName || "Skyline Realty / Engr. Clement Okoro";
-    const signedDate = doc.signedAt || "Aug 7, 2026";
+    const signedDate = doc.signedAt || new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
     return `<!DOCTYPE html>
 <html>
@@ -1008,25 +1050,42 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               </div>
 
               <div className="settings-form-group">
-                <label className="settings-input-label">Occupation <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
-                  value={occupation}
-                  onChange={(e) => setOccupation(e.target.value)}
-                  className="settings-form-input"
-                  placeholder="e.g. Software Engineer"
-                />
+                <label className="settings-input-label">Employment Status <span className="text-red-500">*</span></label>
+                <select
+                  value={employmentStatus}
+                  onChange={(e) => setEmploymentStatus(e.target.value)}
+                  className="settings-form-input font-medium cursor-pointer"
+                >
+                  <option value="Employed">Employed</option>
+                  <option value="Student">Student</option>
+                  <option value="Unemployed">Unemployed</option>
+                  <option value="Retired">Retired</option>
+                </select>
               </div>
 
+              {(employmentStatus === "Employed" || employmentStatus?.toLowerCase().startsWith("employed")) && (
+                <div className="settings-form-group">
+                  <label className="settings-input-label">Occupation <span className="text-red-500">*</span></label>
+                  <SearchableOccupationSelect
+                    value={occupation}
+                    onChange={(val) => setOccupation(val)}
+                    placeholder="Search or select occupation..."
+                  />
+                </div>
+              )}
+
               <div className="settings-form-group">
-                <label className="settings-input-label">Monthly Income <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
+                <label className="settings-input-label">Annual Income Range <span className="text-red-500">*</span></label>
+                <select
                   value={income}
                   onChange={(e) => setIncome(e.target.value)}
-                  className="settings-form-input"
-                  placeholder="e.g. ₦500,000"
-                />
+                  className="settings-form-input font-medium"
+                >
+                  <option value="">Select Annual Income Range</option>
+                  {INCOME_RANGES.map((range) => (
+                    <option key={range} value={range}>{range}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="settings-form-group">
