@@ -20,7 +20,7 @@ import {
   LogOut,
   ArrowUpRight,
   Star,
-  ListChecks,
+  Sparkles,
   User,
   Clock,
   CheckCircle2,
@@ -29,28 +29,16 @@ import {
   X,
   Trash2,
   BellOff,
-  ClipboardList,
-  Menu,
-  FileText,
-  Upload,
-  CreditCard
 } from "lucide-react";
-import { Logo, LogoMark } from "../../components/Logo";
+import { Logo } from "../../components/Logo";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
-import { applicationService } from "../../services/applicationService";
 import LandlordProperties from "./LandlordProperties";
 import UserInfo from "./components/UserInfo";
 import RequestInfo from "./components/RequestInfo";
 import LandlordChat from "./components/Landllordchat";
-import LandlordApplications from "./components/LandlordApplications";
-import LandlordReportModal from "./components/LandlordReportModal";
-import UploadProofModal from "./components/UploadProofModal";
 import SettingsTab from "./Settings";
 import Tenants from "./Tenants";
-import { leaseService } from "../../services/leaseService";
-import { rentService } from "../../services/rentService";
-import { maintenanceService } from "../../services/maintenanceService";
 import "./LandlordDashboard.css";
 
 const TOUR_STEPS = [
@@ -177,7 +165,6 @@ const TOUR_STEPS = [
 
 export default function LandlordDashboard() {
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Retrieve username with per-tab sessionStorage priority & localStorage fallback
   const [username, setUsername] = useState(() => {
@@ -188,21 +175,15 @@ export default function LandlordDashboard() {
     return storedName || sessionStorage.getItem("username") || "Ada";
   });
 
-  const [leases, setLeases] = useState([]);
-  const [invoices, setInvoices] = useState([]);
-  const [loadingData, setLoadingData] = useState(true);
-
   const getActiveTenantsList = () => {
-    return leases
-      .filter(l => l.status === 'active')
-      .map(l => ({
-        id: l.id,
-        name: l.tenant_name || "Unknown Tenant",
-        email: l.tenant_email,
-        rentAmount: l.rent_amount,
-        propertyTitle: l.property_title,
-        paymentStatus: invoices.find(i => i.lease_id === l.id && i.status === 'unpaid') ? 'Overdue' : 'Paid'
-      }));
+    try {
+      const saved = localStorage.getItem("propertyTenants");
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      return Object.values(parsed).flat().filter(t => t && t.status !== "past" && t.status !== "inactive");
+    } catch (e) {
+      return [];
+    }
   };
 
   const getActiveTenantsCount = () => {
@@ -254,7 +235,6 @@ export default function LandlordDashboard() {
   const [selectedRequestForDetails, setSelectedRequestForDetails] = useState(null);
   const [showLandlordProfileModal, setShowLandlordProfileModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
-  const [showReportModal, setShowReportModal] = useState(false);
 
   // Onboarding welcome overlay states
   const [showWelcomeOverlay, setShowWelcomeOverlay] = useState(false);
@@ -275,23 +255,6 @@ export default function LandlordDashboard() {
   });
 
   // Landlord profile avatar state (persisted across uploads)
-  const [landlordAvatar, setLandlordAvatar] = useState(() => {
-    const emailKey = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail");
-    if (emailKey) {
-      const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey);
-      if (savedUserAvatar) return savedUserAvatar;
-    }
-    // Fallback: read from landlord-scoped profile only (role guard)
-    try {
-      const raw = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("currentUserProfile");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.avatar && !parsed.avatar.includes("unsplash.com")) return parsed.avatar;
-      }
-    } catch (e) { }
-    return "";
-  };
-
   const [landlordAvatar, setLandlordAvatar] = useState(() => getLandlordAvatar());
 
   useEffect(() => {
@@ -319,20 +282,17 @@ export default function LandlordDashboard() {
     window.addEventListener("storage", handleAvatarUpdate);
     return () => window.removeEventListener("storage", handleAvatarUpdate);
   }, []);
-  const [applications, setApplications] = useState([]);
-
-  useEffect(() => {
-    async function fetchBadgeCount() {
+  const [applications, setApplications] = useState(() => {
+    const saved = localStorage.getItem("propertyApplications");
+    if (saved) {
       try {
-        localStorage.removeItem("propertyApplications");
-        const apps = await applicationService.getLandlordApplications();
-        setApplications(Array.isArray(apps) ? apps : []);
-      } catch (err) {
-        setApplications([]);
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
       }
     }
-    fetchBadgeCount();
-  }, []);
+    return [];
+  });
 
   const [notifications, setNotifications] = useState(() => {
     const saved = localStorage.getItem("landlordNotifications");
@@ -352,12 +312,18 @@ export default function LandlordDashboard() {
   });
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
 
-  // Sync username & notifications if changed in storage
+  // Sync username, applications & notifications if changed in storage
   useEffect(() => {
     const handleStorageChange = () => {
       const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
       const storedName = emailKey ? sessionStorage.getItem("username_" + emailKey) : null;
       setUsername(sessionStorage.getItem("username") || storedName || sessionStorage.getItem("username") || "Landlord User");
+      const savedApps = localStorage.getItem("propertyApplications");
+      if (savedApps) {
+        try {
+          setApplications(JSON.parse(savedApps));
+        } catch (e) { }
+      }
       const savedNotifs = localStorage.getItem("landlordNotifications");
       if (savedNotifs) {
         try {
@@ -726,101 +692,92 @@ export default function LandlordDashboard() {
 
   // Sidebar navigation items
   const sidebarItems = [
-    { id: "dashboard", icon: LayoutDashboard, label: "Dashboard Home", tabIndex: 0, action: () => { setActiveTab(0); setActivePill("Overview"); } },
-    { id: "properties", icon: Building2, label: "Properties", tabIndex: 1, action: () => setActiveTab(1) },
-    { id: "tenants", icon: Users, label: "Tenants", tabIndex: 2, action: () => setActiveTab(2) },
-    { id: "applications", icon: ClipboardList, label: "Applications", tabIndex: 0, action: () => { setActiveTab(0); setActivePill("Applications"); } },
-    { id: "chat", icon: MessageSquare, label: "Chat", tabIndex: 3, action: () => setActiveTab(3) },
-    { id: "settings", icon: Settings, label: "Settings", tabIndex: 4, action: () => setActiveTab(4) },
+    { icon: LayoutDashboard, label: "Dashboard Home" },
+    { icon: Building2, label: "Properties" },
+    { icon: Users, label: "Tenants" },
+    { icon: MessageSquare, label: "Chat" },
+    { icon: Settings, label: "Settings" },
   ];
 
   // Filter listings where landlord name matches the username, or fallback to general listings list
   const [displayProperties, setDisplayProperties] = useState([]);
   const [selectedFeedbackProperty, setSelectedFeedbackProperty] = useState(null);
-  const [selectedProofProperty, setSelectedProofProperty] = useState(null);
 
   useEffect(() => {
     async function loadProperties() {
-      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
-      const currentName = (username || "").toLowerCase();
-      const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-
+      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("db_user_id") || "11111111-1111-1111-1111-111111111111";
       let apiProps = [];
-      if (currentUserId) {
-        try {
-          apiProps = await propertyService.getLandlordProperties(currentUserId);
-        } catch (err) {
-          console.warn("Error fetching landlord properties from API:", err);
-        }
+      try {
+        apiProps = await propertyService.getLandlordProperties(currentUserId);
+      } catch (err) {
+        console.warn("Error fetching landlord properties from API:", err);
       }
 
-      // Per-user session storage cache for active landlord ONLY
       let localProps = [];
       try {
-        const userKey = "landlord_properties_" + (currentUserId || userEmail);
-        const savedSessionProps = sessionStorage.getItem(userKey);
-        if (savedSessionProps) {
-          const parsed = JSON.parse(savedSessionProps);
-          if (Array.isArray(parsed) && parsed.length > 0) localProps.push(...parsed);
+        const savedLandlordProps = localStorage.getItem("landlordProperties");
+        if (savedLandlordProps) {
+          const parsed = JSON.parse(savedLandlordProps);
+          if (Array.isArray(parsed)) localProps.push(...parsed);
+        }
+        const savedGeneralProps = localStorage.getItem("properties");
+        if (savedGeneralProps) {
+          const parsedG = JSON.parse(savedGeneralProps);
+          if (Array.isArray(parsedG)) {
+            localProps.push(...parsedG);
+          }
         }
       } catch (err) {
         console.warn("Error reading local landlord properties:", err);
       }
 
       const propMap = new Map();
-      const seenSignatures = new Set();
-
-      const addUniqueProp = (p) => {
-        if (!p || !p.id) return;
-
-        // Strict landlord ownership validation: do NOT load another landlord's property!
-        const pLandlordId = String(p.landlord_id || p.landlordId || p.landlord?.id || "").trim();
-        const pLandlordName = String(p.landlord?.name || p.landlordName || p.landlord || "").trim().toLowerCase();
-
-        if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) {
-          return;
-        }
-        if (currentName && pLandlordName && !pLandlordName.includes(currentName) && !currentName.includes(pLandlordName)) {
-          return;
-        }
-
-        const sig = `${(p.title || "").trim().toLowerCase()}|${(p.address_line1 || p.address || p.location || "").trim().toLowerCase()}`;
-        if (propMap.has(p.id)) {
-          const existing = propMap.get(p.id);
-          propMap.set(p.id, { ...existing, ...p });
-          return;
-        }
-
-        if (sig.length > 1 && seenSignatures.has(sig)) {
-          return;
-        }
-
-        propMap.set(p.id, {
-          ...p,
-          price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
-          location: p.location || `${p.city || "Lagos"}, ${p.state || "Lagos"}`
-        });
-        if (sig.length > 1) seenSignatures.add(sig);
-      };
-
       if (Array.isArray(apiProps)) {
-        apiProps.forEach(addUniqueProp);
+        apiProps.forEach((p) => {
+          if (p && p.id) propMap.set(p.id, p);
+        });
       }
 
-      localProps.forEach(addUniqueProp);
+      localProps.forEach((p) => {
+        if (!p || !p.id) return;
+        const currentName = (username || "Tunde Bakare").toLowerCase();
+        const pLandlordName = (p.landlord?.name || p.landlord || "").toLowerCase();
+        const isMatch = !p.landlord || pLandlordName.includes(currentName) || currentName.includes(pLandlordName) || p.landlordId === currentUserId;
 
-      const finalProperties = Array.from(propMap.values());
-      setDisplayProperties(finalProperties);
+        if (isMatch || !propMap.has(p.id)) {
+          // Sync status from general properties if approved in admin
+          const generalPropsStr = localStorage.getItem("properties");
+          if (generalPropsStr) {
+            try {
+              const genProps = JSON.parse(generalPropsStr);
+              const matchedGen = genProps.find((gp) => gp.id === p.id);
+              if (matchedGen && matchedGen.status) {
+                p.status = matchedGen.status;
+                if (matchedGen.status === "active_vacant" || matchedGen.status === "live" || matchedGen.status === "approved") {
+                  p.isPending = false;
+                }
+              }
+            } catch (_e) { }
+          }
+
+          propMap.set(p.id, {
+            ...p,
+            price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
+            location: p.location || `${p.city || "Abuja"}, ${p.state || "FCT"}`
+          });
+        }
+      });
+
+      setDisplayProperties(Array.from(propMap.values()));
     }
 
     loadProperties();
 
-    const handleSilentRefresh = () => loadProperties(true);
-    window.addEventListener("storage", handleSilentRefresh);
-    window.addEventListener("focus", handleSilentRefresh);
+    window.addEventListener("storage", loadProperties);
+    window.addEventListener("focus", loadProperties);
     return () => {
-      window.removeEventListener("storage", handleSilentRefresh);
-      window.removeEventListener("focus", handleSilentRefresh);
+      window.removeEventListener("storage", loadProperties);
+      window.removeEventListener("focus", loadProperties);
     };
   }, [username]);
 
@@ -849,62 +806,96 @@ export default function LandlordDashboard() {
   const outstandingAmount = overdueTenants.reduce((sum, t) => sum + parseTenantRent(t), 0);
   const availablePayoutBalance = activeTenantsCount === 0 ? 0 : collectedAmount;
 
-  const handleUpdateRequestStatus = async (requestId, newStatus) => {
-    try {
-      await maintenanceService.updateRequestStatus(requestId, { status: newStatus.toLowerCase().replace(" ", "_") });
-      triggerToast(`Request status updated to ${newStatus}`, "success");
-      await fetchAllData();
-    } catch (e) {
-      console.error(e);
-      triggerToast("Failed to update status", "error");
-    }
+  const handleUpdateRequestStatus = (requestId, newStatus) => {
+    setTenantRequests((prevRequests) => {
+      const updated = prevRequests.map((req) =>
+        req.id === requestId ? { ...req, status: newStatus } : req
+      );
+
+      // Persist requests to localStorage
+      localStorage.setItem("tenantRequests", JSON.stringify(updated));
+
+      const req = prevRequests.find((r) => r.id === requestId);
+      if (req && (newStatus === "In Progress" || newStatus === "Completed")) {
+        const saved = localStorage.getItem("landlordChats");
+        const chatsList = saved ? JSON.parse(saved) : [];
+
+        const exists = chatsList.some((c) => c.name === req.tenantName);
+        if (!exists) {
+          const newChat = {
+            id: req.tenantName.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
+            name: req.tenantName,
+            avatar: req.avatar,
+            email: req.email || `${req.tenantName.toLowerCase().replace(/\s+/g, ".")}@domain.com`,
+            phone: req.phone || "+234 800 000 0000",
+            reliabilityScore: req.reliabilityScore || "4.7",
+            occupation: req.occupation || "Tenant",
+            income: req.income || "₦500,000/mo",
+            notes: req.notes || "No notes available.",
+            leaseStatus: req.leaseStatus || "Active Tenant",
+            lastMessage: `Maintenance request set to ${newStatus}: ${req.details}`,
+            time: req.date || "Just now",
+            type: "tenant",
+            messages: [
+              {
+                id: 1,
+                sender: "tenant",
+                text: `Hello, I submitted a maintenance request: ${req.details}`,
+                time: req.date || "Just now"
+              },
+              {
+                id: 2,
+                sender: "landlord",
+                text: `I've approved your request and updated its status to ${newStatus}. We are on it!`,
+                time: "Just now"
+              }
+            ]
+          };
+          chatsList.push(newChat);
+          localStorage.setItem("landlordChats", JSON.stringify(chatsList));
+          window.dispatchEvent(new Event("storage"));
+        }
+      }
+      return updated;
+    });
   };
 
   // Tenant Maintenance/Upgrade Requests list
   const [showAllRequests, setShowAllRequests] = useState(false);
   const [tenantRequests, setTenantRequests] = useState([]);
 
-  const fetchAllData = async () => {
-    try {
-      setLoadingData(true);
-      // Fetch leases
-      const allLeases = await leaseService.getMyLeases();
-      setLeases(allLeases);
-
-      // Fetch invoices
-      const invs = await rentService.getMyInvoices();
-      setInvoices(invs);
-
-      // Fetch requests
-      const reqs = await maintenanceService.getMyRequests();
-      const statusMap = {
-        open: 'Pending',
-        pending: 'Pending',
-        acknowledged: 'In Progress',
-        in_progress: 'In Progress',
-        pending_inspection: 'In Progress',
-        resolved: 'Completed',
-        closed: 'Completed'
-      };
-      setTenantRequests(reqs.map(r => ({
-        id: r.id,
-        title: r.title,
-        category: r.priority === 'emergency' ? 'Emergency' : 'Routine',
-        urgency: r.priority ? r.priority.charAt(0).toUpperCase() + r.priority.slice(1) : 'Medium',
-        details: r.description && r.description !== "No description provided." ? r.description : r.title,
-        status: statusMap[r.status?.toLowerCase()] || 'Pending',
-        date: new Date(r.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short' }),
-        tenantName: r.tenant_name,
-      })));
-    } catch (e) {
-      console.warn("Failed to load landlord data:", e);
-    } finally {
-      setLoadingData(false);
+  const loadRequests = () => {
+    if (getActiveTenantsCount() === 0) {
+      setTenantRequests([]);
+      return;
+    }
+    const saved = localStorage.getItem("tenantRequests");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Filter out default seeds if they exist
+        const filtered = parsed.filter(
+          (req) =>
+            req.tenantName !== "Emeka Obi" &&
+            req.tenantName !== "Maren Maureen" &&
+            req.tenantName !== "Ryan Herwinds" &&
+            req.name !== "Emeka Obi" &&
+            req.name !== "Maren Maureen" &&
+            req.name !== "Ryan Herwinds"
+        );
+        setTenantRequests(filtered);
+      } catch (e) {
+        setTenantRequests([]);
+      }
+    } else {
+      setTenantRequests([]);
     }
   };
 
   useEffect(() => {
-    fetchAllData();
+    loadRequests();
+    window.addEventListener("storage", loadRequests);
+    return () => window.removeEventListener("storage", loadRequests);
   }, []);
 
   const displayRequests = showAllRequests ? tenantRequests : tenantRequests.slice(0, 2);
@@ -915,23 +906,8 @@ export default function LandlordDashboard() {
       {/* HEADER BAR */}
       <header className="db-header">
         <div className="db-header-left">
-          <button
-            className="md:hidden p-2 rounded-xl text-ink-700 dark:text-white hover:bg-ink-50 dark:hover:bg-white/10 transition-colors cursor-pointer mr-1 shrink-0 border-none bg-transparent outline-none flex items-center justify-center"
-            onClick={() => setSidebarOpen(prev => !prev)}
-            aria-label="Toggle navigation menu"
-            title="Toggle sidebar menu"
-          >
-            <Menu className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" />
-          </button>
-
-          <div className="cursor-pointer hover:opacity-85 transition-opacity flex items-center" onClick={() => navigate("/explore")} title="Go to Public Guest Dashboard">
-            <div className="hidden sm:block">
-              <Logo variant="moss" />
-            </div>
-            <div className="block sm:hidden flex items-center gap-1.5">
-              <LogoMark size={28} variant="moss" />
-              <span className="font-extrabold text-base text-moss-800 dark:text-[#E5C583] tracking-tight">Lodale</span>
-            </div>
+          <div className="cursor-pointer hover:opacity-85 transition-opacity" onClick={() => navigate("/explore")} title="Go to Public Guest Dashboard">
+            <Logo variant="moss" />
           </div>
 
           {/* Top category nav pills */}
@@ -953,8 +929,174 @@ export default function LandlordDashboard() {
               ))}
             </nav>
 
-            {activePill === "Applications" && null /* Rendered as a separate page now */}
-            {activePill === "Payments" && null /* Rendered as a full dashboard section now */}
+            {activePill === "Applications" && (
+              <div className="db-applications-popup">
+                <div className="db-popup-header">
+                  <h3>New Rental Applications</h3>
+                  <button
+                    className="db-popup-close-btn"
+                    onClick={() => {
+                      setActivePill("Overview");
+                    }}
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div className="db-popup-body">
+                  {applications.length === 0 ? (
+                    <div className="db-popup-empty">
+                      <p>No pending applications</p>
+                    </div>
+                  ) : (
+                    <div className="db-popup-list">
+                      {applications.map((app) => (
+                        <div key={app.id} className="db-popup-item">
+                          <img
+                            src={app.avatar}
+                            alt={app.tenantName}
+                            className="db-popup-avatar cursor-pointer"
+                            onClick={() => {
+                              setSelectedTenantForDetails(app);
+                              setActivePill("Overview");
+                            }}
+                          />
+                          <div className="db-popup-info">
+                            <div className="db-popup-name-row">
+                              <span
+                                className="db-popup-name cursor-pointer hover:underline"
+                                onClick={() => {
+                                  setSelectedTenantForDetails(app);
+                                  setActivePill("Overview");
+                                }}
+                              >
+                                {app.tenantName}
+                              </span>
+                              <span className="db-popup-score flex items-center gap-1 font-bold text-amber-500">
+                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                                <span>{app.reliabilityScore}</span>
+                              </span>
+                            </div>
+                            <p className="db-popup-property">{app.propertyTitle}</p>
+                            <span className="db-popup-date">{app.date}</span>
+                          </div>
+                          <div className="db-popup-actions">
+                            <button
+                              className="db-action-btn approve"
+                              onClick={() => handleApproveApplication(app)}
+                            >
+                              Approve
+                            </button>
+                            <button
+                              className="db-action-btn decline"
+                              onClick={() => {
+                                triggerToast(`Declined ${app.tenantName}'s application.`, "info", "Application Declined");
+                                setApplications((prev) => prev.filter((a) => a.id !== app.id));
+                              }}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activePill === "Payments" && (
+              <div className="db-applications-popup db-payments-popup">
+                <div className="db-popup-header">
+                  <h3>Rent Payments History</h3>
+                  <button
+                    className="db-popup-close-btn"
+                    onClick={() => {
+                      setActivePill("Overview");
+                    }}
+                  >
+                    &times;
+                  </button>
+                </div>
+                <div className="db-popup-body">
+                  <div className="db-popup-stats-summary">
+                    <div style={{ flex: 1 }}>
+                      <span className="db-popup-stats-lbl">Collected (Month)</span>
+                      <span className="db-popup-stats-val">₦{collectedAmount.toLocaleString()}</span>
+                    </div>
+                    <div style={{ flex: 1, borderLeft: "1.5px solid var(--border-light)", paddingLeft: "16px" }}>
+                      <span className="db-popup-stats-lbl">Outstanding</span>
+                      <span className="db-popup-stats-val overdue">₦{outstandingAmount.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  {/* Paid/Outstanding Toggle Subtabs */}
+                  <div className="payment-subtab-container">
+                    <button
+                      className={`payment-subtab-btn ${paymentSubTab === "Paid" ? "active" : ""}`}
+                      onClick={() => setPaymentSubTab("Paid")}
+                    >
+                      Paid ({paidTenants.length})
+                    </button>
+                    <button
+                      className={`payment-subtab-btn ${paymentSubTab === "Outstanding" ? "active" : ""}`}
+                      onClick={() => setPaymentSubTab("Outstanding")}
+                    >
+                      Outstanding ({overdueTenants.length})
+                    </button>
+                  </div>
+
+                  <div className="db-popup-list">
+                    {paymentSubTab === "Paid" ? (
+                      paidTenants.length === 0 ? (
+                        <div className="p-6 text-center text-ink-400 dark:text-cream-100/60">
+                          <p className="text-xs font-semibold">No collected rent payments recorded.</p>
+                          <p className="text-[11px] mt-1 opacity-70">Payments will appear here when active tenants pay rent.</p>
+                        </div>
+                      ) : (
+                        paidTenants.map((t, idx) => {
+                          const amount = parseTenantRent(t);
+                          return (
+                            <div key={t.id || idx} className="db-popup-item">
+                              <div className="db-popup-info">
+                                <div className="db-popup-name-row">
+                                  <span className="db-popup-name">{t.name || t.tenantName}</span>
+                                  <span className="db-popup-status-text paid">+₦{amount.toLocaleString()}</span>
+                                </div>
+                                <p className="db-popup-property">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
+                                <span className="db-popup-date">Paid • {t.dueDate || "Monthly Rent"}</span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )
+                    ) : (
+                      overdueTenants.length === 0 ? (
+                        <div className="p-6 text-center text-ink-400 dark:text-cream-100/60">
+                          <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">All tenant payments are up to date! 🎉</p>
+                          <p className="text-[11px] mt-1 opacity-70">No outstanding rent balances currently.</p>
+                        </div>
+                      ) : (
+                        overdueTenants.map((t, idx) => {
+                          const amount = parseTenantRent(t);
+                          return (
+                            <div key={t.id || idx} className="db-popup-item">
+                              <div className="db-popup-info">
+                                <div className="db-popup-name-row">
+                                  <span className="db-popup-name">{t.name || t.tenantName}</span>
+                                  <span className="db-popup-status-text overdue">₦{amount.toLocaleString()}</span>
+                                </div>
+                                <p className="db-popup-property">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
+                                <span className="db-popup-date overdue">Rent Outstanding</span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1007,11 +1149,9 @@ export default function LandlordDashboard() {
 
           <Button
             onClick={() => navigate("/dashboard/landlord/add-property")}
-            className="flex items-center gap-1.5 bg-moss-700 hover:bg-forest-600 px-3 sm:px-4 py-2 text-[12.5px] transition-all duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer tour-add-property shrink-0"
-            title="Add Property"
+            className="flex items-center gap-1.5 bg-moss-700 hover:bg-forest-600 px-4 py-2 text-[12.5px] transition-all duration-150 hover:scale-[1.03] active:scale-[0.97] cursor-pointer tour-add-property"
           >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Property</span>
+            <Plus className="h-3.5 w-3.5" /> Add Property
           </Button>
 
           {/* Quick Notification Tools */}
@@ -1114,21 +1254,6 @@ export default function LandlordDashboard() {
                               <span className="font-bold text-[12.5px] text-ink-900 dark:text-white truncate">{notif.title}</span>
                             </div>
                             <p className="text-[11.5px] leading-relaxed text-ink-600 dark:text-cream-100/70 mt-1">{notif.message}</p>
-                            
-                            {(notif.title?.includes("Proof") || notif.message?.includes("proof") || notif.title?.includes("Ownership")) && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowNotifications(false);
-                                  const target = displayProperties.find(p => notif.message?.includes(p.title) || notif.title?.includes(p.title)) || displayProperties.find(p => (p.status || "").toLowerCase().includes("info") || (p.status || "").toLowerCase().includes("proof")) || displayProperties[0];
-                                  if (target) setSelectedProofProperty(target);
-                                }}
-                                className="mt-2 text-xs font-bold text-amber-800 dark:text-amber-300 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-300 dark:border-amber-800 flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-                              >
-                                <Upload className="h-3.5 w-3.5" /> Upload Document Now &rarr;
-                              </button>
-                            )}
-
                             <span className="text-[10px] font-semibold text-ink-400 dark:text-cream-100/50 block mt-1.5">{notif.time || "Just now"}</span>
                           </div>
 
@@ -1183,35 +1308,22 @@ export default function LandlordDashboard() {
         </div>
       </header>
 
-      {/* Mobile Sidebar Backdrop Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-[140] bg-black/50 backdrop-blur-xs md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* DASHBOARD CONTAINER */}
-      <div className="db-container relative">
+      <div className="db-container">
 
         {/* LEFT SIDEBAR NAVIGATION */}
-        <aside className={`db-sidebar ${sidebarOpen ? "mobile-open" : ""}`}>
+        <aside className="db-sidebar">
           <div className="db-sidebar-nav">
             {sidebarItems.map((item, index) => {
               const Icon = item.icon;
-              const isActive = item.id === "dashboard" ? activeTab === 0 && activePill !== "Applications" 
-                             : item.id === "applications" ? activeTab === 0 && activePill === "Applications"
-                             : activeTab === item.tabIndex;
+              const isActive = index === activeTab;
               return (
                 <button
-                  key={item.id}
-                  onClick={() => {
-                    item.action();
-                    setSidebarOpen(false);
-                  }}
+                  key={index}
+                  onClick={() => setActiveTab(index)}
                   className={`db-sidebar-btn ${isActive ? "active" : ""} tour-nav-${index}`}
                 >
-                  <Icon className="h-5 w-5 shrink-0" />
+                  <Icon className="h-5 w-5" />
                   <span className="db-sidebar-tooltip">{item.label}</span>
                 </button>
               );
@@ -1223,22 +1335,18 @@ export default function LandlordDashboard() {
               onClick={() => {
                 setTourStep(0);
                 setRunTour(true);
-                setSidebarOpen(false);
               }}
               className="db-sidebar-btn"
               title="Start Interactive Tour"
             >
-              <HelpCircle className="h-5 w-5 shrink-0" />
+              <HelpCircle className="h-5 w-5" />
               <span className="db-sidebar-tooltip">Take a Tour</span>
             </button>
             <button
-              onClick={() => {
-                setSidebarOpen(false);
-                handleSignOut();
-              }}
+              onClick={handleSignOut}
               className="db-sidebar-btn logout-btn"
             >
-              <LogOut className="h-5 w-5 shrink-0" />
+              <LogOut className="h-5 w-5" />
               <span className="db-sidebar-tooltip">Log Out</span>
             </button>
           </div>
@@ -1283,7 +1391,7 @@ export default function LandlordDashboard() {
 
                   <Button
                     variant="secondary"
-                    onClick={() => setShowReportModal(true)}
+                    onClick={() => triggerToast("Generating property portfolio financial report...", "info", "Report Generator")}
                     className="px-4 py-2 bg-white text-[12.5px]"
                   >
                     Create Report
@@ -1292,581 +1400,314 @@ export default function LandlordDashboard() {
               )}
             </div>
           )}
+
           {activeTab === 0 ? (
-            activePill === "Applications" ? (
-              <div className="mt-2">
-                <LandlordApplications setActiveTab={setActiveTab} />
-              </div>
-            ) : activePill === "Payments" ? (
-              <div className="mt-4 space-y-6 animate-in fade-in duration-300">
-                {/* RENT PAYMENTS & REVENUE HISTORY FULL SECTION */}
-                <div className="bg-white dark:bg-[#1E1E1E] rounded-3xl p-6 sm:p-8 border border-ink-100 dark:border-white/10 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-ink-100 dark:border-white/10">
-                    <div>
-                      <h2 className="text-xl sm:text-2xl font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-3">
-                        <CreditCard className="h-7 w-7 text-moss-600 dark:text-[#E5C583]" />
-                        Rent Payments & Revenue History
-                      </h2>
-                      <p className="text-xs sm:text-sm text-ink-500 dark:text-cream-100/70 mt-1">
-                        Track rent collections, pending payouts, and tenant payment statuses in real-time.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setActivePill("Overview")}
-                        className="px-4 py-2 bg-ink-100 dark:bg-white/10 hover:bg-ink-200 dark:hover:bg-white/20 text-ink-800 dark:text-cream-100 font-bold text-xs rounded-xl transition-all cursor-pointer"
-                      >
-                        Back to Overview
-                      </button>
-                    </div>
-                  </div>
+            /* DASHBOARD CONTENT GRID */
+            <div className="space-y-6">
+              {/* TOP ROW GRID */}
+              <div className="db-grid">
 
-                  {/* STAT CARDS */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                    <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40">
-                      <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 block mb-1">Collected Rent (This Month)</span>
-                      <span className="text-2xl font-black text-emerald-900 dark:text-emerald-200">₦{collectedAmount.toLocaleString()}</span>
-                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400 block mt-1">From {paidTenants.length} paid lease contract{paidTenants.length === 1 ? '' : 's'}</span>
-                    </div>
-
-                    <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40">
-                      <span className="text-xs font-semibold text-rose-800 dark:text-rose-300 block mb-1">Outstanding Balance</span>
-                      <span className="text-2xl font-black text-rose-900 dark:text-rose-200">₦{outstandingAmount.toLocaleString()}</span>
-                      <span className="text-[11px] text-rose-700 dark:text-rose-400 block mt-1">{overdueTenants.length} tenant{overdueTenants.length === 1 ? '' : 's'} currently pending payment</span>
-                    </div>
-
-                    <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/40">
-                      <span className="text-xs font-semibold text-indigo-800 dark:text-indigo-300 block mb-1">Available Payout Balance</span>
-                      <span className="text-2xl font-black text-indigo-900 dark:text-indigo-200">₦{availablePayoutBalance.toLocaleString()}</span>
-                      <button
-                        onClick={() => setShowWithdrawModal(true)}
-                        className="mt-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:underline flex items-center gap-1 cursor-pointer"
-                      >
-                        Request Payout &rarr;
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* FILTER TABS */}
-                  <div className="flex items-center justify-between gap-4 mb-6 border-b border-ink-100 dark:border-white/10 pb-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                          paymentSubTab === "Paid"
-                            ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
-                            : "bg-ink-100 dark:bg-white/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
-                        }`}
-                        onClick={() => setPaymentSubTab("Paid")}
-                      >
-                        Collected Payments ({paidTenants.length})
-                      </button>
-                      <button
-                        className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                          paymentSubTab === "Outstanding"
-                            ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-ink-950 shadow-sm"
-                            : "bg-ink-100 dark:bg-white/10 text-ink-600 dark:text-cream-100/70 hover:bg-ink-200"
-                        }`}
-                        onClick={() => setPaymentSubTab("Outstanding")}
-                      >
-                        Outstanding ({overdueTenants.length})
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* PAYMENT RECORDS LIST */}
-                  <div className="space-y-3">
-                    {paymentSubTab === "Paid" ? (
-                      paidTenants.length === 0 ? (
-                        <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-ink-50 dark:bg-white/5 rounded-2xl border border-dashed border-ink-200 dark:border-white/10">
-                          <CreditCard className="h-10 w-10 mx-auto text-ink-300 dark:text-white/20 mb-3" />
-                          <p className="text-sm font-semibold">No collected rent payments recorded yet.</p>
-                          <p className="text-xs mt-1 opacity-70">When active tenants pay their rent, full payment records will appear here.</p>
-                        </div>
-                      ) : (
-                        paidTenants.map((t, idx) => {
-                          const amount = parseTenantRent(t);
-                          return (
-                            <div key={t.id || idx} className="p-4 rounded-2xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-500/30 transition-all">
-                              <div className="flex items-center gap-3.5">
-                                <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl font-black text-sm">
-                                  ✓
-                                </div>
-                                <div>
-                                  <h4 className="font-bold text-sm text-ink-900 dark:text-white">{t.name || t.tenantName}</h4>
-                                  <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between sm:justify-end gap-6">
-                                <div className="text-left sm:text-right">
-                                  <span className="font-black text-base text-emerald-600 dark:text-emerald-400 block">+₦{amount.toLocaleString()}</span>
-                                  <span className="text-[11px] font-semibold text-ink-400 dark:text-cream-100/60 block">Paid • {t.dueDate || "Monthly Rent"}</span>
-                                </div>
-                                <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] rounded-full border border-emerald-300 dark:border-emerald-800">
-                                  Completed
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )
-                    ) : (
-                      overdueTenants.length === 0 ? (
-                        <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-dashed border-emerald-200 dark:border-emerald-800/30">
-                          <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500 mb-3" />
-                          <p className="text-sm font-bold text-emerald-800 dark:text-emerald-300">All tenant payments are up to date! 🎉</p>
-                          <p className="text-xs mt-1 text-emerald-600 dark:text-emerald-400 opacity-80">There are currently no overdue or outstanding rent balances.</p>
-                        </div>
-                      ) : (
-                        overdueTenants.map((t, idx) => {
-                          const amount = parseTenantRent(t);
-                          return (
-                            <div key={t.id || idx} className="p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                              <div className="flex items-center gap-3.5">
-                                <div className="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl font-black text-sm">
-                                  !
-                                </div>
-                                <div>
-                                  <h4 className="font-bold text-sm text-ink-900 dark:text-white">{t.name || t.tenantName}</h4>
-                                  <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center justify-between sm:justify-end gap-6">
-                                <div className="text-left sm:text-right">
-                                  <span className="font-black text-base text-rose-600 dark:text-rose-400 block">₦{amount.toLocaleString()}</span>
-                                  <span className="text-[11px] font-semibold text-rose-500 dark:text-rose-400 block">Rent Outstanding</span>
-                                </div>
-                                <span className="px-3 py-1 bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-bold text-[11px] rounded-full border border-rose-300 dark:border-rose-800">
-                                  Overdue
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* DASHBOARD CONTENT GRID */
-              <div className="space-y-6">
-
-                {/* PROOF OF OWNERSHIP REQUIRED BANNER */}
-                {(() => {
-                  const needingProof = displayProperties.filter(p => {
-                    const st = (p.status || "").toLowerCase();
-                    return st.includes("info") || st.includes("proof");
-                  });
-
-                  if (needingProof.length === 0) return null;
-
-                  return (
-                    <div className="p-4 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md animate-in slide-in-from-top duration-200">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-amber-500 text-white rounded-xl shrink-0">
-                          <AlertTriangle className="h-6 w-6 text-white" />
-                        </div>
-                        <div>
-                          <h4 className="font-extrabold text-sm text-amber-950 dark:text-amber-200">
-                            Proof of Ownership Required for "{needingProof[0].title}"
-                          </h4>
-                          <p className="text-xs text-amber-800 dark:text-amber-300 mt-0.5">
-                            {needingProof[0].admin_notes || "Admin requested additional title documents (Certificate of Occupancy, Deed of Assignment, or Land Receipt) to verify property ownership before listing approval."}
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setSelectedProofProperty(needingProof[0])}
-                        className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm cursor-pointer shrink-0 transition-all flex items-center gap-2"
-                      >
-                        <Upload className="h-4 w-4" /> Upload Proof Document Now
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                {/* TOP ROW GRID */}
-                <div className="db-grid">
-
-                  {/* COLUMN 1: PORTFOLIO SUMMARY CARD */}
-                  <div className="db-col">
-                    {/* Landlord Rating Card */}
-                    <div className="pro-advantages-panel">
-                      <div className="pro-advantages-header">
-                        <h4 className="pro-advantages-title">Account Rating</h4>
-                        <span
-                          className="pro-advantages-badge cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
-                          onClick={() => setShowRatingModal(true)}
-                          title="View rating reviews"
-                        >
-                          {ratingData.hasReviews ? `★ ${ratingData.rating}` : "New Account"}
-                        </span>
-                      </div>
-                      <p
-                        className="pro-advantages-desc cursor-pointer hover:text-[#E4EAE1] transition-colors"
+                {/* COLUMN 1: PORTFOLIO SUMMARY CARD */}
+                <div className="db-col">
+                  {/* Landlord Rating Card */}
+                  <div className="pro-advantages-panel">
+                    <div className="pro-advantages-header">
+                      <h4 className="pro-advantages-title">Account Rating</h4>
+                      <span
+                        className="pro-advantages-badge cursor-pointer hover:opacity-90 active:scale-[0.98] transition-all"
                         onClick={() => setShowRatingModal(true)}
-                        title="Click to view tenant reviews"
+                        title="View rating reviews"
                       >
-                        {ratingData.hasReviews
-                          ? `Based on ${ratingData.count} verified tenant ${ratingData.count === 1 ? "review" : "reviews"} and on-time payouts.`
-                          : "No tenant reviews yet. Complete active leases to build your platform reliability score."}
-                      </p>
-
-                      <div className="pro-advantages-chart-row">
-                        <button
-                          onClick={() => setShowRatingModal(true)}
-                          className="pro-advantages-btn"
-                          title="View reviews list"
-                          style={{ marginLeft: "auto" }}
-                        >
-                          <ArrowUpRight className="h-4.5 w-4.5" />
-                        </button>
-                      </div>
-
-                      <p className="pro-advantages-footer-text">
-                        {ratingData.hasReviews ? "Join the top-rated landlords on Lodale." : "Build your landlord reputation on Lodale."}
-                      </p>
+                        {ratingData.hasReviews ? `★ ${ratingData.rating}` : "New Account"}
+                      </span>
                     </div>
-                  </div>
+                    <p
+                      className="pro-advantages-desc cursor-pointer hover:text-[#E4EAE1] transition-colors"
+                      onClick={() => setShowRatingModal(true)}
+                      title="Click to view tenant reviews"
+                    >
+                      {ratingData.hasReviews
+                        ? `Based on ${ratingData.count} verified tenant ${ratingData.count === 1 ? "review" : "reviews"} and on-time payouts.`
+                        : "No tenant reviews yet. Complete active leases to build your platform reliability score."}
+                    </p>
 
-                  {/* COLUMN 2: ACTIVITY AND REVENUE STATS */}
-                  <div className="db-col">
-                    {/* Activity / Occupancy rate bar chart */}
-                    <section className="db-card activity-card tour-occupancy">
-                      <div className="activity-header">
-                        <div>
-                          <h3 className="activity-title">Weekly Activity</h3>
-                          <p className="text-[11.5px] text-ink-400 dark:text-cream-100/60 font-medium mt-0.5">
-                            Daily tenant interactions & unit occupancy
-                          </p>
-                        </div>
-                        <span className="activity-badge">Weekly logs</span>
-                      </div>
-
-                      <div className="activity-metric">
-                        <span className="activity-val">
-                          {displayProperties.length === 0 ? "0%" : `${occupancyRate}%`}
-                        </span>
-                        <span className="activity-sub">Occupancy Rate</span>
-                      </div>
-
-                      {/* Bar Graph - Dynamically scaled based on present day and real tenant activity */}
-                      <div className="activity-chart-grid">
-                        {(() => {
-                          const todayDayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date().getDay()];
-                          const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-                          return weekDays.map((day) => {
-                            const isToday = day === todayDayName;
-                            const dayReqs = tenantRequests.filter(r => {
-                              const d = r.date ? new Date(r.date) : null;
-                              return d && ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()] === day;
-                            }).length;
-
-                            const barHeight = dayReqs > 0 
-                              ? `${Math.min(100, dayReqs * 35)}%` 
-                              : (isToday && occupancyRate > 0 ? "30%" : "8%");
-
-                            return (
-                              <div key={day} className="activity-bar-col">
-                                <div className="activity-bar-container">
-                                  <div
-                                    className={`activity-bar-fill ${isToday ? "highlight" : ""}`}
-                                    style={{ height: barHeight }}
-                                  />
-                                </div>
-                                <span className="activity-bar-label">{day}</span>
-                              </div>
-                            );
-                          });
-                        })()}
-                      </div>
-                    </section>
-                  </div>
-
-                  {/* COLUMN 3: RENT PAYMENTS HISTORY */}
-                  <div className="db-col">
-                    <div className="db-card p-3.5 sm:p-4 rounded-3xl bg-white dark:bg-[#1E1E1E] border border-ink-100 dark:border-white/10 shadow-sm flex flex-col justify-between h-[240px] min-h-[240px] max-h-[240px] box-border tour-vault overflow-hidden">
-                      <div>
-                        {/* Header with top Full History link */}
-                        <div className="flex items-center justify-between gap-2 mb-2 pb-1 border-b border-ink-100 dark:border-white/10">
-                          <h3 className="text-xs sm:text-sm font-extrabold text-ink-900 dark:text-cream-100 flex items-center gap-1.5">
-                            <CreditCard className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" />
-                            Rent Payments History
-                          </h3>
-                          <button
-                            onClick={() => setActivePill("Payments")}
-                            className="text-[11px] font-extrabold text-moss-700 dark:text-[#E5C583] hover:underline cursor-pointer shrink-0"
-                          >
-                            Full History →
-                          </button>
-                        </div>
-
-                        {/* Side-by-Side Stats Summary Box */}
-                        <div className="db-popup-stats-summary" style={{ margin: "0 0 8px 0", padding: "8px 10px", borderRadius: "10px" }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <span className="db-popup-stats-lbl" style={{ fontSize: "9px", marginBottom: "2px" }}>Collected (Month)</span>
-                            <span className="db-popup-stats-val text-emerald-600 dark:text-emerald-400" style={{ fontSize: "14px" }}>₦{collectedAmount.toLocaleString()}</span>
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0, borderLeft: "1.5px solid var(--border-light)", paddingLeft: "10px" }}>
-                            <span className="db-popup-stats-lbl" style={{ fontSize: "9px", marginBottom: "2px" }}>Outstanding</span>
-                            <span className="db-popup-stats-val overdue" style={{ fontSize: "14px" }}>₦{outstandingAmount.toLocaleString()}</span>
-                          </div>
-                        </div>
-
-                        {/* Paid / Outstanding Toggle Subtabs */}
-                        <div className="payment-subtab-container" style={{ margin: "0 0 8px 0", padding: "2px", borderRadius: "8px" }}>
-                          <button
-                            className={`payment-subtab-btn ${paymentSubTab === "Paid" ? "active" : ""}`}
-                            onClick={() => setPaymentSubTab("Paid")}
-                            style={{ padding: "3.5px 6px", fontSize: "10.5px" }}
-                          >
-                            Paid ({paidTenants.length})
-                          </button>
-                          <button
-                            className={`payment-subtab-btn ${paymentSubTab === "Outstanding" ? "active" : ""}`}
-                            onClick={() => setPaymentSubTab("Outstanding")}
-                            style={{ padding: "3.5px 6px", fontSize: "10.5px" }}
-                          >
-                            Outstanding ({overdueTenants.length})
-                          </button>
-                        </div>
-
-                        {/* Payment List Preview */}
-                        <div className="db-popup-list">
-                          {paymentSubTab === "Paid" ? (
-                            paidTenants.length === 0 ? (
-                              <div className="py-2 text-center text-ink-400 dark:text-cream-100/60">
-                                <p className="text-[10.5px] font-semibold">No collected rent payments recorded.</p>
-                              </div>
-                            ) : (
-                              paidTenants.slice(0, 1).map((t, idx) => {
-                                const amount = parseTenantRent(t);
-                                return (
-                                  <div key={t.id || idx} className="db-popup-item" style={{ padding: "4px 2px" }}>
-                                    <div className="db-popup-info">
-                                      <div className="db-popup-name-row">
-                                        <span className="db-popup-name" style={{ fontSize: "11.5px" }}>{t.name || t.tenantName}</span>
-                                        <span className="db-popup-status-text paid" style={{ fontSize: "11.5px" }}>+₦{amount.toLocaleString()}</span>
-                                      </div>
-                                      <p className="db-popup-property" style={{ fontSize: "10px", margin: "0 0 1px 0" }}>{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
-                                      <span className="db-popup-date" style={{ fontSize: "9px" }}>Paid • {t.dueDate || "Monthly Rent"}</span>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )
-                          ) : (
-                            overdueTenants.length === 0 ? (
-                              <div className="py-2 text-center text-ink-400 dark:text-cream-100/60">
-                                <p className="text-[10.5px] font-semibold text-emerald-600 dark:text-emerald-400">All tenant payments are up to date! 🎉</p>
-                              </div>
-                            ) : (
-                              overdueTenants.slice(0, 1).map((t, idx) => {
-                                const amount = parseTenantRent(t);
-                                return (
-                                  <div key={t.id || idx} className="db-popup-item" style={{ padding: "4px 2px" }}>
-                                    <div className="db-popup-info">
-                                      <div className="db-popup-name-row">
-                                        <span className="db-popup-name" style={{ fontSize: "11.5px" }}>{t.name || t.tenantName}</span>
-                                        <span className="db-popup-status-text overdue" style={{ fontSize: "11.5px" }}>₦{amount.toLocaleString()}</span>
-                                      </div>
-                                      <p className="db-popup-property" style={{ fontSize: "10px", margin: "0 0 1px 0" }}>{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
-                                      <span className="db-popup-date overdue" style={{ fontSize: "9px" }}>Rent Outstanding</span>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            )
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* BOTTOM ROW GRID (Properties and Tenant Requests half & half) */}
-                <div className="db-bottom-row">
-                  {/* Vertical properties log list */}
-                  <section className="db-card properties-list-card tour-property-list">
-                    <div className="activity-header">
-                      <h3 className="activity-title" style={{ cursor: "pointer" }} onClick={() => setActiveTab(1)}>My Properties</h3>
+                    <div className="pro-advantages-chart-row">
                       <button
-                        onClick={() => setActiveTab(1)}
-                        className="activity-badge"
-                        style={{ background: "rgba(38, 38, 38, 0.06)", border: "none", cursor: "pointer", transition: "all 0.2s ease" }}
+                        onClick={() => setShowRatingModal(true)}
+                        className="pro-advantages-btn"
+                        title="View reviews list"
+                        style={{ marginLeft: "auto" }}
                       >
-                        View All
+                        <ArrowUpRight className="h-4.5 w-4.5" />
                       </button>
                     </div>
 
-                    <div className="properties-vertical-scroll">
-                      {(() => {
-                        const activeTenantsMap = (() => {
-                          try {
-                            const saved = localStorage.getItem("propertyTenants");
-                            return saved ? JSON.parse(saved) : {};
-                          } catch (e) {
-                            return {};
-                          }
-                        })();
+                    <p className="pro-advantages-footer-text">
+                      {ratingData.hasReviews ? "Join the top-rated landlords on Lodale." : "Build your landlord reputation on Lodale."}
+                    </p>
+                  </div>
+                </div>
 
-                        const liveAndOccupiedProps = displayProperties.filter((p) => {
-                          const status = (p.status || "").toLowerCase();
-                          const isLiveOrApproved = status === "active_vacant" || status === "approved" || status === "live" || status === "active";
-                          const isOccupied = status === "occupied" || status === "active_occupied" || (activeTenantsMap[p.id] && activeTenantsMap[p.id].length > 0);
-                          return isLiveOrApproved || isOccupied;
-                        });
+                {/* COLUMN 2: ACTIVITY AND REVENUE STATS */}
+                <div className="db-col">
+                  {/* Activity / Occupancy rate bar chart */}
+                  <section className="db-card activity-card tour-occupancy">
+                    <div className="activity-header">
+                      <div>
+                        <h3 className="activity-title">Weekly Activity</h3>
+                        <p className="text-[11.5px] text-ink-400 dark:text-cream-100/60 font-medium mt-0.5">
+                          Daily tenant interactions & unit occupancy
+                        </p>
+                      </div>
+                      <span className="activity-badge">Weekly logs</span>
+                    </div>
 
-                        if (liveAndOccupiedProps.length === 0) {
-                          return (
-                            <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--text-muted)", fontSize: "13px", fontWeight: "600" }}>
-                              No live or occupied properties available.
+                    <div className="activity-metric">
+                      <span className="activity-val">
+                        {displayProperties.length === 0 ? "0%" : `${occupancyRate}%`}
+                      </span>
+                      <span className="activity-sub">Occupancy Rate</span>
+                    </div>
+
+                    {/* Bar Graph - Dynamically scaled based on Occupancy Rate */}
+                    <div className="activity-chart-grid">
+                      {[
+                        { day: "Mon", base: 45, highlight: false },
+                        { day: "Tue", base: 60, highlight: false },
+                        { day: "Wed", base: 35, highlight: false },
+                        { day: "Thu", base: 75, highlight: false },
+                        { day: "Fri", base: 95, highlight: true }, // Highlighted bar
+                        { day: "Sat", base: 50, highlight: false },
+                        { day: "Sun", base: 40, highlight: false },
+                      ].map((bar, index) => {
+                        const barHeight = occupancyRate === 0
+                          ? "0%"
+                          : `${Math.max(12, Math.round(bar.base * (occupancyRate / 100)))}%`;
+
+                        return (
+                          <div key={index} className="activity-bar-col">
+                            <div className="activity-bar-container">
+                              <div
+                                className={`activity-bar-fill ${bar.highlight && occupancyRate > 0 ? "highlight" : ""}`}
+                                style={{ height: barHeight }}
+                              />
                             </div>
-                          );
+                            <span className="activity-bar-label">{bar.day}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                </div>
+
+                {/* COLUMN 3: PAYOUT ACCOUNT */}
+                <div className="db-col">
+                  {/* Payout Account Visa Mock Card */}
+                  <div className="visa-card-mock tour-vault">
+                    <div className="visa-card-highlight" />
+
+                    <div className="visa-card-header">
+                      <div>
+                        <p className="visa-card-brand">Available Payouts</p>
+                        <p className="visa-card-holder">{username}</p>
+                      </div>
+                      <span className="visa-card-logo">L.</span>
+                    </div>
+
+                    <div className="visa-card-body">
+                      <p className="visa-card-lbl">Available Balance</p>
+                      <p className="visa-card-amount">₦{availablePayoutBalance.toLocaleString()}</p>
+                    </div>
+
+                    <div className="visa-card-footer">
+                      <span>•••• 8802</span>
+                      <span>EXP 09/29</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* BOTTOM ROW GRID (Properties and Tenant Requests half & half) */}
+              <div className="db-bottom-row">
+                {/* Vertical properties log list */}
+                <section className="db-card properties-list-card tour-property-list">
+                  <div className="activity-header">
+                    <h3 className="activity-title" style={{ cursor: "pointer" }} onClick={() => setActiveTab(1)}>My Properties</h3>
+                    <button
+                      onClick={() => setActiveTab(1)}
+                      className="activity-badge"
+                      style={{ background: "rgba(38, 38, 38, 0.06)", border: "none", cursor: "pointer", transition: "all 0.2s ease" }}
+                    >
+                      View All
+                    </button>
+                  </div>
+
+                  <div className="properties-vertical-scroll">
+                    {(() => {
+                      const activeTenantsMap = (() => {
+                        try {
+                          const saved = localStorage.getItem("propertyTenants");
+                          return saved ? JSON.parse(saved) : {};
+                        } catch (e) {
+                          return {};
                         }
+                      })();
 
-                        return liveAndOccupiedProps.map((property) => {
-                          const hasTenants = (activeTenantsMap[property.id] && activeTenantsMap[property.id].length > 0) || property.status === "occupied" || property.status === "active_occupied";
-                          return (
-                            <div key={property.id} className="property-mini-item flex items-center justify-between p-3 rounded-xl border border-ink-100 dark:border-white/10 mb-2">
-                              <div className="flex items-center gap-3">
-                                <div className="property-mini-img p-2 bg-[#3A5A40]/10 rounded-lg">
-                                  <Building2 className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" />
-                                </div>
-                                <div className="property-mini-details">
-                                  <p className="property-mini-title font-bold text-xs text-ink-900 dark:text-white">{property.title}</p>
-                                  <p className="property-mini-subtitle text-[11px] text-ink-500 dark:text-cream-100/70">{property.location}</p>
-                                  <p className="property-mini-price text-xs font-bold text-moss-700 dark:text-[#E5C583] mt-0.5">{property.price}</p>
-                                </div>
+                      const liveAndOccupiedProps = displayProperties.filter((p) => {
+                        const status = (p.status || "").toLowerCase();
+                        const isLiveOrApproved = status === "active_vacant" || status === "approved" || status === "live" || status === "active";
+                        const isOccupied = status === "occupied" || status === "active_occupied" || (activeTenantsMap[p.id] && activeTenantsMap[p.id].length > 0);
+                        return isLiveOrApproved || isOccupied;
+                      });
+
+                      if (liveAndOccupiedProps.length === 0) {
+                        return (
+                          <div style={{ textAlign: "center", padding: "40px 16px", color: "var(--text-muted)", fontSize: "13px", fontWeight: "600" }}>
+                            No live or occupied properties available.
+                          </div>
+                        );
+                      }
+
+                      return liveAndOccupiedProps.map((property) => {
+                        const hasTenants = (activeTenantsMap[property.id] && activeTenantsMap[property.id].length > 0) || property.status === "occupied" || property.status === "active_occupied";
+                        return (
+                          <div key={property.id} className="property-mini-item flex items-center justify-between p-3 rounded-xl border border-ink-100 dark:border-white/10 mb-2">
+                            <div className="flex items-center gap-3">
+                              <div className="property-mini-img p-2 bg-[#3A5A40]/10 rounded-lg">
+                                <Building2 className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" />
                               </div>
+                              <div className="property-mini-details">
+                                <p className="property-mini-title font-bold text-xs text-ink-900 dark:text-white">{property.title}</p>
+                                <p className="property-mini-subtitle text-[11px] text-ink-500 dark:text-cream-100/70">{property.location}</p>
+                                <p className="property-mini-price text-xs font-bold text-moss-700 dark:text-[#E5C583] mt-0.5">{property.price}</p>
+                              </div>
+                            </div>
 
-                              <div className="flex items-center gap-2">
-                                {hasTenants ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-300">
-                                    <Users className="h-3 w-3" /> Occupied
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-300">
-                                    <CheckCircle2 className="h-3 w-3" /> Live
+                            <div className="flex items-center gap-2">
+                              {hasTenants ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-300">
+                                  <Users className="h-3 w-3" /> Occupied
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-300">
+                                  <CheckCircle2 className="h-3 w-3" /> Live
+                                </span>
+                              )}
+                              <button
+                                onClick={() => navigate(`/dashboard/landlord/properties/${property.id}`)}
+                                className="property-mini-btn p-1.5 rounded-lg hover:bg-ink-100 dark:hover:bg-white/10 transition-colors"
+                                title="View details"
+                              >
+                                <ArrowUpRight className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </section>
+
+                {/* Tenant Requests list */}
+                <section className="db-card requests-card tour-requests">
+                  <div className="activity-header" style={{ marginBottom: "16px" }}>
+                    <h3 className="activity-title">
+                      {getActiveTenantsCount() === 0 ? "No tenants request" : "Tenant Requests"}
+                    </h3>
+                    <span className="activity-badge">{tenantRequests.length} total</span>
+                  </div>
+
+                  <div className="requests-list">
+                    {tenantRequests.length === 0 ? (
+                      <div className="requests-empty-state">
+                        <div className="requests-empty-icon">📋</div>
+                        <h4 className="requests-empty-title">No tenants request</h4>
+                        <p className="requests-empty-desc">
+                          {getActiveTenantsCount() === 0
+                            ? "Approve tenant applications to receive tenancy and maintenance requests."
+                            : "Maintenance requests will appear here once active tenants submit them."}
+                        </p>
+                      </div>
+                    ) : (
+                      displayRequests.map((req) => {
+                        const unitName = req.leaseStatus
+                          ? req.leaseStatus.replace("Active Tenant (", "").replace(")", "")
+                          : "Unit General";
+                        const isUpgrade = (req.type || "").toLowerCase() === "upgrade";
+                        const typeBadgeClass = isUpgrade
+                          ? "request-type-badge upgrade"
+                          : "request-type-badge repair";
+
+                        return (
+                          <div key={req.id} className="request-item">
+                            <img
+                              src={req.avatar}
+                              alt={req.tenantName}
+                              className="request-tenant-avatar cursor-pointer"
+                              onClick={() => setSelectedTenantForDetails(req)}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                            <div className="request-content">
+                              <div className="request-header-row">
+                                <span
+                                  className="request-tenant-name cursor-pointer hover:underline"
+                                  onClick={() => setSelectedTenantForDetails(req)}
+                                >
+                                  {req.tenantName}
+                                </span>
+                                {req.reliabilityScore && (
+                                  <span className="request-score" title="Reliability Score">
+                                    ★ {req.reliabilityScore}
                                   </span>
                                 )}
-                                <button
-                                  onClick={() => navigate(`/dashboard/landlord/properties/${property.id}`)}
-                                  className="property-mini-btn p-1.5 rounded-lg hover:bg-ink-100 dark:hover:bg-white/10 transition-colors"
-                                  title="View details"
-                                >
-                                  <ArrowUpRight className="h-4 w-4" />
-                                </button>
+                                <span className="request-date">• {req.date}</span>
                               </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </section>
 
-                  {/* Tenant Requests list */}
-                  <section className="db-card requests-card tour-requests">
-                    <div className="activity-header" style={{ marginBottom: "16px" }}>
-                      <h3 className="activity-title">
-                        {tenantRequests.length === 0 ? "No tenant requests" : "Tenant Requests"}
-                      </h3>
-                      <span className="activity-badge">{tenantRequests.length} total</span>
-                    </div>
-
-                    <div className="requests-list">
-                      {tenantRequests.length === 0 ? (
-                        <div className="requests-empty-state">
-                          <div className="requests-empty-icon">📋</div>
-                          <h4 className="requests-empty-title">No tenant requests</h4>
-                          <p className="requests-empty-desc">
-                            {activeTenantsCount === 0
-                              ? "Approve tenant applications to receive tenancy and maintenance requests."
-                              : "Maintenance requests will appear here once active tenants submit them."}
-                          </p>
-                        </div>
-                      ) : (
-                        displayRequests.map((req) => {
-                          const unitName = req.leaseStatus
-                            ? req.leaseStatus.replace("Active Tenant (", "").replace(")", "")
-                            : "Unit General";
-                          const isUpgrade = (req.type || "").toLowerCase() === "upgrade";
-                          const typeBadgeClass = isUpgrade
-                            ? "request-type-badge upgrade"
-                            : "request-type-badge repair";
-
-                          return (
-                            <div key={req.id} className="request-item">
-                              <img
-                                src={req.avatar}
-                                alt={req.tenantName}
-                                className="request-tenant-avatar cursor-pointer"
-                                onClick={() => setSelectedTenantForDetails(req)}
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                              <div className="request-content">
-                                <div className="request-header-row">
-                                  <span
-                                    className="request-tenant-name cursor-pointer hover:underline"
-                                    onClick={() => setSelectedTenantForDetails(req)}
-                                  >
-                                    {req.tenantName}
-                                  </span>
-                                  {req.reliabilityScore && (
-                                    <span className="request-score" title="Reliability Score">
-                                      ★ {req.reliabilityScore}
-                                    </span>
-                                  )}
-                                  <span className="request-date">• {req.date}</span>
-                                </div>
-
-                                <div className="request-meta-tags">
-                                  <span className="request-unit-badge">
-                                    {unitName}
-                                  </span>
-                                  {req.type && (
-                                    <span className={typeBadgeClass}>
-                                      {req.type}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <p className="request-details">{req.details}</p>
-                              </div>
-                              <div className="request-actions-col">
-                                <span className={`request-status-badge ${req.status.toLowerCase().replace(" ", "-")}`}>
-                                  {req.status}
+                              <div className="request-meta-tags">
+                                <span className="request-unit-badge">
+                                  {unitName}
                                 </span>
-                                <button
-                                  className="db-view-request-btn"
-                                  onClick={() => setSelectedRequestForDetails(req)}
-                                >
-                                  Inspect
-                                </button>
+                                {req.type && (
+                                  <span className={typeBadgeClass}>
+                                    {req.type}
+                                  </span>
+                                )}
                               </div>
+
+                              <p className="request-details">{req.details}</p>
                             </div>
-                          );
-                        })
-                      )}
-                    </div>
-
-                    {tenantRequests.length > 0 && (
-                      <button
-                        onClick={() => setShowAllRequests(!showAllRequests)}
-                        className="requests-show-more-btn"
-                      >
-                        {showAllRequests ? "Show Less" : "Show More"}
-                      </button>
+                            <div className="request-actions-col">
+                              <span className={`request-status-badge ${req.status.toLowerCase().replace(" ", "-")}`}>
+                                {req.status}
+                              </span>
+                              <button
+                                className="db-view-request-btn"
+                                onClick={() => setSelectedRequestForDetails(req)}
+                              >
+                                Inspect
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
                     )}
-                  </section>
-                </div>
+                  </div>
 
+                  {tenantRequests.length > 0 && (
+                    <button
+                      onClick={() => setShowAllRequests(!showAllRequests)}
+                      className="requests-show-more-btn"
+                    >
+                      {showAllRequests ? "Show Less" : "Show More"}
+                    </button>
+                  )}
+                </section>
               </div>
-            )
+
+            </div>
           ) : activeTab === 1 ? (
             <LandlordProperties />
           ) : activeTab === 2 ? (
@@ -2020,54 +1861,33 @@ export default function LandlordDashboard() {
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Account Rating</span>
-                <span className="text-ink-900 dark:text-white font-semibold flex items-center gap-1">
-                  {(() => {
-<<<<<<< HEAD
-=======
-                    let score = "New";
-                    let count = 0;
->>>>>>> 1542f63fec6cadb4ba347f059445da9b835dd9be
-                    try {
-                      // Only show rating when tenant accounts have actually submitted reviews
-                      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
-                      const reviewKey = emailKey ? "landlordReviews_" + emailKey : "landlordReviews";
-                      const savedReviews = localStorage.getItem(reviewKey) || localStorage.getItem("landlordReviews");
-                      if (savedReviews) {
-                        const rList = JSON.parse(savedReviews);
-                        if (Array.isArray(rList) && rList.length > 0) {
-                          const score = (rList.reduce((sum, r) => sum + Number(r.rating || 5), 0) / rList.length).toFixed(1);
-                          const count = rList.length;
-                          return (
-                            <>
-                              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> {score}{" "}
-                              <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">({count} {count === 1 ? "review" : "reviews"})</span>
-                            </>
-                          );
-                        }
+                <span className="text-ink-900 dark:text-white font-semibold flex items-center gap-1"></span>
+                {(() => {
+                  try {
+                    // Only show rating when tenant accounts have actually submitted reviews
+                    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail"))?.toLowerCase();
+                    const reviewKey = emailKey ? "landlordReviews_" + emailKey : "landlordReviews";
+                    const savedReviews = localStorage.getItem(reviewKey) || localStorage.getItem("landlordReviews");
+                    if (savedReviews) {
+                      const rList = JSON.parse(savedReviews);
+                      if (Array.isArray(rList) && rList.length > 0) {
+                        const score = (rList.reduce((sum, r) => sum + Number(r.rating || 5), 0) / rList.length).toFixed(1);
+                        const count = rList.length;
+                        return (
+                          <>
+                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> {score}{" "}
+                            <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">({count} {count === 1 ? "review" : "reviews"})</span>
+                          </>
+                        );
                       }
-                    } catch (e) { }
-<<<<<<< HEAD
-                    // No tenant reviews yet
-                    return <span className="text-ink-400 dark:text-cream-100/50 font-normal italic">No Rating</span>;
-=======
-
-                    if (count === 0) {
-                      return (
-                        <span className="text-ink-500 dark:text-cream-100/60 font-normal text-xs">
-                          New (No reviews yet)
-                        </span>
-                      );
                     }
+                  } catch (e) { }
+                  return (
+                    <span className="text-ink-500 dark:text-cream-100/60 font-normal text-xs">
+                    </span>
+                  );
+                })()}
 
-                    return (
-                      <>
-                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0 inline" /> {score}{" "}
-                        <span className="text-[11px] text-ink-400 dark:text-cream-100/50 font-normal">({count} {count === 1 ? "review" : "reviews"})</span>
-                      </>
-                    );
->>>>>>> 1542f63fec6cadb4ba347f059445da9b835dd9be
-                  })()}
-                </span>
               </div>
               <div className="flex justify-between items-center text-[13px]">
                 <span className="text-ink-400 dark:text-cream-100/70 font-medium">Member Since</span>
@@ -2121,7 +1941,7 @@ export default function LandlordDashboard() {
         <div className="welcome-modal-overlay" ref={overlayRef}>
           <div className="welcome-modal-card" ref={contentRef}>
             <div className="welcome-modal-icon-wrapper">
-              <ListChecks className="h-8 w-8 text-[#E5C583] animate-pulse" />
+              <Sparkles className="h-8 w-8 text-[#E5C583] animate-pulse" />
             </div>
             <h2 className="welcome-modal-title">Welcome to Lodale, {username.split(" ")[0]}!</h2>
             <p className="welcome-modal-desc">
@@ -2256,47 +2076,17 @@ export default function LandlordDashboard() {
             <div className="pt-2 flex justify-end gap-2">
               <button
                 onClick={() => {
-                  const target = selectedFeedbackProperty;
-                  setSelectedFeedbackProperty(null);
-                  setSelectedProofProperty(target);
-                }}
-                className="px-4 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl cursor-pointer flex items-center gap-1.5 shadow-sm"
-              >
-                <Upload className="h-3.5 w-3.5" /> Upload Proof of Ownership
-              </button>
-              <button
-                onClick={() => {
                   setSelectedFeedbackProperty(null);
                   navigate("/dashboard/landlord/add-property");
                 }}
-                className="px-4 py-2 text-xs font-bold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 rounded-xl cursor-pointer"
+                className="px-4 py-2 text-xs font-bold text-white bg-[#3A5A40] hover:bg-[#344E41] rounded-xl cursor-pointer"
               >
-                Full Re-submission
+                Re-submit Property with Papers
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Upload Proof of Ownership Modal */}
-      <UploadProofModal
-        isOpen={!!selectedProofProperty}
-        onClose={() => setSelectedProofProperty(null)}
-        property={selectedProofProperty}
-        onSuccess={(updated) => {
-          setDisplayProperties(prev => prev.map(p => String(p.id) === String(updated.id) ? { ...p, ...updated } : p));
-        }}
-      />
-
-      {/* Landlord Portfolio Executive Statement Report Modal */}
-      <LandlordReportModal
-        isOpen={showReportModal}
-        onClose={() => setShowReportModal(false)}
-        username={username}
-        properties={displayProperties}
-        leases={leases}
-        invoices={invoices}
-      />
     </div>
   );
 }
