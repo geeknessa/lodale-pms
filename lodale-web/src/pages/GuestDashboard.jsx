@@ -883,7 +883,7 @@ export default function GuestDashboard() {
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [displayLimit, setDisplayLimit] = useState(6);
+  const [displayLimit, setDisplayLimit] = useState(8);
 
   const [allListings, setAllListings] = useState([]);
   const [listingsError, setListingsError] = useState(null);
@@ -1202,7 +1202,7 @@ export default function GuestDashboard() {
                 {filteredListings.length > displayLimit && (
                   <div className="flex justify-center mt-12">
                     <button
-                      onClick={() => setDisplayLimit((prev) => prev + 6)}
+                      onClick={() => setDisplayLimit((prev) => prev + 8)}
                       style={{
                         padding: "12px 28px",
                         background: "transparent",

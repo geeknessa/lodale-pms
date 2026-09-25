@@ -8,6 +8,8 @@ export const createRequest = async (req, res) => {
     const title = req.body.title || req.body.issue_title;
     const description = req.body.description;
     const priority = req.body.priority || 'medium';
+    const tenant_handled = req.body.tenant_handled || false;
+    const cost = req.body.cost;
     const tenantId = req.user.id;
 
     // Verify tenant has a lease or valid tenancy for this property
@@ -15,6 +17,8 @@ export const createRequest = async (req, res) => {
       "SELECT id FROM leases WHERE property_id = $1 AND tenant_id = $2 AND status::text IN ('active', 'leased', 'signed', 'draft')",
       [propertyId, tenantId]
     );
+
+    const leaseId = leaseCheck.rowCount > 0 ? leaseCheck.rows[0].id : null;
 
     if (leaseCheck.rowCount === 0) {
       // Also allow if tenant has an approved application
@@ -27,11 +31,24 @@ export const createRequest = async (req, res) => {
       }
     }
 
+    const initialStatus = tenant_handled ? 'resolved' : 'pending';
+
     const { rows } = await pool.query(
-      `INSERT INTO maintenance_requests (property_id, tenant_id, title, description, priority, status)
-       VALUES ($1, $2, $3, $4, $5, 'pending')
+      `INSERT INTO maintenance_requests (property_id, lease_id, reported_by, tenant_id, title, description, priority, status, tenant_handled, actual_cost)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [propertyId, tenantId, title, description, priority || 'medium']
+      [
+        propertyId,
+        leaseId,
+        tenantId,
+        tenantId,
+        title,
+        description,
+        priority || 'medium',
+        initialStatus,
+        tenant_handled || false,
+        cost ? parseFloat(cost) : 0
+      ]
     );
 
     const createdRequest = rows[0];
@@ -118,7 +135,7 @@ export const getMyRequests = async (req, res) => {
 export const updateRequestStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, notes } = req.body;
+    const { status, notes, cost } = req.body;
     const landlordId = req.user.id;
 
     // Verify request belongs to landlord's property
@@ -149,10 +166,10 @@ export const updateRequestStatus = async (req, res) => {
 
     const { rows } = await pool.query(
       `UPDATE maintenance_requests 
-       SET status = $1, notes = COALESCE($2, notes), updated_at = NOW() 
-       WHERE id = $3 
+       SET status = $1, notes = COALESCE($2, notes), actual_cost = COALESCE($3, actual_cost), updated_at = NOW()
+       WHERE id = $4
        RETURNING *`,
-      [dbStatus, notes || null, id]
+      [dbStatus, notes || null, cost !== undefined && cost !== null && cost !== '' ? parseFloat(cost) : null, id]
     );
 
     // Notify the tenant of status update

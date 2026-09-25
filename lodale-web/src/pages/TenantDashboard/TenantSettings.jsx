@@ -148,6 +148,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [signatureInput, setSignatureInput] = useState("");
   const [confirmCheck, setConfirmCheck] = useState(false);
   const [selectedDocToView, setSelectedDocToView] = useState(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [returnAction, setReturnAction] = useState("");
 
   useEffect(() => {
     async function loadProfile() {
@@ -316,19 +318,32 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         }
 
         setIsSaving(false);
-        setSaveSuccess(true);
-        setFeedbackMessage({ type: "success", text: "Profile information updated successfully!" });
-        triggerToast("Profile information updated successfully!", "success", "Profile Saved");
+        const returnDest = sessionStorage.getItem("returnAfterProfileComplete");
+        if (returnDest) {
+          setReturnAction(returnDest);
+          setShowCompletionModal(true);
+        } else {
+          setSaveSuccess(true);
+          setFeedbackMessage({ type: "success", text: "Profile information updated successfully!" });
+          triggerToast("Profile information updated successfully!", "success", "Profile Saved");
 
-        const pendingPropertyId = localStorage.getItem("pendingQuickApplyPropertyId");
-        if (pendingPropertyId) {
-          localStorage.removeItem("pendingQuickApplyPropertyId");
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent("resumeQuickApply", { detail: pendingPropertyId }));
-          }, 500);
+          const pendingPropertyId = localStorage.getItem("pendingQuickApplyPropertyId");
+          if (pendingPropertyId) {
+            localStorage.removeItem("pendingQuickApplyPropertyId");
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent("resumeQuickApply", { detail: pendingPropertyId }));
+            }, 500);
+          }
+
+          if (sessionStorage.getItem("isNewSignUpProfileComplete") === "true") {
+            sessionStorage.removeItem("isNewSignUpProfileComplete");
+            setTimeout(() => {
+              window.dispatchEvent(new Event("startTenantTour"));
+            }, 500);
+          }
+
+          setTimeout(() => setSaveSuccess(false), 3500);
         }
-
-        setTimeout(() => setSaveSuccess(false), 3500);
       } catch (err) {
         setIsSaving(false);
         setFeedbackMessage({ type: "error", text: err.message || "Failed to update profile." });
@@ -718,6 +733,46 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
   return (
     <div className="settings-page-wrapper">
+      {showCompletionModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-xl border border-neutral-200 dark:border-neutral-800">
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-[#E5C583]/20 text-emerald-600 dark:text-[#E5C583] rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-ink-900 dark:text-white">Profile Complete!</h3>
+            <p className="text-sm text-ink-600 dark:text-cream-100/70">Your profile has been saved successfully. You are now ready to continue.</p>
+            <div className="pt-2 space-y-2">
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  sessionStorage.removeItem("returnAfterProfileComplete");
+                  if (returnAction === "apply_property") {
+                    const pendingId = localStorage.getItem("pendingQuickApplyPropertyId");
+                    if (pendingId) {
+                      localStorage.removeItem("pendingQuickApplyPropertyId");
+                      window.dispatchEvent(new CustomEvent("resumeQuickApply", { detail: pendingId }));
+                    }
+                  }
+                }}
+                className="w-full py-2.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d4b574] text-white dark:text-[#09090b] font-bold rounded-xl transition-all cursor-pointer"
+              >
+                {returnAction === "apply_property" ? "Continue to Application" : "Continue"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  sessionStorage.removeItem("returnAfterProfileComplete");
+                  localStorage.removeItem("pendingQuickApplyPropertyId");
+                }}
+                className="w-full py-2.5 text-ink-600 dark:text-cream-100/70 font-bold hover:underline cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* 1. LEFT PANEL: Profile Summary & Section Nav */}
       <div className="settings-sidebar-card">
         <div className="settings-profile-section">
@@ -906,12 +961,13 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
               <div className="settings-form-group full-width">
                 <label className="settings-input-label">Address <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
                   maxLength={255}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="settings-form-input"
+                  className="settings-form-input resize-none py-2.5 min-h-[60px]"
+                  style={{ fieldSizing: "content" }}
                   placeholder="Street address"
                   required
                 />

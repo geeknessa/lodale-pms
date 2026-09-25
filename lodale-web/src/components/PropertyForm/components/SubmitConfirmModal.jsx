@@ -64,7 +64,7 @@ export default function SubmitConfirmModal({
           </div>
         </div>
 
-        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs font-semibold flex items-start gap-2.5">
+        <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs font-semibold flex items-start gap-2.5">
           <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
           <span>This listing and attached proof of ownership will be submitted for Admin review & verification.</span>
         </div>

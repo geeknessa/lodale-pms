@@ -294,5 +294,44 @@ export const userController = {
       message: 'Email address updated successfully!',
       user: updatedUser
     });
+  }),
+
+  inviteTenant: asyncHandler(async (req, res) => {
+    // Only landlords (or admins) should invite tenants
+    if (req.user.primary_role !== 'landlord' && req.user.primary_role !== 'admin') {
+      return res.status(403).json({ error: 'Only landlords can invite tenants.' });
+    }
+
+    const { firstName, lastName, email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required.' });
+
+    let existingUser = await UserModel.findByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ error: 'User already exists.' });
+    }
+
+    const defaultPassword = 'LodaleTenant2026!';
+    const hashedPassword = await bcrypt.hash(defaultPassword, 12);
+    const newUser = await UserModel.create({
+      firstName: firstName || '',
+      lastName: lastName || '',
+      email: email.trim().toLowerCase(),
+      hashedPassword: hashedPassword,
+      phone: '',
+      role: 'tenant'
+    });
+
+    // Mark user as invited
+    await pool.query("UPDATE users SET account_status = 'invited' WHERE id = $1", [newUser.id]);
+
+    // Create an empty tenant profile
+    await pool.query('INSERT INTO tenant_profiles (user_id) VALUES ($1) ON CONFLICT DO NOTHING', [newUser.id]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Tenant invited successfully',
+      user: newUser,
+      defaultPassword
+    });
   })
 };

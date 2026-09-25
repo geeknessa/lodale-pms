@@ -1267,17 +1267,8 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                     let prof = {};
                     try { prof = JSON.parse(raw); } catch (e) {}
                     
-                    const tenantPhone = prof.phone || prof.phone_number || "";
+                    // Rely on dynamic profileService check instead of hardcoded fields
                     const tenantIncome = prof.income || prof.monthlyIncome || prof.monthly_income || prof.incomeRange || "";
-                    const tenantOccupation = prof.occupation || "";
-
-                    if (!tenantPhone || !tenantOccupation || !tenantIncome) {
-                      localStorage.setItem("pendingQuickApplyPropertyId", selectedProperty.id);
-                      triggerToast("Please complete your profile details (Phone, Occupation, Income) before applying.", "warning", "Incomplete Profile");
-                      setShowPropertyDetailsModal(false);
-                      if (setActiveTab) setActiveTab(3);
-                      return;
-                    }
 
                     const reqIncome = selectedProperty.minimum_income_required || selectedProperty.minimumIncome || "No Minimum Income";
                     const meetsInc = doesIncomeMeetRequirement(tenantIncome, reqIncome);
@@ -1298,8 +1289,18 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                       const completeness = profileService.checkProfileCompleteness(userProf);
                       if (!completeness.isComplete) {
                         localStorage.setItem("pendingQuickApplyPropertyId", selectedProperty.id);
-                        triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) in Settings before applying for a property.`, "error", "Profile Incomplete");
-                        if (setActiveTab) setActiveTab(3);
+                        sessionStorage.setItem("returnAfterProfileComplete", "apply_property");
+                        triggerToast(
+                          `Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) before applying.`,
+                          "error",
+                          "Profile Incomplete",
+                          {
+                            label: "Go to Settings",
+                            onClick: () => {
+                              if (setActiveTab) setActiveTab(3);
+                            }
+                          }
+                        );
                         setShowPropertyDetailsModal(false);
                         return;
                       }

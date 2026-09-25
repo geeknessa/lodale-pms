@@ -46,7 +46,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
     if (isLive) {
       return {
         label: "Live Vacant",
-        badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+        badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-cream-100",
         isVerified: true
       };
     }
@@ -162,7 +162,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-bold text-xs rounded-xl border border-emerald-200 dark:border-emerald-900/40 transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-cream-100 font-bold text-xs rounded-xl border border-emerald-200 dark:border-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
               title="Download CSV Spreadsheet"
             >
               <Download className="h-3.5 w-3.5" /> Export CSV

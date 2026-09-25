@@ -167,6 +167,9 @@ export default function Settings({ onShowReportModal }) {
 
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [returnAction, setReturnAction] = useState("");
 
   // Leases State
   const [leases, setLeases] = useState([]);
@@ -254,15 +257,26 @@ export default function Settings({ onShowReportModal }) {
         sessionStorage.setItem("username", updatedName);
       }
 
-      setSaveSuccess(true);
-      setToastMessage("Landlord profile saved successfully!");
-      triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
+      const returnDest = sessionStorage.getItem("returnAfterProfileComplete");
+      if (returnDest) {
+        setReturnAction(returnDest);
+        setShowCompletionModal(true);
+      } else {
+        setSaveSuccess(true);
+        setToastMessage("Landlord profile saved successfully!");
+        triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
+        if (sessionStorage.getItem("isNewSignUpProfileComplete") === "true") {
+          sessionStorage.removeItem("isNewSignUpProfileComplete");
+          setTimeout(() => {
+            window.dispatchEvent(new Event("startLandlordTour"));
+          }, 500);
+        }
 
-
-      setTimeout(() => {
-        setSaveSuccess(false);
-        setToastMessage("");
-      }, 3000);
+        setTimeout(() => {
+          setSaveSuccess(false);
+          setToastMessage("");
+        }, 3000);
+      }
     } catch (err) {
       triggerToast("Failed to save profile.", "error", "Error");
     } finally {
@@ -322,6 +336,41 @@ export default function Settings({ onShowReportModal }) {
 
   return (
     <div className="set-ref-container">
+      {showCompletionModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#192A1F] rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-xl">
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-ink-900 dark:text-white">Profile Complete!</h3>
+            <p className="text-sm text-ink-600 dark:text-cream-100/70">Your profile has been saved successfully. You are now ready to continue.</p>
+            <div className="pt-2 space-y-2">
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  sessionStorage.removeItem("returnAfterProfileComplete");
+                  if (returnAction === "add_property") {
+                    navigate("/dashboard/landlord/add-property");
+                  }
+                }}
+                className="w-full py-2.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d4b574] text-white dark:text-[#09090b] font-bold rounded-xl transition-all cursor-pointer"
+              >
+                {returnAction === "add_property" ? "Continue to Add Property" : "Continue"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  sessionStorage.removeItem("returnAfterProfileComplete");
+                }}
+                className="w-full py-2.5 text-ink-600 dark:text-cream-100/70 font-bold hover:underline cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {saveSuccess && (
         <div className="set-ref-success-toast">
           <CheckCircle2 className="h-4.5 w-4.5 shrink-0" />
@@ -548,12 +597,13 @@ export default function Settings({ onShowReportModal }) {
 
                 <div className="set-ref-input-group full">
                   <label className="set-ref-lbl">Address</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={2}
                     maxLength={255}
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="set-ref-input"
+                    className="set-ref-input resize-none py-2.5 min-h-[60px]"
+                    style={{ fieldSizing: "content" }}
                   />
                 </div>
 

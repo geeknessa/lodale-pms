@@ -21,5 +21,6 @@ router.post('/me/pay-restoration-fee', requireAuth, validate({ body: payRestorat
 router.put('/me/change-password', requireAuth, validate({ body: changePasswordSchema }), userController.changePassword);
 router.post('/me/request-email-change', requireAuth, validate({ body: requestEmailChangeSchema }), userController.requestEmailChange);
 router.post('/me/verify-email-change', requireAuth, validate({ body: verifyEmailChangeSchema }), userController.verifyEmailChange);
+router.post('/invite-tenant', requireAuth, userController.inviteTenant);
 
 export default router;

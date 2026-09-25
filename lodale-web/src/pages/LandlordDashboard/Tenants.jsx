@@ -12,6 +12,7 @@ import { apiClient } from "../../lib/apiClient";
 import Avatar from "../../components/Avatar";
 import RenewalOfferModal from "./components/RenewalOfferModal";
 import RateTenantModal from "../../components/RateTenantModal";
+import { profileService } from "../../services/profileService";
 import "./Tenants.css";
 
 const TenantsSkeleton = () => (
@@ -497,6 +498,19 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
 
   // Quick add property handler from Add Tenant modal
   const handleQuickAddProperty = () => {
+    const rawProf = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("landlordCurrentProfile");
+    let userProf = null;
+    try {
+      if (rawProf) userProf = JSON.parse(rawProf);
+    } catch (e) {}
+
+    const completeness = profileService.checkProfileCompleteness(userProf);
+    if (!completeness.isComplete) {
+      triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) in Settings before adding a property.`, "error", "Profile Incomplete");
+      if (setActiveTab) setActiveTab(4); // Navigate to Landlord Settings Tab
+      return;
+    }
+
     try {
       sessionStorage.setItem("draftTenantFormData", JSON.stringify(formData));
       sessionStorage.setItem("autoOpenAddTenantModal", "true");

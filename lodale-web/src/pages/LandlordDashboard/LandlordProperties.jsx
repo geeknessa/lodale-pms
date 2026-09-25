@@ -795,7 +795,7 @@ export default function LandlordProperties() {
                         }
                         if (isLive) {
                           return (
-                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-cream-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
                               <CheckCircle2 className="h-3 w-3" /> Live
                             </span>
                           );

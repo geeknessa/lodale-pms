@@ -276,6 +276,10 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onInput={(e) => {
+                e.target.style.height = "auto";
+                e.target.style.height = `${Math.max(64, Math.min(e.target.scrollHeight, 200))}px`;
+              }}
               className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-white/5 p-3 text-sm text-ink-900 dark:text-white outline-none focus:border-moss-600 dark:focus:border-[#E5C583] resize-none leading-relaxed"
               placeholder="e.g. Luxury 3-Bedroom Villa in Lekki"
             />
@@ -290,6 +294,10 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              onInput={(e) => {
+                e.target.style.height = "auto";
+                e.target.style.height = `${Math.max(96, Math.min(e.target.scrollHeight, 400))}px`;
+              }}
               className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-white/5 p-3 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 dark:focus:border-[#E5C583] resize-none leading-relaxed break-words"
               placeholder="Describe key features, floor layout, security, and surrounding neighborhood..."
             />
@@ -584,6 +592,10 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
                 required
                 value={adminReason}
                 onChange={(e) => setAdminReason(e.target.value)}
+                onInput={(e) => {
+                  e.target.style.height = "auto";
+                  e.target.style.height = `${Math.max(96, Math.min(e.target.scrollHeight, 400))}px`;
+                }}
                 placeholder="e.g. Requesting rent adjustment from ₦2.5m to ₦3.0m due to newly added solar installation..."
                 className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50 dark:bg-white/5 p-3 text-xs text-ink-900 dark:text-white outline-none focus:border-amber-500"
               />

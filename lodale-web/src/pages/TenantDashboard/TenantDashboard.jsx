@@ -87,6 +87,13 @@ const TOUR_STEPS = [
     placement: "right",
     tab: 3
   },
+  {
+    target: ".tour-nav-4",
+    title: "Sidebar: Applications",
+    content: "Track the status of your property applications and view their outcomes.",
+    placement: "right",
+    tab: 4
+  },
 
   // Homepage steps (tab: 0)
   {
@@ -342,6 +349,8 @@ export default function TenantDashboard() {
   const [reqCategory, setReqCategory] = useState("Plumbing");
   const [reqUrgency, setReqUrgency] = useState("Medium");
   const [reqDesc, setReqDesc] = useState("");
+  const [reqSelfHandled, setReqSelfHandled] = useState(false);
+  const [reqCost, setReqCost] = useState("");
 
   // Payment Modal simulation
   const [showPayModal, setShowPayModal] = useState(false);
@@ -685,7 +694,15 @@ export default function TenantDashboard() {
   const mainContentRef = useRef(null);
 
   useEffect(() => {
-    // Removed new signup localstorage tour check
+    const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+    const hasSeenWelcome = localStorage.getItem("hasSeenTenantWelcome_" + emailKey);
+    
+    if (!hasSeenWelcome && emailKey) {
+      setShowWelcomeOverlay(true);
+      localStorage.setItem("hasSeenTenantWelcome_" + emailKey, "true");
+    } else {
+      setShowWelcomeOverlay(false);
+    }
 
     // Listen for resume quick apply to switch back to Search tab
     const handleResumeApply = () => {
@@ -693,8 +710,15 @@ export default function TenantDashboard() {
     };
     window.addEventListener("resumeQuickApply", handleResumeApply);
 
+    // Listen for start tour after profile completion
+    const handleStartTour = () => {
+      setShowTourAsk(true);
+    };
+    window.addEventListener("startTenantTour", handleStartTour);
+
     return () => {
       window.removeEventListener("resumeQuickApply", handleResumeApply);
+      window.removeEventListener("startTenantTour", handleStartTour);
     };
   }, []);
 
@@ -874,7 +898,35 @@ export default function TenantDashboard() {
     }
   }, [activeTab]);
 
+  const handleTourComplete = (isSkip = false) => {
+    setRunTour(false);
+    const rawProf = sessionStorage.getItem("tenantCurrentProfile") || sessionStorage.getItem("currentUserProfile");
+    let userProf = null;
+    try {
+      if (rawProf) userProf = JSON.parse(rawProf);
+    } catch (e) {}
+    
+    const completeness = profileService.checkProfileCompleteness(userProf);
+    if (!completeness.isComplete) {
+      triggerToast(
+        `Welcome! Please complete your profile (${completeness.missingFields.join(", ")}) to start applying for properties.`,
+        "warning",
+        "Profile Incomplete",
+        { label: "Go to Settings", onClick: () => setActiveTab(3) }
+      );
+      sessionStorage.setItem("isNewSignUpProfileComplete", "true");
+      setActiveTab(3);
+    } else if (!isSkip) {
+      triggerToast("Guide completed! Welcome to your Lodale tenant portal.", "success", "Welcome");
+    }
+  };
+
   const handleDismissWelcome = () => {
+    const doNext = () => {
+      setShowWelcomeOverlay(false);
+      setShowTourAsk(true);
+    };
+
     if (overlayRef.current && contentRef.current) {
       gsap.to(contentRef.current, {
         scale: 0.85,
@@ -888,14 +940,10 @@ export default function TenantDashboard() {
         duration: 0.5,
         delay: 0.05,
         ease: "power2.inOut",
-        onComplete: () => {
-          setShowWelcomeOverlay(false);
-          setShowTourAsk(true);
-        }
+        onComplete: doNext
       });
     } else {
-      setShowWelcomeOverlay(false);
-      setShowTourAsk(true);
+      doNext();
     }
   };
 
@@ -1035,16 +1083,26 @@ export default function TenantDashboard() {
     }
 
     try {
+      let finalDesc = reqDesc || reqTitle;
+      if (reqSelfHandled) {
+        finalDesc += `\n[Tenant Handled] Expense: ₦${reqCost || 0}`;
+      }
+
       await maintenanceService.createRequest({
         propertyId: activeLease.property_id,
         title: reqTitle,
-        description: reqDesc || reqTitle,
+        description: finalDesc,
         priority: reqUrgency.toLowerCase(),
+        tenant_handled: reqSelfHandled,
+        cost: reqSelfHandled ? reqCost : 0,
+        status: reqSelfHandled ? "resolved" : "pending"
       });
 
       setReqTitle("");
       setReqDesc("");
-      triggerToast(`Maintenance request for "${reqTitle}" submitted to landlord!`, "success", "Work Order Logged");
+      setReqSelfHandled(false);
+      setReqCost("");
+      triggerToast(reqSelfHandled ? `Maintenance expense recorded successfully!` : `Maintenance request for "${reqTitle}" submitted to landlord!`, "success", "Work Order Logged");
       await fetchAllData();
     } catch (err) {
       console.error(err);
@@ -1925,6 +1983,34 @@ export default function TenantDashboard() {
                 </div>
               </div>
 
+              {/* Self-handled toggle */}
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="selfHandled"
+                  checked={reqSelfHandled}
+                  onChange={(e) => setReqSelfHandled(e.target.checked)}
+                  className="w-4 h-4 text-[#2C4633] dark:text-[#E5C583] bg-white border-gray-300 rounded focus:ring-[#2C4633]"
+                />
+                <label htmlFor="selfHandled" className="text-[13px] text-ink-900 dark:text-cream-100 font-bold">
+                  I handled this issue myself and want to record the expense.
+                </label>
+              </div>
+
+              {reqSelfHandled && (
+                <div>
+                  <label className="form-lbl">Expense Amount (₦)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="e.g. 15000"
+                    value={reqCost}
+                    onChange={(e) => setReqCost(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="form-lbl">Issue Details</label>
                 <textarea
@@ -2171,7 +2257,7 @@ export default function TenantDashboard() {
           <main className="db-main-content p-0 h-full overflow-y-auto" ref={mainContentRef} style={{ padding: 0 }}>
 
             {/* TOP HEADER BAR (Green Block) */}
-            <div className="bg-[#1E3324] text-white px-6 md:px-8 pt-8 pb-10 rounded-[40px] m-4 md:m-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shadow-sm relative z-10">
+            <div className="tour-welcome bg-[#1E3324] text-white px-6 md:px-8 pt-8 pb-10 rounded-[40px] m-4 md:m-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shadow-sm relative z-10">
               <div>
                 <div className="text-[10px] font-bold text-[#E5C583] uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2">
                   <span
@@ -2237,7 +2323,7 @@ export default function TenantDashboard() {
                 <div className="flex flex-col gap-6">
 
                   {/* Current Property */}
-                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 md:p-8 text-[#1C1917] dark:text-white flex flex-col shadow-sm relative overflow-hidden transition-colors">
+                  <div className="tour-property bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 md:p-8 text-[#1C1917] dark:text-white flex flex-col shadow-sm relative overflow-hidden transition-colors">
                     <div className="flex items-center justify-between mb-6 relative z-10">
                       <h3 className="font-bold text-lg md:text-xl tracking-tight">Current Property</h3>
                       <Building2 className="h-6 w-6 text-[#1C1917]/30 dark:text-white/60" />
@@ -2306,7 +2392,7 @@ export default function TenantDashboard() {
                   </div>
 
                   {/* Residency Streak */}
-                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex items-center justify-between cursor-pointer hover:border-[#E5C583]/50 transition-colors shadow-sm" onClick={() => setShowStreakModal(true)}>
+                  <div className="pro-card bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex items-center justify-between cursor-pointer hover:border-[#E5C583]/50 transition-colors shadow-sm" onClick={() => setShowStreakModal(true)}>
                     <div className="flex items-center gap-4">
                       <div className="h-12 w-12 rounded-full bg-[#E5C583]/10 flex items-center justify-center shrink-0">
                         <Flame className="h-6 w-6 text-[#E5C583]" />
@@ -2336,7 +2422,7 @@ export default function TenantDashboard() {
                       <span className="text-[10px] font-bold text-[#71717A] dark:text-white/60 uppercase tracking-widest">{requests.filter(r => r.status !== 'Completed').length} Active</span>
                     </div>
 
-                    <div className="flex-1 space-y-6 mb-8 relative z-10">
+                    <div className="tour-tracker flex-1 space-y-6 mb-8 relative z-10">
                       {requests.length > 0 ? (
                         requests.slice(0, 2).map((r, i) => (
                           <div key={i} className="pb-6 border-b border-black/5 dark:border-white/5 last:border-0 last:pb-0 group cursor-default">
@@ -2362,7 +2448,7 @@ export default function TenantDashboard() {
 
                     <button
                       onClick={() => setShowDispatchModal(true)}
-                      className="w-full py-4 mt-auto bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold text-sm rounded-2xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm relative z-10"
+                      className="tour-dispatch w-full py-4 mt-auto bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold text-sm rounded-2xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm relative z-10"
                     >
                       <Plus className="h-4 w-4" /> Add Maintenance Request
                     </button>
@@ -2438,7 +2524,7 @@ export default function TenantDashboard() {
                     }
 
                     return (
-                      <div className="bg-gradient-to-br from-[#192A1F] via-[#1E3324] to-[#2C2719] border border-[#2C4633]/50 rounded-[40px] p-6 md:p-8 text-white flex flex-col relative overflow-hidden shadow-md">
+                      <div className="tour-visa bg-gradient-to-br from-[#192A1F] via-[#1E3324] to-[#2C2719] border border-[#2C4633]/50 rounded-[40px] p-6 md:p-8 text-white flex flex-col relative overflow-hidden shadow-md">
                         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#E5C583]/5 to-[#E5C583]/15 pointer-events-none"></div>
                         <div className="absolute top-0 right-0 w-40 h-40 bg-[#E5C583]/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
                         <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#E5C583]/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/3 pointer-events-none"></div>
@@ -2487,7 +2573,7 @@ export default function TenantDashboard() {
                   })()}
 
                   {/* NEW: Account Balance Stat Card */}
-                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex items-center justify-between shadow-sm transition-colors">
+                  <div className="tour-breakdown bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex items-center justify-between shadow-sm transition-colors">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xl md:text-2xl font-bold tracking-tight">
@@ -2690,7 +2776,10 @@ export default function TenantDashboard() {
                 </p>
                 <div className="tour-ask-buttons">
                   <Button
-                    onClick={() => setShowTourAsk(false)}
+                    onClick={() => {
+                      setShowTourAsk(false);
+                      handleTourComplete(true);
+                    }}
                     className="tour-ask-btn-no py-3"
                   >
                     No, Skip
@@ -2739,7 +2828,7 @@ export default function TenantDashboard() {
                   <button
                     type="button"
                     className="tour-btn-skip"
-                    onClick={() => setRunTour(false)}
+                    onClick={() => handleTourComplete(true)}
                   >
                     Skip
                   </button>
@@ -2759,8 +2848,7 @@ export default function TenantDashboard() {
                         if (tourStep < TOUR_STEPS.length - 1) {
                           setTourStep(tourStep + 1);
                         } else {
-                          setRunTour(false);
-                          triggerToast("Guide completed! Welcome to your Lodale tenant portal.", "success", "Welcome");
+                          handleTourComplete(false);
                         }
                       }}
                       className="tour-btn-next"

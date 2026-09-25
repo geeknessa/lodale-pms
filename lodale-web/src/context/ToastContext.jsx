@@ -23,7 +23,7 @@ export function ToastProvider({ children }) {
   // Ref to track recently fired toast messages for deduplication
   const recentToastsRef = React.useRef(new Map());
 
-  const showToast = useCallback((message, type = "success", title = "") => {
+  const showToast = useCallback((message, type = "success", title = "", action = null) => {
     if (!message) return;
 
     // Deduplicate identical message + type within 2000ms
@@ -50,6 +50,7 @@ export function ToastProvider({ children }) {
       message: finalMsg,
       type,
       title: title || (type === "success" ? "Success" : type === "error" ? "Action Failed" : type === "warning" ? "Notice" : "Update"),
+      action,
       createdAt: now
     };
 
@@ -69,8 +70,8 @@ export function ToastProvider({ children }) {
   useEffect(() => {
     const handleGlobalToast = (e) => {
       if (e.detail) {
-        const { message, type, title } = e.detail;
-        showToast(message, type, title);
+        const { message, type, title, action } = e.detail;
+        showToast(message, type, title, action);
       }
     };
     window.addEventListener("lodale-toast", handleGlobalToast);
@@ -91,13 +92,13 @@ export function ToastProvider({ children }) {
 }
 
 function ToastItem({ toast, onClose }) {
-  // Auto-dismiss after 4 seconds (3-5 seconds range)
+  // Auto-dismiss after 4 seconds (3-5 seconds range), longer if action exists
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 4000);
+    }, toast.action ? 8000 : 4000);
     return () => clearTimeout(timer);
-  }, [onClose]);
+  }, [onClose, toast.action]);
 
   const isSuccess = toast.type === "success";
   const isError = toast.type === "error";
@@ -138,6 +139,22 @@ function ToastItem({ toast, onClose }) {
       <div className="flex-1 min-w-0 pr-1">
         <h4 className="font-bold text-[13px] tracking-tight text-white mb-0.5">{toast.title}</h4>
         <p className="text-[12px] leading-snug opacity-90 break-words font-medium">{toast.message}</p>
+        {toast.action && (
+          <button
+            onClick={() => {
+              toast.action.onClick();
+              onClose();
+            }}
+            className={`mt-2 px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer transition-colors shadow-sm ${
+              isSuccess ? "bg-emerald-600 hover:bg-emerald-500 text-white" :
+              isError ? "bg-rose-600 hover:bg-rose-500 text-white" :
+              isWarning ? "bg-amber-600 hover:bg-amber-500 text-white" :
+              "bg-[#E5C583] hover:bg-[#d4b574] text-[#09090b]"
+            }`}
+          >
+            {toast.action.label}
+          </button>
+        )}
       </div>
 
       <button
@@ -154,9 +171,9 @@ function useToast() {
   const ctx = useContext(ToastContext);
   if (!ctx) {
     return {
-      showToast: (message, type = "success", title = "") => {
+      showToast: (message, type = "success", title = "", action = null) => {
         window.dispatchEvent(
-          new CustomEvent("lodale-toast", { detail: { message, type, title } })
+          new CustomEvent("lodale-toast", { detail: { message, type, title, action } })
         );
       }
     };
@@ -164,8 +181,8 @@ function useToast() {
   return ctx;
 }
 
-export function triggerToast(message, type = "success", title = "") {
+export function triggerToast(message, type = "success", title = "", action = null) {
   window.dispatchEvent(
-    new CustomEvent("lodale-toast", { detail: { message, type, title } })
+    new CustomEvent("lodale-toast", { detail: { message, type, title, action } })
   );
 }
