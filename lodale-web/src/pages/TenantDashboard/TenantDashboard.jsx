@@ -1106,6 +1106,20 @@ export default function TenantDashboard() {
     return "";
   };
 
+  // Residency streak calculations
+  const rawStartDate = activeLease?.start_date || activeLease?.created_at || activeLease?.tenant_signed_at;
+  let daysInHouse = 0;
+  let monthsInHouse = 0;
+  let remainingDays = 0;
+
+  if (activeLease) {
+    const startDate = rawStartDate ? new Date(rawStartDate) : new Date(Date.now() - 142 * 86400000);
+    const diffMs = Math.max(0, Date.now() - startDate.getTime());
+    daysInHouse = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    monthsInHouse = Math.floor(daysInHouse / 30);
+    remainingDays = daysInHouse % 30;
+  }
+
   return (
     <div className="tenant-wrapper">
       {/* MOBILE MENU HEADER */}
@@ -1967,19 +1981,6 @@ export default function TenantDashboard() {
             <div className="py-4 space-y-4">
               {/* Fiery Animated Hero Banner */}
               {(() => {
-                const rawStartDate = activeLease?.start_date || activeLease?.created_at || activeLease?.tenant_signed_at;
-                let daysInHouse = 0;
-                let monthsInHouse = 0;
-                let remainingDays = 0;
-
-                if (activeLease) {
-                  const startDate = rawStartDate ? new Date(rawStartDate) : new Date(Date.now() - 142 * 86400000);
-                  const diffMs = Math.max(0, Date.now() - startDate.getTime());
-                  daysInHouse = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-                  monthsInHouse = Math.floor(daysInHouse / 30);
-                  remainingDays = daysInHouse % 30;
-                }
-
                 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
                 const now = new Date();
                 const monthsList = [];
