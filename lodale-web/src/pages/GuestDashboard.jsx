@@ -658,7 +658,7 @@ function HowItWorksSection({ C, isDark }) {
         {/* Right Column: Exact Tilted iPhone Mockup (Interactive inner screen) */}
         <div className="flex-[1_1_300px] min-w-[300px] relative h-[540px] flex justify-center lg:justify-end mt-10 lg:mt-0">
 
-          <div className="absolute top-[20px] right-[-20px] sm:right-[auto] lg:right-[-50px] w-[340px] h-[760px]" style={{
+          <div className={`absolute top-[20px] right-[-20px] sm:right-[auto] lg:right-[-50px] w-[340px] h-[760px] ${(activeStep === 0 || activeStep === 2) ? "mockup-light" : ""}`} style={{
             backgroundColor: (activeStep === 1 || activeStep === 3) ? "#0C1410" : "#FAFAFA", // Adapts to inner screen dark/light mode
             color: (activeStep === 1 || activeStep === 3) ? "#FFFFFF" : "#1C1917", // Fix text color bleeding in global dark mode
             borderRadius: "50px",
@@ -1123,31 +1123,6 @@ export default function GuestDashboard() {
                 />
               </div>
 
-              <button
-                onClick={() => navigate("/signup")}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  background: "transparent",
-                  border: "none",
-                  padding: "0",
-                  fontFamily: "'Inter', sans-serif",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  color: isDark ? "rgba(237,232,223,0.5)" : "rgba(28,25,23,0.48)",
-                  cursor: "pointer",
-                  outline: "none",
-                  letterSpacing: "0.02em",
-                  transition: "color 0.15s ease",
-                  whiteSpace: "nowrap",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.color = isDark ? "#EDE8DF" : "#1C1917"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = isDark ? "rgba(237,232,223,0.5)" : "rgba(28,25,23,0.48)"; }}
-              >
-                View All Properties
-                <ArrowRight style={{ width: "13px", height: "13px" }} />
-              </button>
             </div>
           </div>
 
@@ -1224,6 +1199,35 @@ export default function GuestDashboard() {
                     <ListingCard key={listing.id} listing={listing} />
                   ))}
                 </div>
+                {filteredListings.length > displayLimit && (
+                  <div className="flex justify-center mt-12">
+                    <button
+                      onClick={() => setDisplayLimit((prev) => prev + 6)}
+                      style={{
+                        padding: "12px 28px",
+                        background: "transparent",
+                        border: "1px solid " + (isDark ? "rgba(237,232,223,0.25)" : "rgba(28,25,23,0.25)"),
+                        borderRadius: "8px",
+                        fontFamily: "'Inter', sans-serif",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        color: isDark ? "#EDE8DF" : "#1C1917",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = isDark ? "#EDE8DF" : "#1C1917";
+                        e.currentTarget.style.color = isDark ? "#1C1917" : "#FFFFFF";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = isDark ? "#EDE8DF" : "#1C1917";
+                      }}
+                    >
+                      See More Properties
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
               <div style={{ padding: "64px 0" }}>

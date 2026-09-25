@@ -85,39 +85,39 @@ body.dark section {
   border-color: var(--color-moss-600);
 }
 
-body.dark h1,
-body.dark h2,
-body.dark h3,
-body.dark h4,
-body.dark p,
-body.dark label,
-body.dark span,
-body.dark .text-ink-900 {
+body.dark h1:not(.mockup-light h1),
+body.dark h2:not(.mockup-light h2),
+body.dark h3:not(.mockup-light h3),
+body.dark h4:not(.mockup-light h4),
+body.dark p:not(.mockup-light p),
+body.dark label:not(.mockup-light label),
+body.dark span:not(.mockup-light span),
+body.dark .text-ink-900:not(.mockup-light .text-ink-900) {
   color: var(--color-white) !important;
 }
 
-body.dark .text-ink-700 {
+body.dark .text-ink-700:not(.mockup-light .text-ink-700) {
   color: var(--color-cream-50) !important;
 }
 
-body.dark .text-ink-400 {
+body.dark .text-ink-400:not(.mockup-light .text-ink-400) {
   color: var(--color-cream-100) !important;
 }
 
-body.dark .text-moss-700 {
+body.dark .text-moss-700:not(.mockup-light .text-moss-700) {
   color: var(--color-moss-100) !important;
 }
 
-body.dark .text-moss-600 {
+body.dark .text-moss-600:not(.mockup-light .text-moss-600) {
   color: var(--color-cream-50) !important;
 }
 
-body.dark .bg-moss-100 {
+body.dark .bg-moss-100:not(.mockup-light .bg-moss-100) {
   background-color: var(--color-moss-600) !important;
   color: var(--color-white) !important;
 }
 
-body.dark .bg-cream-50 {
+body.dark .bg-cream-50:not(.mockup-light .bg-cream-50) {
   background-color: #07130d !important;
 }
 
@@ -133,8 +133,8 @@ body.dark .logo-mark-svg .logo-fg-fill {
   fill: #E5C583 !important;
 }
 
-body.dark .bg-white,
-body.dark .bg-cream-50\/30 {
+body.dark .bg-white:not(.mockup-light .bg-white),
+body.dark .bg-cream-50\/30:not(.mockup-light .bg-cream-50\/30) {
   background: #192A1F !important;
   border-color: #2C4633 !important;
 }
