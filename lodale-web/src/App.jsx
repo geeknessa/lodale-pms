@@ -57,20 +57,33 @@ class ErrorBoundary extends React.Component {
               Don't worry, your data is safe. Please reload the page to continue.
             </p>
 
-            <div className="flex gap-4 justify-center pt-2">
+            <div className="flex flex-wrap gap-3 justify-center pt-2">
               <button
                 onClick={() => window.location.reload()}
-                className="bg-[#E5C583] hover:bg-[#D8B672] text-[#263b33] font-bold px-6 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
+                className="bg-[#E5C583] hover:bg-[#D8B672] text-[#263b33] font-bold px-5 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
               >
                 Reload Page
               </button>
               <button
-                onClick={() => (window.location.href = "/explore")}
-                className="bg-[#182C23] hover:bg-[#1D3329] border border-[#3f3f46] text-white font-bold px-6 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
+                onClick={() => (window.location.href = "/login")}
+                className="bg-[#182C23] hover:bg-[#1D3329] border border-[#3f3f46] text-white font-bold px-5 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
               >
-                Go to Home
+                Go to Sign In
+              </button>
+              <button
+                onClick={() => (window.location.href = "/explore")}
+                className="bg-black/30 hover:bg-black/50 border border-white/10 text-white/80 hover:text-white font-bold px-5 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
+              >
+                Explore Listings
               </button>
             </div>
+
+            {this.state.error && (
+              <div className="mt-4 p-3.5 bg-black/50 border border-red-500/30 rounded-xl text-left text-xs font-mono text-rose-300 max-h-40 overflow-auto">
+                <p className="font-bold text-rose-400 mb-1">{this.state.error.message || String(this.state.error)}</p>
+                <pre className="text-[10px] opacity-75 whitespace-pre-wrap">{this.state.error.stack}</pre>
+              </div>
+            )}
           </div>
         </div>
       );

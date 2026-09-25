@@ -165,7 +165,7 @@ export default function Login() {
     try {
       const res = await authService.signIn({ email: cleanEmail, password: cleanPassword });
       if (res && res.user) {
-        const userRole = res.user.primary_role || "tenant";
+        const userRole = (res.user.primary_role || "tenant").toLowerCase();
         const userFullName = `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "User";
         const expiresAt = (Date.now() + 24 * 60 * 60 * 1000).toString();
 
@@ -471,14 +471,34 @@ export default function Login() {
             </Button>
           </form>
 
-          {!isAdminMode && (
+          {!isAdminMode ? (
+            <div className="space-y-2 text-center text-[12px] sm:text-[13px]">
+              <p className="text-ink-700/80 dark:text-white/80">
+                Don&rsquo;t have an account?{" "}
+                <Link
+                  to="/signup"
+                  className="font-semibold text-moss-700 dark:text-[#E5C583] hover:underline outline-none focus-visible:underline"
+                >
+                  Create Account
+                </Link>
+              </p>
+              <p>
+                <Link
+                  to="/admin/login"
+                  className="text-[11.5px] text-ink-500/70 dark:text-cream-100/60 hover:text-moss-700 dark:hover:text-[#E5C583] transition-colors"
+                >
+                  Sign in to Admin Dashboard &rarr;
+                </Link>
+              </p>
+            </div>
+          ) : (
             <p className="text-center text-[12px] sm:text-[13px] text-ink-700/80 dark:text-white/80">
-              Don&rsquo;t have an account?{" "}
+              Need user login?{" "}
               <Link
-                to="/signup"
+                to="/login"
                 className="font-semibold text-moss-700 dark:text-[#E5C583] hover:underline outline-none focus-visible:underline"
               >
-                Create Account
+                Go to User Sign In &rarr;
               </Link>
             </p>
           )}

@@ -73,6 +73,8 @@ import { reminderService } from "../../services/reminderService";
 import AutomatedRemindersModal from "../../components/AutomatedRemindersModal";
 import { interactionTracker } from "../../utils/interactionTracker";
 import { onBroadcastAction } from "../../utils/actionBroadcaster";
+import { formatCurrency } from "../../utils/formatters";
+import { apiClient } from "../../lib/apiClient";
 import "./LandlordDashboard.css";
 
 const TOUR_STEPS = [
@@ -835,6 +837,9 @@ export default function LandlordDashboard() {
     return 250000;
   };
 
+  const paidTenants = activeTenantsList.filter(t => t.paymentStatus === "Paid" || !t.paymentStatus || t.paymentStatus?.toLowerCase() === "paid");
+  const overdueTenants = activeTenantsList.filter(t => t.paymentStatus === "Overdue" || t.paymentStatus === "Outstanding" || t.paymentStatus === "Unpaid");
+
   const paidInvoices = (invoices || []).filter(i => i.status === 'paid');
   const paidInvoicesSum = paidInvoices.reduce((sum, i) => sum + (parseFloat(i.grandTotal || i.grand_total || i.amount) || 0), 0);
   
@@ -1574,8 +1579,8 @@ export default function LandlordDashboard() {
                           return (
                             <div key={t.id || idx} className="p-4 rounded-2xl bg-ink-50/60 dark:bg-white/5 border border-ink-100 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-500/30 transition-all">
                               <div className="flex items-center gap-3.5">
-                                <div className="p-3 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl font-black text-sm">
-                                  ✓
+                                <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
+                                  <CheckCircle2 className="h-5 w-5" />
                                 </div>
                                 <div>
                                   <h4 className="font-bold text-sm text-ink-900 dark:text-white">{t.name || t.tenantName}</h4>
@@ -1608,8 +1613,8 @@ export default function LandlordDashboard() {
                           return (
                             <div key={t.id || idx} className="p-4 rounded-2xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                               <div className="flex items-center gap-3.5">
-                                <div className="p-3 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl font-black text-sm">
-                                  !
+                                <div className="p-2.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl flex items-center justify-center">
+                                  <AlertTriangle className="h-5 w-5" />
                                 </div>
                                 <div>
                                   <h4 className="font-bold text-sm text-ink-900 dark:text-white">{t.name || t.tenantName}</h4>
@@ -1801,7 +1806,12 @@ export default function LandlordDashboard() {
                         onClick={() => setShowRatingModal(true)}
                         title="View rating reviews"
                       >
-                        {ratingData.hasReviews ? `★ ${ratingData.rating}` : "New Account"}
+                        {ratingData.hasReviews ? (
+                          <span className="flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-current" />
+                            {ratingData.rating}
+                          </span>
+                        ) : "New Account"}
                       </span>
                     </div>
                     <p
