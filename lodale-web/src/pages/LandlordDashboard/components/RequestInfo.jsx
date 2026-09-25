@@ -1,7 +1,9 @@
+import React, { useState } from "react";
 import { X, Calendar, ClipboardList, PenTool, CheckCircle, Clock } from "lucide-react";
 import Avatar from "../../../components/Avatar";
 
 export default function RequestInfo({ request, onClose, onUpdateStatus }) {
+  const [cost, setCost] = useState("");
   if (!request) return null;
 
   return (
@@ -23,6 +25,11 @@ export default function RequestInfo({ request, onClose, onUpdateStatus }) {
               <span className={`request-status-badge ${request.status.toLowerCase().replace(" ", "-")}`}>
                 {request.status}
               </span>
+              {request.tenantHandled && (
+                <span className="request-status-badge bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
+                  Tenant Handled
+                </span>
+              )}
               <span className="ui-score-pill" style={{ fontSize: "12px" }}>
                 <Calendar className="h-3.5 w-3.5 mr-1" />
                 {request.date}
@@ -81,6 +88,11 @@ export default function RequestInfo({ request, onClose, onUpdateStatus }) {
                     <div>
                       <h4 className="font-bold text-xs uppercase tracking-wider text-emerald-900 dark:text-cream-100">Request Resolved</h4>
                       <p className="text-xs text-emerald-700 dark:text-cream-100/80 mt-0.5">This issue has been marked as completed and resolved.</p>
+                      {request.cost && (
+                        <p className="text-xs font-bold text-emerald-800 dark:text-emerald-300 mt-2">
+                          Expense Recorded: ₦{Number(request.cost).toLocaleString()}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -115,12 +127,26 @@ export default function RequestInfo({ request, onClose, onUpdateStatus }) {
                     className="db-action-btn"
                     style={{ backgroundColor: "rgba(16, 185, 129, 0.1)", color: "#10B981", flexGrow: 1, padding: "10px" }}
                     onClick={() => {
-                      onUpdateStatus(request.id, "Completed");
+                      onUpdateStatus(request.id, "Completed", cost);
                       onClose();
                     }}
                   >
                     Set Completed
                   </button>
+                </div>
+                
+                <div style={{ padding: "0 16px 16px" }}>
+                  <label style={{ fontSize: "12px", fontWeight: "bold", display: "block", marginBottom: "6px" }} className="text-ink-600 dark:text-cream-100">
+                    Maintenance Expense (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Enter amount (₦)"
+                    value={cost}
+                    onChange={(e) => setCost(e.target.value)}
+                    style={{ width: "100%", padding: "10px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.1)", background: "transparent" }}
+                    className="text-ink-900 dark:text-cream-100 dark:border-white/10"
+                  />
                 </div>
               </div>
             );

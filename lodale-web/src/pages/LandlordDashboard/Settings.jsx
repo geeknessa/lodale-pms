@@ -167,6 +167,9 @@ export default function Settings({ onShowReportModal }) {
 
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [returnAction, setReturnAction] = useState("");
 
   // Leases State
   const [leases, setLeases] = useState([]);
@@ -254,15 +257,26 @@ export default function Settings({ onShowReportModal }) {
         sessionStorage.setItem("username", updatedName);
       }
 
-      setSaveSuccess(true);
-      setToastMessage("Landlord profile saved successfully!");
-      triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
+      const returnDest = sessionStorage.getItem("returnAfterProfileComplete");
+      if (returnDest) {
+        setReturnAction(returnDest);
+        setShowCompletionModal(true);
+      } else {
+        setSaveSuccess(true);
+        setToastMessage("Landlord profile saved successfully!");
+        triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
+        if (sessionStorage.getItem("isNewSignUpProfileComplete") === "true") {
+          sessionStorage.removeItem("isNewSignUpProfileComplete");
+          setTimeout(() => {
+            window.dispatchEvent(new Event("startLandlordTour"));
+          }, 500);
+        }
 
-
-      setTimeout(() => {
-        setSaveSuccess(false);
-        setToastMessage("");
-      }, 3000);
+        setTimeout(() => {
+          setSaveSuccess(false);
+          setToastMessage("");
+        }, 3000);
+      }
     } catch (err) {
       triggerToast("Failed to save profile.", "error", "Error");
     } finally {
@@ -322,34 +336,47 @@ export default function Settings({ onShowReportModal }) {
 
   return (
     <div className="set-ref-container">
+      {showCompletionModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#192A1F] rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-xl">
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-ink-900 dark:text-white">Profile Complete!</h3>
+            <p className="text-sm text-ink-600 dark:text-cream-100/70">Your profile has been saved successfully. You are now ready to continue.</p>
+            <div className="pt-2 space-y-2">
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  sessionStorage.removeItem("returnAfterProfileComplete");
+                  if (returnAction === "add_property") {
+                    navigate("/dashboard/landlord/add-property");
+                  }
+                }}
+                className="w-full py-2.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d4b574] text-white dark:text-[#09090b] font-bold rounded-xl transition-all cursor-pointer"
+              >
+                {returnAction === "add_property" ? "Continue to Add Property" : "Continue"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  sessionStorage.removeItem("returnAfterProfileComplete");
+                }}
+                className="w-full py-2.5 text-ink-600 dark:text-cream-100/70 font-bold hover:underline cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {saveSuccess && (
         <div className="set-ref-success-toast">
           <CheckCircle2 className="h-4.5 w-4.5 shrink-0" />
           <span>{toastMessage || "Profile changes saved successfully!"}</span>
         </div>
-      )}
-
-      {/* Landlord Profile Completeness Guidance Banner */}
-      <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-[#07130D]mber-950/20 border border-amber-200 dark:border-amber-900/50 relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-[#07130D]mber-900/30 flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800/50">
-              <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <h4 className="font-bold text-sm text-amber-800 dark:text-amber-300 flex items-center gap-2">
-                Landlord Settings & Portfolio Verification
-              </h4>
-              <p className="text-xs text-amber-700/80 dark:text-amber-200/70 mt-1 leading-relaxed max-w-2xl">
-                You can always return to <strong>Settings</strong> anytime to update your account details. 
-                Please note: <strong>You must complete your required profile fields to manage listings and receive tenant applications.</strong>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="set-ref-layout">
+      )}      <div className="set-ref-layout">
 
         {/* LEFT COLUMN - USER PROFILE CARD */}
         <div className="set-ref-left">
@@ -548,12 +575,13 @@ export default function Settings({ onShowReportModal }) {
 
                 <div className="set-ref-input-group full">
                   <label className="set-ref-lbl">Address</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={2}
                     maxLength={255}
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
-                    className="set-ref-input"
+                    className="set-ref-input resize-none py-2.5 min-h-[60px]"
+                    style={{ fieldSizing: "content" }}
                   />
                 </div>
 
@@ -796,10 +824,10 @@ export default function Settings({ onShowReportModal }) {
               </div>
 
               {/* Reward Good Tenants */}
-              <div className="p-5 rounded-2xl bg-amber-50 dark:bg-[#07130D]mber-950/20 border border-amber-200 dark:border-amber-800/40">
+              <div className="p-5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-amber-100 dark:bg-[#07130D]mber-900/40 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
+                    <div className="p-2 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-xl shrink-0">
                       <Award className="w-5 h-5" />
                     </div>
                     <div>

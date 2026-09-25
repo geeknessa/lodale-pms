@@ -351,7 +351,7 @@ export default function SignUp() {
                 ) : verified ? (
                   /* State 2: Already Verified Status Card (When navigating back from Step 3) */
                   <div className="space-y-4 sm:space-y-6 animate-fade-in">
-                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 dark:bg-[#07130D]merald-950/30 p-4 sm:p-5 space-y-3 shadow-sm">
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 dark:bg-emerald-950/30 p-4 sm:p-5 space-y-3 shadow-sm">
                       <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
                         <CheckCircle2 className="h-5 w-5 shrink-0" />
                         <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase">

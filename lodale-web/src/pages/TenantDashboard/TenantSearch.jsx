@@ -1226,7 +1226,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Ownership Status</span>
-                  <span className="px-2 py-0.5 bg-emerald-100 dark:bg-[#07130D]merald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded">
+                  <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded">
                     Verified Title
                   </span>
                 </div>
@@ -1267,17 +1267,8 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                     let prof = {};
                     try { prof = JSON.parse(raw); } catch (e) {}
                     
-                    const tenantPhone = prof.phone || prof.phone_number || "";
+                    // Rely on dynamic profileService check instead of hardcoded fields
                     const tenantIncome = prof.income || prof.monthlyIncome || prof.monthly_income || prof.incomeRange || "";
-                    const tenantOccupation = prof.occupation || "";
-
-                    if (!tenantPhone || !tenantOccupation || !tenantIncome) {
-                      localStorage.setItem("pendingQuickApplyPropertyId", selectedProperty.id);
-                      triggerToast("Please complete your profile details (Phone, Occupation, Income) before applying.", "warning", "Incomplete Profile");
-                      setShowPropertyDetailsModal(false);
-                      if (setActiveTab) setActiveTab(3);
-                      return;
-                    }
 
                     const reqIncome = selectedProperty.minimum_income_required || selectedProperty.minimumIncome || "No Minimum Income";
                     const meetsInc = doesIncomeMeetRequirement(tenantIncome, reqIncome);
@@ -1298,8 +1289,18 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                       const completeness = profileService.checkProfileCompleteness(userProf);
                       if (!completeness.isComplete) {
                         localStorage.setItem("pendingQuickApplyPropertyId", selectedProperty.id);
-                        triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) in Settings before applying for a property.`, "error", "Profile Incomplete");
-                        if (setActiveTab) setActiveTab(3);
+                        sessionStorage.setItem("returnAfterProfileComplete", "apply_property");
+                        triggerToast(
+                          `Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) before applying.`,
+                          "error",
+                          "Profile Incomplete",
+                          {
+                            label: "Go to Settings",
+                            onClick: () => {
+                              if (setActiveTab) setActiveTab(3);
+                            }
+                          }
+                        );
                         setShowPropertyDetailsModal(false);
                         return;
                       }
@@ -1485,7 +1486,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 <h4 className="font-bold text-[20px] text-ink-900 dark:text-white mt-3 mb-1">
                   {selectedLandlord.name}
                 </h4>
-                <span className="px-3 py-1 bg-emerald-100 dark:bg-[#07130D]merald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded-full uppercase">
+                <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10.5px] font-bold rounded-full uppercase">
                   Verified title partner
                 </span>
               </div>

@@ -834,7 +834,7 @@ export default function TenantApplications({ setActiveTab }) {
               if (activeInsp && activeInsp.status === "Scheduled") {
                 return (
                   <div className="space-y-4">
-                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-800/40 text-xs space-y-1.5">
+                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-xs space-y-1.5">
                       <span className="font-bold text-amber-900 dark:text-amber-200 block text-sm">
                         Landlord Scheduled an Inspection
                       </span>
@@ -1140,7 +1140,7 @@ export default function TenantApplications({ setActiveTab }) {
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-[#07130D]merald-950/30 border border-emerald-200 dark:border-emerald-900/40 space-y-2">
+              <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 space-y-2">
                 <h4 className="font-extrabold text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" /> Key Pickup Appointment
                 </h4>
@@ -1162,7 +1162,7 @@ export default function TenantApplications({ setActiveTab }) {
               </div>
 
               {selectedMoveInRules.additionalNotes && (
-                <div className="p-3 rounded-xl bg-amber-50 dark:bg-[#07130D]mber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 space-y-1">
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-amber-900 dark:text-amber-200 space-y-1">
                   <span className="font-bold block text-[11px]">Additional Key / Utility Notes:</span>
                   <p className="italic">{selectedMoveInRules.additionalNotes}</p>
                 </div>

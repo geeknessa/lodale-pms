@@ -4,7 +4,7 @@ import { pool } from '../db/db.js';
 // @route   POST /api/maintenance
 export const createRequest = async (req, res) => {
   try {
-    const { propertyId, title, description, priority } = req.body;
+    const { propertyId, title, description, priority, tenant_handled, cost } = req.body;
     const tenantId = req.user.id;
 
     // Verify tenant has an active lease for this property
@@ -18,12 +18,13 @@ export const createRequest = async (req, res) => {
     }
     
     const leaseId = leaseCheck.rows[0].id;
+    const initialStatus = tenant_handled ? 'resolved' : 'open';
 
     const { rows } = await pool.query(
-      `INSERT INTO maintenance_requests (property_id, lease_id, reported_by, title, description, priority, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'open')
+      `INSERT INTO maintenance_requests (property_id, lease_id, reported_by, title, description, priority, status, tenant_handled, actual_cost)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [propertyId, leaseId, tenantId, title, description, priority || 'medium']
+      [propertyId, leaseId, tenantId, title, description, priority || 'medium', initialStatus, tenant_handled || false, cost ? parseFloat(cost) : 0]
     );
 
     res.status(201).json(rows[0]);
@@ -75,7 +76,7 @@ export const getMyRequests = async (req, res) => {
 export const updateRequestStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, notes } = req.body;
+    const { status, notes, cost } = req.body;
     const landlordId = req.user.id;
 
     // Verify request belongs to landlord's property
@@ -106,10 +107,10 @@ export const updateRequestStatus = async (req, res) => {
 
     const { rows } = await pool.query(
       `UPDATE maintenance_requests 
-       SET status = $1, resolution_notes = COALESCE($2, resolution_notes), updated_at = NOW() 
-       WHERE id = $3 
+       SET status = $1, resolution_notes = COALESCE($2, resolution_notes), actual_cost = COALESCE($3, actual_cost), updated_at = NOW() 
+       WHERE id = $4 
        RETURNING *`,
-      [dbStatus, notes || null, id]
+      [dbStatus, notes || null, cost !== undefined ? parseFloat(cost) : null, id]
     );
 
     res.json(rows[0]);

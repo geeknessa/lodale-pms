@@ -346,11 +346,16 @@ export async function initDb() {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
         tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        lease_id UUID REFERENCES leases(id) ON DELETE CASCADE,
+        reported_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
         priority VARCHAR(30) DEFAULT 'medium',
         status VARCHAR(50) DEFAULT 'pending',
         notes TEXT,
+        tenant_handled BOOLEAN DEFAULT FALSE,
+        actual_cost NUMERIC(10, 2),
+        estimated_cost NUMERIC(10, 2),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );

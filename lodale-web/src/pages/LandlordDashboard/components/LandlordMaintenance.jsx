@@ -41,7 +41,9 @@ export default function LandlordMaintenance() {
         priority: r.priority || "Normal",
         date: r.created_at ? new Date(r.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : (r.date || "Recently"),
         tenantName: r.tenant_name || r.tenantName || "Tenant",
-        propertyTitle: r.property_title || r.propertyTitle || r.property_name || r.propertyName || "Leased Property"
+        propertyTitle: r.property_title || r.propertyTitle || r.property_name || r.propertyName || "Leased Property",
+        cost: r.actual_cost || r.cost || 0,
+        tenantHandled: r.tenant_handled || false
       }));
 
       setRequests(formatted);
@@ -53,17 +55,20 @@ export default function LandlordMaintenance() {
     }
   };
 
-  const handleUpdateStatus = async (id, newStatus) => {
+  const handleUpdateStatus = async (id, newStatus, cost = null) => {
     try {
       const dbStatus = newStatus.toLowerCase().replace(" ", "_");
+      const payload = { status: dbStatus };
+      if (cost) payload.cost = cost;
+
       if (typeof maintenanceService.updateRequestStatus === "function") {
-        await maintenanceService.updateRequestStatus(id, { status: dbStatus });
+        await maintenanceService.updateRequestStatus(id, payload);
       }
-      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r)));
-      triggerToast(`Request status updated to "${newStatus}"`, "success");
+      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus, cost } : r)));
+      triggerToast(`Request status updated to "${newStatus}"${cost ? ` with expense ₦${cost}` : ""}`, "success");
     } catch (e) {
-      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r)));
-      triggerToast(`Request status set to "${newStatus}"`, "info");
+      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus, cost } : r)));
+      triggerToast(`Request status set to "${newStatus}"${cost ? ` with expense ₦${cost}` : ""}`, "info");
     }
   };
 
@@ -159,16 +164,23 @@ export default function LandlordMaintenance() {
               >
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-3">
-                    <span className={`px-2.5 py-1 text-[11px] font-extrabold rounded-full ${
-                      st === "resolved"
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950 dark:text-cream-100"
-                        : st === "in progress"
-                        ? "bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950 dark:text-amber-300"
-                        : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
-                    }`}>
-                      {req.status || "Pending"}
-                    </span>
-                    <span className="text-[11px] text-ink-400 dark:text-cream-100/50">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`px-2.5 py-1 text-[11px] font-extrabold rounded-full ${
+                        st === "resolved"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-cream-100"
+                          : st === "in progress"
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                          : "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                      }`}>
+                        {req.status || "Pending"}
+                      </span>
+                      {req.tenantHandled && (
+                        <span className="px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
+                          Tenant Handled
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-ink-400 dark:text-cream-100/50 whitespace-nowrap">
                       {req.date || "Recently"}
                     </span>
                   </div>
@@ -228,8 +240,8 @@ export default function LandlordMaintenance() {
         <RequestInfo
           request={selectedRequest}
           onClose={() => setSelectedRequest(null)}
-          onUpdateStatus={(newSt) => {
-            handleUpdateStatus(selectedRequest.id, newSt);
+          onUpdateStatus={(id, newSt, cost) => {
+            handleUpdateStatus(id, newSt, cost);
             setSelectedRequest(null);
           }}
         />

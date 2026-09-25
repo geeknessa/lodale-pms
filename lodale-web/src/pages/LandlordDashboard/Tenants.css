@@ -80,7 +80,8 @@ body.dark .tenants-tab-btn:hover {
 }
 
 body.dark .tenants-tab-btn.active {
-  color: #263b33;
+  background-color: #E5C583;
+  color: #1E3324;
 }
 
 /* Search Bar */
@@ -132,7 +133,8 @@ body.dark .tenants-tab-btn.active {
 }
 
 body.dark .invite-tenant-btn {
-  color: #263b33;
+  background-color: #E5C583;
+  color: #1C2D22;
 }
 
 .invite-tenant-btn:hover {
@@ -266,7 +268,7 @@ body.dark .tenant-card-score {
 }
 
 body.dark .tenant-detail-value.property-link {
-  color: var(--active-pill-bg);
+  color: #E5C583;
 }
 
 /* Payment Badges */
@@ -350,8 +352,9 @@ body.dark .tenant-action-btn:hover {
 }
 
 body.dark .tenant-action-btn.chat-btn {
-  background-color: rgba(229, 197, 131, 0.1);
-  color: var(--active-pill-bg);
+  background-color: rgba(229, 197, 131, 0.12);
+  color: #E5C583;
+  border-color: rgba(229, 197, 131, 0.2);
 }
 
 .tenant-action-btn.chat-btn:hover {
@@ -360,7 +363,9 @@ body.dark .tenant-action-btn.chat-btn {
 }
 
 body.dark .tenant-action-btn.chat-btn:hover {
-  color: #263b33;
+  background-color: #E5C583;
+  color: #1C2D22;
+  border-color: #E5C583;
 }
 
 /* Empty State */
@@ -574,7 +579,8 @@ body.dark .tenant-cancel-btn:hover {
 }
 
 body.dark .tenant-submit-btn {
-  color: #263b33;
+  background-color: #E5C583;
+  color: #1C2D22;
 }
 
 .tenant-submit-btn:hover {

@@ -17,13 +17,15 @@ export const validate = (schemaOrSchemas) => (req, res, next) => {
     }
     next();
   } catch (error) {
-    if (error.errors) {
-      const formattedErrors = error.errors.map(err => ({
+    const issues = error.issues || error.errors;
+    if (issues) {
+      const formattedErrors = issues.map(err => ({
         field: err.path.join('.'),
         message: err.message
       }));
       return res.status(400).json({ error: 'Validation failed', details: formattedErrors });
     }
-    return res.status(400).json({ error: 'Invalid input' });
+    console.error('Validation Error Details:', error);
+    return res.status(400).json({ error: 'Invalid input', message: error?.message, stack: error?.stack });
   }
 };

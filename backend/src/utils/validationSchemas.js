@@ -29,17 +29,17 @@ export const sendMessageSchema = z.object({
 
 export const applyPropertySchema = z.object({
   propertyId: z.string().min(1, "Property ID is required"),
-  notes: z.string().optional(),
-  monthlyIncome: z.union([z.number(), z.string()]).optional(),
-  employmentStatus: z.string().optional(),
-  employerName: z.string().optional(),
-  occupation: z.string().optional(),
-  maritalStatus: z.string().optional(),
-  dependants: z.union([z.number(), z.string()]).optional(),
-  guarantorName: z.string().optional(),
-  guarantorPhone: z.string().optional(),
-  guarantorRelationship: z.string().optional(),
-  guarantorEmail: z.string().email().optional().or(z.literal(''))
+  notes: z.string().nullable().optional(),
+  monthlyIncome: z.union([z.number(), z.string()]).nullable().optional(),
+  employmentStatus: z.string().nullable().optional(),
+  employerName: z.string().nullable().optional(),
+  occupation: z.string().nullable().optional(),
+  maritalStatus: z.string().nullable().optional(),
+  dependants: z.union([z.number(), z.string()]).nullable().optional(),
+  guarantorName: z.string().nullable().optional(),
+  guarantorPhone: z.string().nullable().optional(),
+  guarantorRelationship: z.string().nullable().optional(),
+  guarantorEmail: z.string().email().nullable().optional().or(z.literal(''))
 });
 
 export const generateLeaseSchema = z.object({

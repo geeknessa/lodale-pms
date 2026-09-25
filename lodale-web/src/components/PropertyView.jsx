@@ -189,9 +189,14 @@ export function PropertyDetailView() {
       const completeness = profileService.checkProfileCompleteness(userProf);
       if (!completeness.isComplete) {
         localStorage.setItem("pendingQuickApplyPropertyId", property.id);
-        triggerToast(`Please take a moment to complete your profile before applying. We just need your: ${completeness.missingFields.join(", ")}.`, "info", "Profile Setup Required");
-        localStorage.setItem("tenantActiveTab", "3");
-        navigate("/dashboard/tenant");
+        triggerToast(`Please take a moment to complete your profile before applying. We just need your: ${completeness.missingFields.join(", ")}.`, "info", "Profile Setup Required", {
+          label: "Go to Settings",
+          onClick: () => {
+            sessionStorage.setItem("returnAfterProfileComplete", "apply_property");
+            localStorage.setItem("tenantActiveTab", "3");
+            navigate("/dashboard/tenant");
+          }
+        });
         return;
       }
 
@@ -479,7 +484,7 @@ export function PropertyDetailView() {
           <h3 className="text-base sm:text-lg font-black text-[#1C1917] dark:text-white flex items-center gap-2">
             <ListChecks className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" /> Property Description
           </h3>
-          <p className="text-sm text-ink-700 dark:text-cream-100/80 leading-relaxed whitespace-pre-line">
+          <p className="text-sm text-ink-700 dark:text-cream-100/80 leading-relaxed whitespace-pre-line break-words">
             {property.description || 'No detailed description provided for this property listing.'}
           </p>
         </div>
@@ -920,7 +925,7 @@ function UnitDetailModal({ unit, property, currentUserRole, onClose, onApply, on
           {unit.description && (
             <div>
               <h4 className="text-xs font-bold uppercase tracking-wider text-ink-500 dark:text-cream-100/50 mb-1.5">Unit Description</h4>
-              <p className="text-xs text-ink-700 dark:text-cream-100/80 leading-relaxed bg-ink-50 dark:bg-white/5 p-3.5 rounded-xl border border-ink-100 dark:border-transparent whitespace-pre-line">
+              <p className="text-xs text-ink-700 dark:text-cream-100/80 leading-relaxed bg-ink-50 dark:bg-white/5 p-3.5 rounded-xl border border-ink-100 dark:border-transparent whitespace-pre-line break-words">
                 {unit.description}
               </p>
             </div>

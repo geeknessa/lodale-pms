@@ -147,6 +147,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [signatureInput, setSignatureInput] = useState("");
   const [confirmCheck, setConfirmCheck] = useState(false);
   const [selectedDocToView, setSelectedDocToView] = useState(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [returnAction, setReturnAction] = useState("");
 
   useEffect(() => {
     async function loadProfile() {
@@ -315,19 +317,32 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         }
 
         setIsSaving(false);
-        setSaveSuccess(true);
-        setFeedbackMessage({ type: "success", text: "Profile information updated successfully!" });
-        triggerToast("Profile information updated successfully!", "success", "Profile Saved");
+        const returnDest = sessionStorage.getItem("returnAfterProfileComplete");
+        if (returnDest) {
+          setReturnAction(returnDest);
+          setShowCompletionModal(true);
+        } else {
+          setSaveSuccess(true);
+          setFeedbackMessage({ type: "success", text: "Profile information updated successfully!" });
+          triggerToast("Profile information updated successfully!", "success", "Profile Saved");
 
-        const pendingPropertyId = localStorage.getItem("pendingQuickApplyPropertyId");
-        if (pendingPropertyId) {
-          localStorage.removeItem("pendingQuickApplyPropertyId");
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent("resumeQuickApply", { detail: pendingPropertyId }));
-          }, 500);
+          const pendingPropertyId = localStorage.getItem("pendingQuickApplyPropertyId");
+          if (pendingPropertyId) {
+            localStorage.removeItem("pendingQuickApplyPropertyId");
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent("resumeQuickApply", { detail: pendingPropertyId }));
+            }, 500);
+          }
+
+          if (sessionStorage.getItem("isNewSignUpProfileComplete") === "true") {
+            sessionStorage.removeItem("isNewSignUpProfileComplete");
+            setTimeout(() => {
+              window.dispatchEvent(new Event("startTenantTour"));
+            }, 500);
+          }
+
+          setTimeout(() => setSaveSuccess(false), 3500);
         }
-
-        setTimeout(() => setSaveSuccess(false), 3500);
       } catch (err) {
         setIsSaving(false);
         setFeedbackMessage({ type: "error", text: err.message || "Failed to update profile." });
@@ -717,6 +732,46 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
   return (
     <div className="settings-page-wrapper">
+      {showCompletionModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl p-6 max-w-sm w-full text-center space-y-4 shadow-xl border border-neutral-200 dark:border-neutral-800">
+            <div className="w-16 h-16 bg-emerald-100 dark:bg-[#E5C583]/20 text-emerald-600 dark:text-[#E5C583] rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-ink-900 dark:text-white">Profile Complete!</h3>
+            <p className="text-sm text-ink-600 dark:text-cream-100/70">Your profile has been saved successfully. You are now ready to continue.</p>
+            <div className="pt-2 space-y-2">
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  sessionStorage.removeItem("returnAfterProfileComplete");
+                  if (returnAction === "apply_property") {
+                    const pendingId = localStorage.getItem("pendingQuickApplyPropertyId");
+                    if (pendingId) {
+                      localStorage.removeItem("pendingQuickApplyPropertyId");
+                      window.dispatchEvent(new CustomEvent("resumeQuickApply", { detail: pendingId }));
+                    }
+                  }
+                }}
+                className="w-full py-2.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d4b574] text-white dark:text-[#09090b] font-bold rounded-xl transition-all cursor-pointer"
+              >
+                {returnAction === "apply_property" ? "Continue to Application" : "Continue"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowCompletionModal(false);
+                  sessionStorage.removeItem("returnAfterProfileComplete");
+                  localStorage.removeItem("pendingQuickApplyPropertyId");
+                }}
+                className="w-full py-2.5 text-ink-600 dark:text-cream-100/70 font-bold hover:underline cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* 1. LEFT PANEL: Profile Summary & Section Nav */}
       <div className="settings-sidebar-card">
         <div className="settings-profile-section">
@@ -799,10 +854,10 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             {feedbackMessage && (
               <div
                 className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${feedbackMessage.type === "success"
-                    ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : feedbackMessage.type === "error"
                       ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                      : "bg-amber-50 dark:bg-[#07130D]mber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                      : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
                   }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -905,12 +960,13 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
               <div className="settings-form-group full-width">
                 <label className="settings-input-label">Address <span className="text-red-500">*</span></label>
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
                   maxLength={255}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="settings-form-input"
+                  className="settings-form-input resize-none py-2.5 min-h-[60px]"
+                  style={{ fieldSizing: "content" }}
                   placeholder="Street address"
                   required
                 />
@@ -1046,10 +1102,10 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             {feedbackMessage && (
               <div
                 className={`p-3.5 rounded-xl border flex items-center justify-between text-[13px] font-medium transition-all mb-4 ${feedbackMessage.type === "success"
-                    ? "bg-emerald-50 dark:bg-[#07130D]merald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
+                    ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300"
                     : feedbackMessage.type === "error"
                       ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-300"
-                      : "bg-amber-50 dark:bg-[#07130D]mber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                      : "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300"
                   }`}
               >
                 <div className="flex items-center gap-2.5">
@@ -1181,7 +1237,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               <div className="space-y-4">
                 {documents.filter(d => d.status === "pending").length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-14 px-4 text-center border-2 border-dashed border-ink-100 dark:border-white/10 rounded-2xl bg-ink-50/30 dark:bg-white/[0.02]">
-                    <div className="p-3.5 bg-amber-500/10 text-amber-600 dark:bg-[#07130D]mber-500/20 dark:text-amber-300 rounded-2xl mb-3 border border-amber-500/20">
+                    <div className="p-3.5 bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300 rounded-2xl mb-3 border border-amber-500/20">
                       <FileCheck className="h-6 w-6" />
                     </div>
                     <h4 className="font-extrabold text-base text-ink-900 dark:text-white">No Documents Awaiting Signature</h4>
@@ -1199,7 +1255,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                         <div className="flex items-center gap-3">
-                          <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-[#07130D]mber-500/20 dark:text-amber-300 shrink-0 border border-amber-500/20">
+                          <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-300 shrink-0 border border-amber-500/20">
                             <FileText className="h-5 w-5" />
                           </div>
                           <div>
@@ -1248,7 +1304,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               <div className="space-y-4">
                 {documents.filter(d => d.status === "signed").length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-14 px-4 text-center border-2 border-dashed border-ink-100 dark:border-white/10 rounded-2xl bg-ink-50/30 dark:bg-white/[0.02]">
-                    <div className="p-3.5 bg-emerald-500/10 text-emerald-600 dark:bg-[#07130D]merald-500/20 dark:text-emerald-400 rounded-2xl mb-3 border border-emerald-500/20">
+                    <div className="p-3.5 bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 rounded-2xl mb-3 border border-emerald-500/20">
                       <FileText className="h-6 w-6" />
                     </div>
                     <h4 className="font-extrabold text-base text-ink-900 dark:text-white">No Signed Documents Archived</h4>
@@ -1266,7 +1322,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
                         <div className="flex items-center gap-3">
-                          <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-[#07130D]merald-500/20 dark:text-emerald-400 shrink-0 border border-emerald-500/20">
+                          <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0 border border-emerald-500/20">
                             <CheckCircle2 className="h-5 w-5" />
                           </div>
                           <div>
@@ -1345,7 +1401,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           >
             <div className="modal-header flex items-center justify-between pb-3 border-b border-ink-100/30 dark:border-white/10 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:bg-[#07130D]mber-500/25 dark:text-amber-300">
+                <div className="p-2 rounded-xl bg-amber-500/15 text-amber-600 dark:bg-amber-500/25 dark:text-amber-300">
                   <PenTool className="h-5 w-5" />
                 </div>
                 <div>
@@ -1382,7 +1438,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                   />
 
                   {signatureInput.trim() && (
-                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 dark:bg-[#07130D]mber-500/15 border border-amber-500/20 text-center">
+                    <div className="mt-2 p-2.5 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/20 text-center">
                       <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-300 block mb-0.5">
                         Digital Signature Stamp Preview
                       </span>

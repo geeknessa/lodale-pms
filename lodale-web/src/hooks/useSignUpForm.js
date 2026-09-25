@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 import { gsap } from "gsap";
 import { signUpSchema } from "../schemas/authSchemas";
+import { triggerToast } from "../context/ToastContext";
+import { notificationService } from "../services/notificationService";
 
 const MOCK_NIN_NAMES = [
   "Chukwudi Emmanuel Abubakar",
@@ -209,7 +211,21 @@ export function useSignUpForm(initialState = {}) {
       if (skipWelcome && listingId) {
         navigate(`/apply/${listingId}`);
       } else {
-        navigate(`/dashboard/${role}`);
+        triggerToast("Welcome! Please complete your profile to get started.", "info", "Profile Setup Required");
+        try {
+          await notificationService.createNotification({
+            title: "Profile Completion",
+            message: "Welcome! Please complete your profile to access all platform features.",
+            type: "info",
+            link: role === "tenant" ? "/dashboard/tenant" : "/dashboard/landlord"
+          });
+        } catch (e) {}
+
+        if (role === "tenant") {
+          navigate("/dashboard/tenant");
+        } else {
+          navigate("/dashboard/landlord");
+        }
       }
     } catch (dbErr) {
       const errMsg = dbErr.message || "Account creation failed. Please try again.";

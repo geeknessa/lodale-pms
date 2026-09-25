@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { triggerToast } from "../../context/ToastContext";
 import { useTheme } from "../../context/ThemeContext";
 import { ratingService } from "../../services/ratingService";
@@ -64,6 +64,7 @@ import LandlordMaintenance from "./components/LandlordMaintenance";
 import LandlordCalendar from "./components/LandlordCalendar";
 import SettingsTab from "./Settings";
 import Tenants from "./Tenants";
+import { profileService } from "../../services/profileService";
 import { leaseService } from "../../services/leaseService";
 import { rentService } from "../../services/rentService";
 import { maintenanceService } from "../../services/maintenanceService";
@@ -111,17 +112,17 @@ const TOUR_STEPS = [
   },
   {
     target: ".tour-nav-5",
-    title: "Sidebar: Reminders",
-    content: "Automate and manage email/SMS payment or lease reminders.",
-    placement: "right",
-    tab: 5
-  },
-  {
-    target: ".tour-nav-6",
     title: "Sidebar: Real-Time Chat",
     content: "Communicate directly with your tenants in secure message threads.",
     placement: "right",
     tab: 3
+  },
+  {
+    target: ".tour-nav-6",
+    title: "Sidebar: Schedule",
+    content: "Automate and manage email/SMS payment or lease reminders.",
+    placement: "right",
+    tab: 5
   },
   {
     target: ".tour-nav-7",
@@ -136,13 +137,6 @@ const TOUR_STEPS = [
     target: ".tour-welcome",
     title: "Onboarding: Overview Header",
     content: "Greets your active landlord session and presents report templates.",
-    placement: "bottom",
-    tab: 0
-  },
-  {
-    target: ".tour-pills",
-    title: "Overview Categories",
-    content: "Filter the dashboard panels between raw performance metrics, ledger collections, or pending applications.",
     placement: "bottom",
     tab: 0
   },
@@ -264,8 +258,9 @@ export default function LandlordDashboard() {
 
   const ratingData = getLandlordRatingData();
 
+  const location = useLocation();
   // Active sidebar tab
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 0);
 
   // Active top navigation pill
   const [activePill, setActivePill] = useState("Overview");
@@ -292,7 +287,14 @@ export default function LandlordDashboard() {
       setWeeklyStats(interactionTracker.getWeeklyStatsForLandlord(userId));
     };
     window.addEventListener("propertyInteractionsUpdated", handleStatsUpdate);
-    return () => window.removeEventListener("propertyInteractionsUpdated", handleStatsUpdate);
+
+    const handleStartTour = () => setShowTourAsk(true);
+    window.addEventListener("startLandlordTour", handleStartTour);
+
+    return () => {
+      window.removeEventListener("propertyInteractionsUpdated", handleStatsUpdate);
+      window.removeEventListener("startLandlordTour", handleStartTour);
+    };
   }, []);
 
   // Onboarding welcome overlay states
@@ -455,8 +457,36 @@ export default function LandlordDashboard() {
     }
   }, [showWelcomeOverlay]);
 
+  const handleTourComplete = (isSkip = false) => {
+    setRunTour(false);
+    const rawProf = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("landlordCurrentProfile");
+    let userProf = null;
+    try {
+      if (rawProf) userProf = JSON.parse(rawProf);
+    } catch (e) {}
+    
+    const completeness = profileService.checkProfileCompleteness(userProf);
+    if (!completeness.isComplete) {
+      triggerToast(
+        `Welcome! Please complete your profile (${completeness.missingFields.join(", ")}) to start managing properties.`,
+        "warning",
+        "Profile Incomplete",
+        { label: "Go to Settings", onClick: () => setActiveTab(4) }
+      );
+      sessionStorage.setItem("isNewSignUpProfileComplete", "true");
+      setActiveTab(4);
+    } else if (!isSkip) {
+      triggerToast("Guide completed! Welcome to your Lodale landlord portal.", "success", "Welcome");
+    }
+  };
+
   // Handle welcome overlay dismissal
   const handleDismissWelcome = () => {
+    const doNext = () => {
+      setShowWelcomeOverlay(false);
+      setShowTourAsk(true);
+    };
+
     if (overlayRef.current && contentRef.current) {
       gsap.to(contentRef.current, {
         scale: 0.85,
@@ -470,14 +500,10 @@ export default function LandlordDashboard() {
         duration: 0.5,
         delay: 0.05,
         ease: "power2.inOut",
-        onComplete: () => {
-          setShowWelcomeOverlay(false);
-          setShowTourAsk(true);
-        }
+        onComplete: doNext
       });
     } else {
-      setShowWelcomeOverlay(false);
-      setShowTourAsk(true);
+      doNext();
     }
   };
 
@@ -846,6 +872,22 @@ export default function LandlordDashboard() {
     }
   };
 
+  const handleAddPropertyClick = () => {
+    const rawProf = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("landlordCurrentProfile");
+    let userProf = null;
+    try {
+      if (rawProf) userProf = JSON.parse(rawProf);
+    } catch (e) {}
+
+    const completeness = profileService.checkProfileCompleteness(userProf);
+    if (!completeness.isComplete) {
+      triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) in Settings before adding a property.`, "error", "Profile Incomplete");
+      setActiveTab(4); // Navigate to Landlord Settings Tab
+      return;
+    }
+    navigate("/dashboard/landlord/add-property");
+  };
+
   // Tenant Maintenance/Upgrade Requests list
   const [showAllRequests, setShowAllRequests] = useState(false);
   const [tenantRequests, setTenantRequests] = useState([]);
@@ -973,8 +1015,8 @@ export default function LandlordDashboard() {
 
                 {/* Plus Icon Button beside Tenant Icon */}
                 <button
-                  onClick={() => navigate("/dashboard/landlord/add-property")}
-                  className="w-7 h-7 rounded-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d4b371] text-white dark:text-[#09090b] flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95 cursor-pointer shadow-xs border-none outline-none shrink-0"
+                  onClick={handleAddPropertyClick}
+                  className="tour-add-property w-7 h-7 rounded-full bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d4b371] text-white dark:text-[#09090b] flex items-center justify-center transition-all duration-150 hover:scale-110 active:scale-95 cursor-pointer shadow-xs border-none outline-none shrink-0"
                   title="Add New Property"
                 >
                   <Plus className="h-4 w-4" />
@@ -1468,7 +1510,7 @@ export default function LandlordDashboard() {
                     {/* Step Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div
-                        onClick={() => navigate("/dashboard/landlord/add-property")}
+                        onClick={handleAddPropertyClick}
                         className="p-4 sm:p-5 rounded-2xl bg-[#133A27] hover:bg-[#1B4D35] border border-[#235F42] hover:border-[#E5C583]/60 cursor-pointer transition-all duration-200 space-y-3 group shadow-md"
                       >
                         <div className="w-9 h-9 rounded-xl bg-[#E5C583] text-[#0B2519] font-black text-sm flex items-center justify-center shadow-sm">
@@ -1965,7 +2007,7 @@ export default function LandlordDashboard() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       <button
-                        onClick={() => navigate("/dashboard/landlord/add-property")}
+                        onClick={handleAddPropertyClick}
                         className="w-full flex items-center justify-between p-3 px-3.5 rounded-2xl border border-ink-100 dark:border-[#2C4633] bg-neutral-50 dark:bg-[#FFFFFF]/5 hover:bg-moss-700 hover:text-white dark:hover:bg-[#E5C583] dark:hover:text-ink-950 text-ink-900 dark:text-cream-100 font-bold text-xs transition-all duration-200 cursor-pointer shadow-2xs group"
                       >
                         <div className="flex items-center gap-2 truncate">
@@ -2421,7 +2463,10 @@ export default function LandlordDashboard() {
             <div className="tour-ask-actions">
               <button
                 className="tour-btn-no"
-                onClick={() => setShowTourAsk(false)}
+                onClick={() => {
+                  setShowTourAsk(false);
+                  handleTourComplete(true);
+                }}
               >
                 No, thanks
               </button>
@@ -2464,7 +2509,7 @@ export default function LandlordDashboard() {
             <div className="tour-tooltip-actions">
               <button
                 className="tour-btn-skip"
-                onClick={() => setRunTour(false)}
+                onClick={() => handleTourComplete(true)}
               >
                 Skip Tour
               </button>
@@ -2485,7 +2530,7 @@ export default function LandlordDashboard() {
                     if (tourStep < TOUR_STEPS.length - 1) {
                       setTourStep(prev => prev + 1);
                     } else {
-                      setRunTour(false);
+                      handleTourComplete(false);
                     }
                   }}
                 >

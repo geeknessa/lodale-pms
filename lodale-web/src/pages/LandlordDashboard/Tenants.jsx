@@ -12,6 +12,7 @@ import { apiClient } from "../../lib/apiClient";
 import Avatar from "../../components/Avatar";
 import RenewalOfferModal from "./components/RenewalOfferModal";
 import RateTenantModal from "../../components/RateTenantModal";
+import { profileService } from "../../services/profileService";
 import "./Tenants.css";
 
 const TenantsSkeleton = () => (
@@ -503,6 +504,19 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
 
   // Quick add property handler from Add Tenant modal
   const handleQuickAddProperty = () => {
+    const rawProf = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("landlordCurrentProfile");
+    let userProf = null;
+    try {
+      if (rawProf) userProf = JSON.parse(rawProf);
+    } catch (e) {}
+
+    const completeness = profileService.checkProfileCompleteness(userProf);
+    if (!completeness.isComplete) {
+      triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) in Settings before adding a property.`, "error", "Profile Incomplete");
+      if (setActiveTab) setActiveTab(4); // Navigate to Landlord Settings Tab
+      return;
+    }
+
     try {
       sessionStorage.setItem("draftTenantFormData", JSON.stringify(formData));
       sessionStorage.setItem("autoOpenAddTenantModal", "true");
@@ -764,7 +778,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
                           <Star className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" title="Perfect Payment History" />
                         )}
                       </div>
-                      <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-[#07130D]merald-950/40 dark:text-cream-100' : 'bg-amber-100 text-amber-800 dark:bg-[#07130D]mber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
+                      <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
                         {tenant.leaseStatus || (tenant.status === 'active' ? "Active Tenant" : "Pending Sign & Pay")}
                       </span>
                     </div>

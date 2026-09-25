@@ -222,7 +222,7 @@ export default function LandlordCalendar({ activeTenants = [] }) {
       if (dayEvents.length > 0) {
         const primaryColor = dayEvents[0].color;
         if (primaryColor === 'purple') eventColorClass = 'bg-purple-100 dark:bg-purple-900/40 border-purple-200 dark:border-purple-800/60 font-bold';
-        else if (primaryColor === 'emerald') eventColorClass = 'bg-emerald-100 dark:bg-[#07130D]merald-900/40 border-emerald-200 dark:border-white/10 font-bold';
+        else if (primaryColor === 'emerald') eventColorClass = 'bg-emerald-100 dark:bg-emerald-900/40 border-emerald-200 dark:border-white/10 font-bold';
         else if (primaryColor === 'blue') eventColorClass = 'bg-blue-100 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800/60 font-bold';
       }
       

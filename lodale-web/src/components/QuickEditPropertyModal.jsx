@@ -247,7 +247,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
         </div>
 
         {/* Locked Fields Notice */}
-        <div className="p-4 bg-amber-50 dark:bg-[#07130D]mber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start justify-between gap-3">
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/40 text-xs text-amber-900 dark:text-amber-200 flex items-start justify-between gap-3">
           <div className="flex items-start gap-2">
             <Lock className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div>
@@ -258,7 +258,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
           <button
             type="button"
             onClick={() => setShowAdminRequest(true)}
-            className="px-2.5 py-1.5 bg-amber-200 hover:bg-amber-300 dark:bg-[#07130D]mber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-bold text-[11px] rounded-lg transition-colors shrink-0 cursor-pointer border border-amber-300 dark:border-amber-800"
+            className="px-2.5 py-1.5 bg-amber-200 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-950 dark:text-amber-100 font-bold text-[11px] rounded-lg transition-colors shrink-0 cursor-pointer border border-amber-300 dark:border-amber-800"
           >
             Request Admin Change
           </button>
@@ -276,6 +276,10 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onInput={(e) => {
+                e.target.style.height = "auto";
+                e.target.style.height = `${Math.max(64, Math.min(e.target.scrollHeight, 200))}px`;
+              }}
               className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-white/5 p-3 text-sm text-ink-900 dark:text-white outline-none focus:border-moss-600 dark:focus:border-[#E5C583] resize-none leading-relaxed"
               placeholder="e.g. Luxury 3-Bedroom Villa in Lekki"
             />
@@ -290,6 +294,10 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
               rows={4}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              onInput={(e) => {
+                e.target.style.height = "auto";
+                e.target.style.height = `${Math.max(96, Math.min(e.target.scrollHeight, 400))}px`;
+              }}
               className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50/50 dark:bg-white/5 p-3 text-xs text-ink-900 dark:text-white outline-none focus:border-moss-600 dark:focus:border-[#E5C583] resize-none leading-relaxed break-words"
               placeholder="Describe key features, floor layout, security, and surrounding neighborhood..."
             />
@@ -584,6 +592,10 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
                 required
                 value={adminReason}
                 onChange={(e) => setAdminReason(e.target.value)}
+                onInput={(e) => {
+                  e.target.style.height = "auto";
+                  e.target.style.height = `${Math.max(96, Math.min(e.target.scrollHeight, 400))}px`;
+                }}
                 placeholder="e.g. Requesting rent adjustment from ₦2.5m to ₦3.0m due to newly added solar installation..."
                 className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-cream-50 dark:bg-white/5 p-3 text-xs text-ink-900 dark:text-white outline-none focus:border-amber-500"
               />

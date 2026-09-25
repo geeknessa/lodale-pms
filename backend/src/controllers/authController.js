@@ -19,6 +19,9 @@ export const authController = {
 
     const existingUser = await UserModel.findByEmail(email);
     if (existingUser) {
+      if (existingUser.account_status === 'invited') {
+        return res.status(400).json({ error: 'You have been invited by a landlord. Please check your email for your default login credentials and sign in instead.' });
+      }
       return res.status(400).json({ error: 'An account with this email already exists.' });
     }
 
@@ -81,7 +84,7 @@ export const authController = {
       });
     }
 
-    res.json({ user: safeUser, token });
+    res.json({ user: safeUser, token, isInvited: status === 'invited' });
   }),
 
   getMe: asyncHandler(async (req, res) => {

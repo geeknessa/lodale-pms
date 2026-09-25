@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Lock, ShieldCheck, User, Building2, Layers, SlidersHorizontal, LogOut, FileText, Image as ImageIcon } from "lucide-react";
 import usePropertyFormState from "./usePropertyFormState";
 import PropertyFormHeader from "./components/PropertyFormHeader";
@@ -11,6 +12,8 @@ import Step3AmenitiesRules from "./components/Step3AmenitiesRules";
 import Step4LegalPhotos from "./components/Step4LegalPhotos";
 import Step5OccupancySubmit from "./components/Step5OccupancySubmit";
 import SubmitConfirmModal from "./components/SubmitConfirmModal";
+import { profileService } from "../../services/profileService";
+import { triggerToast } from "../../context/ToastContext";
 import "../../pages/DashboardAddProperty.css";
 
 const STEPS = [
@@ -22,7 +25,32 @@ const STEPS = [
 ];
 
 export default function PropertyForm({ isStandalone = false, initialEditId = null }) {
+  const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
   const state = usePropertyFormState({ isStandalone, initialEditId });
+
+  useEffect(() => {
+    const rawProf = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("landlordCurrentProfile");
+    let userProf = null;
+    try {
+      if (rawProf) userProf = JSON.parse(rawProf);
+    } catch (e) {}
+
+    const completeness = profileService.checkProfileCompleteness(userProf);
+    if (!completeness.isComplete) {
+      sessionStorage.setItem("returnAfterProfileComplete", "add_property");
+      triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) before adding a property.`, "error", "Profile Incomplete", {
+        label: "Go to Settings",
+        onClick: () => {
+          if (state.navigate) {
+            state.navigate("/dashboard/landlord", { state: { activeTab: 4 } });
+          } else {
+            window.location.href = "/dashboard/landlord";
+          }
+        }
+      });
+      setIsProfileIncomplete(true);
+    }
+  }, []);
 
   const {
     currentStep = 1,
@@ -133,11 +161,34 @@ export default function PropertyForm({ isStandalone = false, initialEditId = nul
         {/* INDEPENDENTLY SCROLLABLE CENTER WORKSPACE */}
         <main className="dap-center-content">
           <div className="dap-main-card">
-            {displayError && (
-              <div className="mb-6 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-800 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
-                <span>⚠️ {displayError}</span>
+            {isProfileIncomplete ? (
+              <div className="p-8 text-center flex flex-col items-center justify-center h-full">
+                <ShieldCheck className="h-16 w-16 text-rose-500 mb-4 opacity-80" />
+                <h2 className="text-xl font-bold text-ink-900 dark:text-white mb-2">Profile Setup Required</h2>
+                <p className="text-sm text-ink-500 dark:text-cream-100/70 max-w-md mb-6">
+                  You must complete all required profile fields before you can add a property.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (state.navigate) {
+                      state.navigate("/dashboard/landlord", { state: { activeTab: 4 } });
+                    } else {
+                      window.location.href = "/dashboard/landlord";
+                    }
+                  }}
+                  className="px-6 py-2.5 bg-moss-700 hover:bg-forest-600 dark:bg-[#E5C583] dark:hover:bg-[#d4b574] text-white dark:text-[#09090b] font-bold rounded-xl transition-all shadow-md"
+                >
+                  Go to Settings
+                </button>
               </div>
-            )}
+            ) : (
+              <>
+                {displayError && (
+                  <div className="mb-6 p-4 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40 text-rose-800 dark:text-rose-300 text-xs font-bold flex items-center gap-2">
+                    <span>⚠️ {displayError}</span>
+                  </div>
+                )}
 
             <div className="dap-card-header">
               <div className="dap-card-header-left">
@@ -319,17 +370,21 @@ export default function PropertyForm({ isStandalone = false, initialEditId = nul
                 />
               )}
             </form>
+            </>
+            )}
           </div>
 
-          <PropertyFormCapsuleNav
-            currentStep={currentStep}
-            handlePrevStep={handlePrevStep}
-            handleNextStep={handleNextStep}
-            handleSubmit={handleSubmit}
-            isFormFullyValid={state.isFormFullyValid}
-            canAccessStep={state.canAccessStep}
-            isSubmitting={state.isSubmitting}
-          />
+          {!isProfileIncomplete && (
+            <PropertyFormCapsuleNav
+              currentStep={currentStep}
+              handlePrevStep={handlePrevStep}
+              handleNextStep={handleNextStep}
+              handleSubmit={handleSubmit}
+              isFormFullyValid={state.isFormFullyValid}
+              canAccessStep={state.canAccessStep}
+              isSubmitting={state.isSubmitting}
+            />
+          )}
         </main>
       </div>
 

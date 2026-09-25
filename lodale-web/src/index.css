@@ -57,100 +57,6 @@ header {
     border-color 0.25s ease;
 }
 
-body.dark header {
-  background-color: transparent !important;
-  border-color: var(--color-moss-600) !important;
-}
-
-body.dark header nav a,
-body.dark header button,
-body.dark header a,
-body.dark header span {
-  color: var(--color-white) !important;
-}
-
-body.dark header nav a:hover,
-body.dark header button:hover {
-  color: var(--color-cream-50) !important;
-}
-
-body.dark section.bg-cream-50,
-body.dark section.bg-cream-50\/50 {
-  background: #07130d !important;
-  border-color: var(--color-white) !important;
-}
-
-body.dark section {
-  background: #07130d;
-  border-color: var(--color-moss-600);
-}
-
-body.dark h1:not(.mockup-light h1),
-body.dark h2:not(.mockup-light h2),
-body.dark h3:not(.mockup-light h3),
-body.dark h4:not(.mockup-light h4),
-body.dark p:not(.mockup-light p),
-body.dark label:not(.mockup-light label),
-body.dark span:not(.mockup-light span),
-body.dark .text-ink-900:not(.mockup-light .text-ink-900) {
-  color: var(--color-white) !important;
-}
-
-body.dark .text-ink-700:not(.mockup-light .text-ink-700) {
-  color: var(--color-cream-50) !important;
-}
-
-body.dark .text-ink-400:not(.mockup-light .text-ink-400) {
-  color: var(--color-cream-100) !important;
-}
-
-body.dark .text-moss-700:not(.mockup-light .text-moss-700) {
-  color: var(--color-moss-100) !important;
-}
-
-body.dark .text-moss-600:not(.mockup-light .text-moss-600) {
-  color: var(--color-cream-50) !important;
-}
-
-body.dark .bg-moss-100:not(.mockup-light .bg-moss-100) {
-  background-color: var(--color-moss-600) !important;
-  color: var(--color-white) !important;
-}
-
-body.dark .bg-cream-50:not(.mockup-light .bg-cream-50) {
-  background-color: #07130d !important;
-}
-
-body.dark .logo-mark-svg .logo-bg {
-  fill: var(--color-white) !important;
-}
-
-body.dark .logo-mark-svg .logo-fg-stroke {
-  stroke: #E5C583 !important;
-}
-
-body.dark .logo-mark-svg .logo-fg-fill {
-  fill: #E5C583 !important;
-}
-
-body.dark .bg-white:not(.mockup-light .bg-white),
-body.dark .bg-cream-50\/30:not(.mockup-light .bg-cream-50\/30) {
-  background: #192A1F !important;
-  border-color: #2C4633 !important;
-}
-
-body.dark .border-ink-200 {
-  border-color: var(--color-moss-600) !important;
-}
-
-body.dark input,
-body.dark textarea,
-body.dark select {
-  background-color: #07130D !important;
-  color: var(--color-white) !important;
-  border-color: #2C4633 !important;
-}
-
 /* Global placeholder styling: faint by default, disappears on focus & typing */
 input::placeholder,
 textarea::placeholder,
@@ -165,33 +71,16 @@ select:focus::placeholder {
   opacity: 0 !important;
 }
 
-body.dark input::placeholder,
-body.dark textarea::placeholder,
-body.dark select::placeholder {
-  color: var(--color-cream-100) !important;
-  opacity: 0.35 !important;
+body.dark .logo-mark-svg .logo-bg {
+  fill: var(--color-white) !important;
 }
 
-body.dark input:focus::placeholder,
-body.dark textarea:focus::placeholder,
-body.dark select:focus::placeholder {
-  opacity: 0 !important;
+body.dark .logo-mark-svg .logo-fg-stroke {
+  stroke: #E5C583 !important;
 }
 
-body.dark footer {
-  background: #07130d !important;
-  border-color: var(--color-moss-600) !important;
-  color: var(--color-cream-100) !important;
-}
-
-/* Onboarding-specific themes */
-body.dark .onboarding-bg {
-  background: #07130d !important;
-}
-
-body.dark .onboarding-card {
-  background: #192A1F !important;
-  border-color: #2C4633 !important;
+body.dark .logo-mark-svg .logo-fg-fill {
+  fill: #E5C583 !important;
 }
 
 /* Custom Side Scrollbar Styling matching Lodale Theme */
