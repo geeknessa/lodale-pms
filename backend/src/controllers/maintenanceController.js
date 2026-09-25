@@ -19,7 +19,7 @@ export const createRequest = async (req, res) => {
     if (leaseCheck.rowCount === 0) {
       // Also allow if tenant has an approved application
       const appCheck = await pool.query(
-        "SELECT id FROM property_applications WHERE property_id = $1 AND tenant_id = $2 AND status::text IN ('approved', 'leased')",
+        "SELECT id FROM property_applications WHERE property_id = $1 AND tenant_id = $2 AND status::text IN ('approved', 'invoice_sent', 'payment_submitted', 'rent_paid', 'leased')",
         [propertyId, tenantId]
       );
       if (appCheck.rowCount === 0) {
