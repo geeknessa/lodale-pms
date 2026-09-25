@@ -45,15 +45,20 @@ export default function InspectionCalendarModal({ isOpen, onClose, userRole = "l
   };
 
   const handleMessagePartner = async (inspection) => {
-    const recipientId = userRole === "landlord" ? inspection.tenantId : inspection.landlordId;
-    const partnerName = userRole === "landlord" ? inspection.tenantName : inspection.landlordName;
+    const recipientId = userRole === "landlord" 
+      ? (inspection.tenantId || inspection.tenant_id) 
+      : (inspection.landlordId || inspection.landlord_id);
+    const partnerName = userRole === "landlord" 
+      ? (inspection.tenantName || inspection.tenant_name || "Applicant") 
+      : (inspection.landlordName || inspection.landlord_name || "Landlord");
+    const propertyTitle = inspection.propertyTitle || inspection.property_title || "Property";
     if (!recipientId) {
       triggerToast("Partner details unavailable.", "error");
       return;
     }
     try {
-      const msg = `Hello ${partnerName}, regarding our inspection scheduled for ${inspection.date} at ${inspection.time} for ${inspection.propertyTitle}...`;
-      await chatService.sendMessage(recipientId, msg, inspection.propertyId);
+      const msg = `Hello ${partnerName}, regarding our inspection scheduled for ${inspection.date} at ${inspection.time || '10:00 AM'} for ${propertyTitle}...`;
+      await chatService.sendMessage(recipientId, msg, inspection.propertyId || inspection.property_id);
       sessionStorage.setItem("activeChatPartnerId", recipientId);
       localStorage.setItem("activeChatPartnerId", recipientId);
       triggerToast("Chat opened with " + partnerName, "success");
@@ -234,11 +239,13 @@ export default function InspectionCalendarModal({ isOpen, onClose, userRole = "l
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <h4 className="font-extrabold text-xs sm:text-sm text-ink-900 dark:text-white">
-                            {item.propertyTitle}
+                            {item.propertyTitle || item.property_title || "Property"}
                           </h4>
                           <p className="text-[11.5px] font-semibold text-moss-700 dark:text-[#E5C583] flex items-center gap-1 mt-0.5">
                             <User className="h-3.5 w-3.5" />
-                            {userRole === "landlord" ? `Applicant: ${item.tenantName}` : `Landlord: ${item.landlordName}`}
+                            {userRole === "landlord" 
+                              ? `Applicant: ${item.tenantName || item.tenant_name || "Applicant"}` 
+                              : `Landlord: ${item.landlordName || item.landlord_name || "Landlord"}`}
                           </p>
                         </div>
                         <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-extrabold uppercase tracking-wider ${

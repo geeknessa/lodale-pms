@@ -8,14 +8,23 @@ export const getMyInspections = async (req, res) => {
   const role = req.user.role || req.user.primary_role;
 
   try {
-    const isLandlord = role === 'landlord' || role === 'admin';
     const query = `
-      SELECT i.*, p.title as property_title, 
-             u.first_name || ' ' || u.last_name as ${isLandlord ? 'tenant_name' : 'landlord_name'}
+      SELECT i.*, 
+             i.property_id as "propertyId",
+             i.tenant_id as "tenantId",
+             i.landlord_id as "landlordId",
+             i.application_id as "applicationId",
+             p.title as property_title, 
+             p.title as "propertyTitle",
+             tu.first_name || ' ' || tu.last_name as tenant_name,
+             tu.first_name || ' ' || tu.last_name as "tenantName",
+             lu.first_name || ' ' || lu.last_name as landlord_name,
+             lu.first_name || ' ' || lu.last_name as "landlordName"
       FROM property_inspections i
       JOIN properties p ON i.property_id = p.id
-      JOIN users u ON ${isLandlord ? 'i.tenant_id' : 'i.landlord_id'} = u.id
-      WHERE ${isLandlord ? 'i.landlord_id' : 'i.tenant_id'} = $1
+      JOIN users tu ON i.tenant_id = tu.id
+      JOIN users lu ON i.landlord_id = lu.id
+      WHERE (i.landlord_id = $1 OR i.tenant_id = $1)
       ORDER BY i.date DESC
     `;
 
@@ -36,7 +45,7 @@ export const createInspection = async (req, res) => {
 
   try {
     let tenantId, landlordId;
-    const { rows: propRows } = await pool.query('SELECT landlord_id FROM properties WHERE id = $1', [propertyId]);
+    const { rows: propRows } = await pool.query('SELECT id, title, landlord_id FROM properties WHERE id = $1', [propertyId]);
     if (propRows.length === 0) return res.status(404).json({ error: 'Property not found' });
     
     if (role === 'tenant') {
@@ -70,7 +79,45 @@ export const createInspection = async (req, res) => {
       ]
     );
 
-    res.status(201).json({ success: true, inspection: rows[0] });
+    const createdInspection = rows[0];
+
+    // Send notification to the other party
+    try {
+      const propTitle = propRows[0]?.title || 'Property';
+      if (role === 'tenant') {
+        // Notify landlord
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            landlordId,
+            'Property Inspection Request',
+            `A tenant requested a viewing/inspection for "${propTitle}" on ${date} at ${time || '10:00 AM'}.`,
+            'inspection',
+            'inspection',
+            createdInspection.id
+          ]
+        );
+      } else {
+        // Notify tenant
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            tenantId,
+            'Inspection Scheduled',
+            `An on-site inspection for "${propTitle}" has been scheduled for ${date} at ${time || '10:00 AM'}.`,
+            'inspection',
+            'inspection',
+            createdInspection.id
+          ]
+        );
+      }
+    } catch (notifErr) {
+      console.warn('Failed to dispatch inspection notification:', notifErr.message);
+    }
+
+    res.status(201).json({ success: true, inspection: createdInspection });
   } catch (error) {
     console.error('Create inspection error:', error);
     res.status(500).json({ error: 'Server error creating inspection' });
@@ -94,6 +141,7 @@ export const updateInspection = async (req, res) => {
     if (date) { updates.push(`date = $${counter++}`); values.push(date); }
     if (time) { updates.push(`time = $${counter++}`); values.push(time); }
     if (notes) { updates.push(`notes = $${counter++}`); values.push(notes); }
+    if (req.body.location) { updates.push(`location = $${counter++}`); values.push(req.body.location); }
 
     if (updates.length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
@@ -113,7 +161,31 @@ export const updateInspection = async (req, res) => {
       return res.status(404).json({ error: 'Inspection not found or you do not have permission' });
     }
 
-    res.json({ success: true, inspection: rows[0] });
+    const updatedInspection = rows[0];
+
+    // Notify the other party about the update
+    try {
+      const otherUserId = updatedInspection.tenant_id === userId ? updatedInspection.landlord_id : updatedInspection.tenant_id;
+      const propRes = await pool.query('SELECT title FROM properties WHERE id = $1', [updatedInspection.property_id]);
+      const propTitle = propRes.rows[0]?.title || 'Property';
+
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          otherUserId,
+          'Inspection Update',
+          `Inspection details for "${propTitle}" have been updated (Status: ${updatedInspection.status || 'Updated'}).`,
+          'inspection',
+          'inspection',
+          updatedInspection.id
+        ]
+      );
+    } catch (notifErr) {
+      console.warn('Failed to notify inspection update:', notifErr.message);
+    }
+
+    res.json({ success: true, inspection: updatedInspection });
   } catch (error) {
     console.error('Update inspection error:', error);
     res.status(500).json({ error: 'Server error updating inspection' });

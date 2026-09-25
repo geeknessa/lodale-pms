@@ -248,25 +248,69 @@ function TenantProtectedRoute({ children }) {
 
 export default function App() {
   useEffect(() => {
-    // Cleanly purge cached property data from localStorage so the user starts fresh with DB
-    if (!localStorage.getItem("lodale_props_purged_v1")) {
-      const propertyKeys = [
-        "properties",
-        "landlordProperties",
-        "propertyTenants",
-        "savedProperties",
-        "lastVisitedListings",
-        "pendingQuickApplyPropertyId",
-        "propertyApplications",
-        "tenantRequests"
-      ];
-      propertyKeys.forEach((key) => {
-        try {
-          localStorage.removeItem(key);
-        } catch (_err) {}
-      });
-      localStorage.setItem("lodale_props_purged_v1", "true");
-    }
+    // Thoroughly purge unauthorized mock, demo, and test data keys from browser storage
+    const unauthorizedStorageKeys = [
+      "properties",
+      "landlordProperties",
+      "propertyTenants",
+      "lodale_invited_tenants",
+      "savedProperties",
+      "lastVisitedListings",
+      "pendingQuickApplyPropertyId",
+      "propertyApplications",
+      "tenantRequests",
+      "sentInvoiceAppIds",
+      "paidProofAppIds",
+      "verifiedPaidAppIds",
+      "sentLeaseAppIds",
+      "signedLeaseAppIds",
+      "leasedAppIds",
+      "withdrawnTenantAppIds",
+      "landlordNotifications",
+      "all_tenant_reviews",
+      "all_landlord_reviews",
+      "dismissedLandlordMessages",
+      "lodale_props_purged_v1"
+    ];
+
+    unauthorizedStorageKeys.forEach((key) => {
+      try {
+        localStorage.removeItem(key);
+      } catch (_err) {}
+    });
+
+    // Remove legacy review caches and test user artifacts from localStorage
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (
+          k &&
+          (k.startsWith("tenant_reviews_") ||
+            k.startsWith("landlord_reviews_") ||
+            k.startsWith("moveInRules_") ||
+            k.toLowerCase().includes("audit") ||
+            k.toLowerCase().includes("testtenant"))
+        ) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (_err) {}
+
+    // Clean sessionStorage mock caches while preserving auth credentials
+    try {
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const k = sessionStorage.key(i);
+        if (
+          k &&
+          (k.startsWith("landlord_properties_") ||
+            k === "properties" ||
+            k === "landlordProperties" ||
+            k === "all_properties")
+        ) {
+          sessionStorage.removeItem(k);
+        }
+      }
+    } catch (_err) {}
   }, []);
 
   return (

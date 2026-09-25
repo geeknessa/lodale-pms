@@ -26,7 +26,7 @@ const getPropertiesQuerySchema = z.object({
 }).catchall(z.string().optional()); // catchall allows other query params to pass through for now
 
 router.get('/', validate({ query: getPropertiesQuerySchema }), propertyController.getProperties);
-router.get('/landlord/:landlordId', requireAuth, requireRole('landlord'), validate({ params: landlordIdParamSchema }), propertyController.getPropertiesByLandlord);
+router.get('/landlord/:landlordId', requireAuth, validate({ params: landlordIdParamSchema }), propertyController.getPropertiesByLandlord);
 router.get('/saved', requireAuth, propertyController.getSavedProperties);
 router.get('/:id', validate({ params: idParamSchema }), propertyController.getPropertyById);
 router.post('/', requireAuth, requireRole('landlord'), validate({ body: createPropertySchema }), propertyController.createProperty);

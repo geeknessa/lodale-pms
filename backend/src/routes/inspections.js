@@ -9,7 +9,7 @@ const router = express.Router();
 
 const createInspectionSchema = z.object({
   propertyId: z.string().min(1, "Property ID is required"),
-  tenantId: z.string().min(1, "Tenant ID is required"),
+  tenantId: z.string().optional().nullable(),
   applicationId: z.string().optional().nullable(),
   date: z.string().min(1, "Date is required"),
   time: z.string().optional(),
@@ -22,8 +22,9 @@ const updateInspectionSchema = z.object({
   status: z.string().optional(),
   date: z.string().optional(),
   time: z.string().optional(),
+  location: z.string().optional(),
   notes: z.string().optional()
-});
+}).passthrough();
 
 router.use(requireAuth);
 

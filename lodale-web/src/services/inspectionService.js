@@ -87,7 +87,7 @@ export const inspectionService = {
   async getAllInspections() {
     try {
       const data = await apiClient('/inspections');
-      return data || [];
+      return Array.isArray(data) ? data : (data?.inspections || []);
     } catch (e) {
       console.error("Error fetching all inspections:", e);
       return [];

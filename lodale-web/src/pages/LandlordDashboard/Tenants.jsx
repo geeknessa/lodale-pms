@@ -417,13 +417,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
         }
       });
 
-      // Merge local storage invited tenants
-      try {
-        const storedInvites = JSON.parse(localStorage.getItem("lodale_invited_tenants") || "[]");
-        if (Array.isArray(storedInvites)) {
-          storedInvites.forEach((inv) => allTenants.unshift(inv));
-        }
-      } catch (err) {}
+
 
       // Final Deduplication by Email+Property to prevent duplicates
       const uniqueTenantsMap = new Map();
@@ -560,11 +554,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
     // Prepend to active directory state
     setTenantsList((prev) => [newTenant, ...prev]);
 
-    // Persist to local storage cache so it remains present
-    try {
-      const storedInvites = JSON.parse(localStorage.getItem("lodale_invited_tenants") || "[]");
-      localStorage.setItem("lodale_invited_tenants", JSON.stringify([newTenant, ...storedInvites]));
-    } catch (err) {}
+
 
     triggerToast(`Onboarding invitation sent to ${formData.email}! Direct onboarding link ready.`, "success", "Invitation Dispatched");
 

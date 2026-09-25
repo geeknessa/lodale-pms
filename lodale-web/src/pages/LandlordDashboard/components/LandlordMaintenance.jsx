@@ -25,12 +25,6 @@ export default function LandlordMaintenance() {
       if (typeof maintenanceService.getMyRequests === "function") {
         list = await maintenanceService.getMyRequests();
       }
-      if (!Array.isArray(list) || list.length === 0) {
-        try {
-          const cached = localStorage.getItem("landlordMaintenanceRequests");
-          if (cached) list = JSON.parse(cached);
-        } catch (e) {}
-      }
 
       const formatted = (Array.isArray(list) ? list : []).map((r) => ({
         id: r.id,
@@ -62,8 +56,8 @@ export default function LandlordMaintenance() {
       setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r)));
       triggerToast(`Request status updated to "${newStatus}"`, "success");
     } catch (e) {
-      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r)));
-      triggerToast(`Request status set to "${newStatus}"`, "info");
+      console.error("Failed to update status:", e);
+      triggerToast(e?.message || "Failed to update maintenance request status", "error");
     }
   };
 

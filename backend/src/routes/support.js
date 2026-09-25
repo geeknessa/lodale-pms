@@ -54,7 +54,29 @@ router.post('/', requireAuth, validate({ body: supportMessageSchema }), async (r
       RETURNING *;
     `;
     const { rows } = await pool.query(query, [userId, role, message]);
-    res.status(201).json(rows[0]);
+    const createdMsg = rows[0];
+
+    // Notify System Admin of new incoming support inquiry
+    try {
+      const adminUsers = await pool.query("SELECT id FROM users WHERE primary_role = 'admin' OR LOWER(email) = 'admin' LIMIT 1");
+      if (adminUsers.rows.length > 0) {
+        const adminId = adminUsers.rows[0].id;
+        const sender = await pool.query("SELECT first_name, last_name, email FROM users WHERE id = $1", [userId]);
+        const s = sender.rows[0];
+        const sName = s ? `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email : 'User';
+        const snippet = message.length > 60 ? message.slice(0, 57) + '...' : message;
+
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [adminId, `Support Inquiry from ${sName}`, snippet, 'support']
+        );
+      }
+    } catch (notifErr) {
+      console.warn('Failed to notify admin of support message:', notifErr.message);
+    }
+
+    res.status(201).json(createdMsg);
   } catch (error) {
     console.error('[Support API Error]:', error);
     res.status(500).json({ error: 'Server error sending message' });
@@ -114,7 +136,21 @@ router.post('/admin/reply', requireAuth, requireRole('admin'), validate({ body: 
       RETURNING *;
     `;
     const { rows } = await pool.query(query, [userId, message]);
-    res.status(201).json(rows[0]);
+    const replyMsg = rows[0];
+
+    // Notify the user of Admin's support reply
+    try {
+      const snippet = message.length > 70 ? message.slice(0, 67) + '...' : message;
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type)
+         VALUES ($1, $2, $3, $4)`,
+        [userId, 'Support Reply from Admin', snippet, 'support']
+      );
+    } catch (notifErr) {
+      console.warn('Failed to notify user of support reply:', notifErr.message);
+    }
+
+    res.status(201).json(replyMsg);
   } catch (error) {
     console.error('[Support Admin API Error]:', error);
     res.status(500).json({ error: 'Server error sending admin reply' });

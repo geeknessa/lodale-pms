@@ -169,12 +169,17 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
 
     setSubmitting(true);
     try {
-      await invoiceService.createInvoice({
+      const targetAppId = application?.id;
+      const targetPropertyId = property?.id || application?.property_id || application?.propertyId;
+      const targetTenantId = application?.tenant_id || application?.tenantId || tenant?.id;
+      const targetLandlordId = application?.landlord_id || application?.landlordId;
+
+      const result = await invoiceService.createInvoice({
         invoiceNumber: invoiceNum,
-        applicationId: application.id,
-        propertyId: property?.id || application.property_id,
-        tenantId: application.tenant_id,
-        landlordId: application.landlord_id,
+        applicationId: targetAppId,
+        propertyId: targetPropertyId,
+        tenantId: targetTenantId,
+        landlordId: targetLandlordId,
         issueDate,
         dueDate,
         
@@ -193,11 +198,15 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
         lodaleFee,
         grandTotal,
         
-        bankName,
-        bankAccountNumber,
-        bankAccountName,
+        bankName: bankName.trim(),
+        bankAccountNumber: bankAccountNumber.trim(),
+        bankAccountName: bankAccountName.trim(),
         note: 'Payment is due by the due date specified above. Direct Online Bank Transfer to Landlord account details. 1% Lodale Fee is included for platform processing.'
       });
+
+      if (!result || (!result.id && !result.invoiceNumber)) {
+        throw new Error('Server did not return a valid saved invoice.');
+      }
 
       triggerToast('Digital Rent Invoice generated & sent to tenant for payment!', 'success', 'Invoice Sent');
       if (onSuccess) onSuccess();

@@ -723,7 +723,7 @@ export default function LandlordApplications({ setActiveTab }) {
             Application Onboarding Progress Tracker
           </h3>
           <span className="text-xs font-extrabold text-moss-700 dark:text-[#E5C583]">
-            {isMoveInSet ? "Completed ✓" : isLeaseSigned ? "Step 4 of 4: Move-in Rules" : isInvoicePaid ? "Step 3 of 4: Lease Agreement" : activeInvoice ? "Step 2 of 4: Invoice Payment" : "Step 1 of 4: Initial Review"}
+            {isMoveInSet ? "Completed" : isLeaseSigned ? "Step 4 of 4: Move-in Rules" : isInvoicePaid ? "Step 3 of 4: Lease Agreement" : activeInvoice ? "Step 2 of 4: Invoice Payment" : "Step 1 of 4: Initial Review"}
           </span>
         </div>
 
@@ -733,7 +733,7 @@ export default function LandlordApplications({ setActiveTab }) {
             activeInvoice ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : "bg-moss-50 dark:bg-white/5 border-moss-300 dark:border-white/10 text-moss-800 font-bold"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">1. Invoice</span>
-            <span className="truncate block mt-0.5">{activeInvoice ? (isInvoicePaid ? "Paid ✓" : "Issued ⏳") : "Review"}</span>
+            <span className="truncate block mt-0.5">{activeInvoice ? (isInvoicePaid ? "Paid" : "Issued") : "Review"}</span>
           </div>
 
           {/* Step 2 */}
@@ -741,7 +741,7 @@ export default function LandlordApplications({ setActiveTab }) {
             isInvoicePaid ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : isPaymentProofUploaded ? "bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-amber-900 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">2. Payment</span>
-            <span className="truncate block mt-0.5">{isInvoicePaid ? "Verified ✓" : isPaymentProofUploaded ? "Receipt Uploaded!" : "Pending"}</span>
+            <span className="truncate block mt-0.5">{isInvoicePaid ? "Verified" : isPaymentProofUploaded ? "Receipt Uploaded" : "Pending"}</span>
           </div>
 
           {/* Step 3 */}
@@ -749,7 +749,7 @@ export default function LandlordApplications({ setActiveTab }) {
             isLeaseSigned ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : activeLease ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 text-indigo-900 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">3. Lease</span>
-            <span className="truncate block mt-0.5">{isLeaseSigned ? "Signed ✓" : activeLease ? "Awaiting Signature" : "Pending"}</span>
+            <span className="truncate block mt-0.5">{isLeaseSigned ? "Signed" : activeLease ? "Awaiting Signature" : "Pending"}</span>
           </div>
 
           {/* Step 4 */}
@@ -757,7 +757,7 @@ export default function LandlordApplications({ setActiveTab }) {
             isMoveInSet ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 font-bold" : "bg-neutral-50 dark:bg-white/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
           }`}>
             <span className="text-[10px] block uppercase font-extrabold opacity-70">4. Move-in</span>
-            <span className="truncate block mt-0.5">{isMoveInSet ? "Rules Issued ✓" : "Pending"}</span>
+            <span className="truncate block mt-0.5">{isMoveInSet ? "Rules Issued" : "Pending"}</span>
           </div>
         </div>
       </div>

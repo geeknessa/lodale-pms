@@ -5,6 +5,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { adminService } from "../../services/adminService";
 import { propertyService } from "../../services/propertyService";
 import { authService } from "../../services/authService";
+import { notificationService } from "../../services/notificationService";
 import AdminSupportChat from "./AdminSupportChat";
 import { formatCurrency, formatDate } from "../../utils/formatters";
 import {
@@ -113,6 +114,8 @@ export default function AdminDashboard() {
   const [reviews, setReviews] = useState(INITIAL_REVIEWS);
   const [selectedDocViewer, setSelectedDocViewer] = useState(null);
   const [propertyRequests, setPropertyRequests] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const unreadNotifCount = notifications.filter(n => !n.read && !n.is_read).length;
 
   // Recycle Bin & Restoration Fee State
   const [deletedUsers, setDeletedUsers] = useState([]);
@@ -192,6 +195,13 @@ export default function AdminDashboard() {
         } catch (err) {
           console.warn("Backend API loading error:", err);
         }
+
+        try {
+          const apiNotifs = await notificationService.getMyNotifications();
+          if (Array.isArray(apiNotifs)) {
+            setNotifications(apiNotifs);
+          }
+        } catch (_e) {}
 
         const combinedApiProperties = [...(Array.isArray(apiPending) ? apiPending : []), ...(Array.isArray(apiAll) ? apiAll : [])];
 
@@ -715,6 +725,18 @@ export default function AdminDashboard() {
           <Logo className="scale-90 origin-left" />
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab("notifications")}
+            className="relative p-1.5 rounded-lg text-[#3A5A40] dark:text-[#E5C583] hover:bg-[#DAD7CD]/50 dark:hover:bg-[#1E3029] transition-colors"
+            title="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadNotifCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {unreadNotifCount}
+              </span>
+            )}
+          </button>
           <span className="text-[11px] font-medium uppercase px-2 py-0.5 rounded bg-[#3A5A40] dark:bg-[#1C3028] text-white dark:text-[#E5C583]">
             Admin
           </span>
@@ -898,6 +920,28 @@ export default function AdminDashboard() {
                   <MessageSquare className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
                   <span className="truncate">Support Messages</span>
                 </div>
+              </button>
+
+              {/* Notifications */}
+              <button
+                onClick={() => {
+                  setActiveTab("notifications");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "notifications"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Bell className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">Notifications</span>
+                </div>
+                {unreadNotifCount > 0 && (
+                  <span className="text-[11px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
+                    {unreadNotifCount}
+                  </span>
+                )}
               </button>
 
               {/* My Profile */}
@@ -1912,10 +1956,106 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* --- TAB 4: MY PROFILE --- */}
+          {/* --- TAB: SUPPORT MESSAGES --- */}
           {activeTab === "support" && (
             <div className="h-full">
               <AdminSupportChat />
+            </div>
+          )}
+
+          {/* --- TAB: NOTIFICATIONS --- */}
+          {activeTab === "notifications" && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#DAD7CD] uppercase tracking-wider mb-1">
+                    <Bell className="h-4 w-4" /> System Alerts
+                  </div>
+                  <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#DAD7CD]">
+                    Notifications
+                  </h1>
+                  <p className="text-sm text-[#262626]/70 dark:text-[#DAD7CD]/75 mt-1">
+                    Real-time administrative alerts, review queues, and system events.
+                  </p>
+                </div>
+                {notifications.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await notificationService.markAsRead('all');
+                        setNotifications(prev => prev.map(n => ({ ...n, read: true, is_read: true })));
+                      } catch (err) {
+                        console.warn("Failed to mark all as read:", err);
+                      }
+                    }}
+                    className="self-start sm:self-auto px-4 py-2 bg-[#3A5A40] hover:bg-[#344E41] text-white text-xs font-medium rounded-lg shadow-sm transition-colors flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Mark All as Read
+                  </button>
+                )}
+              </div>
+
+              {notifications.length === 0 ? (
+                <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-12 text-center">
+                  <div className="w-12 h-12 rounded-full bg-[#3A5A40]/10 dark:bg-[#263D33] flex items-center justify-center mx-auto mb-3 text-[#3A5A40] dark:text-[#E5C583]">
+                    <Bell className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD]">
+                    No Notifications
+                  </h3>
+                  <p className="text-xs text-[#262626]/60 dark:text-[#DAD7CD]/60 mt-1 max-w-sm mx-auto">
+                    You're all caught up. New administrative activities and requests will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {notifications.map((notif) => {
+                    const isUnread = !notif.read && !notif.is_read;
+                    return (
+                      <div
+                        key={notif.id || Math.random()}
+                        className={`p-4 rounded-xl border transition-all ${
+                          isUnread
+                            ? "bg-white dark:bg-[#0F1E17] border-[#3A5A40]/40 dark:border-[#3A5A40] shadow-sm"
+                            : "bg-white/60 dark:bg-[#07130D]/60 border-[#3A5A40]/15 dark:border-[#263D33]/60 opacity-80"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${isUnread ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-transparent"}`} />
+                            <div>
+                              <h4 className="text-sm font-semibold text-[#262626] dark:text-[#DAD7CD]">
+                                {notif.title}
+                              </h4>
+                              <p className="text-xs text-[#262626]/75 dark:text-[#DAD7CD]/75 mt-0.5 leading-relaxed">
+                                {notif.message}
+                              </p>
+                              <span className="text-[11px] text-[#262626]/50 dark:text-[#DAD7CD]/50 mt-2 block">
+                                {notif.created_at ? formatDate(notif.created_at) : 'Just now'}
+                              </span>
+                            </div>
+                          </div>
+                          {isUnread && (
+                            <button
+                              onClick={async () => {
+                                if (notif.id) {
+                                  try {
+                                    await notificationService.markAsRead(notif.id);
+                                    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true, is_read: true } : n));
+                                  } catch (_e) {}
+                                }
+                              }}
+                              className="text-xs text-[#3A5A40] dark:text-[#E5C583] hover:underline shrink-0"
+                            >
+                              Mark Read
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

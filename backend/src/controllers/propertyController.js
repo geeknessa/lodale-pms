@@ -1,5 +1,6 @@
 import { PropertyModel } from '../models/propertyModel.js';
 import { UserModel } from '../models/userModel.js';
+import { pool } from '../db/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { PropertyVerificationService } from '../services/propertyVerificationService.js';
 import { autoApprovalService } from '../services/autoApprovalService.js';
@@ -43,6 +44,9 @@ export const propertyController = {
 
   getPropertiesByLandlord: asyncHandler(async (req, res) => {
     const { landlordId } = req.params;
+    if (req.user && req.user.role !== 'admin' && req.user.id !== landlordId) {
+      return res.status(403).json({ error: 'Forbidden: You can only access your own properties' });
+    }
     const properties = await PropertyModel.getPropertiesByLandlord(landlordId);
 
     const formatted = properties.map(p => {
@@ -164,6 +168,23 @@ export const propertyController = {
     const responseMessage = qualifiesForAutoApproval
       ? 'Property passed automated verification! It is scheduled for automatic approval in 1 minute following safety verification.'
       : 'Property submitted successfully! It is now pending admin review before going live.';
+
+    // Send notifications to landlord and system admins
+    try {
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type)
+         VALUES ($1, $2, $3, $4)`,
+        [effectiveLandlordId, 'Property Submitted', `"${title || 'New property'}" has been submitted and is queued for verification.`, 'info']
+      );
+      const admins = await pool.query("SELECT id FROM users WHERE primary_role = 'admin' OR LOWER(email) = 'admin'");
+      for (const admin of admins.rows) {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [admin.id, 'New Property Submitted', `A new property "${title || 'Untitled'}" was submitted for review.`, 'info']
+        );
+      }
+    } catch (_e) {}
 
     res.status(201).json({
       ...property,
@@ -288,6 +309,17 @@ export const propertyController = {
       return res.status(400).json({ error: 'Property not found or is currently occupied.' });
     }
     
+    try {
+      const admins = await pool.query("SELECT id FROM users WHERE primary_role = 'admin' OR LOWER(email) = 'admin'");
+      for (const admin of admins.rows) {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [admin.id, 'Property Deletion Requested', `Landlord requested deletion for "${existingProperty.title || 'property'}". Reason: ${reason}`, 'warning']
+        );
+      }
+    } catch (_e) {}
+
     res.json({ message: 'Property deletion requested. Pending admin approval.', property: updated });
   }),
 
@@ -312,30 +344,78 @@ export const propertyController = {
       return res.status(400).json({ error: 'Property not found or is currently occupied.' });
     }
 
+    try {
+      const admins = await pool.query("SELECT id FROM users WHERE primary_role = 'admin' OR LOWER(email) = 'admin'");
+      for (const admin of admins.rows) {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [admin.id, 'Property Suspension Requested', `Landlord requested suspension for "${existingProperty.title || 'property'}". Reason: ${reason}`, 'warning']
+        );
+      }
+    } catch (_e) {}
+
     res.json({ message: 'Property suspension requested. Pending admin approval.', property: updated });
   }),
 
   approvePropertyDeletion: asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const existing = await PropertyModel.findByIdOrSlug(id);
     const result = await PropertyModel.approveDeletion(id);
+    if (existing?.landlord_id) {
+      try {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [existing.landlord_id, 'Property Deletion Approved', `Your request to delete "${existing.title || 'listing'}" has been approved.`, 'info']
+        );
+      } catch (_e) {}
+    }
     res.json({ message: 'Property deletion approved and removed successfully.', result });
   }),
 
   rejectPropertyDeletion: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const updated = await PropertyModel.rejectDeletion(id);
+    if (updated?.landlord_id) {
+      try {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [updated.landlord_id, 'Property Deletion Request Rejected', `Your request to delete "${updated.title || 'listing'}" was rejected by admin.`, 'warning']
+        );
+      } catch (_e) {}
+    }
     res.json({ message: 'Property deletion request rejected.', property: updated });
   }),
 
   approvePropertySuspension: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const updated = await PropertyModel.approveSuspension(id);
+    if (updated?.landlord_id) {
+      try {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [updated.landlord_id, 'Property Suspension Approved', `Your request to suspend "${updated.title || 'listing'}" has been approved.`, 'info']
+        );
+      } catch (_e) {}
+    }
     res.json({ message: 'Property suspension approved.', property: updated });
   }),
 
   rejectPropertySuspension: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const updated = await PropertyModel.rejectSuspension(id);
+    if (updated?.landlord_id) {
+      try {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [updated.landlord_id, 'Property Suspension Request Rejected', `Your request to suspend "${updated.title || 'listing'}" was rejected by admin.`, 'warning']
+        );
+      } catch (_e) {}
+    }
     res.json({ message: 'Property suspension request rejected.', property: updated });
   }),
 

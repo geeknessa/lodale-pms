@@ -265,12 +265,12 @@ export default function TenantApplications({ setActiveTab }) {
         msgHeader = "[TENANT REQUESTED INSPECTION RESCHEDULE]";
       }
 
-      inspectionService.saveInspection(selectedAppForInspection.id, {
+      await inspectionService.saveInspection(selectedAppForInspection.id, {
         propertyId: selectedAppForInspection.propertyId,
         propertyTitle: selectedAppForInspection.propertyTitle,
         landlordId: landlordId,
         landlordName: selectedAppForInspection.landlordFirstName ? `${selectedAppForInspection.landlordFirstName} ${selectedAppForInspection.landlordLastName || ''}` : "Landlord",
-        tenantId: selectedAppForInspection.tenantId || "tenant",
+        tenantId: selectedAppForInspection.tenantId || undefined,
         tenantName: tenantName,
         date: inspectionForm.date || existing.date || new Date().toISOString().split("T")[0],
         time: inspectionForm.time || existing.time || "10:00 AM",
@@ -360,29 +360,41 @@ export default function TenantApplications({ setActiveTab }) {
             {filteredApps.map(app => {
               const currentInspection = inspections.find(i => String(i.applicationId || i.application_id) === String(app.id));
 
-              // Check lifecycle stages stored in local storage
-              const sentInvoiceIds = JSON.parse(localStorage.getItem("sentInvoiceAppIds") || "[]");
-              const paidProofIds = JSON.parse(localStorage.getItem("paidProofAppIds") || "[]");
-              const verifiedPaidIds = JSON.parse(localStorage.getItem("verifiedPaidAppIds") || "[]");
-              const sentLeaseIds = JSON.parse(localStorage.getItem("sentLeaseAppIds") || "[]");
-              const signedLeaseIds = JSON.parse(localStorage.getItem("signedLeaseAppIds") || "[]");
-              const leasedIds = JSON.parse(localStorage.getItem("leasedAppIds") || "[]");
+              // Application lifecycle status directly from backend database
+              const s = (app.status || "pending").toLowerCase();
+              const hasLease = Boolean(app.leaseId);
+              const isLeaseSignedByTenant = Boolean(app.leaseTenantSignedAt || app.leaseStatus === "signed" || app.leaseStatus === "active");
 
-              let effectiveStatus = app.status || "pending";
-              if (leasedIds.includes(String(app.id))) effectiveStatus = "move_in_ready";
-              else if (signedLeaseIds.includes(String(app.id))) effectiveStatus = "lease_signed";
-              else if (sentLeaseIds.includes(String(app.id))) effectiveStatus = "lease_sent";
-              else if (verifiedPaidIds.includes(String(app.id))) effectiveStatus = "rent_paid";
-              else if (paidProofIds.includes(String(app.id))) effectiveStatus = "payment_submitted";
-              else if (sentInvoiceIds.includes(String(app.id))) effectiveStatus = "invoice_sent";
+              let effectiveStatus = s;
+              if (s === "invoice_sent") {
+                effectiveStatus = "invoice_sent";
+              } else if (s === "payment_submitted") {
+                effectiveStatus = "payment_submitted";
+              } else if (s === "rent_paid") {
+                effectiveStatus = "rent_paid";
+              } else if (s === "leased" || s === "move_in_ready") {
+                effectiveStatus = "move_in_ready";
+              } else if (s === "rejected" || s === "declined") {
+                effectiveStatus = "rejected";
+              } else if (s === "lease_sent" || s === "pending_tenant") {
+                effectiveStatus = "lease_sent";
+              } else if (s === "lease_signed") {
+                effectiveStatus = "lease_signed";
+              } else if (s === "under_review" || s === "reviewing") {
+                effectiveStatus = "under_review";
+              } else if (s === "approved") {
+                effectiveStatus = hasLease ? (isLeaseSignedByTenant ? "lease_signed" : "lease_sent") : "approved";
+              } else {
+                effectiveStatus = "pending";
+              }
 
-              const isLeased = effectiveStatus === "move_in_ready" || effectiveStatus === "leased" || effectiveStatus === "Leased" || app.status?.toLowerCase() === "leased";
-              const isLockedFromWithdrawal = effectiveStatus !== "pending" && effectiveStatus !== "Pending";
+              const isLeased = effectiveStatus === "move_in_ready" || effectiveStatus === "leased" || s === "leased";
+              const isLockedFromWithdrawal = effectiveStatus !== "pending";
 
-              // Timeline Stage Index: 1 = Submitted, 2 = Under Review / Invoiced, 3 = Lease Signed / Leased
+              // Timeline Stage Index: 1 = Submitted, 2 = Under Review / Invoiced / Approved, 3 = Lease Signed / Leased
               let stageStep = 1;
               if (isLeased || effectiveStatus === "lease_signed" || effectiveStatus === "lease_sent") stageStep = 3;
-              else if (effectiveStatus === "invoice_sent" || effectiveStatus === "payment_submitted" || effectiveStatus === "rent_paid" || effectiveStatus === "Under Review") stageStep = 2;
+              else if (effectiveStatus === "approved" || effectiveStatus === "invoice_sent" || effectiveStatus === "payment_submitted" || effectiveStatus === "rent_paid" || effectiveStatus === "under_review") stageStep = 2;
 
               return (
                 <div key={app.id} className="p-6 rounded-3xl border border-[#E7E5E0] dark:border-white/10 bg-white dark:bg-[#14221B] flex flex-col gap-5 transition-all">
@@ -408,18 +420,32 @@ export default function TenantApplications({ setActiveTab }) {
                     </div>
                     <span className={`px-2.5 py-1 text-xs font-medium rounded uppercase tracking-wider ${
                       isLeased ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/40' :
-                      effectiveStatus === 'Rejected' || effectiveStatus === 'declined' ? 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/40' :
+                      effectiveStatus === 'rejected' || effectiveStatus === 'declined' ? 'bg-red-50 text-red-800 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/40' :
+                      effectiveStatus === 'invoice_sent' ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/40' :
+                      effectiveStatus === 'payment_submitted' ? 'bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900/40' :
+                      effectiveStatus === 'rent_paid' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/40' :
+                      effectiveStatus === 'approved' || effectiveStatus === 'lease_signed' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/40' :
+                      effectiveStatus === 'lease_sent' ? 'bg-purple-50 text-purple-800 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-900/40' :
                       'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/40'
                     }`}>
-                      {isLeased ? 'Leased • Active' : effectiveStatus.replace(/_/g, ' ').toUpperCase()}
+                      {isLeased ? 'Leased • Active' : 
+                       effectiveStatus === 'invoice_sent' ? 'Invoice Issued • Payment Required' :
+                       effectiveStatus === 'payment_submitted' ? 'Payment Submitted • Verifying' :
+                       effectiveStatus === 'rent_paid' ? 'Payment Verified • Lease Pending' :
+                       effectiveStatus === 'approved' ? 'Approved • Awaiting Invoice' :
+                       effectiveStatus === 'lease_sent' ? 'Lease Ready to Sign' :
+                       effectiveStatus === 'lease_signed' ? 'Lease Signed' :
+                       effectiveStatus === 'rejected' ? 'Rejected' :
+                       effectiveStatus === 'under_review' ? 'Under Review' :
+                       'Pending'}
                     </span>
                   </div>
 
                   {/* RICH VERTICAL APPLICATION TIMELINE JOURNEY */}
                   {(() => {
                     const step1_done = true;
-                    const step2_done = Boolean(currentInspection || stageStep >= 2 || isLeased);
-                    const step3_done = Boolean(effectiveStatus === "payment_submitted" || effectiveStatus === "rent_paid" || stageStep >= 3 || isLeased);
+                    const step2_done = Boolean(currentInspection || stageStep >= 2 || effectiveStatus === "approved" || isLeased);
+                    const step3_done = Boolean(effectiveStatus === "payment_submitted" || effectiveStatus === "rent_paid" || effectiveStatus === "approved" || stageStep >= 3 || isLeased);
                     const step4_done = Boolean(effectiveStatus === "lease_signed" || effectiveStatus === "move_in_ready" || isLeased);
                     const step5_done = Boolean(effectiveStatus === "move_in_ready" || isLeased);
                     
@@ -431,12 +457,15 @@ export default function TenantApplications({ setActiveTab }) {
                     } else if (step4_done) {
                       activeStepNum = 5;
                       activeStepTitle = "Move-in & Key Handover";
-                    } else if (step3_done) {
+                    } else if (effectiveStatus === "lease_sent") {
                       activeStepNum = 4;
                       activeStepTitle = "Digital Lease & Agreement Signing";
+                    } else if (effectiveStatus === "approved") {
+                      activeStepNum = 4;
+                      activeStepTitle = "Awaiting Landlord Lease Preparation";
                     } else if (step2_done) {
-                      activeStepNum = 3;
-                      activeStepTitle = "Rent Invoice & Payment Verification";
+                      activeStepNum = 2;
+                      activeStepTitle = "Landlord Review & Inspection";
                     } else {
                       activeStepNum = 2;
                       activeStepTitle = "Landlord Review & Walkthrough Inspection";
@@ -560,12 +589,20 @@ export default function TenantApplications({ setActiveTab }) {
                             <div className="flex-1">
                               <div className="flex items-center justify-between flex-wrap gap-1">
                                 <h4 className="text-xs font-semibold text-[#1C1917] dark:text-white">4. Tenancy Lease Agreement</h4>
-                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded uppercase tracking-wider ${step4_done ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' : effectiveStatus === 'lease_sent' ? 'bg-purple-50 text-purple-800 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300' : 'bg-stone-100 text-stone-500'}`}>
-                                  {step4_done ? 'Signed' : effectiveStatus === 'lease_sent' ? 'Ready to Sign' : 'Pending Step 3'}
+                                <span className={`text-[10px] font-medium px-2 py-0.5 rounded uppercase tracking-wider ${
+                                  step4_done ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300' : 
+                                  effectiveStatus === 'lease_sent' ? 'bg-purple-50 text-purple-800 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300' : 
+                                  effectiveStatus === 'approved' ? 'bg-blue-50 text-blue-800 border border-blue-200 dark:bg-blue-950/40 dark:text-blue-300' :
+                                  'bg-stone-100 text-stone-500'
+                                }`}>
+                                  {step4_done ? 'Signed' : effectiveStatus === 'lease_sent' ? 'Ready to Sign' : effectiveStatus === 'approved' ? 'Awaiting Lease Draft' : 'Pending Step 2'}
                                 </span>
                               </div>
                               <p className="text-xs text-[#71717A] dark:text-white/60 mt-0.5">
-                                {step4_done ? 'Lease agreement signed digitally.' : effectiveStatus === 'lease_sent' ? 'Your lease agreement has been drafted and is ready for your signature.' : 'Drafted automatically after rent payment verification.'}
+                                {step4_done ? 'Lease agreement signed digitally.' : 
+                                 effectiveStatus === 'lease_sent' ? 'Your lease agreement has been drafted and is ready for your signature.' : 
+                                 effectiveStatus === 'approved' ? 'Application approved. Awaiting landlord to draft and issue the digital lease agreement.' :
+                                 'Landlord will draft the official tenancy agreement once application review is complete.'}
                               </p>
                               {effectiveStatus === 'lease_sent' && !isLeased && (
                                 <div className="mt-2">

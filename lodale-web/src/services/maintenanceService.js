@@ -21,6 +21,13 @@ export const maintenanceService = {
   },
 
   /**
+   * Get all maintenance requests for landlord (alias to getMyRequests).
+   */
+  async getLandlordRequests() {
+    return this.getMyRequests();
+  },
+
+  /**
    * Update the status of a maintenance request (landlord only).
    */
   async updateRequestStatus(id, payload) {
@@ -31,3 +38,4 @@ export const maintenanceService = {
     return data;
   },
 };
+

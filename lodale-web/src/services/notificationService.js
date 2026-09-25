@@ -30,6 +30,35 @@ export const notificationService = {
   },
 
   /**
+   * Mark all notifications as read
+   */
+  async markAllAsRead() {
+    return this.markAsRead('all');
+  },
+
+  /**
+   * Delete a notification or all notifications ('all')
+   */
+  async deleteNotification(notificationId) {
+    try {
+      const data = await apiClient(`/notifications/${notificationId}`, {
+        method: 'DELETE'
+      });
+      return data;
+    } catch (err) {
+      console.warn('[notificationService.deleteNotification error]:', err.message);
+      throw err;
+    }
+  },
+
+  /**
+   * Clear all notifications
+   */
+  async clearAll() {
+    return this.deleteNotification('all');
+  },
+
+  /**
    * Create a new notification manually
    */
   async createNotification(notificationData) {

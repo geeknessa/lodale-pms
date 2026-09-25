@@ -199,3 +199,34 @@ CREATE TABLE IF NOT EXISTS maintenance_requests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- NOTIFICATIONS TABLE
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    reference_type VARCHAR(50),
+    reference_id UUID,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- PROPERTY INSPECTIONS TABLE
+CREATE TABLE IF NOT EXISTS property_inspections (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    application_id UUID REFERENCES property_applications(id) ON DELETE SET NULL,
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    landlord_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    time VARCHAR(20) NOT NULL,
+    location TEXT,
+    notes TEXT,
+    status VARCHAR(50) DEFAULT 'Scheduled',
+    created_by VARCHAR(50) DEFAULT 'landlord',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+

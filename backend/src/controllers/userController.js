@@ -36,9 +36,9 @@ export const userController = {
     const leasesRes = await pool.query(
       `SELECT l.id as lease_id, l.status as lease_status, l.tenant_signed_at, l.landlord_signed_at,
               l.rent_amount, l.rent_period, l.start_date, l.end_date,
-              p.id as property_id, p.title as property_title, p.address as property_address,
+              p.id as property_id, p.title as property_title, p.address_line1 as property_address,
               u.id as tenant_id, u.first_name, u.last_name, u.email as tenant_email, u.phone_number as tenant_phone, u.avatar_url,
-              tp.emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
+              tp.emergency_contact_name as emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
        FROM leases l
        JOIN properties p ON l.property_id = p.id
        JOIN users u ON l.tenant_id = u.id
@@ -51,9 +51,9 @@ export const userController = {
     // 2. Fetch applications for landlord properties
     const appsRes = await pool.query(
       `SELECT a.id as application_id, a.status as application_status, a.created_at,
-              p.id as property_id, p.title as property_title, p.rent_amount, p.rent_period, p.address as property_address,
+              p.id as property_id, p.title as property_title, p.rent_amount, p.rent_period, p.address_line1 as property_address,
               u.id as tenant_id, u.first_name, u.last_name, u.email as tenant_email, u.phone_number as tenant_phone, u.avatar_url,
-              tp.emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
+              tp.emergency_contact_name as emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
        FROM property_applications a
        JOIN properties p ON a.property_id = p.id
        JOIN users u ON a.tenant_id = u.id

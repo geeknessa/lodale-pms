@@ -218,22 +218,14 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
     async function loadNotifications() {
       try {
         const notifs = await notificationService.getMyNotifications();
-        if (notifs && notifs.length > 0) {
+        if (Array.isArray(notifs)) {
           setNotifications(notifs);
         } else {
-          setNotifications([
-            {
-              id: "n-init-1",
-              title: "Welcome to Portfolio Wizard",
-              message: "Establish property identity, set up units, attach legal proof, and invite tenants.",
-              type: "info",
-              time: "Just now",
-              read: false
-            }
-          ]);
+          setNotifications([]);
         }
       } catch (err) {
         console.warn("Failed to load notifications", err);
+        setNotifications([]);
       }
     }
     loadNotifications();
@@ -587,12 +579,11 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
     loadEditData();
   }, [id, isEditing]);
 
-  const markAllNotifsRead = () => {
-    setNotifications((prev) => {
-      const updated = prev.map((n) => ({ ...n, read: true }));
-      localStorage.setItem("landlordNotifications", JSON.stringify(updated));
-      return updated;
-    });
+  const markAllNotifsRead = async () => {
+    try {
+      await notificationService.markAsRead('all');
+    } catch (_e) {}
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true, is_read: true })));
   };
 
   const handleDetectGpsLocation = () => {

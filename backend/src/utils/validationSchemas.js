@@ -29,18 +29,20 @@ export const sendMessageSchema = z.object({
 
 export const applyPropertySchema = z.object({
   propertyId: z.string().min(1, "Property ID is required"),
-  notes: z.string().optional(),
-  monthlyIncome: z.union([z.number(), z.string()]).optional(),
-  employmentStatus: z.string().optional(),
-  employerName: z.string().optional(),
-  occupation: z.string().optional(),
-  maritalStatus: z.string().optional(),
-  dependants: z.union([z.number(), z.string()]).optional(),
-  guarantorName: z.string().optional(),
-  guarantorPhone: z.string().optional(),
-  guarantorRelationship: z.string().optional(),
-  guarantorEmail: z.string().email().optional().or(z.literal(''))
-});
+  notes: z.string().optional().nullable(),
+  monthlyIncome: z.union([z.number(), z.string()]).optional().nullable(),
+  employmentStatus: z.string().optional().nullable(),
+  employerName: z.string().optional().nullable(),
+  employerContact: z.string().optional().nullable(),
+  occupation: z.string().optional().nullable(),
+  maritalStatus: z.string().optional().nullable(),
+  dependants: z.union([z.number(), z.string()]).optional().nullable(),
+  guarantorName: z.string().optional().nullable(),
+  guarantorPhone: z.string().optional().nullable(),
+  guarantorRelationship: z.string().optional().nullable(),
+  guarantorEmail: z.string().email().optional().or(z.literal('')).nullable(),
+  unitName: z.string().optional().nullable()
+}).passthrough();
 
 export const generateLeaseSchema = z.object({
   propertyId: z.string().min(1, "Property ID is required"),
@@ -73,7 +75,7 @@ export const createPropertySchema = z.object({
   ownership_doc: z.string().optional(),
   ownership_doc_url: z.string().optional(),
   ownership_doc_type: z.string().optional(),
-  rules: z.string().optional(),
+  rules: z.union([z.string(), z.array(z.string())]).optional(),
   cover_image: z.string().optional(),
   images: z.array(z.string()).optional(),
   is_occupied: z.boolean().optional(),
@@ -115,39 +117,65 @@ export const idParamSchema = z.object({
 
 export const updateApplicationStatusSchema = z.object({
   status: z.string().min(1, "Status is required"),
-  notes: z.string().optional()
-});
+  notes: z.string().optional().nullable(),
+  rejectionReason: z.string().optional().nullable(),
+  rejection_reason: z.string().optional().nullable()
+}).passthrough();
 
 export const createMaintenanceSchema = z.object({
-  propertyId: z.string().min(1, "Property ID is required"),
+  propertyId: z.string().min(1).optional(),
+  property_id: z.string().min(1).optional(),
   unitId: z.string().optional().nullable(),
-  issueType: z.string().min(1, "Issue type is required"),
+  unit_id: z.string().optional().nullable(),
+  title: z.string().optional(),
+  issue_title: z.string().optional(),
+  issueType: z.string().optional(),
   description: z.string().min(1, "Description is required"),
   priority: z.string().optional(),
-  photos: z.array(z.string().url("Must be a valid URL")).optional()
+  category: z.string().optional(),
+  photos: z.array(z.string()).optional()
+}).passthrough().refine(data => data.propertyId || data.property_id, {
+  message: "Property ID is required",
+  path: ["propertyId"]
 });
 
 export const updateMaintenanceStatusSchema = z.object({
   status: z.string().min(1, "Status is required"),
-  notes: z.string().optional()
-});
+  notes: z.string().optional().nullable()
+}).passthrough();
 
 export const createInvoiceSchema = z.object({
-  propertyId: z.string().min(1, "Property ID is required"),
+  propertyId: z.string().optional().nullable(),
   leaseId: z.string().optional().nullable(),
-  tenantId: z.string().min(1, "Tenant ID is required"),
-  amount: z.number().positive("Amount must be positive").or(z.string().transform(Number)),
+  applicationId: z.string().optional().nullable(),
+  tenantId: z.string().optional().nullable(),
+  landlordId: z.string().optional().nullable(),
+  amount: z.number().positive("Amount must be positive").or(z.string().transform(Number)).optional(),
+  grandTotal: z.number().positive("Amount must be positive").or(z.string().transform(Number)).optional(),
+  subtotal: z.number().optional().nullable().or(z.string().transform(Number)),
+  lodaleFee: z.number().optional().nullable().or(z.string().transform(Number)),
   dueDate: z.string().min(1, "Due date is required"),
-  description: z.string().optional()
-});
+  issueDate: z.string().optional().nullable(),
+  invoiceNumber: z.string().optional().nullable(),
+  bankName: z.string().optional().nullable(),
+  bankAccountNumber: z.string().optional().nullable(),
+  bankAccountName: z.string().optional().nullable(),
+  items: z.any().optional(),
+  description: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  note: z.string().optional().nullable()
+}).passthrough();
 
 export const recordPaymentSchema = z.object({
-  amount: z.number().positive("Amount must be positive").or(z.string().transform(Number)),
-  paymentDate: z.string().min(1, "Payment date is required"),
-  paymentMethod: z.string().min(1, "Payment method is required"),
-  reference: z.string().optional(),
-  notes: z.string().optional()
-});
+  amount: z.number().positive("Amount must be positive").or(z.string().transform(Number)).optional(),
+  paymentDate: z.string().optional(),
+  paymentMethod: z.string().optional().default('Bank Transfer'),
+  reference: z.string().optional().nullable(),
+  paymentReference: z.string().optional().nullable(),
+  paymentProofUrl: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  applicationId: z.string().optional().nullable()
+}).passthrough();
 
 export const propertyActionSchema = z.object({
   reason: z.string().optional(),

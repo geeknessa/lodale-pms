@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Search, Phone, Video, Send, Paperclip,
-  Building2, ArrowLeft, Trash2, Loader2, AlertTriangle, RotateCcw
+  Building2, ArrowLeft, Trash2, Loader2, AlertTriangle, RotateCcw,
+  FileText, Download, MessageSquare
 } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
 import { supportService } from "../../../services/supportService";
@@ -176,6 +177,14 @@ export default function LandlordChat() {
       .map(a => String(a.tenantId || a.tenant_id || a.tenant?.id))
   );
 
+  useEffect(() => {
+    if (activeChatId && activeChatId !== "lodale-support") {
+      if (pendingApplicantIds.has(String(activeChatId))) {
+        setActiveTab("Applicants");
+      }
+    }
+  }, [activeChatId, applications]);
+
   const activeChat = chats.find(c => String(c.partner_id) === String(activeChatId));
 
   const filteredChats = chats.filter(c => {
@@ -290,7 +299,7 @@ export default function LandlordChat() {
       return (
         <div className="p-3 bg-white/10 rounded-xl border border-white/20 my-1 space-y-2 text-left">
           <div className="flex items-center gap-2">
-            <span className="text-lg">📄</span>
+            <FileText className="h-5 w-5 text-current shrink-0" />
             <div>
               <p className="font-bold text-xs">{docType}</p>
               <p className="text-[11px] opacity-80">{fileName}</p>
@@ -304,7 +313,7 @@ export default function LandlordChat() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-moss-900 dark:bg-[#07130D] dark:text-white rounded-lg text-xs font-bold shadow-sm hover:opacity-90 transition-opacity"
             >
-              📥 Download / View Document
+              <Download className="h-3.5 w-3.5" /> Download / View Document
             </a>
           )}
         </div>
@@ -485,7 +494,7 @@ export default function LandlordChat() {
               </div>
             ) : threadMessages.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", color: "var(--text-muted)", textAlign: "center" }}>
-                <span style={{ fontSize: "28px" }}>💬</span>
+                <MessageSquare className="h-8 w-8 text-ink-300 dark:text-cream-100/40 mb-2" />
                 <p style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-primary)", margin: "12px 0 4px 0" }}>No Messages Yet</p>
                 <p style={{ fontSize: "11.5px", margin: 0, maxWidth: "200px", lineHeight: "1.4" }}>Send a message to start the conversation.</p>
               </div>

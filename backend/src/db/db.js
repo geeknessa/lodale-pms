@@ -287,9 +287,14 @@ export async function initDb() {
         title VARCHAR(255) NOT NULL,
         message TEXT NOT NULL,
         type VARCHAR(50) NOT NULL,
+        reference_type VARCHAR(50),
+        reference_id UUID,
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_type VARCHAR(50);
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_id UUID;
 
       CREATE TABLE IF NOT EXISTS property_inspections (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -361,6 +366,29 @@ export async function initDb() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
+      ALTER TABLE rent_invoices ALTER COLUMN lease_id DROP NOT NULL;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES property_applications(id) ON DELETE CASCADE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE CASCADE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS landlord_id UUID REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS subtotal NUMERIC(20, 2);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS lodale_fee NUMERIC(20, 2);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS grand_total NUMERIC(20, 2);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS issue_date DATE DEFAULT CURRENT_DATE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(150);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS notes TEXT;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(150);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS payment_proof_url TEXT;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+
+      CREATE INDEX IF NOT EXISTS idx_rent_invoices_application_id ON rent_invoices(application_id);
+      CREATE INDEX IF NOT EXISTS idx_rent_invoices_tenant_id ON rent_invoices(tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_rent_invoices_landlord_id ON rent_invoices(landlord_id);
+
       CREATE TABLE IF NOT EXISTS rent_payments (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         invoice_id UUID REFERENCES rent_invoices(id) ON DELETE SET NULL,
@@ -372,6 +400,11 @@ export async function initDb() {
         notes TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE rent_payments ALTER COLUMN lease_id DROP NOT NULL;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES property_applications(id) ON DELETE CASCADE;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE CASCADE;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES users(id) ON DELETE CASCADE;
 
       CREATE TABLE IF NOT EXISTS maintenance_requests (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

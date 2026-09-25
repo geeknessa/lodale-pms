@@ -101,6 +101,37 @@ export const adminController = {
 
     await AdminModel.updateQueueStatus(property.id, newQueueStatus, rejectionReason);
 
+    // Notify the landlord about admin listing review decision
+    try {
+      if (property.landlord_id) {
+        let notifTitle = 'Listing Status Update';
+        let notifMessage = `Your property listing "${property.title}" status has been updated.`;
+        let notifType = 'property';
+
+        if (action === 'approve') {
+          notifTitle = 'Listing Approved & Live!';
+          notifMessage = `Congratulations! Your property listing "${property.title}" has been reviewed and approved by admin. It is now active and visible on the marketplace.`;
+          notifType = 'success';
+        } else if (action === 'reject') {
+          notifTitle = 'Listing Not Approved';
+          notifMessage = `Your property listing "${property.title}" was not approved.${reason ? ` Reason: ${reason}` : ''}`;
+          notifType = 'warning';
+        } else if (action === 'request_info') {
+          notifTitle = 'Additional Information Requested';
+          notifMessage = `Admin has requested more details regarding your listing "${property.title}".${notes ? ` Notes: ${notes}` : ''}`;
+          notifType = 'info';
+        }
+
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [property.landlord_id, notifTitle, notifMessage, notifType]
+        );
+      }
+    } catch (notifErr) {
+      console.warn('Failed to notify landlord of admin review decision:', notifErr.message);
+    }
+
     res.json({
       property,
       action,
@@ -160,6 +191,22 @@ export const adminController = {
 
     if (!updatedUser) {
       return res.status(404).json({ error: 'User not found.' });
+    }
+
+    // Notify the user about their account status change
+    try {
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type)
+         VALUES ($1, $2, $3, $4)`,
+        [
+          updatedUser.id,
+          'Account Status Update',
+          `Your account status has been changed to "${normalizedStatus}".${reason ? ` Reason: ${reason}` : ''}`,
+          normalizedStatus === 'active' ? 'success' : 'warning'
+        ]
+      );
+    } catch (notifErr) {
+      console.warn('Failed to notify user of status change:', notifErr.message);
     }
 
     res.json({

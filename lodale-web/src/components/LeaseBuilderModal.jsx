@@ -36,10 +36,10 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
 
     setSubmitting(true);
     try {
-      await leaseService.generateLease({
-        propertyId: property?.id || application.property_id,
-        tenantId: application.tenant_id,
-        applicationId: application.id,
+      const res = await leaseService.generateLease({
+        propertyId: property?.id || application?.propertyId || application?.property_id,
+        tenantId: application?.tenantId || application?.tenant_id || tenant?.id || tenant?.userId,
+        applicationId: application?.id,
         startDate,
         endDate,
         rentAmount: Number(rentAmount),
@@ -51,8 +51,12 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
         includeLateFee
       });
 
-      triggerToast('Lease generated successfully and sent to tenant for review!', 'success', 'Lease Drafted');
-      if (onSuccess) onSuccess();
+      if (!res) {
+        throw new Error('Failed to generate lease agreement. Please verify property details and try again.');
+      }
+
+      triggerToast('Lease generated successfully and sent to tenant for review.', 'success', 'Lease Drafted');
+      if (onSuccess) onSuccess(res);
       onClose();
     } catch (err) {
       console.error('Failed to generate lease:', err);

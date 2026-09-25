@@ -58,6 +58,27 @@ export const generateLease = async (req, res) => {
       }
 
       await client.query('COMMIT');
+
+      // Notify the tenant about the new lease agreement
+      try {
+        const propRes = await pool.query('SELECT title FROM properties WHERE id = $1', [propertyId]);
+        const propTitle = propRes.rows[0]?.title || 'Property';
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            tenantId,
+            'New Lease Agreement Ready',
+            `A new lease agreement for "${propTitle}" has been prepared and signed by the landlord. Please review and sign.`,
+            'lease',
+            'lease',
+            leaseRes.rows[0].id
+          ]
+        );
+      } catch (notifErr) {
+        console.warn('Failed to notify tenant of generated lease:', notifErr.message);
+      }
+
       res.status(201).json({ message: 'Lease generated successfully', lease: leaseRes.rows[0] });
     } catch (err) {
       await client.query('ROLLBACK');
@@ -146,7 +167,65 @@ export const signLease = async (req, res) => {
       await client.query('COMMIT');
       
       const finalLeaseRes = await pool.query('SELECT * FROM leases WHERE id = $1', [id]);
-      res.json({ message: 'Lease signed successfully', lease: finalLeaseRes.rows[0] });
+      const currentLease = finalLeaseRes.rows[0];
+
+      // Send real database notifications based on who signed
+      try {
+        const propRes = await pool.query('SELECT title FROM properties WHERE id = $1', [currentLease.property_id]);
+        const propTitle = propRes.rows[0]?.title || 'Property';
+
+        if (currentLease.landlord_signed_at && currentLease.tenant_signed_at) {
+          // Tenancy finalized: notify both
+          await pool.query(
+            `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+             VALUES ($1, $2, $3, $4, $5, $6), ($7, $8, $9, $10, $11, $12)`,
+            [
+              currentLease.tenant_id,
+              'Lease Agreement Finalized',
+              `Your lease for "${propTitle}" is fully executed! Your first rent invoice is ready for payment.`,
+              'success',
+              'lease',
+              id,
+              currentLease.landlord_id,
+              'Lease Agreement Finalized',
+              `Lease agreement for "${propTitle}" has been signed by all parties.`,
+              'success',
+              'lease',
+              id
+            ]
+          );
+        } else if (role === 'tenant' || userId === currentLease.tenant_id) {
+          await pool.query(
+            `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              currentLease.landlord_id,
+              'Lease Signed by Tenant',
+              `Tenant has signed the lease agreement for "${propTitle}".`,
+              'lease',
+              'lease',
+              id
+            ]
+          );
+        } else {
+          await pool.query(
+            `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              currentLease.tenant_id,
+              'Lease Signed by Landlord',
+              `Landlord has signed the lease agreement for "${propTitle}".`,
+              'lease',
+              'lease',
+              id
+            ]
+          );
+        }
+      } catch (notifErr) {
+        console.warn('Failed to dispatch lease signing notification:', notifErr.message);
+      }
+
+      res.json({ message: 'Lease signed successfully', lease: currentLease });
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
