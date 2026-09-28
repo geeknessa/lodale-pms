@@ -63,7 +63,14 @@ export async function initDb() {
         throw err;
       }
     }
-    console.log('[PostgreSQL] Connected to local PostgreSQL database: lodale_db');
+    const realDbName = (() => {
+      try {
+        return new URL(process.env.DATABASE_URL).pathname.replace(/^\//, '') || 'lodale_db';
+      } catch (e) {
+        return 'lodale_db';
+      }
+    })();
+    console.log(`[PostgreSQL] Connected to local PostgreSQL database: ${realDbName}`);
 
     // Initialize Schema
     try {
@@ -107,16 +114,6 @@ export async function initDb() {
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS restoration_fee_amount NUMERIC(15, 2);
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS restoration_fee_status VARCHAR(50) DEFAULT 'none';
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS auto_approve_at TIMESTAMPTZ;
-
-      CREATE TABLE IF NOT EXISTS chat_messages (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
-        message TEXT NOT NULL,
-        is_read BOOLEAN DEFAULT FALSE,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
     `);
 
     // Widen numeric columns to prevent overflow with large Nigerian property values
@@ -242,12 +239,6 @@ export async function initDb() {
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS address TEXT;
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS location VARCHAR(255);
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS postal_code VARCHAR(50);
-
-      ALTER TABLE tenant_profiles
-      ADD COLUMN IF NOT EXISTS gender VARCHAR(50),
-      ADD COLUMN IF NOT EXISTS address TEXT,
-      ADD COLUMN IF NOT EXISTS location VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS postal_code VARCHAR(50);
 
       CREATE TABLE IF NOT EXISTS support_messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
