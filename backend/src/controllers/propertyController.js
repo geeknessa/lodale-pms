@@ -17,6 +17,26 @@ const formatSafeLocation = (addr, city, state) => {
   return 'Location not specified';
 };
 
+const LIVE_PROPERTY_STATUSES = ['active_vacant', 'approved', 'live', 'active', 'occupied', 'active_occupied'];
+
+const stripPrivatePropertyFields = (prop) => {
+  const sanitized = { ...prop };
+  delete sanitized.ownership_doc;
+  delete sanitized.ownership_doc_url;
+  delete sanitized.ownership_doc_type;
+  delete sanitized.verification_score;
+  delete sanitized.risk_level;
+  delete sanitized.verification_results;
+  delete sanitized.auto_approve_at;
+  delete sanitized.deletion_reason;
+  Object.keys(sanitized).forEach(key => {
+    if (key.startsWith('restoration_fee_')) {
+      delete sanitized[key];
+    }
+  });
+  return sanitized;
+};
+
 export const propertyController = {
   getProperties: asyncHandler(async (req, res) => {
     const properties = await PropertyModel.getProperties(req.query);
@@ -28,7 +48,7 @@ export const propertyController = {
       
       const actualCoverImage = p.cover_image || p.fetched_cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
 
-      return {
+      const formattedProp = {
         ...p,
         amenities,
         images: parsedImages,
@@ -37,6 +57,9 @@ export const propertyController = {
         location: formatSafeLocation(p.address_line1, p.city, p.state),
         landlord: p.landlord_data?.id ? p.landlord_data : null
       };
+
+      const isOwnerOrAdmin = req.user && (req.user.role === 'admin' || req.user.id === p.landlord_id);
+      return isOwnerOrAdmin ? formattedProp : stripPrivatePropertyFields(formattedProp);
     });
 
     res.json(formatted);
@@ -84,6 +107,14 @@ export const propertyController = {
       return res.status(404).json({ error: 'Property not found' });
     }
 
+    const isOwnerOrAdmin = req.user && (req.user.role === 'admin' || req.user.id === property.landlord_id);
+    const isLive = LIVE_PROPERTY_STATUSES.includes(String(property.status || '').toLowerCase());
+    const isDeleted = property.is_deleted === true || property.status === 'deleted';
+
+    if (!isOwnerOrAdmin && (!isLive || isDeleted)) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+
     const amenities = Array.isArray(property.fetched_amenities) && property.fetched_amenities.length > 0 && property.fetched_amenities[0] !== null ? property.fetched_amenities : [];
     const blocks = Array.isArray(property.fetched_blocks) && property.fetched_blocks.length > 0 && property.fetched_blocks[0] !== null ? property.fetched_blocks : [];
     const units = Array.isArray(property.fetched_units) && property.fetched_units.length > 0 && property.fetched_units[0] !== null ? property.fetched_units : [];
@@ -93,7 +124,7 @@ export const propertyController = {
     
     const actualCoverImage = property.cover_image || property.fetched_cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
 
-    res.json({
+    const formatted = {
       ...property,
       amenities,
       blocks,
@@ -103,7 +134,9 @@ export const propertyController = {
       landlord: property.landlord_data?.id ? property.landlord_data : null,
       price: formatSafePrice(property.rent_amount, property.rent_period),
       location: formatSafeLocation(property.address_line1, property.city, property.state),
-    });
+    };
+
+    res.json(isOwnerOrAdmin ? formatted : stripPrivatePropertyFields(formatted));
   }),
 
   createProperty: asyncHandler(async (req, res) => {
