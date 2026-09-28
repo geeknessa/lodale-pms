@@ -496,7 +496,12 @@ export const recordPayment = async (req, res) => {
 
     const invoice = invoiceRes.rows[0];
 
-    // Authorization
+    // Authorization: caller must be a party to the invoice or admin
+    const isParty = (role === 'admin' || invoice.tenant_id === userId || invoice.landlord_id === userId);
+    if (!isParty) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Unauthorized: You are not a party to this invoice' });
+    }
     if (role === 'tenant' && invoice.tenant_id !== userId) {
       await client.query('ROLLBACK');
       return res.status(403).json({ error: 'Unauthorized: This is not your invoice' });

@@ -300,9 +300,10 @@ export const getLeaseById = async (req, res) => {
     }
 
     const lease = leaseRes.rows[0];
+    const role = req.user.role || req.user.primary_role;
     
-    // Auth check
-    if (lease.landlord_id !== userId && lease.tenant_id !== userId) {
+    // Auth check: must be landlord, tenant or admin
+    if (role !== 'admin' && lease.landlord_id !== userId && lease.tenant_id !== userId) {
       return res.status(403).json({ error: 'Unauthorized to view this lease' });
     }
 
@@ -318,6 +319,7 @@ export const updateLeaseStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     const userId = req.user.id;
+    const role = req.user.role || req.user.primary_role;
 
     if (!status) {
       return res.status(400).json({ error: 'Status is required' });
@@ -330,8 +332,8 @@ export const updateLeaseStatus = async (req, res) => {
 
     const lease = leaseRes.rows[0];
 
-    // Auth check: only landlord can end/update the lease status
-    if (lease.landlord_id !== userId) {
+    // Auth check: landlord of this lease or admin can end/update the lease status
+    if (role !== 'admin' && lease.landlord_id !== userId) {
       return res.status(403).json({ error: 'Unauthorized to modify this lease' });
     }
 

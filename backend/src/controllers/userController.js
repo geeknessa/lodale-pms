@@ -31,6 +31,10 @@ export const userController = {
   }),
 
   getLandlordTenants: asyncHandler(async (req, res) => {
+    const role = req.user.role || req.user.primary_role;
+    if (role !== 'landlord' && role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Only landlords can view tenants list' });
+    }
     const landlordId = req.user.id;
 
     // 1. Fetch leases for landlord properties
@@ -291,7 +295,8 @@ export const userController = {
 
   inviteTenant: asyncHandler(async (req, res) => {
     // Only landlords (or admins) should invite tenants
-    if (req.user.primary_role !== 'landlord' && req.user.primary_role !== 'admin') {
+    const role = req.user.role || req.user.primary_role;
+    if (role !== 'landlord' && role !== 'admin') {
       return res.status(403).json({ error: 'Only landlords can invite tenants.' });
     }
 

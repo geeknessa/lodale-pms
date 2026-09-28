@@ -8,7 +8,7 @@ export const getMyInspections = async (req, res) => {
   const role = req.user.role || req.user.primary_role;
 
   try {
-    const query = `
+    const baseQuery = `
       SELECT i.*, 
              i.property_id as "propertyId",
              i.tenant_id as "tenantId",
@@ -24,11 +24,19 @@ export const getMyInspections = async (req, res) => {
       JOIN properties p ON i.property_id = p.id
       JOIN users tu ON i.tenant_id = tu.id
       JOIN users lu ON i.landlord_id = lu.id
-      WHERE (i.landlord_id = $1 OR i.tenant_id = $1)
-      ORDER BY i.date DESC
     `;
 
-    const { rows } = await pool.query(query, [userId]);
+    let query;
+    let params;
+    if (role === 'admin') {
+      query = `${baseQuery} ORDER BY i.date DESC`;
+      params = [];
+    } else {
+      query = `${baseQuery} WHERE (i.landlord_id = $1 OR i.tenant_id = $1) ORDER BY i.date DESC`;
+      params = [userId];
+    }
+
+    const { rows } = await pool.query(query, params);
     res.json(rows);
   } catch (error) {
     console.error('Get inspections error:', error);
@@ -51,13 +59,18 @@ export const createInspection = async (req, res) => {
     if (role === 'tenant') {
       tenantId = req.user.id;
       landlordId = propRows[0].landlord_id;
-    } else {
-      landlordId = req.user.id;
+    } else if (role === 'landlord' || role === 'admin') {
+      landlordId = role === 'admin' ? propRows[0].landlord_id : req.user.id;
       tenantId = req.body.tenantId; 
 
-      if (propRows[0].landlord_id !== landlordId && role !== 'admin') {
+      if (role !== 'admin' && propRows[0].landlord_id !== landlordId) {
         return res.status(403).json({ error: 'Unauthorized: You do not own this property' });
       }
+      if (!tenantId) {
+        return res.status(400).json({ error: 'Tenant ID is required to schedule an inspection' });
+      }
+    } else {
+      return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
     }
 
     const { rows } = await pool.query(
@@ -131,8 +144,19 @@ export const updateInspection = async (req, res) => {
   const { id } = req.params;
   const { status, date, time, notes } = req.body;
   const userId = req.user.id;
+  const role = req.user.role || req.user.primary_role;
   
   try {
+    const existing = await pool.query('SELECT * FROM property_inspections WHERE id = $1', [id]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ error: 'Inspection not found' });
+    }
+
+    const inspection = existing.rows[0];
+    if (role !== 'admin' && inspection.tenant_id !== userId && inspection.landlord_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden: You are not a party to this inspection' });
+    }
+
     const updates = [];
     const values = [];
     let counter = 1;
@@ -152,14 +176,10 @@ export const updateInspection = async (req, res) => {
     const { rows } = await pool.query(
       `UPDATE property_inspections 
        SET ${updates.join(', ')} 
-       WHERE id = $${counter++} AND (tenant_id = $${counter} OR landlord_id = $${counter})
+       WHERE id = $${counter++}
        RETURNING *`,
-      [...values, id, userId]
+      [...values, id]
     );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Inspection not found or you do not have permission' });
-    }
 
     const updatedInspection = rows[0];
 

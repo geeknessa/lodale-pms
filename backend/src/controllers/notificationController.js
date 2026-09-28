@@ -50,9 +50,14 @@ export const markAsRead = async (req, res) => {
 // @route   POST /api/notifications
 // @access  Private
 export const createNotification = async (req, res) => {
-  const { userId, title, message, type } = req.body;
+  const targetUserId = req.body.userId || req.user.id;
+  const { title, message, type } = req.body;
 
-  if (!userId || !title || !message || !type) {
+  if (targetUserId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Forbidden: You can only create notifications for yourself' });
+  }
+
+  if (!title || !message || !type) {
     return res.status(400).json({ success: false, message: 'Missing required fields' });
   }
 
@@ -61,7 +66,7 @@ export const createNotification = async (req, res) => {
       `INSERT INTO notifications (user_id, title, message, type)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [userId, title, message, type]
+      [targetUserId, title, message, type]
     );
     res.status(201).json({ success: true, notification: newNotif.rows[0] });
   } catch (error) {
