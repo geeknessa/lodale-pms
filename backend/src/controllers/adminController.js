@@ -3,6 +3,7 @@ import { PropertyModel } from '../models/propertyModel.js';
 import { UserModel } from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { clearDatabase, pool } from '../db/db.js';
+import { invalidateUserStatusCache } from '../middlewares/authMiddleware.js';
 
 export const adminController = {
   getPendingProperties: asyncHandler(async (req, res) => {
@@ -193,6 +194,8 @@ export const adminController = {
       return res.status(404).json({ error: 'User not found.' });
     }
 
+    invalidateUserStatusCache(id);
+
     // Notify the user about their account status change
     try {
       await pool.query(
@@ -235,6 +238,7 @@ export const adminController = {
       if (!restoredUser) {
         return res.status(404).json({ error: 'User account not found.' });
       }
+      invalidateUserStatusCache(itemId);
       return res.json({
         success: true,
         message: `Account for ${restoredUser.first_name || restoredUser.email} successfully restored ${feeNum > 0 ? (isPaid ? 'with settled fee' : 'pending online fee payment') : 'without fee'}.`,
@@ -262,6 +266,8 @@ export const adminController = {
     if (!deletedUser) {
       return res.status(404).json({ error: 'User not found or already deleted.' });
     }
+
+    invalidateUserStatusCache(id);
 
     res.json({
       message: `User ${deletedUser.first_name || deletedUser.email} moved to archive / deleted successfully.`,

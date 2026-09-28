@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { UserModel } from '../models/userModel.js';
 import { pool } from '../db/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { invalidateUserStatusCache } from '../middlewares/authMiddleware.js';
 
 const emailVerificationCodes = new Map();
 
@@ -200,6 +201,8 @@ export const userController = {
       return res.status(404).json({ error: 'User account not found' });
     }
 
+    invalidateUserStatusCache(userId);
+
     res.json({
       success: true,
       message: 'Your account has been deactivated/closed. If you ever wish to restore your account, contact Admin.',
@@ -215,6 +218,8 @@ export const userController = {
     if (!restored) {
       return res.status(404).json({ error: 'User account not found' });
     }
+
+    invalidateUserStatusCache(userId);
 
     res.json({
       success: true,
