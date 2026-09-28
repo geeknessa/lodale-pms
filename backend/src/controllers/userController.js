@@ -211,20 +211,8 @@ export const userController = {
   }),
 
   payRestorationFee: asyncHandler(async (req, res) => {
-    const userId = req.user.id;
-    const { paymentReference } = req.body;
-
-    const restored = await UserModel.payRestorationFee(userId, paymentReference || 'PAY-FEE-' + Date.now());
-    if (!restored) {
-      return res.status(404).json({ error: 'User account not found' });
-    }
-
-    invalidateUserStatusCache(userId);
-
-    res.json({
-      success: true,
-      message: 'Restoration fee paid successfully! Your account is now fully active.',
-      user: restored
+    return res.status(400).json({
+      error: 'Online payment gateway is not integrated yet. Please contact admin to confirm payment and restore your account.'
     });
   }),
 
