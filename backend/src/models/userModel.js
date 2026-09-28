@@ -1,52 +1,17 @@
 import { pool } from '../db/db.js';
 
 const UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-const CONSTANT_ADMIN_UUID = '00000000-0000-0000-0000-000000000001';
 
 export const UserModel = {
   async findByEmail(email) {
     if (!email) return null;
     const cleanEmail = email.trim().toLowerCase();
-
-    // Admin aliases
-    if (cleanEmail === 'admin' || cleanEmail === 'admin@lodale.com' || cleanEmail === 'admin@gmail.com') {
-      const res = await pool.query("SELECT * FROM users WHERE LOWER(email) IN ('admin', 'admin@lodale.com', 'admin@gmail.com') OR primary_role = 'admin' LIMIT 1");
-      if (res.rows[0]) return res.rows[0];
-    }
-
-    // Landlord aliases
-    if (cleanEmail === 'landlord' || cleanEmail === 'landlord@lodale.com' || cleanEmail === 'landlord@gmail.com') {
-      const res = await pool.query("SELECT * FROM users WHERE LOWER(email) IN ('landlord', 'landlord@lodale.com', 'landlord@gmail.com') OR primary_role = 'landlord' LIMIT 1");
-      if (res.rows[0]) return res.rows[0];
-    }
-
-    // Tenant aliases
-    if (cleanEmail === 'tenant') {
-      const res = await pool.query("SELECT * FROM users WHERE primary_role = 'tenant' LIMIT 1");
-      if (res.rows[0]) return res.rows[0];
-    }
-
     const res = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1', [cleanEmail]);
     return res.rows[0] || null;
   },
 
   async findById(id) {
     if (!id || typeof id !== 'string') return null;
-    if (id === 'constant_admin_id' || id === CONSTANT_ADMIN_UUID) {
-      const dbAdmin = await this.findByEmail('admin');
-      if (dbAdmin) return dbAdmin;
-      return {
-        id: CONSTANT_ADMIN_UUID,
-        first_name: 'System',
-        last_name: 'Admin',
-        email: 'admin',
-        phone_number: '+234 809 333 2211',
-        primary_role: 'admin',
-        id_verification_status: 'verified',
-        avatar_url: null,
-        created_at: new Date().toISOString()
-      };
-    }
     if (!UUID_REGEX.test(id)) return null;
     const res = await pool.query(
       'SELECT id, first_name, last_name, email, phone_number, primary_role, id_verification_status, account_status, avatar_url, created_at FROM users WHERE id = $1',
@@ -66,18 +31,7 @@ export const UserModel = {
   },
 
   async updateProfile(id, profileData) {
-    if (!id || typeof id !== 'string' || !UUID_REGEX.test(id)) {
-      return {
-        id: id || CONSTANT_ADMIN_UUID,
-        first_name: profileData.first_name || 'System',
-        last_name: profileData.last_name || 'Admin',
-        email: 'admin',
-        phone_number: profileData.phone_number || '+234 809 333 2211',
-        primary_role: 'admin',
-        avatar_url: profileData.avatar_url || null,
-        created_at: new Date().toISOString()
-      };
-    }
+    if (!id || typeof id !== 'string' || !UUID_REGEX.test(id)) return null;
     const { first_name, last_name, phone_number, avatar_url } = profileData;
     const res = await pool.query(`
       UPDATE users 
