@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -173,37 +174,23 @@ export async function initDb() {
       -- Avoid ON CONFLICT which fails without a unique constraint
     `);
 
-    // Ensure any legacy 'admin@lodale.com' email is updated to 'admin'
-    await client.query("UPDATE users SET email = 'admin' WHERE LOWER(email) = 'admin@lodale.com'");
-
-    const adminCheck = await client.query("SELECT id FROM users WHERE LOWER(email) = 'admin'");
+    // Ensure admin user exists (create only if none exists, never overwrite existing admin)
+    const adminCheck = await client.query("SELECT id FROM users WHERE primary_role = 'admin' OR LOWER(email) = 'admin'");
     if (adminCheck.rowCount === 0) {
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      if (!adminPassword) {
+        console.error('[FATAL] Database has no admin user and ADMIN_PASSWORD environment variable is missing.');
+        process.exit(1);
+      }
+      const adminEmail = (process.env.ADMIN_EMAIL || 'admin').trim();
+      const hashedPassword = await bcrypt.hash(adminPassword, 12);
       await client.query(`
         INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number, account_status)
         VALUES 
-          ('System', 'Admin', 'admin', '$2a$10$QCECb7/6Ab.9IrRxkCYBSexNHefM1dH1cajKVlEJRvDiEkHyfVX8u', 'admin', 'verified', '+234 801 000 0000', 'active')
-      `);
-    } else {
-      await client.query(`
-        UPDATE users 
-        SET password_hash = '$2a$10$QCECb7/6Ab.9IrRxkCYBSexNHefM1dH1cajKVlEJRvDiEkHyfVX8u',
-            account_status = 'active'
-        WHERE LOWER(email) = 'admin'
-      `);
+          ('System', 'Admin', $1, $2, 'admin', 'verified', '+234 801 000 0000', 'active')
+      `, [adminEmail, hashedPassword]);
+      console.log(`[PostgreSQL] Initial admin account created with email/username: ${adminEmail}`);
     }
-
-
-    // Purge non-existent test tenants if present
-    await client.query(`
-      DELETE FROM users 
-      WHERE LOWER(email) IN ('tenant@lodale.com', 'testtenant@lodale.com')
-    `);
-
-    // Ensure single admin account in database (remove duplicate admin-role users if any)
-    await client.query(`
-      DELETE FROM users 
-      WHERE primary_role = 'admin' AND LOWER(email) != 'admin'
-    `);
 
     // --- Migration: Role-Specific Profile Tables ---
     await client.query(`
