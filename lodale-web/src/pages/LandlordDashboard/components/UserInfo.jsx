@@ -13,13 +13,11 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
   const [showRateModal, setShowRateModal] = useState(false);
   const [reviewsData, setReviewsData] = useState({ hasReviews: false, rating: "New", count: 0, reviews: [] });
   
-  if (!tenant) return null;
-
-  const tenantId = tenant.id || tenant.tenantId || tenant.userId || tenant.email;
-  const emailId = tenant.email || tenant.tenant_email || (tenant.tenant && tenant.tenant.email) || "";
-  const tenantName = tenant.name || tenant.tenantName || `${tenant.firstName || ''} ${tenant.lastName || ''}`.trim() || (tenant.tenant ? `${tenant.tenant.first_name || tenant.tenant.firstName || ''} ${tenant.tenant.last_name || tenant.tenant.lastName || ''}`.trim() : '') || "Applicant";
+  const tenantId = tenant?.id || tenant?.tenantId || tenant?.userId || tenant?.email || "";
+  const emailId = tenant?.email || tenant?.tenant_email || (tenant?.tenant && tenant.tenant.email) || "";
 
   const refreshReviews = () => {
+    if (!tenantId && !emailId) return;
     const data = ratingService.getTenantReviews(tenantId, emailId);
     setReviewsData(data);
   };
@@ -27,6 +25,10 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
   useEffect(() => {
     refreshReviews();
   }, [tenantId, emailId]);
+
+  if (!tenant) return null;
+
+  const tenantName = tenant.name || tenant.tenantName || `${tenant.firstName || ''} ${tenant.lastName || ''}`.trim() || (tenant.tenant ? `${tenant.tenant.first_name || tenant.tenant.firstName || ''} ${tenant.tenant.last_name || tenant.tenant.lastName || ''}`.trim() : '') || "Applicant";
 
   const isApplicant = Boolean(onApprove || onDecline || tenant.isApplicant || tenant.applicationId || tenant.status === "pending" || tenant.status === "application_received");
 

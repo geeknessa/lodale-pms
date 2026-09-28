@@ -26,8 +26,6 @@ const ToggleSwitch = ({ checked, onChange, label }) => (
 );
 
 export default function AutomatedRemindersModal({ isOpen, onClose, activeTenants = [], onShowToast }) {
-  if (!isOpen) return null;
-
   const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming' | 'settings'
   const [settings, setSettings] = useState(() => reminderService.getSettings());
   const [inspections, setInspections] = useState([]);
@@ -142,6 +140,8 @@ export default function AutomatedRemindersModal({ isOpen, onClose, activeTenants
       scheduledTriggers
     };
   });
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-ink-950/70 backdrop-blur-sm animate-fadeIn">

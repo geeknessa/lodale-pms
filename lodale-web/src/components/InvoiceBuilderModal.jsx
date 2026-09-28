@@ -5,8 +5,6 @@ import { invoiceService } from '../services/invoiceService';
 import { triggerToast } from '../context/ToastContext';
 
 export default function InvoiceBuilderModal({ isOpen, onClose, application, property, tenant, onSuccess }) {
-  if (!isOpen || !application) return null;
-
   const initialRent = Number(property?.rent_amount || property?.price || 0);
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -35,9 +33,9 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
   const [landlordEmail, setLandlordEmail] = useState(sessionStorage.getItem('lastLoggedInEmail') || 'landlord@lodale.com');
 
   // Tenant prefill
-  const tenantName = application.tenant_name || tenant?.full_name || 'Tenant Candidate';
-  const tenantEmail = application.tenant_email || tenant?.email || 'tenant@lodale.com';
-  const tenantPhone = application.tenant_phone || tenant?.phone || '+234 800 000 0000';
+  const tenantName = application?.tenant_name || tenant?.full_name || 'Tenant Candidate';
+  const tenantEmail = application?.tenant_email || tenant?.email || 'tenant@lodale.com';
+  const tenantPhone = application?.tenant_phone || tenant?.phone || '+234 800 000 0000';
   const tenantAddress = property?.title ? `Unit at ${property.title}` : 'Lodale Rental Property';
 
   // Bank Account prefill from Landlord Profile
@@ -218,6 +216,8 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
       setSubmitting(false);
     }
   };
+
+  if (!isOpen || !application) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md overflow-y-auto">
