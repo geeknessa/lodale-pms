@@ -213,6 +213,7 @@ export const propertyController = {
     }
 
     const data = req.body;
+    delete data.status;
     
     // Quick sanitization of price from rent string to number if needed, but only if rent_amount isn't explicitly provided
     if (data.price && (data.rent_amount === undefined || data.rent_amount === null || data.rent_amount === "")) {
@@ -279,13 +280,26 @@ export const propertyController = {
       return res.status(403).json({ error: 'Forbidden: You can only update status of your own properties' });
     }
 
+    const normalizedStatus = String(status).trim().toLowerCase();
+    const LIVE_STATUSES = ['active_vacant', 'approved', 'live', 'active'];
+    const ALLOWED_LANDLORD_STATUSES = ['inactive', 'occupied', 'active_occupied'];
+
+    if (req.user.role !== 'admin') {
+      if (LIVE_STATUSES.includes(normalizedStatus)) {
+        return res.status(403).json({ error: 'Forbidden: Landlords cannot approve listings or set them to live/approved status' });
+      }
+      if (!ALLOWED_LANDLORD_STATUSES.includes(normalizedStatus)) {
+        return res.status(400).json({ error: `Forbidden: Landlords can only set status to: ${ALLOWED_LANDLORD_STATUSES.join(', ')}` });
+      }
+    }
+
     autoApprovalService.cancelScheduledAutoApproval(id);
-    const updated = await PropertyModel.updatePropertyStatus(id, status);
+    const updated = await PropertyModel.updatePropertyStatus(id, normalizedStatus);
     if (!updated) {
       return res.status(404).json({ error: 'Property not found' });
     }
     
-    res.json({ message: `Property status updated to ${status}`, property: updated });
+    res.json({ message: `Property status updated to ${normalizedStatus}`, property: updated });
   }),
 
   requestPropertyDeletion: asyncHandler(async (req, res) => {

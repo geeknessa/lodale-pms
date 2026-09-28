@@ -40,7 +40,8 @@ export const optionalAuth = (req, res, next) => {
 
 export const requireRole = (requiredRole) => {
   return (req, res, next) => {
-    if (!req.user || req.user.role !== requiredRole) {
+    const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
     }
     next();
