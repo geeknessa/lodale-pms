@@ -42,7 +42,6 @@ export const authController = {
 
   login: asyncHandler(async (req, res) => {
     const { email, password } = req.body;
-    console.log(`[Auth Login Attempt] email: "${email}", password length: ${password ? password.length : 0}`);
 
     // All users (including admin) authenticate via the same bcrypt flow
     const user = await UserModel.findByEmail(email);

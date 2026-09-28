@@ -2,7 +2,7 @@ import { AdminModel } from '../models/adminModel.js';
 import { PropertyModel } from '../models/propertyModel.js';
 import { UserModel } from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { clearDatabase, pool } from '../db/db.js';
+import { pool } from '../db/db.js';
 import { invalidateUserStatusCache } from '../middlewares/authMiddleware.js';
 
 export const adminController = {
@@ -273,11 +273,6 @@ export const adminController = {
       message: `User ${deletedUser.first_name || deletedUser.email} moved to archive / deleted successfully.`,
       user: deletedUser
     });
-  }),
-
-  resetDatabase: asyncHandler(async (req, res) => {
-    const result = await clearDatabase();
-    res.json(result);
   })
 };
 

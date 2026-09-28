@@ -424,25 +424,3 @@ export async function initDb() {
   }
 }
 
-/**
- * Clears all user accounts (except system admin), property listings, units, and approval queues
- * so users can freely register fresh accounts.
- */
-export async function clearDatabase() {
-  const client = await pool.connect();
-  try {
-    console.log('[PostgreSQL] Clearing user accounts and property listings...');
-    await client.query(`
-      TRUNCATE listing_approval_queue, property_amenities, property_units, property_blocks, properties CASCADE;
-      DELETE FROM users WHERE LOWER(email) != 'admin';
-    `);
-    console.log('[PostgreSQL] Database successfully cleared! Users can now register fresh accounts.');
-    return { success: true, message: 'Database cleared successfully. System admin preserved.' };
-  } catch (error) {
-    console.error('[PostgreSQL Clear DB Error]:', error.message);
-    throw error;
-  } finally {
-    client.release();
-  }
-}
-
