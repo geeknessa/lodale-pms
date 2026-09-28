@@ -71,9 +71,10 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Global process exception handlers to prevent unexpected crashes
+// Global process exception handlers
 process.on('uncaughtException', (err) => {
-  console.error('[Server Uncaught Exception]:', err.message || err);
+  console.error('[Server Uncaught Exception]:', err.stack || err.message || err);
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
