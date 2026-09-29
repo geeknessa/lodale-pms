@@ -46,13 +46,11 @@ export const authController = {
     // All users (including admin) authenticate via the same bcrypt flow
     const user = await UserModel.findByEmail(email);
     if (!user) {
-      console.log(`[Auth Login Failed] No user found with email: "${email}"`);
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
     const status = (user.account_status || 'active').toLowerCase();
     if (status === 'suspended') {
-      console.log(`[Auth Login Suspended] User ${email} is suspended.`);
       return res.status(403).json({ error: 'Your account has been suspended. Contact support for assistance.' });
     }
 
@@ -65,7 +63,6 @@ export const authController = {
     }
 
     if (!user.password_hash) {
-      console.log(`[Auth Login Failed] User ${email} has no password hash.`);
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
@@ -106,7 +103,6 @@ export const authController = {
         }
       }
     }
-    console.log(`[Auth Login Check] email: "${email}", role: ${user.primary_role}, passwordMatch: ${isMatch}`);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
