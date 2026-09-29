@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, XCircle, ShieldCheck, Heart, MessageSquare, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
+import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, Heart, MessageSquare, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { applicationService } from "../../services/applicationService";
@@ -9,7 +9,7 @@ import { chatService } from "../../services/chatService";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import Avatar from "../../components/Avatar";
-import { INCOME_RANGES, doesIncomeMeetRequirement } from "../../utils/incomeRanges";
+import { doesIncomeMeetRequirement } from "../../utils/incomeRanges";
 import "./TenantSearch.css";
 
 // formatCurrency imported from formatters.js - HMR refreshed
@@ -406,7 +406,6 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
 
   const getUserLocationStr = () => {
     try {
-      const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
       const raw =
         sessionStorage.getItem("tenantCurrentProfile") ||
         sessionStorage.getItem("currentUserProfile");

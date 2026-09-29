@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Wrench, CheckCircle2, Clock, AlertTriangle, MessageSquare, Search, Filter, Loader2, Plus, User, Building2, RotateCcw } from "lucide-react";
+import { Wrench, AlertTriangle, Search, Loader2, User, Building2, RotateCcw } from "lucide-react";
 import { maintenanceService } from "../../../services/maintenanceService";
 import { triggerToast } from "../../../context/ToastContext";
 import RequestInfo from "./RequestInfo";

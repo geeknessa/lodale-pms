@@ -9,10 +9,8 @@ import {
   useLocation,
 } from "react-router-dom";
 import PageLoader from "./components/PageLoader";
-import { LandlordAccessPrompt, TenantAccessPrompt } from "./components/RoleAccessPrompt";
 
 const GuestDashboard = lazy(() => import("./pages/GuestDashboard"));
-const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const Login = lazy(() => import("./pages/Login"));
 const SignUp = lazy(() => import("./pages/SignUp"));
 const Application = lazy(() => import("./pages/Application"));

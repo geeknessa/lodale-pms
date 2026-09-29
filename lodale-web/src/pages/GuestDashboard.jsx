@@ -1,29 +1,20 @@
-import { useEffect, useState, useRef } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   FileText,
   LineChart,
-  ShieldCheck,
   Building2,
-  Inbox,
-  Wallet,
   Wrench,
   ArrowRight,
   AlertTriangle,
-  ChevronDown,
-  UserCheck,
-  Key,
-  Star,
   CheckCircle2,
-  HelpCircle,
   Home,
   CreditCard,
   ArrowLeft,
   Users
 } from "lucide-react";
 import NavBar from "../components/NavBar";
-import Button from "../components/Button";
 import ListingCard from "../components/ListingCard";
 import ListingCardSkeleton from "../components/ListingCardSkeleton";
 import Footer from "../components/Footer";
@@ -880,7 +871,6 @@ function FinalCtaSection({ C, isDark }) {
 
 export default function GuestDashboard() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [displayLimit, setDisplayLimit] = useState(8);
@@ -1013,10 +1003,6 @@ export default function GuestDashboard() {
     const landlordMatch = listing.landlord?.name?.toLowerCase().includes(query);
     return titleMatch || locMatch || landlordMatch;
   });
-
-  const signUpAs = (role) => {
-    navigate("/signup", { state: { presetRole: role } });
-  };
 
   return (
     <div

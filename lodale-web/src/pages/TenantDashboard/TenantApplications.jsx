@@ -872,10 +872,7 @@ export default function TenantApplications({ setActiveTab }) {
                             </button>
                           ) : (
                             <button
-                              onClick={() => {
-                                setSelectedAppForWithdraw(app);
-                                setShowWithdrawModal(true);
-                              }}
+                              onClick={() => handleOpenWithdrawModal(app)}
                               className="px-3 py-1.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 text-red-700 dark:text-red-400 font-medium text-xs rounded-md hover:bg-red-100 transition-colors flex items-center gap-1 cursor-pointer"
                             >
                               <Trash2 className="h-3.5 w-3.5" /> Withdraw

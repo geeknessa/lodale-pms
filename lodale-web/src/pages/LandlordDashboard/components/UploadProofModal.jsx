@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { X, Upload, ShieldAlert, FileText, CheckCircle2, Loader2 } from 'lucide-react';
+import { X, Upload, ShieldAlert, FileText, Loader2 } from 'lucide-react';
 import { propertyService } from "../../../services/propertyService";
 import { notificationService } from "../../../services/notificationService";
 import { triggerToast } from '../../../context/ToastContext';
 
 export default function UploadProofModal({ isOpen, onClose, property, onSuccess }) {
   const [docType, setDocType] = useState('Certificate of Occupancy (C of O)');
-  const [docFile, setDocFile] = useState(null);
+  const [, setDocFile] = useState(null);
   const [docFileName, setDocFileName] = useState('');
   const [docDataUrl, setDocDataUrl] = useState('');
   const [landlordNotes, setLandlordNotes] = useState('');

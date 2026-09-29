@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, Plus, Trash2, Info, Building2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, FileText, Loader2, Plus, Info, Building2 } from 'lucide-react';
 import Button from './Button';
 import { invoiceService } from '../services/invoiceService';
 import { triggerToast } from '../context/ToastContext';
@@ -62,8 +62,8 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
   const [cautionFeeAmount, setCautionFeeAmount] = useState(Math.round(initialRent * 0.05)); // 5% caution default
   const [utilityFeeEnabled, setUtilityFeeEnabled] = useState(false);
   const [utilityFeeAmount, setUtilityFeeAmount] = useState(50000);
-  const [lateFeeEnabled, setLateFeeEnabled] = useState(false);
-  const [lateFeeAmount, setLateFeeAmount] = useState(25000);
+  const [lateFeeEnabled] = useState(false);
+  const [lateFeeAmount] = useState(25000);
 
   // Custom Fee items
   const [customItems, setCustomItems] = useState([]);
@@ -80,10 +80,6 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
       setNewCustomTitle('');
       setNewCustomAmount('');
     }
-  };
-
-  const handleRemoveCustomFee = (index) => {
-    setCustomItems(prev => prev.filter((_, i) => i !== index));
   };
 
   // Compile full invoice items list

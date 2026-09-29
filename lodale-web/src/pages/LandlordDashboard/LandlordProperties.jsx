@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info, ChevronDown, User, Edit3, Trash2, Loader2, Upload, RotateCcw } from "lucide-react";
+import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, ChevronDown, User, Edit3, Trash2, Loader2, Upload, RotateCcw } from "lucide-react";
 import { propertyService } from "../../services/propertyService";
 import { leaseService } from "../../services/leaseService";
 import { applicationService } from "../../services/applicationService";

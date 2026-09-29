@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2, Bell, AlertTriangle, RotateCcw, Link2, Copy, Send, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Search, Plus, MessageSquare, Star, X, Info, UserCheck, ShieldAlert, AlertTriangle, RotateCcw, Copy, Send, CheckCircle2 } from "lucide-react";
 import { triggerToast } from "../../context/ToastContext";
-import { formatCurrency } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
 import { leaseService } from "../../services/leaseService";
 import { applicationService } from "../../services/applicationService";
@@ -465,11 +464,6 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
     setDisplayLimit(8);
   }, [searchQuery, activeFilter]);
 
-  // Sync when applications approve or other tabs update localStorage
-  const handleTenantChange = () => {
-    loadData();
-  };
-
   // Search & Filter logic
   const filteredTenants = tenantsList.filter((tenant) => {
     // 1. Search Query filter
@@ -536,17 +530,13 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
       return;
     }
 
-    let defaultPassword = "LodaleTenant2026!";
     try {
       const nameParts = formData.name.trim().split(" ");
-      const res = await apiClient.post("/users/invite-tenant", {
+      await apiClient.post("/users/invite-tenant", {
         firstName: nameParts[0] || "",
         lastName: nameParts.length > 1 ? nameParts.slice(1).join(" ") : "",
         email: cleanEmail
       });
-      if (res && res.defaultPassword) {
-        defaultPassword = res.defaultPassword;
-      }
     } catch (err) {
       if (err.message && err.message.includes("User already exists")) {
         triggerToast("An account with this email already exists on Lodale. Please ask the tenant to sign in.", "warning", "User Exists");
@@ -656,19 +646,6 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
       setComment("");
       setRentAgain("yes");
       loadData();
-    }
-  };
-
-  // Remove Tenant entirely
-  const handleDeleteTenant = async (tenantId) => {
-    if (!window.confirm("Are you sure you want to remove this tenant from the system entirely? This action cannot be undone.")) {
-      return;
-    }
-
-    try {
-      triggerToast("To fully remove a tenant from your portfolio, please terminate their lease in the Leases tab.", "warning", "Action Restricted");
-    } catch (e) {
-      console.error("Error removing tenant:", e);
     }
   };
 

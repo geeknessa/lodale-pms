@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { 
   X, Star, CheckCircle2, ArrowLeft,
-  Home, User, ShieldCheck, Plus, MessageSquare
+  Home, User, ShieldCheck, Plus
 } from "lucide-react";
 import Avatar from "../../../components/Avatar";
 import { ratingService } from "../../../services/ratingService";

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, Calendar, Clock, CheckCircle2, AlertCircle, Send, Settings, Sliders, X, ShieldAlert } from 'lucide-react';
+import { Bell, Calendar, Clock, Send, Settings, Sliders, X } from 'lucide-react';
 import { reminderService } from '../services/reminderService';
 import { inspectionService } from '../services/inspectionService';
 

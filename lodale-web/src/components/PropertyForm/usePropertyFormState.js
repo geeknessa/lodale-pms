@@ -2,31 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { handlePropertySubmit } from "../../utils/propertyUtils";
 import { propertyService } from "../../services/propertyService";
-import { chatService } from "../../services/chatService";
 import { notificationService } from "../../services/notificationService";
 
-const GENERAL_UNIT_AMENITIES = [
-  "24/7 Security",
-  "Prepaid Meter",
-  "Air Conditioning",
-  "Balcony",
-  "Water Heater",
-  "Parking Space",
-  "24/7 Power / Generator",
-  "En-suite Bathrooms",
-  "Fitted Kitchen",
-  "CCTV Camera",
-  "Elevator"
-];
 
-const GENERAL_UNIT_RULES = [
-  "No Pets Allowed",
-  "No Smoking Inside",
-  "No Parties / Loud Noise",
-  "Quiet Hours (10 PM - 6 AM)",
-  "Commercial Use Prohibited",
-  "Prompt Rent Payment"
-];
 
 export const ADD_PROPERTY_TOUR_STEPS = [
   {
@@ -94,8 +72,8 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
   // Tour Guide State
   const [runTour, setRunTour] = useState(false);
   const [tourStep, setTourStep] = useState(0);
-  const [spotlightStyle, setSpotlightStyle] = useState({});
-  const [tooltipStyle, setTooltipStyle] = useState({});
+  const [spotlightStyle] = useState({});
+  const [tooltipStyle] = useState({});
   const [recalcTrigger, setRecalcTrigger] = useState(0);
 
   // Property Type & Subtype
@@ -248,7 +226,7 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
     return "Landlord Account";
   });
 
-  const [landlordAvatar, setLandlordAvatar] = useState(() => {
+  const [landlordAvatar] = useState(() => {
     const emailKey = sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());

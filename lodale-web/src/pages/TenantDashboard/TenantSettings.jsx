@@ -5,7 +5,6 @@ import {
   LogOut,
   Pencil,
   Calendar,
-  ChevronDown,
   CheckCircle2,
   AlertCircle,
   FileText,
@@ -22,7 +21,6 @@ import {
 import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import SearchableOccupationSelect from "../../components/SearchableOccupationSelect";
-import EmailVerificationModal from "../../components/EmailVerificationModal";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
 import { profileService } from "../../services/profileService";

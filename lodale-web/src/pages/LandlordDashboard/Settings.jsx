@@ -8,7 +8,6 @@ import { profileService } from "../../services/profileService";
 import { leaseService } from "../../services/leaseService";
 import { reminderService } from "../../services/reminderService";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
-import EmailVerificationModal from "../../components/EmailVerificationModal";
 import "./Settings.css";
 
 const ToggleSwitch = ({ checked, onChange, label }) => (

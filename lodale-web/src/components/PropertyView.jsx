@@ -8,7 +8,7 @@ import Button from './Button';
 import { Logo } from './Logo';
 import {
   ArrowLeft, MapPin, BedDouble, Bath, CheckCircle2, XCircle, ShieldCheck,
-  Building2, Trash2, Edit3, Loader2, ListChecks, Home, DollarSign, AlertTriangle, Shield,
+  Building2, Edit3, Loader2, ListChecks, Home, AlertTriangle,
   Maximize2, ChevronLeft, ChevronRight, X, Star, User
 } from 'lucide-react';
 import PropertyDetailMap from './PropertyDetailMap';
@@ -37,10 +37,6 @@ export function PropertyDetailView() {
     requirements, 
     tenantStats 
   } = useTenantQualification(property);
-
-
-  const requiredIncome = requirements?.income || (property?.minimum_income_required ? `₦${Number(property.minimum_income_required).toLocaleString()}/yr` : "None Stated");
-  const employmentReq = requirements?.employment || property?.employment_requirement || "Any Employment Status";
 
   useEffect(() => {
     async function loadProperty() {

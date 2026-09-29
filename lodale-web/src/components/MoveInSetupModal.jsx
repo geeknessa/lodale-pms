@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Key, Calendar, FileText, CheckCircle2, X, AlertCircle } from "lucide-react";
+import { Key, CheckCircle2, X } from "lucide-react";
 import { chatService } from "../services/chatService";
 import { triggerToast } from "../context/ToastContext";
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, Copy, Check, Info, Building2, Upload } from 'lucide-react';
+import { X, FileText, CheckCircle2, Loader2, Copy, Check, Info, Building2 } from 'lucide-react';
 import Button from './Button';
 import { invoiceService } from '../services/invoiceService';
 import { chatService } from '../services/chatService';

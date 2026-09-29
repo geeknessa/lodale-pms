@@ -10,21 +10,15 @@ import {
   Wrench,
   CreditCard,
   FileText,
-  PieChart,
   User,
   Building2,
   Clock,
   ArrowRight,
-  Download,
   LogOut,
   Sun,
   Moon,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ListChecks,
   Calendar,
-  HelpCircle,
   Bell,
   Menu,
   Check,
@@ -51,10 +45,8 @@ import { leaseService } from "../../services/leaseService";
 import { ratingService } from "../../services/ratingService";
 import { rentService } from "../../services/rentService";
 import { maintenanceService } from "../../services/maintenanceService";
-import { chatService } from "../../services/chatService";
 import { userService } from "../../services/userService";
 import { profileService } from "../../services/profileService";
-import { reminderService } from "../../services/reminderService";
 import { notificationService } from "../../services/notificationService";
 import { applicationService } from "../../services/applicationService";
 const TOUR_STEPS = [

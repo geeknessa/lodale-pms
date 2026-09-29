@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
-  CheckCircle2, XCircle, Loader2, ArrowLeft, Briefcase, User, Phone,
-  ShieldCheck, AlertTriangle, Check, Building2, Home, MapPin, Info, AlertCircle,
+  CheckCircle2, Loader2, ArrowLeft, Briefcase, User,
+  ShieldCheck, AlertTriangle, Check, Home, AlertCircle,
   Users, Plus, Trash2
 } from "lucide-react";
 import { Logo } from "../components/Logo";

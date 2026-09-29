@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Bell, Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Send, Settings, ShieldCheck, Mail, ChevronRight, ChevronLeft, CalendarDays, X } from 'lucide-react';
+import { Bell, Clock, Send, Settings, ChevronRight, ChevronLeft, CalendarDays, X } from 'lucide-react';
 import Button from '../../../components/Button';
 import { reminderService } from '../../../services/reminderService';
 import { inspectionService } from '../../../services/inspectionService';

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Lock, CheckCircle2, AlertTriangle, Loader2, SlidersHorizontal, Image, Plus, Trash2, Shield, Info, Send, Upload, ShieldCheck } from "lucide-react";
+import { X, Lock, CheckCircle2, Loader2, SlidersHorizontal, Image, Plus, Trash2, Send, Upload, ShieldCheck } from "lucide-react";
 import Button from "./Button";
 import { propertyService } from "../services/propertyService";
 import { triggerToast } from "../context/ToastContext";

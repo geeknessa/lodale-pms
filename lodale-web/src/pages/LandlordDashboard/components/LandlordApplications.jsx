@@ -116,17 +116,6 @@ export default function LandlordApplications({ setActiveTab }) {
 
   // Lease Setup Modal State
   const [showLeaseSetupModal, setShowLeaseSetupModal] = useState(false);
-  const [leaseForm, setLeaseForm] = useState({
-    startDate: "",
-    duration: "1_year",
-    rentAmount: "",
-    rentPeriod: "annually",
-    securityDeposit: "",
-    customClauses: "",
-    includePets: false,
-    includeSmoking: false,
-    includeLateFee: true
-  });
 
   const [inspections, setInspections] = useState([]);
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
-  Search, Phone, Video, MoreHorizontal, Send, Paperclip,
-  Mic, Play, Pause, ChevronRight, Building2, ArrowLeft, Trash2, Loader2, AlertTriangle, RotateCcw,
+  Search, Phone, Video, Send, Paperclip,
+  Building2, ArrowLeft, Trash2, Loader2, AlertTriangle, RotateCcw,
   FileText, Download
 } from "lucide-react";
 import { triggerToast } from "../../context/ToastContext";

@@ -13,15 +13,7 @@ import {
   Bell,
   Mail,
   Plus,
-  Search,
   SlidersHorizontal,
-  Calendar,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  PanelLeftClose,
-  PanelLeftOpen,
-  TrendingUp,
   HelpCircle,
   LogOut,
   ArrowUpRight,
@@ -43,7 +35,6 @@ import {
   Upload,
   CreditCard,
   Loader2,
-  PlusCircle,
   UserPlus,
   Wrench,
   Briefcase,
@@ -51,7 +42,6 @@ import {
   CalendarDays
 } from "lucide-react";
 import { Logo, LogoMark } from "../../components/Logo";
-import Button from "../../components/Button";
 import { propertyService } from "../../services/propertyService";
 import { applicationService } from "../../services/applicationService";
 import { notificationService } from "../../services/notificationService";
@@ -255,10 +245,6 @@ export default function LandlordDashboard() {
       });
   };
 
-  const getActiveTenantsCount = () => {
-    return getActiveTenantsList().length;
-  };
-
   const getLandlordRatingData = () => {
     const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "landlord";
     return ratingService.getLandlordReviews(currentUserId);
@@ -315,13 +301,6 @@ export default function LandlordDashboard() {
   const [recalcTrigger, setRecalcTrigger] = useState(0);
   const [tooltipStyle, setTooltipStyle] = useState({});
   const [spotlightStyle, setSpotlightStyle] = useState({});
-
-  const currentDateStr = new Date().toLocaleDateString("en-US", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric"
-  });
 
   // Landlord profile avatar state (persisted across uploads)
   const [landlordAvatar, setLandlordAvatar] = useState(() => {
@@ -777,9 +756,6 @@ export default function LandlordDashboard() {
       }
     } catch (_e) {}
 
-    const currentName = (username || "").toLowerCase();
-    const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-
     let apiProps = [];
     if (currentUserId) {
       try {
@@ -795,7 +771,6 @@ export default function LandlordDashboard() {
 
       // Strict landlord ownership validation: do NOT load another landlord's property!
       const pLandlordId = String(p.landlord_id || p.landlordId || p.landlord?.id || "").trim();
-      const pLandlordName = String(p.landlord?.name || p.landlordName || p.landlord || "").trim().toLowerCase();
 
       if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) {
         return;

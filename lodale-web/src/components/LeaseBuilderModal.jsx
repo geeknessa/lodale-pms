@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, PenTool, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, PenTool } from 'lucide-react';
 import Button from './Button';
 import { leaseService } from '../services/leaseService';
 import { triggerToast } from '../context/ToastContext';

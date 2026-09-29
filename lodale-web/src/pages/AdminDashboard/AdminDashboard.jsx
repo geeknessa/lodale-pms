@@ -7,7 +7,7 @@ import { propertyService } from "../../services/propertyService";
 import { authService } from "../../services/authService";
 import { notificationService } from "../../services/notificationService";
 import AdminSupportChat from "./AdminSupportChat";
-import { formatCurrency, formatDate } from "../../utils/formatters";
+import { formatDate } from "../../utils/formatters";
 import {
   LayoutDashboard,
   Users,
@@ -21,7 +21,6 @@ import {
   AlertTriangle,
   Eye,
   UserCheck,
-  UserX,
   Trash2,
   Clock,
   ChevronRight,
@@ -43,15 +42,10 @@ import {
   KeyRound,
   Upload,
   Menu,
-  Settings,
   Palette,
   Bell,
   Sliders,
   Info,
-  Shield,
-  Laptop,
-  Smartphone,
-  Monitor,
   Loader2
 } from "lucide-react";
 
@@ -59,15 +53,6 @@ import {
 const INITIAL_USERS = [];
 const INITIAL_LISTINGS = [];
 const INITIAL_REVIEWS = [];
-
-const SETTINGS_PAGES = [
-  { id: "profile", label: "My Profile", icon: User },
-  { id: "account", label: "Account & Security", icon: KeyRound },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "preferences", label: "Preferences", icon: Sliders },
-  { id: "about", label: "System Info", icon: Info }
-];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -79,7 +64,6 @@ export default function AdminDashboard() {
 
   // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings' | 'profile' | 'support'
   const [activeTab, setActiveTab] = useState("overview");
-  const [settingsSubTab, setSettingsSubTab] = useState("profile");
 
   // Handle Escape key to close mobile sidebar drawer
   useEffect(() => {
@@ -507,7 +491,6 @@ export default function AdminDashboard() {
 
     const item = listings.find((l) => String(l.id) === String(listingId));
     const propertyTitle = item?.title || "Property";
-    const updatePayload = { status: "info_requested", admin_notes: "Additional proof of ownership required." };
 
 
 
