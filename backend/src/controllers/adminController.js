@@ -64,10 +64,15 @@ export const adminController = {
         latitude: p.latitude,
         longitude: p.longitude,
         approvalType: p.approval_type || (statusLabel === 'Live' ? 'manual' : null),
+        approval_type: p.approval_type || (statusLabel === 'Live' ? 'manual' : null),
         verificationScore: p.verification_score,
+        verification_score: p.verification_score,
         riskLevel: p.risk_level,
+        risk_level: p.risk_level,
         verificationResults: typeof p.verification_results === 'string' ? (() => { try { return JSON.parse(p.verification_results); } catch(e) { return p.verification_results; } })() : p.verification_results,
+        verification_results: p.verification_results,
         approvedAt: p.approved_at,
+        approved_at: p.approved_at,
       };
     });
 

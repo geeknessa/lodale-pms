@@ -604,77 +604,280 @@ export const PropertyVerificationService = {
   },
 
   /**
-   * Master Verification Pipeline
-   * Returns:
-   * {
-   *   decision: 'AUTO_APPROVE' | 'ADMIN_REVIEW',
-   *   score: number,
-   *   riskLevel: 'low' | 'medium' | 'high',
-   *   results: { ... },
-   *   reviewReasons: string[]
-   * }
+   * 1. Landlord ID Verification Check
+   * Auto-approval rule 1: The landlord's id_verification_status is 'verified'
    */
-  async verifyProperty(propertyData, landlordId) {
+  async checkLandlordIdVerification(landlordId) {
+    if (!landlordId) {
+      return {
+        key: 'landlord_id_verification',
+        name: 'Landlord ID Verification',
+        status: 'FAIL',
+        isVerified: false,
+        reason: 'Landlord identity is missing or unauthenticated'
+      };
+    }
+
+    const res = await pool.query(
+      'SELECT id, id_verification_status, account_status FROM users WHERE id = $1',
+      [landlordId]
+    );
+
+    if (res.rows.length === 0) {
+      return {
+        key: 'landlord_id_verification',
+        name: 'Landlord ID Verification',
+        status: 'FAIL',
+        isVerified: false,
+        reason: 'Landlord user record not found in system'
+      };
+    }
+
+    const user = res.rows[0];
+    const accountStatus = (user.account_status || 'active').toLowerCase();
+    const idStatus = (user.id_verification_status || 'unverified').toLowerCase();
+
+    const blockedStatuses = ['suspended', 'deactivated', 'blocked', 'archived', 'deleted_by_user'];
+    if (blockedStatuses.includes(accountStatus)) {
+      return {
+        key: 'landlord_id_verification',
+        name: 'Landlord ID Verification',
+        status: 'FAIL',
+        isVerified: false,
+        reason: `Landlord account is ${accountStatus}`
+      };
+    }
+
+    if (idStatus === 'verified') {
+      return {
+        key: 'landlord_id_verification',
+        name: 'Landlord ID Verification',
+        status: 'PASS',
+        isVerified: true,
+        reason: 'Landlord identity is fully verified'
+      };
+    }
+
+    return {
+      key: 'landlord_id_verification',
+      name: 'Landlord ID Verification',
+      status: 'FAIL',
+      isVerified: false,
+      reason: `Landlord ID verification status is '${user.id_verification_status || 'unverified'}' (requires 'verified')`
+    };
+  },
+
+  /**
+   * 2. Prior Manual Approval Check
+   * Auto-approval rule 2: Landlord has at least one other property with status = 'active_vacant' and approval_type = 'manual'
+   */
+  async checkPriorManualApproval(landlordId, propertyId = null) {
+    if (!landlordId) {
+      return {
+        key: 'prior_manual_approval',
+        name: 'Prior Manual Approval',
+        status: 'FAIL',
+        hasPriorApproval: false,
+        priorCount: 0,
+        reason: 'Landlord identity not provided'
+      };
+    }
+
+    const propFilter = propertyId ? 'AND id::text != $2' : '';
+    const params = propertyId ? [landlordId, String(propertyId)] : [landlordId];
+
+    const res = await pool.query(`
+      SELECT COUNT(*) 
+      FROM properties 
+      WHERE landlord_id = $1 
+        AND status = 'active_vacant' 
+        AND approval_type = 'manual' 
+        AND (is_deleted IS FALSE OR is_deleted IS NULL)
+        ${propFilter}
+    `, params);
+
+    const count = parseInt(res.rows[0]?.count || '0', 10);
+    if (count >= 1) {
+      return {
+        key: 'prior_manual_approval',
+        name: 'Prior Manual Approval',
+        status: 'PASS',
+        hasPriorApproval: true,
+        priorCount: count,
+        reason: `Landlord has ${count} prior manually-approved listing(s)`
+      };
+    }
+
+    return {
+      key: 'prior_manual_approval',
+      name: 'Prior Manual Approval',
+      status: 'FAIL',
+      hasPriorApproval: false,
+      priorCount: 0,
+      reason: 'Landlord has zero prior manually-approved listings (requires at least one prior manual approval by admin)'
+    };
+  },
+
+  /**
+   * 3. Statistical Market Price Outlier Check
+   * Auto-approval rule 3: Listing's rent_amount is not less than 40% of, or more than 250% of,
+   * average rent_amount of other active_vacant properties with same city and property_type.
+   * If fewer than 3 comparable properties exist, treat as failed and require manual review.
+   */
+  async checkMarketPriceOutlier(propertyData, propertyId = null) {
+    const city = (propertyData.city || '').trim();
+    const propertyType = (propertyData.sanitizedPropertyType || propertyData.property_type || '').trim().toLowerCase().replace(/\s+/g, '_');
+    const rentAmount = Number(propertyData.rent_amount || 0);
+
+    if (!city || !propertyType || rentAmount <= 0) {
+      return {
+        key: 'price_outlier',
+        name: 'Market Price Outlier Check',
+        status: 'FAIL',
+        isNotOutlier: false,
+        comparableCount: 0,
+        reason: 'Missing city, property type, or valid rent amount for price comparison'
+      };
+    }
+
+    const propFilter = propertyId ? 'AND id::text != $3' : '';
+    const params = propertyId 
+      ? [city.toLowerCase(), propertyType, String(propertyId)] 
+      : [city.toLowerCase(), propertyType];
+
+    const res = await pool.query(`
+      SELECT rent_amount 
+      FROM properties 
+      WHERE LOWER(TRIM(city)) = $1 
+        AND LOWER(TRIM(property_type)) = $2 
+        AND status = 'active_vacant' 
+        AND (is_deleted IS FALSE OR is_deleted IS NULL)
+        ${propFilter}
+    `, params);
+
+    const comparables = res.rows
+      .map(r => Number(r.rent_amount))
+      .filter(n => !isNaN(n) && n > 0);
+
+    const count = comparables.length;
+
+    if (count < 3) {
+      return {
+        key: 'price_outlier',
+        name: 'Market Price Outlier Check',
+        status: 'FAIL',
+        isNotOutlier: false,
+        comparableCount: count,
+        reason: `Insufficient comparable properties (${count} found, minimum 3 required for market price comparison in ${city} for ${propertyType}). Requires manual review.`
+      };
+    }
+
+    const avgRent = comparables.reduce((sum, val) => sum + val, 0) / count;
+    const minAllowed = 0.40 * avgRent;
+    const maxAllowed = 2.50 * avgRent;
+
+    if (rentAmount < minAllowed) {
+      return {
+        key: 'price_outlier',
+        name: 'Market Price Outlier Check',
+        status: 'FAIL',
+        isNotOutlier: false,
+        comparableCount: count,
+        averageRent: Math.round(avgRent),
+        minAllowed: Math.round(minAllowed),
+        maxAllowed: Math.round(maxAllowed),
+        reason: `Rent amount ₦${rentAmount.toLocaleString()} is below 40% of the market average (₦${Math.round(avgRent).toLocaleString()}) for ${city} ${propertyType}. Flagged as outlier.`
+      };
+    }
+
+    if (rentAmount > maxAllowed) {
+      return {
+        key: 'price_outlier',
+        name: 'Market Price Outlier Check',
+        status: 'FAIL',
+        isNotOutlier: false,
+        comparableCount: count,
+        averageRent: Math.round(avgRent),
+        minAllowed: Math.round(minAllowed),
+        maxAllowed: Math.round(maxAllowed),
+        reason: `Rent amount ₦${rentAmount.toLocaleString()} is above 250% of the market average (₦${Math.round(avgRent).toLocaleString()}) for ${city} ${propertyType}. Flagged as outlier.`
+      };
+    }
+
+    return {
+      key: 'price_outlier',
+      name: 'Market Price Outlier Check',
+      status: 'PASS',
+      isNotOutlier: true,
+      comparableCount: count,
+      averageRent: Math.round(avgRent),
+      minAllowed: Math.round(minAllowed),
+      maxAllowed: Math.round(maxAllowed),
+      reason: `Rent amount ₦${rentAmount.toLocaleString()} is within normal market range (40%–250% of average ₦${Math.round(avgRent).toLocaleString()}) across ${count} comparable properties in ${city}`
+    };
+  },
+
+  /**
+   * Master Verification Pipeline
+   * Evaluates the 3 mandatory agreed auto-approval conditions:
+   * 1. Landlord is ID-verified.
+   * 2. Landlord has >= 1 prior manually-approved property ('active_vacant' & approval_type = 'manual').
+   * 3. Rent amount is not an outlier (40% - 250% of avg across >= 3 comparable active_vacant properties).
+   */
+  async verifyProperty(propertyData, landlordId, propertyId = null) {
     try {
-      const landlordAccountCheck = await this.checkLandlordAccount(landlordId);
-      const requiredInfoCheck = this.checkRequiredInformation(propertyData);
-      const propertyValidationCheck = this.checkPropertyValidation(propertyData);
-      const requiredDocsCheck = this.checkRequiredDocuments(propertyData);
-      const duplicateCheck = await this.checkDuplicateProperty(propertyData, landlordId);
-      const priceAnomalyCheck = await this.checkPriceAnomaly(propertyData);
-      const landlordHistoryCheck = await this.checkLandlordHistory(landlordId);
+      const idCheck = await this.checkLandlordIdVerification(landlordId);
+      const historyCheck = await this.checkPriorManualApproval(landlordId, propertyId);
+      const priceCheck = await this.checkMarketPriceOutlier(propertyData, propertyId);
 
-      const checks = [
-        landlordAccountCheck,
-        requiredInfoCheck,
-        propertyValidationCheck,
-        requiredDocsCheck,
-        duplicateCheck,
-        priceAnomalyCheck,
-        landlordHistoryCheck
-      ];
+      const checks = [idCheck, historyCheck, priceCheck];
+      const allPassed = checks.every(c => c.status === 'PASS');
+      const passedCount = checks.filter(c => c.status === 'PASS').length;
 
-      const totalScore = checks.reduce((sum, c) => sum + (c.score || 0), 0);
-      const criticalFailures = checks.filter(c => c.isCritical && c.status !== 'PASS');
+      const decision = allPassed ? 'AUTO_APPROVE' : 'ADMIN_REVIEW';
+      const score = allPassed ? 100 : Math.round((passedCount / 3) * 100);
+      const riskLevel = allPassed ? 'low' : (!idCheck.isVerified ? 'high' : 'medium');
+
       const reviewReasons = checks
         .filter(c => c.status !== 'PASS')
         .map(c => `${c.name}: ${c.reason}`);
 
-      const resultsMap = {};
-      checks.forEach(c => {
-        resultsMap[c.key] = {
-          name: c.name,
-          status: c.status,
-          score: c.score,
-          maxScore: c.maxScore,
-          reason: c.reason
-        };
-      });
-
-      let decision = 'ADMIN_REVIEW';
-      let riskLevel = 'medium';
-
-      if (criticalFailures.length > 0) {
-        decision = 'ADMIN_REVIEW';
-        riskLevel = 'high';
-      } else if (totalScore >= 90) {
-        decision = 'AUTO_APPROVE';
-        riskLevel = 'low';
-      } else {
-        decision = 'ADMIN_REVIEW';
-        riskLevel = 'medium';
-      }
+      const resultsMap = {
+        landlord_id_verification: {
+          name: idCheck.name,
+          status: idCheck.status,
+          score: idCheck.status === 'PASS' ? 34 : 0,
+          maxScore: 34,
+          reason: idCheck.reason
+        },
+        prior_manual_approval: {
+          name: historyCheck.name,
+          status: historyCheck.status,
+          score: historyCheck.status === 'PASS' ? 33 : 0,
+          maxScore: 33,
+          priorCount: historyCheck.priorCount,
+          reason: historyCheck.reason
+        },
+        price_outlier: {
+          name: priceCheck.name,
+          status: priceCheck.status,
+          score: priceCheck.status === 'PASS' ? 33 : 0,
+          maxScore: 33,
+          comparableCount: priceCheck.comparableCount,
+          averageRent: priceCheck.averageRent,
+          reason: priceCheck.reason
+        }
+      };
 
       return {
         decision,
-        score: totalScore,
+        score,
         riskLevel,
         reviewReasons,
         results: resultsMap
       };
     } catch (err) {
       console.error('[PropertyVerificationService] Technical verification failure:', err);
-      // Safety rule: Technical error always defaults to ADMIN REVIEW and NEVER auto-approves
       return {
         decision: 'ADMIN_REVIEW',
         score: 0,

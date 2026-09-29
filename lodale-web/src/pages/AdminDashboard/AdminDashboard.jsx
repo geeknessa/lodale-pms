@@ -241,6 +241,10 @@ export default function AdminDashboard() {
               deedVerified: isApprovedLive,
               type: p.type || p.property_type || 'Apartment',
               rent: formattedPrice,
+              approvalType: p.approval_type || p.approvalType,
+              verificationScore: p.verification_score !== undefined ? p.verification_score : p.verificationScore,
+              riskLevel: p.risk_level || p.riskLevel,
+              verificationResults: p.verification_results || p.verificationResults,
               landlord: p.landlord || { name: p.landlordName || 'Verified Landlord', score: 5.0, reviews: 1 }
             });
           };

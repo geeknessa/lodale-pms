@@ -159,12 +159,10 @@ export const propertyController = {
     const verification = await PropertyVerificationService.verifyProperty(req.body, effectiveLandlordId);
     
     const qualifiesForAutoApproval = verification.decision === 'AUTO_APPROVE';
-    const assignedStatus = 'pending_review';
-    const approvalType = 'pending';
-    const approvedAt = null;
-    const autoApproveAt = qualifiesForAutoApproval
-      ? new Date(Date.now() + 60000).toISOString()
-      : null;
+    const assignedStatus = qualifiesForAutoApproval ? 'active_vacant' : 'pending_review';
+    const approvalType = qualifiesForAutoApproval ? 'automatic' : 'pending';
+    const approvedAt = qualifiesForAutoApproval ? new Date().toISOString() : null;
+    const autoApproveAt = null;
 
     const property = await PropertyModel.createProperty({
       effectiveLandlordId, title, slug, description, sanitizedPropertyType, 
@@ -187,19 +185,15 @@ export const propertyController = {
       }
     }
 
-    // Queue status in listing_approval_queue starts as queued
-    await PropertyModel.queueForApproval(property.id, effectiveLandlordId, 'queued');
-
-    // Schedule 1-minute server-side delayed auto-approval if eligible
-    if (qualifiesForAutoApproval) {
-      autoApprovalService.schedulePropertyAutoApproval(property.id, 60000);
-    }
+    // Queue status in listing_approval_queue
+    const queueStatus = qualifiesForAutoApproval ? 'approved' : 'queued';
+    await PropertyModel.queueForApproval(property.id, effectiveLandlordId, queueStatus);
 
     const createdBlocks = await PropertyModel.getBlocks(property.id);
     const createdUnits = await PropertyModel.getUnits(property.id);
 
     const responseMessage = qualifiesForAutoApproval
-      ? 'Property passed automated verification! It is scheduled for automatic approval in 1 minute following safety verification.'
+      ? 'Property passed automated verification! It is now active and live.'
       : 'Property submitted successfully! It is now pending admin review before going live.';
 
     // Send notifications to landlord and system admins

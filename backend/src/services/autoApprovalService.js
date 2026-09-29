@@ -115,10 +115,10 @@ class AutoApprovalService {
         units: unitsRes.rows
       };
 
-      const verification = await PropertyVerificationService.verifyProperty(verificationPayload, property.landlord_id);
+      const verification = await PropertyVerificationService.verifyProperty(verificationPayload, property.landlord_id, property.id);
 
-      if (verification.decision !== 'AUTO_APPROVE' || verification.score < 90) {
-        // No longer qualifies: route to Admin Review
+      if (verification.decision !== 'AUTO_APPROVE') {
+        // Did not satisfy all 3 auto-approval conditions: keep in pending_review
         await pool.query(
           `UPDATE properties 
            SET auto_approve_at = NULL, 
@@ -128,11 +128,10 @@ class AutoApprovalService {
            WHERE id = $1`,
           [property.id, verification.score, verification.riskLevel, JSON.stringify(verification.results)]
         );
-        console.warn(`[AutoApprovalService] Property ${property.id} no longer qualifies for auto-approval (score: ${verification.score}, decision: ${verification.decision}). Reasons:`, verification.reviewReasons);
-        return { success: false, reason: 'Property no longer satisfies auto-approval requirements' };
+        return { success: false, reason: 'Property does not satisfy auto-approval requirements' };
       }
 
-      // ALL 6 SAFETY CHECKS PASSED: Transition property to Live ('active_vacant')
+      // ALL 3 CONDITIONS PASSED: Transition property to Live ('active_vacant')
       const updateRes = await pool.query(`
         UPDATE properties
         SET status = 'active_vacant',
@@ -157,7 +156,7 @@ class AutoApprovalService {
         WHERE property_id = $1
       `, [property.id]);
 
-      console.log(`[AutoApprovalService] Property "${updatedProperty.title}" (${updatedProperty.id}) automatically approved after 1-minute delay.`);
+      console.log(`[AutoApprovalService] Property "${updatedProperty.title}" (${updatedProperty.id}) automatically approved.`);
       return { success: true, property: updatedProperty };
 
     } catch (err) {
@@ -167,7 +166,7 @@ class AutoApprovalService {
   }
 
   /**
-   * Scans database for any properties whose 1-minute waiting period has elapsed.
+   * Scans database for any deferred properties in pending_review and evaluates auto-approval.
    * Handles server restarts and past-due approvals reliably.
    */
   async checkPendingAutoApprovals() {
@@ -176,14 +175,10 @@ class AutoApprovalService {
 
     try {
       const res = await pool.query(`
-        SELECT id, title, auto_approve_at
+        SELECT id, title
         FROM properties
         WHERE status = 'pending_review'
-          AND (
-            (auto_approve_at IS NOT NULL AND auto_approve_at <= NOW())
-            OR
-            (auto_approve_at IS NULL AND verification_score >= 90 AND created_at <= NOW() - INTERVAL '1 minute')
-          )
+          AND (is_deleted IS FALSE OR is_deleted IS NULL)
         ORDER BY created_at ASC
         LIMIT 25
       `);
