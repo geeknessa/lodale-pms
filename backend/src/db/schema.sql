@@ -44,6 +44,12 @@ CREATE TABLE IF NOT EXISTS properties (
     deletion_reason TEXT,
     minimum_income_required NUMERIC(20, 2) DEFAULT 0.00,
     requires_guarantor BOOLEAN DEFAULT false,
+    auto_approve_at TIMESTAMPTZ,
+    verification_score NUMERIC,
+    approval_type VARCHAR(20),
+    risk_level VARCHAR(20),
+    verification_results JSONB,
+    approved_at TIMESTAMPTZ,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

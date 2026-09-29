@@ -114,6 +114,11 @@ export async function initDb() {
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS restoration_fee_amount NUMERIC(15, 2);
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS restoration_fee_status VARCHAR(50) DEFAULT 'none';
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS auto_approve_at TIMESTAMPTZ;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS verification_score NUMERIC;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS approval_type VARCHAR(20);
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS risk_level VARCHAR(20);
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS verification_results JSONB;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
     `);
 
     // Widen numeric columns to prevent overflow with large Nigerian property values
