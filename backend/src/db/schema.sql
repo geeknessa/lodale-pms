@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS landlord_profiles (
     professional_license VARCHAR(100),
     website_url TEXT,
     bio TEXT,
+    address TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

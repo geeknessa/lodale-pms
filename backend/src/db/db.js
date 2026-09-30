@@ -244,6 +244,7 @@ export async function initDb() {
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS address TEXT;
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS location VARCHAR(255);
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS postal_code VARCHAR(50);
+      ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS address TEXT;
 
       CREATE TABLE IF NOT EXISTS support_messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

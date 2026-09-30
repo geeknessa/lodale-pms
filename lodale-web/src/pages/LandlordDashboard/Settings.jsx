@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
-import { User, Lock, Sun, Moon, Calendar, LogOut, Pencil, FileText, CheckCircle2, ShieldCheck, Loader2, Settings as SettingsIcon, Award, Clock, AlertTriangle } from "lucide-react";
+import { User, Lock, Sun, Moon, Calendar, LogOut, Pencil, FileText, CheckCircle2, ShieldCheck, Loader2, Settings as SettingsIcon, Award, Clock, AlertTriangle, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
@@ -125,9 +125,31 @@ export default function Settings({ onShowReportModal }) {
         }
 
         if (roleProfile) {
+          if (roleProfile.address) setAddress(roleProfile.address);
           if (roleProfile.bank_name) setBankName(roleProfile.bank_name);
           if (roleProfile.bank_account_number) setBankAccountNumber(roleProfile.bank_account_number);
           if (roleProfile.bank_account_name) setBankAccountName(roleProfile.bank_account_name);
+        }
+
+        const currentStored = sessionStorage.getItem("currentUserProfile");
+        if (currentStored) {
+          try {
+            const parsed = JSON.parse(currentStored);
+            const merged = {
+              ...parsed,
+              firstName: profile?.first_name || parsed.firstName,
+              lastName: profile?.last_name || parsed.lastName,
+              first_name: profile?.first_name || parsed.first_name,
+              last_name: profile?.last_name || parsed.last_name,
+              phone: profile?.phone_number || parsed.phone,
+              phone_number: profile?.phone_number || parsed.phone_number,
+              address: roleProfile?.address || profile?.address || parsed.address || "",
+              role: "landlord",
+              primary_role: "landlord"
+            };
+            sessionStorage.setItem("currentUserProfile", JSON.stringify(merged));
+            sessionStorage.setItem("landlordCurrentProfile", JSON.stringify(merged));
+          } catch (e) {}
         }
       } catch (err) {
         console.warn("Failed to fetch landlord profile", err);
@@ -230,7 +252,8 @@ export default function Settings({ onShowReportModal }) {
           profileService.updateMyProfile({
             bank_name: bankName.trim(),
             bank_account_number: bankAccountNumber.trim(),
-            bank_account_name: bankAccountName.trim()
+            bank_account_name: bankAccountName.trim(),
+            address: address.trim()
           })
         ]);
       } catch (apiErr) {
@@ -240,18 +263,29 @@ export default function Settings({ onShowReportModal }) {
       const updatedProf = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         email: cleanEmail,
         phone: phone.trim(),
+        phone_number: phone.trim(),
         address: address.trim(),
         dob: dob.trim(),
         location: location,
         postalCode: postalCode.trim(),
+        postal_code: postalCode.trim(),
         gender: gender,
         avatar: avatarUrl,
-        role: "landlord"
+        avatar_url: avatarUrl,
+        role: "landlord",
+        primary_role: "landlord"
       };
 
       setUserProfile(updatedProf);
+      sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+      sessionStorage.setItem("landlordCurrentProfile", JSON.stringify(updatedProf));
+      if (cleanEmail) {
+        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
+      }
       if (updatedName) {
         sessionStorage.setItem("username", updatedName);
       }
@@ -622,10 +656,11 @@ export default function Settings({ onShowReportModal }) {
                 <div className="set-ref-input-group full pt-6 mt-4 border-t border-neutral-200 dark:border-white/10">
                   <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                     <h3 className="text-sm font-bold text-ink-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                      🏦 Banking Details (Default Account for Invoices)
+                      <CreditCard className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" />
+                      Banking Details (Default Account for Invoices)
                     </h3>
                     <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-cream-100 border border-emerald-500/20">
-                      ★ Auto-prefilled on Digital Invoices
+                      Auto-prefilled on Digital Invoices
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">

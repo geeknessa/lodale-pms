@@ -67,7 +67,7 @@ export const ProfileModel = {
       business_name, business_type, tax_id,
       bank_name, bank_account_number, bank_account_name,
       total_properties_managed, years_in_business,
-      professional_license, website_url, bio
+      professional_license, website_url, bio, address
     } = data;
 
     const numProperties = parseSafeNumber(total_properties_managed);
@@ -78,8 +78,8 @@ export const ProfileModel = {
         user_id, business_name, business_type, tax_id,
         bank_name, bank_account_number, bank_account_name,
         total_properties_managed, years_in_business,
-        professional_license, website_url, bio, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, NOW())
+        professional_license, website_url, bio, address, updated_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, NOW())
       ON CONFLICT (user_id) DO UPDATE SET
         business_name         = COALESCE(EXCLUDED.business_name, landlord_profiles.business_name),
         business_type         = COALESCE(EXCLUDED.business_type, landlord_profiles.business_type),
@@ -92,6 +92,7 @@ export const ProfileModel = {
         professional_license  = COALESCE(EXCLUDED.professional_license, landlord_profiles.professional_license),
         website_url           = COALESCE(EXCLUDED.website_url, landlord_profiles.website_url),
         bio                   = COALESCE(EXCLUDED.bio, landlord_profiles.bio),
+        address               = COALESCE(EXCLUDED.address, landlord_profiles.address),
         updated_at            = NOW()
       RETURNING *
     `, [
@@ -106,7 +107,8 @@ export const ProfileModel = {
       toNullableInt(years_in_business),
       toNullableStr(professional_license),
       toNullableStr(website_url),
-      toNullableStr(bio)
+      toNullableStr(bio),
+      toNullableStr(address)
     ]);
     return res.rows[0];
   },

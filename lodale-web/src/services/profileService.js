@@ -36,18 +36,36 @@ export const profileService = {
   checkProfileCompleteness(profile) {
     if (!profile) return { isComplete: false, percentage: 0, missingFields: ["Full Profile"] };
     
-    let requiredKeys = [
-      { key: 'firstName', label: 'First Name', alt: 'first_name' },
-      { key: 'lastName', label: 'Last Name', alt: 'last_name' },
-      { key: 'email', label: 'Email Address' },
-      { key: 'phone', label: 'Phone Number', alt: 'phone_number' },
-      { key: 'address', label: 'Residential Address' },
-      { key: 'occupation', label: 'Occupation' }
-    ];
+    const role = String(
+      profile.role ||
+      profile.primary_role ||
+      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('userRole') : '') ||
+      ''
+    ).toLowerCase();
 
-    const empStatus = String(profile.employmentStatus || profile.employment_status || "").toLowerCase();
-    if (empStatus.includes('student')) {
-      requiredKeys = requiredKeys.filter(k => k.key !== 'occupation');
+    let requiredKeys;
+    if (role === 'landlord') {
+      requiredKeys = [
+        { key: 'firstName', label: 'First Name', alt: 'first_name' },
+        { key: 'lastName', label: 'Last Name', alt: 'last_name' },
+        { key: 'email', label: 'Email Address' },
+        { key: 'phone', label: 'Phone Number', alt: 'phone_number' },
+        { key: 'address', label: 'Residential Address' }
+      ];
+    } else {
+      requiredKeys = [
+        { key: 'firstName', label: 'First Name', alt: 'first_name' },
+        { key: 'lastName', label: 'Last Name', alt: 'last_name' },
+        { key: 'email', label: 'Email Address' },
+        { key: 'phone', label: 'Phone Number', alt: 'phone_number' },
+        { key: 'address', label: 'Residential Address' },
+        { key: 'occupation', label: 'Occupation' }
+      ];
+
+      const empStatus = String(profile.employmentStatus || profile.employment_status || "").toLowerCase();
+      if (empStatus.includes('student')) {
+        requiredKeys = requiredKeys.filter(k => k.key !== 'occupation');
+      }
     }
 
     const missingFields = [];
