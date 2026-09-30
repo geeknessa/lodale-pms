@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, Info, ChevronDown, User, Edit3, Trash2, Loader2, Upload, RotateCcw } from "lucide-react";
+import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, AlertTriangle, ChevronDown, User, Edit3, Trash2, Loader2, Upload, RotateCcw } from "lucide-react";
 import { propertyService } from "../../services/propertyService";
 import { leaseService } from "../../services/leaseService";
 import { applicationService } from "../../services/applicationService";
@@ -428,83 +428,45 @@ export default function LandlordProperties() {
       }
       setError(null);
       try {
-        const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
+        let currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "";
+        try {
+          const uStr = sessionStorage.getItem("lodale_user") || localStorage.getItem("lodale_user");
+          if (uStr) {
+            const uObj = JSON.parse(uStr);
+            if (uObj.id && !currentUserId) currentUserId = uObj.id;
+          }
+        } catch (_e) {}
+
         const currentName = (username || "").toLowerCase();
         const userEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
 
-        // 1. Immediately read cached per-user session properties so page mounts with ZERO delay
-        let localProps = [];
-        try {
-          const userKey = "landlord_properties_" + (currentUserId || userEmail);
-          const savedSessionProps = sessionStorage.getItem(userKey);
-          if (savedSessionProps) {
-            const parsed = JSON.parse(savedSessionProps);
-            if (Array.isArray(parsed) && parsed.length > 0) localProps.push(...parsed);
-          }
-        } catch (err) {}
-
-        const propMap = new Map();
-        const seenSignatures = new Set();
-
-        const addUniqueProp = (p) => {
-          if (!p || (!p.id && p.id !== 0)) return;
-          const propIdKey = String(p.id);
-
-          // Enforce strict ownership check
+        const formatPropItem = (p) => {
+          if (!p || (!p.id && p.id !== 0)) return null;
           const pLandlordId = String(p.landlord_id || p.landlordId || p.landlord?.id || "").trim();
-          if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) return;
+          if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) return null;
 
-          const sig = `${(p.title || "").trim().toLowerCase()}|${(p.address_line1 || p.address || p.location || "").trim().toLowerCase()}`;
+          const locParts = [p.address_line1 || p.address, p.city, p.state].filter(Boolean);
+          const computedLoc = p.location || (locParts.length > 0 ? locParts.join(', ') : (p.city || p.state || 'Abuja'));
+          const propBeds = Number(p.bedrooms) || (Array.isArray(p.units) && p.units[0]?.bedrooms ? Number(p.units[0].bedrooms) : 1);
+          const propBaths = Number(p.bathrooms) || (Array.isArray(p.units) && p.units[0]?.bathrooms ? Number(p.units[0].bathrooms) : 1);
 
-          if (propMap.has(propIdKey)) {
-            const existing = propMap.get(propIdKey);
-            const merged = { ...existing, ...p, id: existing.id || p.id };
-            const statusLower = (p.status || "").toLowerCase();
-            if (statusLower.includes("info") || statusLower.includes("proof") || statusLower.includes("reject") || p.admin_notes || p.adminNotes) {
-              merged.status = p.status;
-              merged.admin_notes = p.admin_notes || p.adminNotes || merged.admin_notes;
-            }
-            propMap.set(propIdKey, merged);
-            return;
-          }
-
-          if (sig.length > 1 && seenSignatures.has(sig)) {
-            return;
-          }
-
-          propMap.set(propIdKey, {
+          return {
             ...p,
             price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
-            location: p.location || `${p.city || "Lagos"}, ${p.state || "Lagos"}`
-          });
-          if (sig.length > 1) seenSignatures.add(sig);
+            location: computedLoc,
+            bedrooms: propBeds,
+            bathrooms: propBaths,
+            beds: propBeds,
+            baths: propBaths
+          };
         };
 
-        // Populate initial local properties
-        localProps.forEach((p) => {
-          if (!p || !p.id) return;
-          const pLandlordId = String(p.landlord_id || p.landlordId || p.landlord?.id || "").trim();
-          const pLandlordName = String(p.landlord?.name || p.landlordName || p.landlord || "").trim().toLowerCase();
-
-          if (currentUserId && pLandlordId && pLandlordId !== String(currentUserId).trim()) return;
-          if (currentName && pLandlordName && !pLandlordName.includes(currentName) && !currentName.includes(pLandlordName)) return;
-
-          addUniqueProp(p);
-        });
-
-        const initialList = Array.from(propMap.values());
-        if (initialList.length > 0) {
-          setProperties(initialList);
-          setIsLoading(false); // Render immediately without waiting for network!
-        }
-
-        // 2. Hydrate from backend API asynchronously in background
+        // 1. Fetch authoritative properties directly from backend API
         if (currentUserId) {
           try {
             const apiProps = await propertyService.getLandlordProperties(currentUserId);
             if (Array.isArray(apiProps)) {
-              apiProps.forEach(addUniqueProp);
-              const finalList = Array.from(propMap.values());
+              const finalList = apiProps.map(formatPropItem).filter(Boolean);
               setProperties(finalList);
               const userKey = "landlord_properties_" + (currentUserId || userEmail);
               try {
@@ -520,13 +482,15 @@ export default function LandlordProperties() {
               } catch (storageErr) {
                 console.warn("Storage quota exceeded for landlord_properties session cache:", storageErr);
               }
+            } else {
+              setProperties([]);
             }
           } catch (err) {
             console.warn("Error fetching landlord properties from API:", err);
-            if (initialList.length === 0) {
-              setError("Failed to load property listings from backend server.");
-            }
+            setError("Failed to load property listings from backend server.");
           }
+        } else {
+          setProperties([]);
         }
       } catch (err) {
         console.warn("Error loading landlord properties:", err);
@@ -551,13 +515,18 @@ export default function LandlordProperties() {
 
   // Filter items
   const filteredProperties = properties.filter((item) => {
+    if (!item) return false;
+    const titleStr = (item.title || "").toLowerCase();
+    const locationStr = (item.location || `${item.address_line1 || ""}, ${item.city || ""}`).toLowerCase();
+
     // Search filter
     const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.location.toLowerCase().includes(searchQuery.toLowerCase());
+      !searchQuery ||
+      titleStr.includes(searchQuery.toLowerCase()) ||
+      locationStr.includes(searchQuery.toLowerCase());
 
     // Rent price filtering (numeric check)
-    const rawPrice = Number(item.price.replace(/[^0-9]/g, ""));
+    const rawPrice = Number(String(item.price || item.rent_amount || 0).replace(/[^0-9]/g, "")) || 0;
     let matchesRent = true;
     if (rentFilter === "under-200") {
       matchesRent = rawPrice < 200000;
@@ -570,18 +539,19 @@ export default function LandlordProperties() {
     // Location filter
     let matchesLocation = true;
     if (locationFilter !== "all") {
-      matchesLocation = item.location.toLowerCase().includes(locationFilter.toLowerCase());
+      matchesLocation = locationStr.includes(locationFilter.toLowerCase());
     }
 
     // Type filter
     let matchesType = true;
     if (typeFilter !== "all") {
-      const isApartment = item.title.toLowerCase().includes("apartment") || item.title.toLowerCase().includes("flat");
-      const isResidency = item.title.toLowerCase().includes("residency") || item.title.toLowerCase().includes("gardens");
+      const typeStr = (item.property_type || item.type || "").toLowerCase();
+      const isApartment = typeStr.includes("apartment") || typeStr.includes("flat") || titleStr.includes("apartment") || titleStr.includes("flat");
+      const isHouse = typeStr.includes("house") || typeStr.includes("villa") || typeStr.includes("duplex") || titleStr.includes("residency") || titleStr.includes("gardens") || titleStr.includes("house") || titleStr.includes("villa");
       if (typeFilter === "apartment") {
         matchesType = isApartment;
       } else if (typeFilter === "house") {
-        matchesType = !isApartment && isResidency;
+        matchesType = isHouse;
       }
     }
 

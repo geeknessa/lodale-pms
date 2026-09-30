@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, Lock, ShieldCheck, User, Building2, Layers, SlidersHorizontal, LogOut, FileText, Image as ImageIcon } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Building2, Layers, SlidersHorizontal, LogOut } from "lucide-react";
 import usePropertyFormState from "./usePropertyFormState";
 import PropertyFormHeader from "./components/PropertyFormHeader";
 import PropertyFormCapsuleNav from "./components/PropertyFormCapsuleNav";
@@ -56,7 +56,6 @@ export default function PropertyForm({ isStandalone = false, initialEditId = nul
     currentStep = 1,
     setCurrentStep = () => {},
     isEditing = false,
-    isSubmitting = false,
     showSuccessOverlay = false,
     formError = "",
     errors = {},
@@ -64,13 +63,6 @@ export default function PropertyForm({ isStandalone = false, initialEditId = nul
     landlordAvatar = "",
     showLandlordProfileModal = false,
     setShowLandlordProfileModal = () => {},
-    showNotificationsDropdown = false,
-    setShowNotificationsDropdown = () => {},
-    notificationsDropdownRef = null,
-    notificationsList = [],
-    unreadCount = 0,
-    notificationsTab = "all",
-    setNotificationsTab = () => {},
     runTour = false,
     setRunTour = () => {},
     tourStep = 0,
@@ -80,8 +72,6 @@ export default function PropertyForm({ isStandalone = false, initialEditId = nul
     handlePrevStep = () => {},
     handleNextStep = () => {},
     handleSubmit = () => {},
-    handleMarkAllNotificationsAsRead = () => {},
-    handleDeleteNotification = () => {},
     navigate = () => {}
   } = state || {};
 

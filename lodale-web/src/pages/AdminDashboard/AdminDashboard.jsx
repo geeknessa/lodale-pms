@@ -5,8 +5,9 @@ import { useTheme } from "../../context/ThemeContext";
 import { adminService } from "../../services/adminService";
 import { propertyService } from "../../services/propertyService";
 import { authService } from "../../services/authService";
+import { notificationService } from "../../services/notificationService";
 import AdminSupportChat from "./AdminSupportChat";
-import { formatCurrency, formatDate } from "../../utils/formatters";
+import { formatDate } from "../../utils/formatters";
 import {
   LayoutDashboard,
   Users,
@@ -20,7 +21,6 @@ import {
   AlertTriangle,
   Eye,
   UserCheck,
-  UserX,
   Trash2,
   Clock,
   ChevronRight,
@@ -42,15 +42,10 @@ import {
   KeyRound,
   Upload,
   Menu,
-  Settings,
   Palette,
   Bell,
   Sliders,
   Info,
-  Shield,
-  Laptop,
-  Smartphone,
-  Monitor,
   Loader2
 } from "lucide-react";
 
@@ -58,15 +53,6 @@ import {
 const INITIAL_USERS = [];
 const INITIAL_LISTINGS = [];
 const INITIAL_REVIEWS = [];
-
-const SETTINGS_PAGES = [
-  { id: "profile", label: "My Profile", icon: User },
-  { id: "account", label: "Account & Security", icon: KeyRound },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "preferences", label: "Preferences", icon: Sliders },
-  { id: "about", label: "System Info", icon: Info }
-];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -78,7 +64,6 @@ export default function AdminDashboard() {
 
   // Active top tab: 'overview' | 'users' | 'listings' | 'reviews' | 'settings' | 'profile' | 'support'
   const [activeTab, setActiveTab] = useState("overview");
-  const [settingsSubTab, setSettingsSubTab] = useState("profile");
 
   // Handle Escape key to close mobile sidebar drawer
   useEffect(() => {
@@ -113,6 +98,8 @@ export default function AdminDashboard() {
   const [reviews, setReviews] = useState(INITIAL_REVIEWS);
   const [selectedDocViewer, setSelectedDocViewer] = useState(null);
   const [propertyRequests, setPropertyRequests] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const unreadNotifCount = notifications.filter(n => !n.read && !n.is_read).length;
 
   // Recycle Bin & Restoration Fee State
   const [deletedUsers, setDeletedUsers] = useState([]);
@@ -193,18 +180,23 @@ export default function AdminDashboard() {
           console.warn("Backend API loading error:", err);
         }
 
+        try {
+          const apiNotifs = await notificationService.getMyNotifications();
+          if (Array.isArray(apiNotifs)) {
+            setNotifications(apiNotifs);
+          }
+        } catch (_e) {}
+
         const combinedApiProperties = [...(Array.isArray(apiPending) ? apiPending : []), ...(Array.isArray(apiAll) ? apiAll : [])];
 
         setListings(() => {
           const map = new Map();
-          const seenSignatures = new Set();
 
           const addUniqueListing = (p) => {
             if (!p || (!p.id && !p.title)) return;
             const key = String(p.id || p.title);
-            const sig = `${(p.title || p.name || "").trim().toLowerCase()}|${(p.address_line1 || p.address || p.location || "").trim().toLowerCase()}`;
 
-            if (map.has(key) || (sig.length > 1 && seenSignatures.has(sig))) {
+            if (map.has(key)) {
               return;
             }
 
@@ -225,11 +217,20 @@ export default function AdminDashboard() {
             const numVal = Number(String(p.rent_amount || p.rent || p.price || 0).replace(/[^0-9.]/g, '')) || 0;
             const formattedPrice = numVal > 0 ? `₦${numVal.toLocaleString()}${suffix}` : (p.price || `₦0${suffix}`);
 
+            const locParts = [p.address_line1 || p.address, p.city, p.state].filter(Boolean);
+            const computedLoc = p.location || (locParts.length > 0 ? locParts.join(', ') : (p.city || p.state || 'Abuja'));
+            const propBeds = Number(p.bedrooms) || (Array.isArray(p.units) && p.units[0]?.bedrooms ? Number(p.units[0].bedrooms) : 1);
+            const propBaths = Number(p.bathrooms) || (Array.isArray(p.units) && p.units[0]?.bathrooms ? Number(p.units[0].bathrooms) : 1);
+
             map.set(key, {
               ...p,
               id: p.id || key,
               title: p.title || p.name || "Property Listing",
-              location: p.location || `${p.address_line1 || p.address || 'Lagos'}, ${p.city || 'Lagos'}`,
+              location: computedLoc,
+              bedrooms: propBeds,
+              bathrooms: propBaths,
+              beds: propBeds,
+              baths: propBaths,
               price: formattedPrice,
               status: sLabel,
               rawStatus: rawS || (isApprovedLive ? "active_vacant" : sLabel === "Info Requested" ? "info_requested" : "pending_review"),
@@ -240,10 +241,12 @@ export default function AdminDashboard() {
               deedVerified: isApprovedLive,
               type: p.type || p.property_type || 'Apartment',
               rent: formattedPrice,
+              approvalType: p.approval_type || p.approvalType,
+              verificationScore: p.verification_score !== undefined ? p.verification_score : p.verificationScore,
+              riskLevel: p.risk_level || p.riskLevel,
+              verificationResults: p.verification_results || p.verificationResults,
               landlord: p.landlord || { name: p.landlordName || 'Verified Landlord', score: 5.0, reviews: 1 }
             });
-
-            if (sig.length > 1) seenSignatures.add(sig);
           };
 
           // Add API properties
@@ -492,7 +495,6 @@ export default function AdminDashboard() {
 
     const item = listings.find((l) => String(l.id) === String(listingId));
     const propertyTitle = item?.title || "Property";
-    const updatePayload = { status: "info_requested", admin_notes: "Additional proof of ownership required." };
 
 
 
@@ -641,7 +643,7 @@ export default function AdminDashboard() {
           type: "listing",
           id: l.id,
           title: l.title,
-          sub: `${l.location} • Submitted by ${l.landlord.name}`,
+          sub: `${l.location} • Submitted by ${l.landlord?.name || 'Verified Landlord'}`,
           timestamp: l.submittedAt,
           raw: l,
         })),
@@ -710,6 +712,18 @@ export default function AdminDashboard() {
           <Logo className="scale-90 origin-left" />
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab("notifications")}
+            className="relative p-1.5 rounded-lg text-[#3A5A40] dark:text-[#E5C583] hover:bg-[#DAD7CD]/50 dark:hover:bg-[#1E3029] transition-colors"
+            title="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadNotifCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {unreadNotifCount}
+              </span>
+            )}
+          </button>
           <span className="text-[11px] font-medium uppercase px-2 py-0.5 rounded bg-[#3A5A40] dark:bg-[#1C3028] text-white dark:text-[#E5C583]">
             Admin
           </span>
@@ -893,6 +907,28 @@ export default function AdminDashboard() {
                   <MessageSquare className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
                   <span className="truncate">Support Messages</span>
                 </div>
+              </button>
+
+              {/* Notifications */}
+              <button
+                onClick={() => {
+                  setActiveTab("notifications");
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-[12.5px] font-medium transition-colors whitespace-nowrap ${activeTab === "notifications"
+                  ? "bg-[#3A5A40] text-white shadow-sm font-semibold"
+                  : "text-[#DAD7CD] hover:bg-[#3A5A40]/50 hover:text-white"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Bell className="h-4 w-4 text-[#DAD7CD] dark:text-[#E5C583] shrink-0" />
+                  <span className="truncate">Notifications</span>
+                </div>
+                {unreadNotifCount > 0 && (
+                  <span className="text-[11px] bg-red-600 text-white font-bold px-1.5 py-0.5 rounded-full ml-1 shrink-0">
+                    {unreadNotifCount}
+                  </span>
+                )}
               </button>
 
               {/* My Profile */}
@@ -1401,16 +1437,23 @@ export default function AdminDashboard() {
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2">
-                          <span
-                            className={`text-xs px-2.5 py-0.5 rounded font-bold uppercase ${lst.status === "Live"
-                              ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
-                              : lst.status === "Pending Approval"
-                                ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
-                                : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
-                              }`}
-                          >
-                            {lst.status}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`text-xs px-2.5 py-0.5 rounded font-bold uppercase ${lst.status === "Live"
+                                ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-300"
+                                : lst.status === "Pending Approval"
+                                  ? "bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300"
+                                  : "bg-rose-100 text-rose-900 dark:bg-rose-950/80 dark:text-rose-300"
+                                }`}
+                            >
+                              {lst.status}
+                            </span>
+                            {lst.approvalType && (
+                              <span className="text-[10.5px] px-2 py-0.5 rounded-md font-bold uppercase bg-[#DAD7CD]/50 dark:bg-white/10 text-[#344E41] dark:text-[#E5C583]">
+                                {lst.approvalType === 'automatic' ? 'Auto' : 'Manual'}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs text-[#262626]/50 dark:text-[#A3BCA7]/60">
                             {lst.type}
                           </span>
@@ -1428,7 +1471,7 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="mt-2 pt-2 border-t border-[#DAD7CD] dark:border-[#233B31] text-xs text-[#262626]/70 dark:text-[#A3BCA7] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                          <span>Landlord: <strong className="text-[#262626] dark:text-[#F0F5F2]">{lst.landlord.name}</strong></span>
+                          <span>Landlord: <strong className="text-[#262626] dark:text-[#F0F5F2]">{lst.landlord?.name || 'Verified Landlord'}</strong></span>
                           <span>Deed Verified: {lst.deedVerified ? "Yes" : "No"}</span>
                         </div>
 
@@ -1900,10 +1943,106 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* --- TAB 4: MY PROFILE --- */}
+          {/* --- TAB: SUPPORT MESSAGES --- */}
           {activeTab === "support" && (
             <div className="h-full">
               <AdminSupportChat />
+            </div>
+          )}
+
+          {/* --- TAB: NOTIFICATIONS --- */}
+          {activeTab === "notifications" && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#344E41] dark:text-[#DAD7CD] uppercase tracking-wider mb-1">
+                    <Bell className="h-4 w-4" /> System Alerts
+                  </div>
+                  <h1 className="font-serif text-2xl md:text-3xl font-semibold text-[#262626] dark:text-[#DAD7CD]">
+                    Notifications
+                  </h1>
+                  <p className="text-sm text-[#262626]/70 dark:text-[#DAD7CD]/75 mt-1">
+                    Real-time administrative alerts, review queues, and system events.
+                  </p>
+                </div>
+                {notifications.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await notificationService.markAsRead('all');
+                        setNotifications(prev => prev.map(n => ({ ...n, read: true, is_read: true })));
+                      } catch (err) {
+                        console.warn("Failed to mark all as read:", err);
+                      }
+                    }}
+                    className="self-start sm:self-auto px-4 py-2 bg-[#3A5A40] hover:bg-[#344E41] text-white text-xs font-medium rounded-lg shadow-sm transition-colors flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Mark All as Read
+                  </button>
+                )}
+              </div>
+
+              {notifications.length === 0 ? (
+                <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-12 text-center">
+                  <div className="w-12 h-12 rounded-full bg-[#3A5A40]/10 dark:bg-[#263D33] flex items-center justify-center mx-auto mb-3 text-[#3A5A40] dark:text-[#E5C583]">
+                    <Bell className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD]">
+                    No Notifications
+                  </h3>
+                  <p className="text-xs text-[#262626]/60 dark:text-[#DAD7CD]/60 mt-1 max-w-sm mx-auto">
+                    You're all caught up. New administrative activities and requests will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {notifications.map((notif) => {
+                    const isUnread = !notif.read && !notif.is_read;
+                    return (
+                      <div
+                        key={notif.id || Math.random()}
+                        className={`p-4 rounded-xl border transition-all ${
+                          isUnread
+                            ? "bg-white dark:bg-[#0F1E17] border-[#3A5A40]/40 dark:border-[#3A5A40] shadow-sm"
+                            : "bg-white/60 dark:bg-[#07130D]/60 border-[#3A5A40]/15 dark:border-[#263D33]/60 opacity-80"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 ${isUnread ? "bg-[#3A5A40] dark:bg-[#E5C583]" : "bg-transparent"}`} />
+                            <div>
+                              <h4 className="text-sm font-semibold text-[#262626] dark:text-[#DAD7CD]">
+                                {notif.title}
+                              </h4>
+                              <p className="text-xs text-[#262626]/75 dark:text-[#DAD7CD]/75 mt-0.5 leading-relaxed">
+                                {notif.message}
+                              </p>
+                              <span className="text-[11px] text-[#262626]/50 dark:text-[#DAD7CD]/50 mt-2 block">
+                                {notif.created_at ? formatDate(notif.created_at) : 'Just now'}
+                              </span>
+                            </div>
+                          </div>
+                          {isUnread && (
+                            <button
+                              onClick={async () => {
+                                if (notif.id) {
+                                  try {
+                                    await notificationService.markAsRead(notif.id);
+                                    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true, is_read: true } : n));
+                                  } catch (_e) {}
+                                }
+                              }}
+                              className="text-xs text-[#3A5A40] dark:text-[#E5C583] hover:underline shrink-0"
+                            >
+                              Mark Read
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -2281,24 +2420,89 @@ export default function AdminDashboard() {
               <div>
                 <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Landlord Info</h4>
                 <p className="text-xs text-[#262626] dark:text-[#E4EBE6] mt-1 flex items-center gap-1">
-                  Name: <strong className="text-[#262626] dark:text-[#F0F5F2]">{selectedListing.landlord.name}</strong> • Rating: <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {selectedListing.landlord.score}
+                  Name: <strong className="text-[#262626] dark:text-[#F0F5F2]">{selectedListing.landlord?.name || "Verified Landlord"}</strong> • Rating: <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> {selectedListing.landlord?.score || "5.0"}
                 </p>
               </div>
 
-              <div>
-                <h4 className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Verification Status</h4>
-                <div className="text-xs text-[#262626] dark:text-[#E4EBE6] mt-1 flex items-center gap-1.5">
-                  <span>Title Deed Document:</span>
-                  {selectedListing.deedVerified ? (
-                    <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Verified
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 font-semibold text-rose-700 dark:text-rose-400">
-                      <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" /> Unverified
+              {/* Verification & Risk Summary Card */}
+              <div className="bg-[#DAD7CD]/30 dark:bg-[#1B2C25] p-3.5 rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33] space-y-2.5">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#262626] dark:text-[#E5C583] flex items-center gap-1.5">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-[#E5C583]" />
+                    <span>System Verification & Approval</span>
+                  </h4>
+                  {selectedListing.approvalType && (
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold uppercase tracking-wider ${
+                      selectedListing.approvalType === 'automatic'
+                        ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300'
+                        : (selectedListing.approvalType === 'manual'
+                          ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-300'
+                          : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300')
+                    }`}>
+                      {selectedListing.approvalType === 'automatic' ? 'Automatically Approved' : (selectedListing.approvalType === 'manual' ? 'Manually Approved' : 'Pending Admin Review')}
                     </span>
                   )}
                 </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  <div className="p-2 bg-white/70 dark:bg-white/5 rounded border border-black/5 dark:border-white/5">
+                    <div className="text-[11px] text-[#262626]/70 dark:text-[#A3BCA7]">Verification Score</div>
+                    <div className="font-extrabold text-[#344E41] dark:text-[#E5C583] text-sm mt-0.5">
+                      {selectedListing.verificationScore !== null && selectedListing.verificationScore !== undefined
+                        ? `${selectedListing.verificationScore} / 100`
+                        : (selectedListing.status === 'Live' ? '90+ / 100' : 'Under Review')}
+                    </div>
+                  </div>
+
+                  <div className="p-2 bg-white/70 dark:bg-white/5 rounded border border-black/5 dark:border-white/5">
+                    <div className="text-[11px] text-[#262626]/70 dark:text-[#A3BCA7]">Risk Level</div>
+                    <div className={`font-extrabold text-xs uppercase mt-0.5 ${
+                      (selectedListing.riskLevel || '').toLowerCase() === 'low'
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : ((selectedListing.riskLevel || '').toLowerCase() === 'high'
+                          ? 'text-rose-700 dark:text-rose-400'
+                          : 'text-amber-700 dark:text-amber-400')
+                    }`}>
+                      {selectedListing.riskLevel || (selectedListing.status === 'Live' ? 'Low' : 'Needs Review')}
+                    </div>
+                  </div>
+
+                  <div className="p-2 bg-white/70 dark:bg-white/5 rounded border border-black/5 dark:border-white/5 col-span-2 sm:col-span-1">
+                    <div className="text-[11px] text-[#262626]/70 dark:text-[#A3BCA7]">Title Document</div>
+                    <div className="font-bold text-xs mt-0.5">
+                      {selectedListing.ownershipDoc || selectedListing.ownership_doc || selectedListing.deedVerified ? (
+                        <span className="text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Uploaded
+                        </span>
+                      ) : (
+                        <span className="text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                          <XCircle className="h-3 w-3" /> Missing
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* If detailed verificationResults breakdown is available */}
+                {selectedListing.verificationResults && typeof selectedListing.verificationResults === 'object' && (
+                  <div className="mt-1 pt-2 border-t border-black/5 dark:border-white/5 space-y-1">
+                    <div className="text-[11px] font-bold text-[#262626]/80 dark:text-[#E4EBE6]">Rule-Based Checks:</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px]">
+                      {Object.entries(selectedListing.verificationResults).map(([k, check]) => {
+                        if (!check || typeof check !== 'object') return null;
+                        const isPass = check.status === 'PASS';
+                        return (
+                          <div key={k} className="flex items-center justify-between px-2 py-1 bg-white/50 dark:bg-white/5 rounded" title={check.reason || ''}>
+                            <span className="text-[#262626]/80 dark:text-[#A3BCA7] truncate mr-1">{check.name || k.replace(/_/g, ' ')}:</span>
+                            <span className={`font-bold shrink-0 ${isPass ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                              {check.status} {check.score !== undefined ? `(${check.score}/${check.maxScore})` : ''}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Uploaded Property Photos Gallery */}

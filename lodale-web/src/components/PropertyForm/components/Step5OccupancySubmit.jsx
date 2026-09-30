@@ -54,7 +54,7 @@ export default function Step5OccupancySubmit({
                   : "bg-white dark:bg-[#07130D] text-slate-800 dark:text-slate-200 border-slate-200 dark:border-white/15"
               }`}
             >
-              <div>⚡ All Units Vacant & Available</div>
+              <div>All Units Vacant & Available</div>
               <div className="text-[11px] font-normal opacity-80 mt-1">List all {safeUnits.length} units on public tenant search</div>
             </button>
 

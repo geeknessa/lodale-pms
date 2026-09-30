@@ -2,7 +2,8 @@ import { AdminModel } from '../models/adminModel.js';
 import { PropertyModel } from '../models/propertyModel.js';
 import { UserModel } from '../models/userModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { clearDatabase } from '../db/db.js';
+import { pool } from '../db/db.js';
+import { invalidateUserStatusCache } from '../middlewares/authMiddleware.js';
 
 export const adminController = {
   getPendingProperties: asyncHandler(async (req, res) => {
@@ -23,6 +24,9 @@ export const adminController = {
         statusLabel = p.queue_status === 'under_review' ? 'Info Requested' : 'Pending Approval';
       }
 
+      const locParts = [p.address_line1, p.city, p.state].filter(Boolean);
+      const computedLocation = locParts.length > 0 ? locParts.join(', ') : (p.city || p.state || 'Abuja');
+
       return {
         id: p.id,
         title: p.title,
@@ -30,6 +34,14 @@ export const adminController = {
         rent_period: p.rent_period || 'per annum',
         price: `₦${Number(p.rent_amount || p.rent || 0).toLocaleString()}${String(p.rent_period || '').toLowerCase().includes('month') ? '/mo' : '/yr'}`,
         type: p.property_type,
+        address_line1: p.address_line1,
+        city: p.city,
+        state: p.state,
+        location: computedLocation,
+        bedrooms: Number(p.bedrooms) || 1,
+        bathrooms: Number(p.bathrooms) || 1,
+        beds: Number(p.bedrooms) || 1,
+        baths: Number(p.bathrooms) || 1,
         status: statusLabel,
         rawStatus: p.status,
         submittedAt: p.created_at,
@@ -51,6 +63,16 @@ export const adminController = {
         images: p.images,
         latitude: p.latitude,
         longitude: p.longitude,
+        approvalType: p.approval_type || (statusLabel === 'Live' ? 'manual' : null),
+        approval_type: p.approval_type || (statusLabel === 'Live' ? 'manual' : null),
+        verificationScore: p.verification_score,
+        verification_score: p.verification_score,
+        riskLevel: p.risk_level,
+        risk_level: p.risk_level,
+        verificationResults: typeof p.verification_results === 'string' ? (() => { try { return JSON.parse(p.verification_results); } catch(e) { return p.verification_results; } })() : p.verification_results,
+        verification_results: p.verification_results,
+        approvedAt: p.approved_at,
+        approved_at: p.approved_at,
       };
     });
 
@@ -64,10 +86,12 @@ export const adminController = {
     let newPropertyStatus = 'pending_review';
     let newQueueStatus = 'queued';
     let rejectionReason = reason || notes || null;
+    let manualApprovalType = null;
 
     if (action === 'approve') {
       newPropertyStatus = 'active_vacant';
       newQueueStatus = 'approved';
+      manualApprovalType = 'manual';
     } else if (action === 'reject') {
       newPropertyStatus = 'inactive';
       newQueueStatus = 'rejected';
@@ -76,18 +100,50 @@ export const adminController = {
       newQueueStatus = 'under_review';
     }
 
-    const property = await AdminModel.updatePropertyStatus(id, newPropertyStatus);
+    const property = await AdminModel.updatePropertyStatus(id, newPropertyStatus, manualApprovalType);
     if (!property) {
       return res.status(404).json({ error: 'Property listing not found.' });
     }
 
     await AdminModel.updateQueueStatus(property.id, newQueueStatus, rejectionReason);
 
+    // Notify the landlord about admin listing review decision
+    try {
+      if (property.landlord_id) {
+        let notifTitle = 'Listing Status Update';
+        let notifMessage = `Your property listing "${property.title}" status has been updated.`;
+        let notifType = 'property';
+
+        if (action === 'approve') {
+          notifTitle = 'Listing Approved & Live!';
+          notifMessage = `Congratulations! Your property listing "${property.title}" has been reviewed and approved by admin. It is now active and visible on the marketplace.`;
+          notifType = 'success';
+        } else if (action === 'reject') {
+          notifTitle = 'Listing Not Approved';
+          notifMessage = `Your property listing "${property.title}" was not approved.${reason ? ` Reason: ${reason}` : ''}`;
+          notifType = 'warning';
+        } else if (action === 'request_info') {
+          notifTitle = 'Additional Information Requested';
+          notifMessage = `Admin has requested more details regarding your listing "${property.title}".${notes ? ` Notes: ${notes}` : ''}`;
+          notifType = 'info';
+        }
+
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [property.landlord_id, notifTitle, notifMessage, notifType]
+        );
+      }
+    } catch (notifErr) {
+      console.warn('Failed to notify landlord of admin review decision:', notifErr.message);
+    }
+
     res.json({
       property,
       action,
       status: newPropertyStatus,
       queue_status: newQueueStatus,
+      approval_type: property.approval_type,
       message: action === 'approve'
         ? `Property "${property.title}" approved and is now active & live!`
         : (action === 'reject'
@@ -143,6 +199,24 @@ export const adminController = {
       return res.status(404).json({ error: 'User not found.' });
     }
 
+    invalidateUserStatusCache(id);
+
+    // Notify the user about their account status change
+    try {
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type)
+         VALUES ($1, $2, $3, $4)`,
+        [
+          updatedUser.id,
+          'Account Status Update',
+          `Your account status has been changed to "${normalizedStatus}".${reason ? ` Reason: ${reason}` : ''}`,
+          normalizedStatus === 'active' ? 'success' : 'warning'
+        ]
+      );
+    } catch (notifErr) {
+      console.warn('Failed to notify user of status change:', notifErr.message);
+    }
+
     res.json({
       message: `User ${updatedUser.first_name || updatedUser.email} account status updated to ${normalizedStatus}.`,
       user: updatedUser
@@ -169,6 +243,7 @@ export const adminController = {
       if (!restoredUser) {
         return res.status(404).json({ error: 'User account not found.' });
       }
+      invalidateUserStatusCache(itemId);
       return res.json({
         success: true,
         message: `Account for ${restoredUser.first_name || restoredUser.email} successfully restored ${feeNum > 0 ? (isPaid ? 'with settled fee' : 'pending online fee payment') : 'without fee'}.`,
@@ -197,15 +272,12 @@ export const adminController = {
       return res.status(404).json({ error: 'User not found or already deleted.' });
     }
 
+    invalidateUserStatusCache(id);
+
     res.json({
       message: `User ${deletedUser.first_name || deletedUser.email} moved to archive / deleted successfully.`,
       user: deletedUser
     });
-  }),
-
-  resetDatabase: asyncHandler(async (req, res) => {
-    const result = await clearDatabase();
-    res.json(result);
   })
 };
 

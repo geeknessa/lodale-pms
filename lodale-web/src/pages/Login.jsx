@@ -16,9 +16,25 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // State for account restoration fee payment modal
   const [restorationFeeInfo, setRestorationFeeInfo] = useState(null);
   const [isPayingRestorationFee, setIsPayingRestorationFee] = useState(false);
+
+  // Failed login attempts and lockout state
+  const [failedAttempts, setFailedAttempts] = useState(() => {
+    try {
+      return Number(localStorage.getItem("failedLoginAttempts") || 0);
+    } catch {
+      return 0;
+    }
+  });
+  const [lockoutTime, setLockoutTime] = useState(() => {
+    try {
+      const until = localStorage.getItem("loginLockoutUntil");
+      return until ? Number(until) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // State to toggle between User and Admin login modes
   const [isAdminMode] = useState(() => {
@@ -50,14 +66,11 @@ export default function Login() {
   });
   const [resetMessage, setResetMessage] = useState("");
 
-  // Failed login tracking
-  const [failedAttempts, setFailedAttempts] = useState(() => {
-    return Number(localStorage.getItem("failedLoginAttempts") || "0");
-  });
-  const [lockoutTime, setLockoutTime] = useState(() => {
-    const raw = localStorage.getItem("loginLockoutUntil");
-    return raw ? Number(raw) : null;
-  });
+  // Clear any stale lockout attempts from localStorage on mount
+  useEffect(() => {
+    localStorage.removeItem("failedLoginAttempts");
+    localStorage.removeItem("loginLockoutUntil");
+  }, []);
 
   // Refs for focusing and GSAP animations
   const passwordRef = useRef(null);
@@ -69,9 +82,9 @@ export default function Login() {
       passwordRef.current?.focus();
     }
 
-    // Redirect already authenticated admin to /admin/dashboard
+    // Redirect already authenticated admin to /admin/dashboard only if not redirected from a protected route
     const isAlreadyAdmin = sessionStorage.getItem("isAuthenticated") === "true" && sessionStorage.getItem("userRole") === "admin";
-    if (isAlreadyAdmin && (location.pathname === "/admin/login" || location.pathname === "/login")) {
+    if (isAlreadyAdmin && !location.state?.fromProtected && (location.pathname === "/admin/login" || location.pathname === "/login")) {
       navigate("/admin/dashboard");
     }
 
@@ -108,7 +121,6 @@ export default function Login() {
       );
       return;
     }
-
     // Admin login — authenticate via API
     if (isAdminMode) {
       const cleanUsername = email.trim().toLowerCase();
@@ -153,7 +165,7 @@ export default function Login() {
     try {
       const res = await authService.signIn({ email: cleanEmail, password: cleanPassword });
       if (res && res.user) {
-        const userRole = res.user.primary_role || "tenant";
+        const userRole = (res.user.primary_role || "tenant").toLowerCase();
         const userFullName = `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "User";
         const expiresAt = (Date.now() + 24 * 60 * 60 * 1000).toString();
 
@@ -162,22 +174,31 @@ export default function Login() {
         sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
         sessionStorage.setItem("username", userFullName);
         sessionStorage.setItem("db_user_id", res.user.id);
+        sessionStorage.setItem("lodale_user", JSON.stringify(res.user));
         sessionStorage.setItem("sessionExpiresAt", expiresAt);
-        if (res.token) sessionStorage.setItem("lodale_token", res.token);
+        if (res.token) {
+          sessionStorage.setItem("lodale_token", res.token);
+          localStorage.setItem("lodale_token", res.token);
+        }
+
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userRole", userRole);
+        localStorage.setItem("lastLoggedInEmail", cleanEmail);
+        localStorage.setItem("username", userFullName);
+        localStorage.setItem("db_user_id", res.user.id);
+        localStorage.setItem("lodale_user", JSON.stringify(res.user));
+        localStorage.setItem("sessionExpiresAt", expiresAt);
 
         localStorage.removeItem("failedLoginAttempts");
         localStorage.removeItem("loginLockoutUntil");
+        localStorage.removeItem("landlordProperties");
         sessionStorage.removeItem("isNewSignUp");
         localStorage.removeItem("isNewUserSignUp_" + cleanEmail);
-        sessionStorage.setItem("isAuthenticated", "true");
-        sessionStorage.setItem("userRole", userRole);
-        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
-        sessionStorage.setItem("sessionExpiresAt", expiresAt);
         sessionStorage.setItem("username_" + cleanEmail, userFullName);
 
         if (userRole === "admin") {
           sessionStorage.setItem("adminAuthenticated", "true");
-          sessionStorage.setItem("adminAuthenticated", "true");
+          localStorage.setItem("adminAuthenticated", "true");
           localStorage.removeItem("explicitAdminSignOut");
         }
 
@@ -234,8 +255,9 @@ export default function Login() {
         });
         return;
       }
-      if (apiErr.response?.data?.error || apiErr.error) {
-        setInlineError(apiErr.response?.data?.error || apiErr.error || "Authentication failed.");
+      const errorMsg = apiErr?.response?.data?.error || apiErr?.error || apiErr?.message;
+      if (errorMsg) {
+        setInlineError(errorMsg);
         return;
       }
 
@@ -325,8 +347,6 @@ export default function Login() {
             </p>
           </div>
 
-
-
           {/* Security / Session warnings */}
           {sessionWarning && (
             <div className="p-2.5 sm:p-3.5 bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-300 rounded-xl text-[12px] sm:text-[13px] leading-relaxed flex items-start gap-2 sm:gap-2.5 animate-fade-in">
@@ -372,9 +392,10 @@ export default function Login() {
                     id="email"
                     name={isAdminMode ? "username" : "email"}
                     autoComplete={isAdminMode ? "username" : "email"}
-                    type={isAdminMode || email.toLowerCase() === "admin" ? "text" : "email"}
+                    type="text"
+                    inputMode="email"
                     maxLength={100}
-                    placeholder={isAdminMode ? "admin" : "ada@example.com"}
+                    placeholder={isAdminMode ? "admin" : "jane@gmail.com"}
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
@@ -428,10 +449,7 @@ export default function Login() {
             </div>
 
             {/* Prompt recovery utility */}
-            <div className="flex justify-between items-center text-[11px] sm:text-[12px]">
-              <span className="text-ink-700/65 dark:text-[#A3BCA7]/65">
-                {failedAttempts > 0 && `${failedAttempts}/10 attempts`}
-              </span>
+            <div className="flex justify-end items-center text-[11px] sm:text-[12px]">
               <button
                 type="button"
                 onClick={handleForgotPassword}
@@ -457,14 +475,26 @@ export default function Login() {
             </Button>
           </form>
 
-          {!isAdminMode && (
+          {!isAdminMode ? (
+            <div className="text-center text-[12px] sm:text-[13px]">
+              <p className="text-ink-700/80 dark:text-white/80">
+                Don&rsquo;t have an account?{" "}
+                <Link
+                  to="/signup"
+                  className="font-semibold text-moss-700 dark:text-[#E5C583] hover:underline outline-none focus-visible:underline"
+                >
+                  Create Account
+                </Link>
+              </p>
+            </div>
+          ) : (
             <p className="text-center text-[12px] sm:text-[13px] text-ink-700/80 dark:text-white/80">
-              Don&rsquo;t have an account?{" "}
+              Need user login?{" "}
               <Link
-                to="/signup"
+                to="/login"
                 className="font-semibold text-moss-700 dark:text-[#E5C583] hover:underline outline-none focus-visible:underline"
               >
-                Create Account
+                Go to User Sign In &rarr;
               </Link>
             </p>
           )}

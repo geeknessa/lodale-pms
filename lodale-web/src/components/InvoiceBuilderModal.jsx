@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, Plus, Trash2, Info, Building2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, FileText, Loader2, Plus, Info, Building2 } from 'lucide-react';
 import Button from './Button';
 import { invoiceService } from '../services/invoiceService';
 import { triggerToast } from '../context/ToastContext';
 
 export default function InvoiceBuilderModal({ isOpen, onClose, application, property, tenant, onSuccess }) {
-  if (!isOpen || !application) return null;
-
   const initialRent = Number(property?.rent_amount || property?.price || 0);
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -35,9 +33,9 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
   const [landlordEmail, setLandlordEmail] = useState(sessionStorage.getItem('lastLoggedInEmail') || 'landlord@lodale.com');
 
   // Tenant prefill
-  const tenantName = application.tenant_name || tenant?.full_name || 'Tenant Candidate';
-  const tenantEmail = application.tenant_email || tenant?.email || 'tenant@lodale.com';
-  const tenantPhone = application.tenant_phone || tenant?.phone || '+234 800 000 0000';
+  const tenantName = application?.tenant_name || tenant?.full_name || 'Tenant Candidate';
+  const tenantEmail = application?.tenant_email || tenant?.email || 'tenant@lodale.com';
+  const tenantPhone = application?.tenant_phone || tenant?.phone || '+234 800 000 0000';
   const tenantAddress = property?.title ? `Unit at ${property.title}` : 'Lodale Rental Property';
 
   // Bank Account prefill from Landlord Profile
@@ -64,8 +62,8 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
   const [cautionFeeAmount, setCautionFeeAmount] = useState(Math.round(initialRent * 0.05)); // 5% caution default
   const [utilityFeeEnabled, setUtilityFeeEnabled] = useState(false);
   const [utilityFeeAmount, setUtilityFeeAmount] = useState(50000);
-  const [lateFeeEnabled, setLateFeeEnabled] = useState(false);
-  const [lateFeeAmount, setLateFeeAmount] = useState(25000);
+  const [lateFeeEnabled] = useState(false);
+  const [lateFeeAmount] = useState(25000);
 
   // Custom Fee items
   const [customItems, setCustomItems] = useState([]);
@@ -82,10 +80,6 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
       setNewCustomTitle('');
       setNewCustomAmount('');
     }
-  };
-
-  const handleRemoveCustomFee = (index) => {
-    setCustomItems(prev => prev.filter((_, i) => i !== index));
   };
 
   // Compile full invoice items list
@@ -169,12 +163,17 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
 
     setSubmitting(true);
     try {
-      await invoiceService.createInvoice({
+      const targetAppId = application?.id;
+      const targetPropertyId = property?.id || application?.property_id || application?.propertyId;
+      const targetTenantId = application?.tenant_id || application?.tenantId || tenant?.id;
+      const targetLandlordId = application?.landlord_id || application?.landlordId;
+
+      const result = await invoiceService.createInvoice({
         invoiceNumber: invoiceNum,
-        applicationId: application.id,
-        propertyId: property?.id || application.property_id,
-        tenantId: application.tenant_id,
-        landlordId: application.landlord_id,
+        applicationId: targetAppId,
+        propertyId: targetPropertyId,
+        tenantId: targetTenantId,
+        landlordId: targetLandlordId,
         issueDate,
         dueDate,
         
@@ -193,11 +192,15 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
         lodaleFee,
         grandTotal,
         
-        bankName,
-        bankAccountNumber,
-        bankAccountName,
+        bankName: bankName.trim(),
+        bankAccountNumber: bankAccountNumber.trim(),
+        bankAccountName: bankAccountName.trim(),
         note: 'Payment is due by the due date specified above. Direct Online Bank Transfer to Landlord account details. 1% Lodale Fee is included for platform processing.'
       });
+
+      if (!result || (!result.id && !result.invoiceNumber)) {
+        throw new Error('Server did not return a valid saved invoice.');
+      }
 
       triggerToast('Digital Rent Invoice generated & sent to tenant for payment!', 'success', 'Invoice Sent');
       if (onSuccess) onSuccess();
@@ -209,6 +212,8 @@ export default function InvoiceBuilderModal({ isOpen, onClose, application, prop
       setSubmitting(false);
     }
   };
+
+  if (!isOpen || !application) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md overflow-y-auto">

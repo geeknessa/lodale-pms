@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Wrench, CheckCircle2, Clock, AlertTriangle, MessageSquare, Search, Filter, Loader2, Plus, User, Building2, RotateCcw } from "lucide-react";
+import { Wrench, AlertTriangle, Search, Loader2, User, Building2, RotateCcw } from "lucide-react";
 import { maintenanceService } from "../../../services/maintenanceService";
 import { triggerToast } from "../../../context/ToastContext";
 import RequestInfo from "./RequestInfo";
@@ -24,12 +24,6 @@ export default function LandlordMaintenance() {
       let list = [];
       if (typeof maintenanceService.getMyRequests === "function") {
         list = await maintenanceService.getMyRequests();
-      }
-      if (!Array.isArray(list) || list.length === 0) {
-        try {
-          const cached = localStorage.getItem("landlordMaintenanceRequests");
-          if (cached) list = JSON.parse(cached);
-        } catch (e) {}
       }
 
       const formatted = (Array.isArray(list) ? list : []).map((r) => ({
@@ -67,8 +61,8 @@ export default function LandlordMaintenance() {
       setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus, cost } : r)));
       triggerToast(`Request status updated to "${newStatus}"${cost ? ` with expense ₦${cost}` : ""}`, "success");
     } catch (e) {
-      setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus, cost } : r)));
-      triggerToast(`Request status set to "${newStatus}"${cost ? ` with expense ₦${cost}` : ""}`, "info");
+      console.error("Failed to update status:", e);
+      triggerToast(e?.message || "Failed to update maintenance request status", "error");
     }
   };
 

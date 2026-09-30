@@ -9,18 +9,18 @@ import {
   requestEmailChangeSchema, 
   verifyEmailChangeSchema 
 } from '../utils/validationSchemas.js';
-import { requireAuth } from '../middlewares/authMiddleware.js';
+import { requireAuth, requireRole } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
 router.get('/me', requireAuth, userController.getMe);
 router.put('/me', requireAuth, validate({ body: updateUserSchema }), userController.updateMe);
-router.get('/tenants', requireAuth, userController.getLandlordTenants);
+router.get('/tenants', requireAuth, requireRole(['landlord', 'admin']), userController.getLandlordTenants);
 router.post('/me/deactivate', requireAuth, validate({ body: deactivateAccountSchema }), userController.deactivateMyAccount);
 router.post('/me/pay-restoration-fee', requireAuth, validate({ body: payRestorationFeeSchema }), userController.payRestorationFee);
 router.put('/me/change-password', requireAuth, validate({ body: changePasswordSchema }), userController.changePassword);
 router.post('/me/request-email-change', requireAuth, validate({ body: requestEmailChangeSchema }), userController.requestEmailChange);
 router.post('/me/verify-email-change', requireAuth, validate({ body: verifyEmailChangeSchema }), userController.verifyEmailChange);
-router.post('/invite-tenant', requireAuth, userController.inviteTenant);
+router.post('/invite-tenant', requireAuth, requireRole(['landlord', 'admin']), userController.inviteTenant);
 
 export default router;

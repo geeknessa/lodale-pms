@@ -8,7 +8,7 @@ import Button from './Button';
 import { Logo } from './Logo';
 import {
   ArrowLeft, MapPin, BedDouble, Bath, CheckCircle2, XCircle, ShieldCheck,
-  Building2, Trash2, Edit3, Loader2, ListChecks, Home, DollarSign, AlertTriangle, Shield,
+  Building2, Edit3, Loader2, ListChecks, Home, AlertTriangle,
   Maximize2, ChevronLeft, ChevronRight, X, Star, User
 } from 'lucide-react';
 import PropertyDetailMap from './PropertyDetailMap';
@@ -268,6 +268,11 @@ export function PropertyDetailView() {
                   {property.status === 'occupied' || property.status === 'active_occupied' ? 'Occupied' : 'Active Listing'}
                 </span>
               </div>
+              {property.property_type && (
+                <span className="text-[11px] font-extrabold uppercase px-3 py-1 rounded-full border bg-moss-100 text-moss-800 border-moss-300 dark:bg-white/10 dark:text-cream-100 dark:border-white/20">
+                  {property.property_type.replace(/_/g, ' ')}
+                </span>
+              )}
 
               <span className="text-xs text-ink-500 dark:text-cream-100/60 flex items-center gap-1">
                 <MapPin className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583]" />

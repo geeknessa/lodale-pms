@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, Copy, Check, Info, Building2, Upload } from 'lucide-react';
+import { X, FileText, CheckCircle2, Loader2, Copy, Check, Info, Building2 } from 'lucide-react';
 import Button from './Button';
 import { invoiceService } from '../services/invoiceService';
 import { chatService } from '../services/chatService';
@@ -47,10 +47,12 @@ export default function TenantInvoiceModal({ isOpen, onClose, invoice, applicati
 
     setSubmitting(true);
     try {
-      const targetAppId = applicationId || invoice.applicationId;
-      await invoiceService.submitPaymentProof(targetAppId, {
+      const targetAppId = applicationId || invoice.applicationId || invoice.application_id;
+      const targetInvoiceId = invoice.id || targetAppId;
+      await invoiceService.submitPaymentProof(targetInvoiceId, {
         paymentReference: paymentRef.trim(),
-        paymentProofUrl: receiptFile || ''
+        paymentProofUrl: receiptFile || '',
+        applicationId: targetAppId
       });
 
       // Send chat message notification with receipt proof to landlord

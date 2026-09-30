@@ -44,6 +44,7 @@ export const AMENITY_CATEGORIES = [
 
 export async function handlePropertySubmit({
   e,
+  address: addressVal = "",
   stateName,
   cityName,
   bathrooms,
@@ -77,27 +78,45 @@ export async function handlePropertySubmit({
   leaseStartDate = "",
   availableFrom = ""
 }) {
-  e.preventDefault();
-  setFormError("");
+  if (e && typeof e.preventDefault === "function") {
+    e.preventDefault();
+  }
+  if (setFormError) setFormError("");
 
-  const target = e.target;
-  const address = target.elements.address?.value?.trim() || "";
-  const rawType = propertyTypeVal || target.elements.type?.value?.trim() || "single_house";
-  const rent = target.elements.rent?.value?.trim() || "0";
-  const bedrooms = target.elements.bedrooms?.value?.trim() || "1";
-  const bathsVal = target.elements.bathrooms?.value?.trim() || bathrooms || "1";
-  
-  const cityInput = target.elements.city?.value?.trim();
-  const cityVal = cityInput || cityName || "Lagos";
-  
-  const stateInput = target.elements.state?.value?.trim();
-  const stateVal = stateInput || stateName || "Lagos";
-  
-  const descVal = target.elements.description?.value?.trim() || (description || "").trim();
+  const target = e?.target;
+  const elements = target?.elements || target || {};
+  const getVal = (field) => {
+    const el = elements[field];
+    if (!el) return "";
+    if (typeof el.value === "string") return el.value.trim();
+    if (typeof el === "string") return el.trim();
+    return "";
+  };
 
-  const numericRent = Number(rent.replace(/[^0-9]/g, "")) || 0;
-  const numericBedrooms = Number(bedrooms) || 1;
-  const numericBathrooms = Number(bathsVal) || 1;
+  const address = (addressVal || getVal("address")).trim();
+  const rawType = (propertyTypeVal || getVal("type") || "single_house").trim();
+  const rent = getVal("rent") || "0";
+  const bedrooms = getVal("bedrooms") || "1";
+  const bathsVal = getVal("bathrooms") || bathrooms || "1";
+  
+  const cityInput = getVal("city");
+  const cityVal = (cityInput || cityName || "").trim();
+  
+  const stateInput = getVal("state");
+  const stateVal = (stateInput || stateName || "").trim();
+  
+  const descVal = (getVal("description") || description || "").trim();
+
+  const parseNumeric = (val, defaultVal = 1) => {
+    if (typeof val === "number" && !isNaN(val)) return Math.floor(val);
+    if (!val) return defaultVal;
+    const match = String(val).match(/\d+/);
+    return match ? parseInt(match[0], 10) : defaultVal;
+  };
+
+  const numericRent = Number(String(rent).replace(/[^0-9]/g, "")) || 0;
+  const numericBedrooms = parseNumeric(bedrooms, 1);
+  const numericBathrooms = parseNumeric(bathsVal, 1);
 
   if (!displayName && !address) {
     setFormError("Property Name / Title and Address are required.");
@@ -142,10 +161,10 @@ export async function handlePropertySubmit({
   let storedUserId = "";
   try {
     const parsed = JSON.parse(sessionStorage.getItem("lodale_user") || localStorage.getItem("lodale_user") || "{}");
-    storedUserId = parsed.id || "";
+    storedUserId = parsed.id || parsed.userId || "";
   } catch (e) {}
 
-  const dbUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || storedUserId || "";
+  const dbUserId = sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || storedUserId || "";
 
   const amenitiesList = selectedAmenities.length > 0 ? selectedAmenities : [];
   const sanitizedType = rawType.toLowerCase().replace(/\s+/g, "_");
@@ -201,7 +220,7 @@ export async function handlePropertySubmit({
         status: "vacant"
       }
     ],
-    ...(dbUserId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dbUserId) ? { landlord_id: dbUserId } : {}),
+    ...(dbUserId ? { landlord_id: dbUserId } : {}),
   };
 
   let activeLandlordName = "Landlord Account";
@@ -234,8 +253,9 @@ export async function handlePropertySubmit({
     baths: numericBathrooms,
     bathrooms: numericBathrooms,
     unitsCount: unitsList.length || 1,
-    status: "Active Listing",
-    verificationStatus: docName ? "Verified Listing" : "Under Verification",
+    status: "Pending Approval",
+    rawStatus: "pending_review",
+    verificationStatus: "Under Verification",
     cover_image: coverPhoto || (propertyPhotos.length > 0 ? propertyPhotos[0] : propertyPhoto) || PRESET_PHOTOS[0].url,
     images: propertyPhotos.length > 0 ? propertyPhotos : (propertyPhoto ? [propertyPhoto] : [PRESET_PHOTOS[0].url]),
     description: finalDescription,
@@ -277,11 +297,21 @@ export async function handlePropertySubmit({
     
     if (backendProp && backendProp.id) {
       newPropertyObj.id = backendProp.id;
+      if (backendProp.status) {
+        newPropertyObj.rawStatus = backendProp.status;
+        const isLive = backendProp.status === 'active_vacant' || backendProp.status === 'approved' || backendProp.status === 'live';
+        newPropertyObj.status = isLive ? "Live" : (backendProp.status === 'inactive' ? "Rejected" : "Pending Approval");
+        newPropertyObj.verificationStatus = isLive ? "Approved" : "Under Verification";
+      }
+      if (backendProp.approval_type) newPropertyObj.approvalType = backendProp.approval_type;
+      if (backendProp.verification_score !== undefined) newPropertyObj.verificationScore = backendProp.verification_score;
+      if (backendProp.risk_level) newPropertyObj.riskLevel = backendProp.risk_level;
+      if (backendProp.verification_results) newPropertyObj.verificationResults = backendProp.verification_results;
     }
   } catch (err) {
-    console.warn("Backend API property create failed:", err);
+    console.error("Backend API property create error:", err);
     if (typeof setFormError === 'function') {
-      setFormError(err.message || "Failed to submit property. Maximum upload limit is 50MB.");
+      setFormError(err.message || "Failed to save property to database. Please check your connection and try again.");
     }
     return false;
   }

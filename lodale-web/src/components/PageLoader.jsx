@@ -7,9 +7,9 @@ export default function PageLoader() {
       <div className="flex flex-col items-center justify-center gap-6 animate-pulse">
         <Logo className="w-16 h-16 md:w-20 md:h-20" />
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-moss-600 dark:bg-[#07130D]ream-50 animate-bounce" style={{ animationDelay: "0ms" }}></div>
-          <div className="w-2 h-2 rounded-full bg-moss-600 dark:bg-[#07130D]ream-50 animate-bounce" style={{ animationDelay: "150ms" }}></div>
-          <div className="w-2 h-2 rounded-full bg-moss-600 dark:bg-[#07130D]ream-50 animate-bounce" style={{ animationDelay: "300ms" }}></div>
+          <div className="w-2 h-2 rounded-full bg-moss-600 dark:bg-cream-50 animate-bounce" style={{ animationDelay: "0ms" }}></div>
+          <div className="w-2 h-2 rounded-full bg-moss-600 dark:bg-cream-50 animate-bounce" style={{ animationDelay: "150ms" }}></div>
+          <div className="w-2 h-2 rounded-full bg-moss-600 dark:bg-cream-50 animate-bounce" style={{ animationDelay: "300ms" }}></div>
         </div>
       </div>
     </div>

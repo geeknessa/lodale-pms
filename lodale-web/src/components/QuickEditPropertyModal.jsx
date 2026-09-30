@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Lock, CheckCircle2, AlertTriangle, Loader2, SlidersHorizontal, Image, Plus, Trash2, Shield, Info, Send, Upload, ShieldCheck } from "lucide-react";
+import { X, Lock, CheckCircle2, Loader2, SlidersHorizontal, Image, Plus, Trash2, Send, Upload, ShieldCheck } from "lucide-react";
 import Button from "./Button";
 import { propertyService } from "../services/propertyService";
 import { triggerToast } from "../context/ToastContext";
@@ -7,20 +7,18 @@ import { COMMON_AMENITIES } from "../utils/propertyUtils";
 import { INCOME_RANGES, PRESET_HOUSE_RULES } from "../utils/incomeRanges";
 
 export default function QuickEditPropertyModal({ isOpen, onClose, property, onSaveSuccess }) {
-  if (!isOpen || !property) return null;
-
-  const [title, setTitle] = useState(property.title || "");
-  const [description, setDescription] = useState(property.description || "");
-  const [rules, setRules] = useState(property.rules || "");
+  const [title, setTitle] = useState(property?.title || "");
+  const [description, setDescription] = useState(property?.description || "");
+  const [rules, setRules] = useState(property?.rules || "");
 
   // Landlord Tenant Qualification & Property Rules State
-  const [minimumIncome, setMinimumIncome] = useState(property.minimum_income_required || property.minimumIncome || "No Minimum Income");
-  const [employmentRequirement, setEmploymentRequirement] = useState(property.employment_requirement || property.employmentRequirement || "Any Employment");
-  const [requiresGuarantor, setRequiresGuarantor] = useState(property.requires_guarantor ?? property.requiresGuarantor ?? true);
+  const [minimumIncome, setMinimumIncome] = useState(property?.minimum_income_required || property?.minimumIncome || "No Minimum Income");
+  const [employmentRequirement, setEmploymentRequirement] = useState(property?.employment_requirement || property?.employmentRequirement || "Any Employment");
+  const [requiresGuarantor, setRequiresGuarantor] = useState(property?.requires_guarantor ?? property?.requiresGuarantor ?? true);
 
   const [selectedHouseRules, setSelectedHouseRules] = useState(() => {
-    if (Array.isArray(property.house_rules)) return property.house_rules;
-    if (typeof property.rules === "string" && property.rules) {
+    if (Array.isArray(property?.house_rules)) return property.house_rules;
+    if (typeof property?.rules === "string" && property.rules) {
       return property.rules.split(",").map(r => r.trim()).filter(Boolean);
     }
     return [];
@@ -28,19 +26,19 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
   const [customRuleInput, setCustomRuleInput] = useState("");
 
   const [selectedAmenities, setSelectedAmenities] = useState(() => {
-    if (!property.amenities) return [];
+    if (!property?.amenities) return [];
     if (Array.isArray(property.amenities)) {
       return property.amenities.map(a => (typeof a === "string" ? a.replace(/^[{"]+|[}"]+$/g, '').trim() : a.name || a.title));
     }
     return [];
   });
 
-  const [coverImage, setCoverImage] = useState(property.cover_image || property.image || "");
+  const [coverImage, setCoverImage] = useState(property?.cover_image || property?.image || "");
   const [images, setImages] = useState(() => {
-    if (Array.isArray(property.images) && property.images.length > 0) {
+    if (Array.isArray(property?.images) && property.images.length > 0) {
       return property.images.map(img => (typeof img === "string" ? img : img.url));
     }
-    return property.cover_image ? [property.cover_image] : [];
+    return property?.cover_image ? [property.cover_image] : [];
   });
 
   const [customAmenity, setCustomAmenity] = useState("");
@@ -223,6 +221,8 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
       setSendingAdminReq(false);
     }
   };
+
+  if (!isOpen || !property) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/65 dark:bg-black/80 backdrop-blur-md overflow-y-auto">

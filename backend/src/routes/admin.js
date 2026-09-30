@@ -19,6 +19,7 @@ const router = express.Router();
 router.use(requireAuth, requireRole('admin'));
 
 router.get('/properties/pending', adminController.getPendingProperties);
+router.get('/properties', adminController.getPendingProperties);
 router.get('/properties/requests', propertyController.getPendingRequests);
 router.post('/properties/:id/review', validate({ params: idParamSchema, body: reviewPropertySchema }), adminController.reviewProperty);
 router.post('/properties/:id/approve-deletion', validate({ params: idParamSchema }), propertyController.approvePropertyDeletion);

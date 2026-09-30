@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Star, X, CheckCircle2, UserCheck, UserX, Loader2 } from "lucide-react";
+import { Star, X, UserCheck, UserX, Loader2 } from "lucide-react";
 import Button from "./Button";
 import { ratingService } from "../services/ratingService";
 import { triggerToast } from "../context/ToastContext";

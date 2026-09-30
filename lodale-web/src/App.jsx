@@ -9,10 +9,8 @@ import {
   useLocation,
 } from "react-router-dom";
 import PageLoader from "./components/PageLoader";
-import { LandlordAccessPrompt, TenantAccessPrompt } from "./components/RoleAccessPrompt";
 
 const GuestDashboard = lazy(() => import("./pages/GuestDashboard"));
-const HowItWorks = lazy(() => import("./pages/HowItWorks"));
 const Login = lazy(() => import("./pages/Login"));
 const SignUp = lazy(() => import("./pages/SignUp"));
 const Application = lazy(() => import("./pages/Application"));
@@ -57,20 +55,33 @@ class ErrorBoundary extends React.Component {
               Don't worry, your data is safe. Please reload the page to continue.
             </p>
 
-            <div className="flex gap-4 justify-center pt-2">
+            <div className="flex flex-wrap gap-3 justify-center pt-2">
               <button
                 onClick={() => window.location.reload()}
-                className="bg-[#E5C583] hover:bg-[#D8B672] text-[#263b33] font-bold px-6 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
+                className="bg-[#E5C583] hover:bg-[#D8B672] text-[#263b33] font-bold px-5 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
               >
                 Reload Page
               </button>
               <button
-                onClick={() => (window.location.href = "/explore")}
-                className="bg-[#182C23] hover:bg-[#1D3329] border border-[#3f3f46] text-white font-bold px-6 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
+                onClick={() => (window.location.href = "/login")}
+                className="bg-[#182C23] hover:bg-[#1D3329] border border-[#3f3f46] text-white font-bold px-5 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
               >
-                Go to Home
+                Go to Sign In
+              </button>
+              <button
+                onClick={() => (window.location.href = "/explore")}
+                className="bg-black/30 hover:bg-black/50 border border-white/10 text-white/80 hover:text-white font-bold px-5 py-2.5 rounded-xl text-[13px] cursor-pointer transition-colors outline-none"
+              >
+                Explore Listings
               </button>
             </div>
+
+            {this.state.error && (
+              <div className="mt-4 p-3.5 bg-black/50 border border-red-500/30 rounded-xl text-left text-xs font-mono text-rose-300 max-h-40 overflow-auto">
+                <p className="font-bold text-rose-400 mb-1">{this.state.error.message || String(this.state.error)}</p>
+                <pre className="text-[10px] opacity-75 whitespace-pre-wrap">{this.state.error.stack}</pre>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -91,52 +102,28 @@ function ScrollToTop() {
 }
 
 function ProtectedRoute({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true";
-    const expires = sessionStorage.getItem("sessionExpiresAt");
-    if (auth && expires && Date.now() > Number(expires)) {
-      // Session expired
-      sessionStorage.removeItem("isAuthenticated");
-      sessionStorage.removeItem("sessionExpiresAt");
-      return false;
-    }
-    return auth;
-  });
+  const checkAuth = () => {
+    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
+    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
+    if (!auth && !token) return false;
+    const freshExpiry = (Date.now() + 24 * 60 * 60 * 1000).toString();
+    sessionStorage.setItem("sessionExpiresAt", freshExpiry);
+    return true;
+  };
 
+  const [isAuthenticated, setIsAuthenticated] = useState(checkAuth);
   const location = useLocation();
 
   useEffect(() => {
-    const checkAuth = () => {
-      const auth = sessionStorage.getItem("isAuthenticated") === "true";
-      const expires = sessionStorage.getItem("sessionExpiresAt");
-      if (auth && expires && Date.now() > Number(expires)) {
-        sessionStorage.removeItem("isAuthenticated");
-        sessionStorage.removeItem("sessionExpiresAt");
-        setIsAuthenticated(false);
-      } else {
-        setIsAuthenticated(auth);
-      }
-    };
-
-    checkAuth();
+    setIsAuthenticated(checkAuth());
   }, [location]);
 
   if (!isAuthenticated) {
-    const expires = sessionStorage.getItem("sessionExpiresAt");
-    const wasSessionExpired = expires && Date.now() > Number(expires);
-
-    // Clear storage just in case
-    sessionStorage.removeItem("isAuthenticated");
-    sessionStorage.removeItem("sessionExpiresAt");
-
     return (
       <Navigate
         to="/login"
         replace
-        state={{
-          fromProtected: true,
-          sessionExpired: wasSessionExpired,
-        }}
+        state={{ fromProtected: true }}
       />
     );
   }
@@ -146,18 +133,20 @@ function ProtectedRoute({ children }) {
 
 function AdminProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
-    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true";
-    const expires = sessionStorage.getItem("sessionExpiresAt");
-    const token = sessionStorage.getItem("lodale_token");
+    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true" || localStorage.getItem("adminAuthenticated") === "true";
+    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
 
-    if ((!auth && !adminAuth && !token) || (expires && Date.now() > Number(expires))) {
+    if (!auth && !adminAuth && !token) {
       return { isValid: false, reason: "expired_or_logged_out" };
     }
     if (role && role !== "admin" && !adminAuth) {
       return { isValid: false, reason: "wrong_role" };
     }
+    const freshExpiry = (Date.now() + 24 * 60 * 60 * 1000).toString();
+    sessionStorage.setItem("sessionExpiresAt", freshExpiry);
+    localStorage.setItem("sessionExpiresAt", freshExpiry);
     return { isValid: true };
   };
 
@@ -180,16 +169,20 @@ function AdminProtectedRoute({ children }) {
 
 function LandlordProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
-    const expires = sessionStorage.getItem("sessionExpiresAt");
+    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true" || localStorage.getItem("adminAuthenticated") === "true";
+    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
 
-    if (!auth || (expires && Date.now() > Number(expires))) {
+    if (!auth && !adminAuth && !token) {
       return { isValid: false, reason: "expired_or_logged_out" };
     }
-    if (role !== "landlord") {
+    if (role && role !== "landlord" && role !== "admin" && !adminAuth) {
       return { isValid: false, reason: "wrong_role" };
     }
+    const freshExpiry = (Date.now() + 24 * 60 * 60 * 1000).toString();
+    sessionStorage.setItem("sessionExpiresAt", freshExpiry);
+    localStorage.setItem("sessionExpiresAt", freshExpiry);
     return { isValid: true };
   };
 
@@ -205,16 +198,12 @@ function LandlordProtectedRoute({ children }) {
       return <Navigate to="/access-denied" replace />;
     }
 
-    const expires = sessionStorage.getItem("sessionExpiresAt");
-    const wasSessionExpired = expires && Date.now() > Number(expires);
-
     return (
       <Navigate
         to="/login"
         replace
         state={{
           fromProtected: true,
-          sessionExpired: wasSessionExpired,
         }}
       />
     );
@@ -225,16 +214,20 @@ function LandlordProtectedRoute({ children }) {
 
 function TenantProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || "").toLowerCase();
-    const expires = sessionStorage.getItem("sessionExpiresAt");
+    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
+    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
+    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true" || localStorage.getItem("adminAuthenticated") === "true";
+    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
 
-    if (!auth || (expires && Date.now() > Number(expires))) {
+    if (!auth && !adminAuth && !token) {
       return { isValid: false, reason: "expired_or_logged_out" };
     }
-    if (role !== "tenant") {
+    if (role && role !== "tenant" && role !== "admin" && !adminAuth) {
       return { isValid: false, reason: "wrong_role" };
     }
+    const freshExpiry = (Date.now() + 24 * 60 * 60 * 1000).toString();
+    sessionStorage.setItem("sessionExpiresAt", freshExpiry);
+    localStorage.setItem("sessionExpiresAt", freshExpiry);
     return { isValid: true };
   };
 
@@ -250,16 +243,12 @@ function TenantProtectedRoute({ children }) {
       return <Navigate to="/access-denied" replace />;
     }
 
-    const expires = sessionStorage.getItem("sessionExpiresAt");
-    const wasSessionExpired = expires && Date.now() > Number(expires);
-
     return (
       <Navigate
         to="/login"
         replace
         state={{
           fromProtected: true,
-          sessionExpired: wasSessionExpired,
         }}
       />
     );
@@ -270,11 +259,69 @@ function TenantProtectedRoute({ children }) {
 
 export default function App() {
   useEffect(() => {
-    // Purge legacy un-scoped localStorage property stores to prevent cross-account leakage
+    // Thoroughly purge unauthorized mock, demo, and test data keys from browser storage
+    const unauthorizedStorageKeys = [
+      "properties",
+      "landlordProperties",
+      "propertyTenants",
+      "lodale_invited_tenants",
+      "savedProperties",
+      "lastVisitedListings",
+      "pendingQuickApplyPropertyId",
+      "propertyApplications",
+      "tenantRequests",
+      "sentInvoiceAppIds",
+      "paidProofAppIds",
+      "verifiedPaidAppIds",
+      "sentLeaseAppIds",
+      "signedLeaseAppIds",
+      "leasedAppIds",
+      "withdrawnTenantAppIds",
+      "landlordNotifications",
+      "all_tenant_reviews",
+      "all_landlord_reviews",
+      "dismissedLandlordMessages",
+      "lodale_props_purged_v1"
+    ];
+
+    unauthorizedStorageKeys.forEach((key) => {
+      try {
+        localStorage.removeItem(key);
+      } catch (_err) {}
+    });
+
+    // Remove legacy review caches and test user artifacts from localStorage
     try {
-      localStorage.removeItem("properties");
-      localStorage.removeItem("landlordProperties");
-    } catch (err) {}
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (
+          k &&
+          (k.startsWith("tenant_reviews_") ||
+            k.startsWith("landlord_reviews_") ||
+            k.startsWith("moveInRules_") ||
+            k.toLowerCase().includes("audit") ||
+            k.toLowerCase().includes("testtenant"))
+        ) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (_err) {}
+
+    // Clean sessionStorage mock caches while preserving auth credentials
+    try {
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const k = sessionStorage.key(i);
+        if (
+          k &&
+          (k.startsWith("landlord_properties_") ||
+            k === "properties" ||
+            k === "landlordProperties" ||
+            k === "all_properties")
+        ) {
+          sessionStorage.removeItem(k);
+        }
+      }
+    } catch (_err) {}
   }, []);
 
   return (

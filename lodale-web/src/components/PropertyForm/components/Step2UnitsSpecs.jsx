@@ -430,7 +430,7 @@ export default function Step2UnitsSpecs({
                     onClick={handleGenerateBulkUnits}
                     className="w-full py-2.5 rounded-lg bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none mt-2"
                   >
-                    ⚡ Generate Units Batch
+                    Generate Units Batch
                   </button>
                 </div>
               )}

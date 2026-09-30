@@ -1,19 +1,11 @@
 import { Link } from "react-router-dom";
 import { BedDouble, Bath, Building2 } from "lucide-react";
-import { ratingService } from "../services/ratingService";
 
 export default function ListingCard({ listing }) {
   const imgUrl =
     listing.image ||
     listing.cover_image ||
     "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80";
-
-  const landlordId =
-    listing.landlord_id || listing.landlord?.id || listing.landlordId;
-  const ratingData = ratingService.getLandlordReviews(landlordId);
-  const displayScore = ratingData.hasReviews
-    ? ratingData.rating
-    : listing.landlord?.score || "New";
 
   const isMultiUnit =
     Number(listing.units_count) > 1 ||

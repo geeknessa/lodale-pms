@@ -1,6 +1,4 @@
-import { useState } from "react";
-import { X, Printer, Download, FileText, CheckCircle2, Building2, Users, Wallet, ShieldCheck, AlertCircle } from "lucide-react";
-import { formatCurrency } from "../../../utils/formatters";
+import { X, Printer, Download, FileText, CheckCircle2, Building2, ShieldCheck } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
 
 export default function LandlordReportModal({ isOpen, onClose, username, properties = [], leases = [], invoices = [] }) {

@@ -17,6 +17,7 @@ import rentRoutes from './routes/rent.js';
 import maintenanceRoutes from './routes/maintenance.js';
 import notificationRoutes from './routes/notifications.js';
 import inspectionRoutes from './routes/inspections.js';
+import { autoApprovalService } from './services/autoApprovalService.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
 dotenv.config();
@@ -26,16 +27,7 @@ const PORT = process.env.PORT || 5000;
 
 // Security Middlewares
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'sha256-RrBFl9ujuxpmpWzstaoC7DV6YEJAFKNN4XGtiNOmvvI='"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "https://images.unsplash.com"],
-      connectSrc: ["'self'", "*"],
-    },
-  },
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
 }));
 
@@ -48,7 +40,7 @@ const apiLimiter = rateLimit({
 });
 app.use('/api/', apiLimiter);
 
-// Allowed origins for CORS
+// Allowed origins for CORS (supports localhost/127.0.0.1 on any port in dev, plus explicit origins)
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000')
   .split(',')
   .map(o => o.trim().replace(/\/$/, ''));
@@ -61,7 +53,7 @@ const isAllowedOrigin = (origin) => {
   return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0|(10|172\.(1[6-9]|2[0-9]|3[0-1])|192\.168)\.\d+\.\d+)(:\d+)?$/i.test(cleanOrigin);
 };
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     if (isAllowedOrigin(origin)) {
       callback(null, true);
@@ -70,21 +62,30 @@ app.use(cors({
     }
   },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Global process exception handlers to prevent unexpected crashes
+// Global process exception handlers
 process.on('uncaughtException', (err) => {
-  console.error('[Server Uncaught Exception]:', err.message || err);
+  console.error('[Server Uncaught Exception]:', err.stack || err.message || err);
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
   console.error('[Server Unhandled Rejection]:', reason);
 });
 
-// Initialize Database
+// Initialize Database and Services
 initDb();
+if (process.env.NODE_ENV !== 'test') {
+  autoApprovalService.startAutoApprovalWorker(10000);
+}
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -114,11 +115,21 @@ app.get('/api/health', (req, res) => {
 app.use(errorHandler);
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`=================================================`);
     console.log(` Lodale Express Backend running on http://localhost:${PORT}`);
     console.log(` Health check: http://localhost:${PORT}/api/health`);
     console.log(`=================================================`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[Error] Port ${PORT} is already in use by another running instance.`);
+      console.error(`Close the existing process on port ${PORT} before starting a new server.`);
+      process.exit(1);
+    } else {
+      throw err;
+    }
   });
 }
 

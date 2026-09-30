@@ -5,7 +5,6 @@ import {
   LogOut,
   Pencil,
   Calendar,
-  ChevronDown,
   CheckCircle2,
   AlertCircle,
   FileText,
@@ -16,12 +15,12 @@ import {
   PenTool,
   Clock,
   Send,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import Button from "../../components/Button";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import SearchableOccupationSelect from "../../components/SearchableOccupationSelect";
-import EmailVerificationModal from "../../components/EmailVerificationModal";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
 import { profileService } from "../../services/profileService";
@@ -262,14 +261,14 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             });
 
             await profileService.updateMyProfile({
-              occupation: occupation.trim(),
-              employment_status: employmentStatus.trim(),
-              monthly_income: income.trim(),
-              gender: gender,
-              address: address.trim(),
-              location: location.trim(),
-              postal_code: postalCode.trim(),
-              date_of_birth: dob
+              occupation: (occupation || '').trim(),
+              employment_status: (employmentStatus || '').trim(),
+              monthly_income: (income || '').trim(),
+              gender: gender || null,
+              address: (address || '').trim(),
+              location: (location || '').trim(),
+              postal_code: (postalCode || '').trim(),
+              date_of_birth: dob && dob.trim() !== 'DD-MM-YYYY' ? dob.trim() : null
             });
 
             if (updatedProfile) {
@@ -1077,7 +1076,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
               >
                 {isSaving ? (
                   <>
-                    <span className="inline-block animate-spin mr-1">⏳</span>
+                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
                     <span>Saving...</span>
                   </>
                 ) : saveSuccess ? (

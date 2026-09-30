@@ -25,13 +25,13 @@ const getPropertiesQuerySchema = z.object({
   limit: z.string().optional()
 }).catchall(z.string().optional()); // catchall allows other query params to pass through for now
 
-router.get('/', validate({ query: getPropertiesQuerySchema }), propertyController.getProperties);
-router.get('/landlord/:landlordId', requireAuth, requireRole('landlord'), validate({ params: landlordIdParamSchema }), propertyController.getPropertiesByLandlord);
+router.get('/', optionalAuth, validate({ query: getPropertiesQuerySchema }), propertyController.getProperties);
+router.get('/landlord/:landlordId', requireAuth, validate({ params: landlordIdParamSchema }), propertyController.getPropertiesByLandlord);
 router.get('/saved', requireAuth, propertyController.getSavedProperties);
-router.get('/:id', validate({ params: idParamSchema }), propertyController.getPropertyById);
+router.get('/:id', optionalAuth, validate({ params: idParamSchema }), propertyController.getPropertyById);
 router.post('/', requireAuth, requireRole('landlord'), validate({ body: createPropertySchema }), propertyController.createProperty);
 router.put('/:id', requireAuth, requireRole('landlord'), validate({ params: idParamSchema, body: createPropertySchema.partial() }), propertyController.updateProperty);
-router.patch('/:id/status', requireAuth, requireRole('landlord'), validate({ params: idParamSchema, body: updatePropertyStatusSchema }), propertyController.updatePropertyStatus);
+router.patch('/:id/status', requireAuth, requireRole(['landlord', 'admin']), validate({ params: idParamSchema, body: updatePropertyStatusSchema }), propertyController.updatePropertyStatus);
 router.post('/:id/request-deletion', requireAuth, requireRole('landlord'), validate({ params: idParamSchema, body: propertyActionSchema }), propertyController.requestPropertyDeletion);
 router.post('/:id/request-suspension', requireAuth, requireRole('landlord'), validate({ params: idParamSchema, body: propertyActionSchema }), propertyController.requestPropertySuspension);
 router.post('/:id/save', requireAuth, validate({ params: idParamSchema }), propertyController.saveProperty);

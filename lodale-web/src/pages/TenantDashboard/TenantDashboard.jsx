@@ -10,21 +10,15 @@ import {
   Wrench,
   CreditCard,
   FileText,
-  PieChart,
   User,
   Building2,
   Clock,
   ArrowRight,
-  Download,
   LogOut,
   Sun,
   Moon,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ListChecks,
   Calendar,
-  HelpCircle,
   Bell,
   Menu,
   Check,
@@ -33,6 +27,8 @@ import {
   ShieldCheck,
   Award,
   Loader2,
+  Trash2,
+  BellOff,
   X
 } from "lucide-react";
 import gsap from "gsap";
@@ -49,10 +45,10 @@ import { leaseService } from "../../services/leaseService";
 import { ratingService } from "../../services/ratingService";
 import { rentService } from "../../services/rentService";
 import { maintenanceService } from "../../services/maintenanceService";
-import { chatService } from "../../services/chatService";
 import { userService } from "../../services/userService";
 import { profileService } from "../../services/profileService";
-import { reminderService } from "../../services/reminderService";
+import { notificationService } from "../../services/notificationService";
+import { applicationService } from "../../services/applicationService";
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
   {
@@ -721,11 +717,16 @@ export default function TenantDashboard() {
   const fetchAllData = async () => {
     try {
       setLoadingData(true);
-      const [leasesRes, invsRes, reqsRes] = await Promise.all([
+      const [leasesRes, invsRes, reqsRes, notifsRes, appsRes] = await Promise.all([
         leaseService.getMyLeases().catch(() => []),
         rentService.getMyInvoices().catch(() => []),
-        maintenanceService.getMyRequests().catch(() => [])
+        maintenanceService.getMyRequests().catch(() => []),
+        notificationService.getMyNotifications().catch(() => []),
+        applicationService.getMyApplications().catch(() => [])
       ]);
+
+      const notifs = Array.isArray(notifsRes) ? notifsRes : (notifsRes?.notifications || []);
+      setNotifications(notifs);
 
       const leases = Array.isArray(leasesRes) ? leasesRes : [];
       const active = leases.find(l => l.status === 'active' || l.tenant_signed_at || l.status === 'draft' || l.status === 'pending_tenant');
@@ -739,7 +740,22 @@ export default function TenantDashboard() {
         });
         setRentCycle(active.rent_period === "annually" || active.rent_period === "yearly" ? "yearly" : "monthly");
       } else {
-        setActiveLease(null);
+        const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.applications || []);
+        const approvedApp = apps.find(a => (a.status || '').toLowerCase() === 'approved' || (a.status || '').toLowerCase() === 'leased');
+        if (approvedApp) {
+          setActiveLease({
+            property_id: approvedApp.propertyId || approvedApp.property_id,
+            propertyTitle: approvedApp.propertyTitle || approvedApp.property_title || "Leased Property",
+            unit: "Unit 1",
+            landlord_id: approvedApp.landlordId || approvedApp.landlord_id,
+            landlord: `${approvedApp.landlordFirstName || ''} ${approvedApp.landlordLastName || ''}`.trim() || "Landlord",
+            landlord_name: `${approvedApp.landlordFirstName || ''} ${approvedApp.landlordLastName || ''}`.trim() || "Landlord",
+            price: "Approved Tenancy",
+            status: "approved"
+          });
+        } else {
+          setActiveLease(null);
+        }
       }
 
       const invs = Array.isArray(invsRes) ? invsRes : [];
@@ -789,6 +805,41 @@ export default function TenantDashboard() {
 
   useEffect(() => {
     fetchAllData();
+
+    // Regular polling for real-time notification & interaction updates (every 6 seconds)
+    const interval = setInterval(async () => {
+      try {
+        const notifsRes = await notificationService.getMyNotifications();
+        const freshNotifs = Array.isArray(notifsRes) ? notifsRes : (notifsRes?.notifications || []);
+        
+        setNotifications(prev => {
+          const prevIds = new Set(prev.map(p => p.id));
+          const newlyAdded = freshNotifs.filter(fn => !prevIds.has(fn.id) && !fn.is_read && !fn.read);
+          if (newlyAdded.length > 0) {
+            newlyAdded.forEach(n => {
+              triggerToast(n.message || n.text || "New notification received", "info", n.title || "New Notification");
+            });
+            fetchAllData();
+          }
+          return freshNotifs;
+        });
+      } catch (e) {
+        // Silent background poll error
+      }
+    }, 6000);
+
+    const handleFocus = () => {
+      fetchAllData();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleFocus);
+    };
   }, []);
 
   // Load user reminders and check birthday on mount
@@ -1105,6 +1156,20 @@ export default function TenantDashboard() {
     return "";
   };
 
+  // Residency streak calculations
+  const rawStartDate = activeLease?.start_date || activeLease?.created_at || activeLease?.tenant_signed_at;
+  let daysInHouse = 0;
+  let monthsInHouse = 0;
+  let remainingDays = 0;
+
+  if (activeLease) {
+    const startDate = rawStartDate ? new Date(rawStartDate) : new Date(Date.now() - 142 * 86400000);
+    const diffMs = Math.max(0, Date.now() - startDate.getTime());
+    daysInHouse = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    monthsInHouse = Math.floor(daysInHouse / 30);
+    remainingDays = daysInHouse % 30;
+  }
+
   return (
     <div className="tenant-wrapper">
       {/* MOBILE MENU HEADER */}
@@ -1217,41 +1282,164 @@ export default function TenantDashboard() {
       {/* NOTIFICATIONS MODAL */}
       {showNotificationsModal && (
         <div className="tenant-modal-backdrop" onClick={() => setShowNotificationsModal(false)}>
-          <div className="bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-ink-900 dark:text-white">Notifications</h3>
-              <button className="text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold" onClick={() => setShowNotificationsModal(false)}>&times;</button>
+          <div className="bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 rounded-3xl w-full max-w-md p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center pb-3 border-b border-ink-100 dark:border-white/10 mb-4">
+              <div className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-moss-700 dark:text-[#E5C583]" />
+                <h3 className="text-base font-bold text-ink-900 dark:text-white">Notifications</h3>
+                {notifications.length > 0 && (
+                  <span className="px-2 py-0.5 text-[10px] font-extrabold bg-[#2C4633] text-white dark:bg-[#E5C583] dark:text-[#09090b] rounded-full">
+                    {notifications.length}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {notifications.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      try { await notificationService.markAsRead('all'); } catch {}
+                      setNotifications([]);
+                    }}
+                    className="text-xs font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 transition-colors cursor-pointer bg-transparent border-none p-0"
+                  >
+                    Clear All
+                  </button>
+                )}
+                <button 
+                  className="text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold cursor-pointer bg-transparent border-none p-0" 
+                  onClick={() => setShowNotificationsModal(false)}
+                >
+                  &times;
+                </button>
+              </div>
             </div>
-            <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
-              {notifications.length > 0 ? notifications.map((n, i) => (
-                <div key={i} className={`p-3 rounded-xl border ${n.read ? 'bg-neutral-50 dark:bg-white/5 border-transparent' : 'bg-moss-50 dark:bg-[#E5C583]/10 border-moss-200 dark:border-[#E5C583]/20'}`}>
-                  <p className="text-[13px] text-ink-900 dark:text-white font-medium leading-relaxed">{n.message || n.text || "Notification"}</p>
+
+            <div className="flex flex-col gap-3 max-h-[360px] overflow-y-auto pr-1">
+              {notifications.length > 0 ? notifications.map((n, i) => {
+                const refType = (n.reference_type || n.type || '').toLowerCase();
+                const title = (n.title || '').toLowerCase();
+                const isPayment = refType === 'payment' || refType === 'invoice' || title.includes('invoice') || title.includes('payment');
+                const isLease = refType === 'lease' || title.includes('lease');
+                const isInspection = refType === 'inspection' || title.includes('inspection');
+                const isChat = refType === 'chat' || title.includes('message');
+                const isUnread = !n.is_read && !n.read;
+
+                const IconComponent = isPayment 
+                  ? CreditCard 
+                  : isLease 
+                    ? ShieldCheck 
+                    : isInspection 
+                      ? Calendar 
+                      : isChat 
+                        ? MessageSquare 
+                        : CheckCircle2;
+
+                const iconColor = isPayment
+                  ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-950/40'
+                  : isLease
+                    ? 'text-indigo-700 dark:text-indigo-400 bg-indigo-100/60 dark:bg-indigo-950/40'
+                    : isInspection
+                      ? 'text-sky-700 dark:text-sky-400 bg-sky-100/60 dark:bg-sky-950/40'
+                      : isChat
+                        ? 'text-purple-700 dark:text-purple-400 bg-purple-100/60 dark:bg-purple-950/40'
+                        : 'text-moss-700 dark:text-[#E5C583] bg-moss-100/60 dark:bg-white/10';
+
+                return (
+                  <div 
+                    key={n.id || i} 
+                    onClick={async () => {
+                      if (n.id) {
+                        try { await notificationService.markAsRead(n.id); } catch {}
+                      }
+                      setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, is_read: true, read: true } : item));
+                      setShowNotificationsModal(false);
+
+                      if (isChat) {
+                        if (n.reference_id) {
+                          sessionStorage.setItem("activeChatPartnerId", n.reference_id);
+                          localStorage.setItem("activeChatPartnerId", n.reference_id);
+                        }
+                        setActiveTab(2); // Chat
+                      } else if (isInspection || refType === 'application' || title.includes('application')) {
+                        setActiveTab(4); // Applications & Inspections
+                      } else if (isPayment) {
+                        if (activeLease && activeLease.status === 'active') {
+                          setActiveTab(0); // Rent & Ledger for active resident
+                        } else {
+                          setActiveTab(4); // Pre-lease application invoice
+                        }
+                      } else if (isLease) {
+                        setActiveTab(4); // Application & Lease signing
+                      } else if (refType === 'maintenance' || title.includes('maintenance')) {
+                        setActiveTab(0); // Overview / Maintenance
+                      }
+                    }}
+                    className={`group relative p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 hover:shadow-xs ${isUnread ? 'bg-moss-50/50 dark:bg-[#E5C583]/10 border-moss-200 dark:border-[#E5C583]/20' : 'bg-neutral-50/60 dark:bg-white/5 border-transparent'}`}
+                  >
+                    <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${iconColor}`}>
+                      <IconComponent className="h-4 w-4" />
+                    </div>
+
+                    <div className="flex-1 min-w-0 pr-6">
+                      <div className="flex items-baseline justify-between gap-1">
+                        <span className="font-bold text-[12.5px] text-ink-900 dark:text-white truncate flex items-center gap-1.5">
+                          {isUnread && <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>}
+                          {n.title || "Notification"}
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-ink-700 dark:text-cream-100/70 font-medium leading-relaxed mt-1">
+                        {n.message || n.text || "Notification details"}
+                      </p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-[10px] font-bold text-moss-700 dark:text-[#E5C583]">
+                          {isPayment ? "View Invoice & Pay →" : isLease ? "Review Lease →" : isChat ? "Open Chat →" : "View Details →"}
+                        </span>
+                        <span className="text-[9.5px] text-ink-400 dark:text-cream-100/40">
+                          {n.created_at ? new Date(n.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : "Recently"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          if (n.id) await notificationService.markAsRead(n.id);
+                        } catch {}
+                        setNotifications(prev => prev.filter(item => item.id !== n.id));
+                      }}
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-ink-400 hover:text-rose-600 dark:hover:text-rose-400 bg-transparent border-none cursor-pointer"
+                      title="Dismiss notification"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                );
+              }) : (
+                <div className="flex flex-col items-center justify-center py-10 text-center space-y-2">
+                  <div className="p-3 bg-ink-50 dark:bg-white/5 rounded-full text-ink-300 dark:text-cream-100/30">
+                    <BellOff className="h-6 w-6" />
+                  </div>
+                  <h4 className="font-bold text-[13px] text-ink-900 dark:text-white">All caught up!</h4>
+                  <p className="text-[11.5px] text-ink-400 dark:text-cream-100/50 max-w-[220px] leading-normal">
+                    You have no new notifications. Any updates from your landlord will appear here.
+                  </p>
                 </div>
-              )) : (
-                <p className="text-sm text-ink-400 dark:text-cream-100/50 py-4 text-center">No new notifications.</p>
               )}
             </div>
 
-            <div className="flex gap-3 mt-6">
-              {notifications.length > 0 && (
-                <Button
-                  onClick={() => {
-                    setNotifications([]);
-                  }}
-                  className="flex-1 bg-neutral-100 hover:bg-neutral-200 dark:bg-[#07130D] dark:hover:bg-[#253930] text-ink-900 dark:text-white py-3.5 font-bold text-[13px] rounded-xl transition-colors"
-                >
-                  Clear All
-                </Button>
-              )}
+            <div className="mt-5">
               <Button
-                onClick={() => {
+                onClick={async () => {
                   setShowNotificationsModal(false);
-                  const updated = notifications.map(n => ({ ...n, read: true }));
-                  setNotifications(updated);
+                  try {
+                    await notificationService.markAsRead('all');
+                  } catch (_err) {}
+                  setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true })));
                 }}
-                className={`${notifications.length > 0 ? 'flex-[2]' : 'w-full'} bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl`}
+                className="w-full bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3 font-bold text-[13px] rounded-xl hover:opacity-90 transition-opacity"
               >
-                Close Notifications
+                Close
               </Button>
             </div>
           </div>
@@ -1871,19 +2059,6 @@ export default function TenantDashboard() {
             <div className="py-4 space-y-4">
               {/* Fiery Animated Hero Banner */}
               {(() => {
-                const rawStartDate = activeLease?.start_date || activeLease?.created_at || activeLease?.tenant_signed_at;
-                let daysInHouse = 0;
-                let monthsInHouse = 0;
-                let remainingDays = 0;
-
-                if (activeLease) {
-                  const startDate = rawStartDate ? new Date(rawStartDate) : new Date(Date.now() - 142 * 86400000);
-                  const diffMs = Math.max(0, Date.now() - startDate.getTime());
-                  daysInHouse = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-                  monthsInHouse = Math.floor(daysInHouse / 30);
-                  remainingDays = daysInHouse % 30;
-                }
-
                 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
                 const now = new Date();
                 const monthsList = [];
@@ -2077,13 +2252,27 @@ export default function TenantDashboard() {
             <div className="tour-welcome bg-[#1E3324] text-white px-6 md:px-8 pt-8 pb-10 rounded-[40px] m-4 md:m-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shadow-sm relative z-10">
               <div>
                 <div className="text-[10px] font-bold text-[#E5C583] uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2">
-                  <span>Home Page</span>
+                  <span
+                    className="cursor-pointer hover:underline hover:opacity-80 transition-all"
+                    onClick={() => navigate("/explore")}
+                    title="Go to Public Guest Dashboard"
+                  >
+                    Home Page
+                  </span>
                   <ArrowRight className="h-2.5 w-2.5" />
                   <span>Dashboard</span>
                 </div>
-                <h1 className="text-3xl md:text-4xl font-bold font-serif">
-                  Welcome, {firstName}!
-                </h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl md:text-4xl font-bold font-serif">
+                    Welcome, {firstName}!
+                  </h1>
+                  {loadingData && (
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 dark:text-[#E5C583] text-[11.5px] font-extrabold animate-pulse shadow-xs shrink-0">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-300 dark:text-[#E5C583]" />
+                      <span>Loading lease & ledgers...</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -2091,8 +2280,17 @@ export default function TenantDashboard() {
                   <Calendar className="h-4 w-4 text-[#E5C583]" />
                   <span className="text-xs font-bold">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
                 </div>
-                <button className="h-10 w-10 rounded-full bg-white/10 dark:bg-[#14221B] flex items-center justify-center hover:bg-[#E5C583] hover:text-[#09090b] transition-colors border border-white/20 dark:border-white/5 shadow-inner shrink-0">
+                <button
+                  onClick={() => setShowNotificationsModal(true)}
+                  className="relative h-10 w-10 rounded-full bg-white/10 dark:bg-[#14221B] flex items-center justify-center hover:bg-[#E5C583] hover:text-[#09090b] transition-colors border border-white/20 dark:border-white/5 shadow-inner shrink-0"
+                  aria-label="View notifications"
+                >
                   <Bell className="h-4 w-4" />
+                  {notifications.filter(n => !n.is_read && !n.read).length > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white shadow-sm">
+                      {notifications.filter(n => !n.is_read && !n.read).length}
+                    </span>
+                  )}
                 </button>
                 <button
                   onClick={() => setActiveTab(2)}
@@ -2298,12 +2496,12 @@ export default function TenantDashboard() {
                     const payableAmt = rentCycle === "yearly" ? baseRent * 12 : baseRent;
                     const unpaidInv = invoices.find(i => i.status === 'unpaid');
 
-                    let dueDateStr = "-";
+                    let dueDateStr = "--/--";
                     let isDue = !!unpaidInv;
-                    let displayAmt = unpaidInv ? parseFloat(unpaidInv.amount) : baseRent;
+                    let displayAmt = unpaidInv ? (parseFloat(unpaidInv.grandTotal || unpaidInv.amount) || 0) : baseRent;
 
-                    if (unpaidInv && unpaidInv.due_date) {
-                      dueDateStr = new Date(unpaidInv.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+                    if (unpaidInv && (unpaidInv.due_date || unpaidInv.dueDate)) {
+                      dueDateStr = new Date(unpaidInv.due_date || unpaidInv.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
                     } else if (activeLease && activeLease.start_date) {
                       const startDate = new Date(activeLease.start_date);
                       const now = new Date();
@@ -2327,8 +2525,8 @@ export default function TenantDashboard() {
                           <div className="flex items-center gap-2 font-bold text-[10px] tracking-widest uppercase">
                             VISA DEBIT <CreditCard className="h-4 w-4" />
                           </div>
-                          <span className={`text-[9px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-widest ${isDue ? 'bg-red-500 text-white' : 'bg-[#E5C583] text-[#09090b] shadow-sm'}`}>
-                            {isDue ? "Due" : "Settled"}
+                          <span className={`text-[9px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-widest ${isDue ? 'bg-red-500 text-white' : (payments.length > 0 || activeLease?.rent_amount ? 'bg-[#E5C583] text-[#09090b] shadow-sm' : 'bg-white/10 text-white/70')}`}>
+                            {isDue ? "Due" : (payments.length > 0 || activeLease?.rent_amount ? "Settled" : "No Due")}
                           </span>
                         </div>
 
@@ -2359,7 +2557,7 @@ export default function TenantDashboard() {
                             onClick={() => setShowPayModal(true)}
                             className="text-[10px] font-bold uppercase tracking-widest hover:bg-[#E5C583] hover:text-[#09090b] transition-colors bg-[#0B1510] px-4 py-2.5 rounded-xl border border-[#E5C583]/20 cursor-pointer shadow-sm text-[#E5C583]"
                           >
-                            {isDue ? "Pay Now" : dueDateStr}
+                            {isDue ? "Pay Now" : (dueDateStr !== "--/--" ? dueDateStr : "No Due")}
                           </button>
                         </div>
                       </div>
@@ -2372,7 +2570,7 @@ export default function TenantDashboard() {
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xl md:text-2xl font-bold tracking-tight">
                           {invoices.length > 0
-                            ? `₦${invoices.filter(i => i.status === 'unpaid').reduce((sum, inv) => sum + (parseFloat(inv.amount) || 0), 0).toLocaleString()}`
+                            ? `₦${invoices.filter(i => i.status === 'unpaid').reduce((sum, inv) => sum + (parseFloat(inv.grandTotal || inv.amount) || 0), 0).toLocaleString()}`
                             : "₦0.00"}
                         </span>
                       </div>

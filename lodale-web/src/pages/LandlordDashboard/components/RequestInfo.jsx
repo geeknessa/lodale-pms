@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Calendar, ClipboardList, PenTool, CheckCircle, Clock } from "lucide-react";
+import { X, Calendar, ClipboardList, PenTool, CheckCircle } from "lucide-react";
 import Avatar from "../../../components/Avatar";
 
 export default function RequestInfo({ request, onClose, onUpdateStatus }) {

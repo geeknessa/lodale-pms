@@ -42,6 +42,14 @@ CREATE TABLE IF NOT EXISTS properties (
     lease_start_date DATE,
     available_from DATE,
     deletion_reason TEXT,
+    minimum_income_required NUMERIC(20, 2) DEFAULT 0.00,
+    requires_guarantor BOOLEAN DEFAULT false,
+    auto_approve_at TIMESTAMPTZ,
+    verification_score NUMERIC,
+    approval_type VARCHAR(20),
+    risk_level VARCHAR(20),
+    verification_results JSONB,
+    approved_at TIMESTAMPTZ,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -67,6 +75,7 @@ CREATE TABLE IF NOT EXISTS landlord_profiles (
     professional_license VARCHAR(100),
     website_url TEXT,
     bio TEXT,
+    address TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -147,6 +156,17 @@ CREATE TABLE IF NOT EXISTS leases (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- CHAT MESSAGES TABLE
+CREATE TABLE IF NOT EXISTS chat_messages (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- RENT INVOICES TABLE
 CREATE TABLE IF NOT EXISTS rent_invoices (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -186,3 +206,34 @@ CREATE TABLE IF NOT EXISTS maintenance_requests (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- NOTIFICATIONS TABLE
+CREATE TABLE IF NOT EXISTS notifications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    reference_type VARCHAR(50),
+    reference_id UUID,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- PROPERTY INSPECTIONS TABLE
+CREATE TABLE IF NOT EXISTS property_inspections (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    application_id UUID REFERENCES property_applications(id) ON DELETE SET NULL,
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    landlord_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    time VARCHAR(20) NOT NULL,
+    location TEXT,
+    notes TEXT,
+    status VARCHAR(50) DEFAULT 'Scheduled',
+    created_by VARCHAR(50) DEFAULT 'landlord',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { UserModel } from '../models/userModel.js';
 import { pool } from '../db/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { invalidateUserStatusCache } from '../middlewares/authMiddleware.js';
 
 const emailVerificationCodes = new Map();
 
@@ -30,15 +31,19 @@ export const userController = {
   }),
 
   getLandlordTenants: asyncHandler(async (req, res) => {
+    const role = req.user.role || req.user.primary_role;
+    if (role !== 'landlord' && role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden: Only landlords can view tenants list' });
+    }
     const landlordId = req.user.id;
 
     // 1. Fetch leases for landlord properties
     const leasesRes = await pool.query(
       `SELECT l.id as lease_id, l.status as lease_status, l.tenant_signed_at, l.landlord_signed_at,
               l.rent_amount, l.rent_period, l.start_date, l.end_date,
-              p.id as property_id, p.title as property_title, p.address as property_address,
+              p.id as property_id, p.title as property_title, p.address_line1 as property_address,
               u.id as tenant_id, u.first_name, u.last_name, u.email as tenant_email, u.phone_number as tenant_phone, u.avatar_url,
-              tp.emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
+              tp.emergency_contact_name as emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
        FROM leases l
        JOIN properties p ON l.property_id = p.id
        JOIN users u ON l.tenant_id = u.id
@@ -51,9 +56,9 @@ export const userController = {
     // 2. Fetch applications for landlord properties
     const appsRes = await pool.query(
       `SELECT a.id as application_id, a.status as application_status, a.created_at,
-              p.id as property_id, p.title as property_title, p.rent_amount, p.rent_period, p.address as property_address,
+              p.id as property_id, p.title as property_title, p.rent_amount, p.rent_period, p.address_line1 as property_address,
               u.id as tenant_id, u.first_name, u.last_name, u.email as tenant_email, u.phone_number as tenant_phone, u.avatar_url,
-              tp.emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
+              tp.emergency_contact_name as emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
        FROM property_applications a
        JOIN properties p ON a.property_id = p.id
        JOIN users u ON a.tenant_id = u.id
@@ -200,6 +205,8 @@ export const userController = {
       return res.status(404).json({ error: 'User account not found' });
     }
 
+    invalidateUserStatusCache(userId);
+
     res.json({
       success: true,
       message: 'Your account has been deactivated/closed. If you ever wish to restore your account, contact Admin.',
@@ -208,18 +215,8 @@ export const userController = {
   }),
 
   payRestorationFee: asyncHandler(async (req, res) => {
-    const userId = req.user.id;
-    const { paymentReference } = req.body;
-
-    const restored = await UserModel.payRestorationFee(userId, paymentReference || 'PAY-FEE-' + Date.now());
-    if (!restored) {
-      return res.status(404).json({ error: 'User account not found' });
-    }
-
-    res.json({
-      success: true,
-      message: 'Restoration fee paid successfully! Your account is now fully active.',
-      user: restored
+    return res.status(400).json({
+      error: 'Online payment gateway is not integrated yet. Please contact admin to confirm payment and restore your account.'
     });
   }),
 
@@ -298,7 +295,8 @@ export const userController = {
 
   inviteTenant: asyncHandler(async (req, res) => {
     // Only landlords (or admins) should invite tenants
-    if (req.user.primary_role !== 'landlord' && req.user.primary_role !== 'admin') {
+    const role = req.user.role || req.user.primary_role;
+    if (role !== 'landlord' && role !== 'admin') {
       return res.status(403).json({ error: 'Only landlords can invite tenants.' });
     }
 

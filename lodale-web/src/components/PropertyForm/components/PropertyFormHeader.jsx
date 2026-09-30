@@ -1,13 +1,5 @@
-import { ArrowLeft, Bell, BellOff, HelpCircle, Building2, Layers, SlidersHorizontal, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Bell, BellOff, HelpCircle } from "lucide-react";
 import { Logo } from "../../Logo";
-
-const stepsInfo = [
-  { step: 1, label: "Type & Location", icon: Building2, desc: "Establish building identity & street address" },
-  { step: 2, label: "Units & Specifications", icon: Layers, desc: "Setup unit layout & rental pricing" },
-  { step: 3, label: "Amenities & Guidelines", icon: SlidersHorizontal, desc: "Select utilities & property rules" },
-  { step: 4, label: "Legal Proof & Photos", icon: ShieldCheck, desc: "Attach legal document & picture gallery" },
-  { step: 5, label: "Occupancy & Submit", icon: CheckCircle2, desc: "Configure current occupancy status" }
-];
 
 export default function PropertyFormHeader({
   isStandalone,

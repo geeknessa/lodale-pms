@@ -100,8 +100,32 @@ export const sendMessage = async (req, res) => {
        RETURNING *`,
       [senderId, receiverId, propertyId || null, message]
     );
+    const savedMessage = newMessage.rows[0];
 
-    res.status(201).json({ success: true, message: newMessage.rows[0] });
+    // Create real notification for the message recipient
+    try {
+      const senderUser = await pool.query('SELECT first_name, last_name, email FROM users WHERE id = $1', [senderId]);
+      const s = senderUser.rows[0];
+      const senderName = s ? `${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email : 'User';
+      const snippet = message.length > 70 ? message.slice(0, 67) + '...' : message;
+
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          receiverId,
+          `New Message from ${senderName}`,
+          snippet,
+          'chat',
+          'chat',
+          senderId
+        ]
+      );
+    } catch (notifErr) {
+      console.warn('Failed to dispatch chat notification:', notifErr.message);
+    }
+
+    res.status(201).json({ success: true, message: savedMessage });
   } catch (error) {
     console.error('Send message error:', error);
     res.status(500).json({ success: false, message: 'Server error sending message' });

@@ -69,6 +69,44 @@ export const applyForProperty = async (req, res) => {
        RETURNING *`,
       [propertyId, tenantId, notes || null]
     );
+
+    // 3. Create notification for the landlord
+    try {
+      const propRes = await pool.query(
+        `SELECT title, landlord_id FROM properties WHERE id = $1`,
+        [propertyId]
+      );
+      if (propRes.rows.length > 0) {
+        const property = propRes.rows[0];
+        const landlordId = property.landlord_id;
+
+        if (landlordId) {
+          const tenantRes = await pool.query(
+            `SELECT first_name, last_name, email FROM users WHERE id = $1`,
+            [tenantId]
+          );
+          const tenantUser = tenantRes.rows[0];
+          const tenantName = tenantUser
+            ? `${tenantUser.first_name || ''} ${tenantUser.last_name || ''}`.trim() || tenantUser.email
+            : 'A prospective tenant';
+
+          await pool.query(
+            `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              landlordId,
+              'New Rental Application Received',
+              `${tenantName} submitted an application for "${property.title}".`,
+              'application',
+              'application',
+              newApp.rows[0].id
+            ]
+          );
+        }
+      }
+    } catch (notifErr) {
+      console.error('Failed to create landlord application notification:', notifErr);
+    }
     
     res.status(201).json({ success: true, application: newApp.rows[0] });
   } catch (error) {
@@ -90,15 +128,27 @@ export const getMyApplications = async (req, res) => {
     const apps = await pool.query(
       `SELECT 
          a.id, 
+         a.tenant_id as "tenantId",
          a.status, 
          a.notes, 
+         a.rejection_reason as "rejectionReason",
          a.created_at as date,
          a.property_id as "propertyId",
          p.title as "propertyTitle",
+         p.rent_amount as "propertyRentAmount",
+         p.rent_period as "propertyRentPeriod",
          p.landlord_id as "landlordId",
          u.first_name as "landlordFirstName",
          u.last_name as "landlordLastName",
          u.avatar_url as "landlordAvatar",
+         al.lease_id as "leaseId",
+         al.lease_status as "leaseStatus",
+         al.tenant_signed_at as "leaseTenantSignedAt",
+         al.landlord_signed_at as "leaseLandlordSignedAt",
+         ai.invoice_id as "invoiceId",
+         ai.invoice_number as "invoiceNumber",
+         ai.invoice_amount as "invoiceAmount",
+         ai.invoice_status as "invoiceStatus",
          (
            SELECT message FROM chat_messages cm 
            WHERE (cm.sender_id = p.landlord_id AND cm.receiver_id = a.tenant_id)
@@ -108,6 +158,20 @@ export const getMyApplications = async (req, res) => {
        FROM property_applications a
        JOIN properties p ON a.property_id = p.id
        JOIN users u ON p.landlord_id = u.id
+       LEFT JOIN LATERAL (
+         SELECT id as lease_id, status as lease_status, tenant_signed_at, landlord_signed_at
+         FROM leases
+         WHERE application_id = a.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) al ON true
+       LEFT JOIN LATERAL (
+         SELECT id as invoice_id, invoice_number, grand_total as invoice_amount, status as invoice_status
+         FROM rent_invoices
+         WHERE application_id = a.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) ai ON true
        WHERE a.tenant_id = $1
        ORDER BY a.created_at DESC`,
       [tenantId]
@@ -148,8 +212,8 @@ export const getLandlordApplications = async (req, res) => {
          p.title as property_title,
          p.rent_amount as property_rent_amount,
          p.rent_period as property_rent_period,
-         p.minimum_income_required,
-         p.requires_guarantor,
+         COALESCE(p.minimum_income_required::text, '0') as minimum_income_required,
+         COALESCE(p.requires_guarantor, false) as requires_guarantor,
          u.first_name,
          u.last_name,
          u.email,
@@ -165,7 +229,11 @@ export const getLandlordApplications = async (req, res) => {
          tp.guarantor_relationship,
          tp.guarantor_email,
          al.active_lease_end_date,
-         al.active_lease_property_title
+         al.active_lease_property_title,
+         app_lease.lease_id,
+         app_lease.lease_status,
+         app_lease.lease_tenant_signed_at,
+         app_lease.lease_landlord_signed_at
        FROM property_applications a
        JOIN properties p ON a.property_id = p.id
        JOIN users u ON a.tenant_id = u.id
@@ -178,6 +246,20 @@ export const getLandlordApplications = async (req, res) => {
          ORDER BY l.end_date DESC
          LIMIT 1
        ) al ON true
+       LEFT JOIN LATERAL (
+         SELECT id as lease_id, status as lease_status, tenant_signed_at as lease_tenant_signed_at, landlord_signed_at as lease_landlord_signed_at
+         FROM leases
+         WHERE application_id = a.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) app_lease ON true
+       LEFT JOIN LATERAL (
+         SELECT id as invoice_id, invoice_number, grand_total as invoice_amount, status as invoice_status
+         FROM rent_invoices
+         WHERE application_id = a.id
+         ORDER BY created_at DESC
+         LIMIT 1
+       ) app_invoice ON true
        WHERE p.landlord_id = $1
        ORDER BY a.created_at DESC`,
       [landlordId]
@@ -200,15 +282,21 @@ export const getLandlordApplications = async (req, res) => {
         propertyRentAmount: app.property_rent_amount,
         propertyRentPeriod: app.property_rent_period,
         tenantId: app.tenant_id,
+        tenant_first_name: app.first_name,
+        tenant_last_name: app.last_name,
         status: app.status,
         notes: app.notes,
         rejectionReason: app.rejection_reason,
         createdAt: app.created_at,
         date: new Date(app.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }),
         activeLease,
+        leaseId: app.lease_id,
+        leaseStatus: app.lease_status,
+        leaseTenantSignedAt: app.lease_tenant_signed_at,
+        leaseLandlordSignedAt: app.lease_landlord_signed_at,
         propertyRequirements: {
-          minimumIncome: app.minimum_income_required || "No Minimum Income",
-          requiresGuarantor: app.requires_guarantor
+          minimumIncome: parseFloat(app.minimum_income_required) || 0,
+          requiresGuarantor: Boolean(app.requires_guarantor)
         },
         tenant: {
           firstName: app.first_name,
@@ -219,7 +307,7 @@ export const getLandlordApplications = async (req, res) => {
           occupation: app.occupation,
           employerName: app.employer_name,
           employmentStatus: app.employment_status,
-          monthlyIncome: app.monthly_income || "Not Provided",
+          monthlyIncome: parseFloat(app.monthly_income) || 0,
           maritalStatus: app.marital_status,
           dependants: app.number_of_dependants,
           guarantorName: app.guarantor_name,
@@ -252,7 +340,7 @@ export const updateApplicationStatus = async (req, res) => {
   try {
     // Verify the landlord owns the property this application is for
     const checkOwnership = await pool.query(
-      `SELECT p.landlord_id, a.tenant_id, a.property_id
+      `SELECT p.landlord_id, a.tenant_id, a.property_id, a.status as current_status, p.title as property_title
        FROM property_applications a
        JOIN properties p ON a.property_id = p.id
        WHERE a.id = $1`,
@@ -263,11 +351,17 @@ export const updateApplicationStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
 
-    if (checkOwnership.rows[0].landlord_id !== landlordId) {
+    const { landlord_id, tenant_id, current_status, property_title } = checkOwnership.rows[0];
+
+    if (landlord_id !== landlordId) {
       return res.status(403).json({ success: false, message: 'Not authorized to update this application' });
     }
 
-
+    // If status is identical, do not trigger duplicate notifications or redundant updates
+    if (current_status === status) {
+      const existing = await pool.query('SELECT * FROM property_applications WHERE id = $1', [id]);
+      return res.json({ success: true, application: existing.rows[0] });
+    }
 
     const updatedApp = await pool.query(
       `UPDATE property_applications 
@@ -276,6 +370,41 @@ export const updateApplicationStatus = async (req, res) => {
        RETURNING *`,
       [status, rejectionReason || null, id]
     );
+
+    // Notify the tenant about the application update (ONLY on actual status change)
+    try {
+      const isApproved = status === 'approved';
+      const isRejected = status === 'rejected';
+      const title = isApproved
+        ? 'Application Approved'
+        : isRejected
+          ? 'Application Update: Not Approved'
+          : `Application Status: ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+
+      const message = isApproved
+        ? `Your rental application for "${property_title}" has been approved by the landlord.`
+        : isRejected
+          ? `Your application for "${property_title}" was not approved.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`
+          : `Your application status for "${property_title}" has been updated to ${status}.`;
+
+      // Check if duplicate notification exists
+      const existingNotif = await pool.query(
+        `SELECT id FROM notifications 
+         WHERE user_id = $1 AND reference_type = 'application' AND reference_id = $2 AND title = $3
+         LIMIT 1`,
+        [tenant_id, id, title]
+      );
+
+      if (existingNotif.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [tenant_id, title, message, isApproved ? 'success' : isRejected ? 'warning' : 'application', 'application', id]
+        );
+      }
+    } catch (notifErr) {
+      console.error('Failed to notify tenant of application update:', notifErr);
+    }
 
     res.json({ success: true, application: updatedApp.rows[0] });
   } catch (error) {
@@ -328,6 +457,19 @@ export const withdrawApplication = async (req, res) => {
            VALUES ($1, $2, $3, $4)`,
           [tenantId, app.landlord_id, app.property_id, withdrawalMsg]
         );
+
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type, reference_type, reference_id)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            app.landlord_id,
+            'Application Withdrawn',
+            `${tenantName} has withdrawn their application for "${app.property_title || 'Listing'}".`,
+            'info',
+            'application',
+            id
+          ]
+        );
       } catch (msgErr) {
         console.warn('Could not auto-insert withdrawal message:', msgErr.message);
       }
@@ -368,11 +510,11 @@ export const deleteLandlordApplication = async (req, res) => {
 
     let app = checkApp.rows[0];
     if (!app) {
-      const simpleCheck = await pool.query('SELECT id, status FROM property_applications WHERE id = $1', [id]);
-      if (simpleCheck.rows.length === 0) {
-        return res.json({ success: true, message: 'Application already removed.' });
+      const existsCheck = await pool.query('SELECT id FROM property_applications WHERE id = $1', [id]);
+      if (existsCheck.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Application not found' });
       }
-      app = simpleCheck.rows[0];
+      return res.status(403).json({ success: false, message: 'Forbidden: You do not have permission to delete this application' });
     }
 
     if (app && (app.status === 'leased' || app.status === 'active')) {

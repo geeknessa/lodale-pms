@@ -7,7 +7,7 @@ export const getNotifications = async (req, res) => {
   const userId = req.user.id;
   try {
     const notifs = await pool.query(
-      `SELECT id, title, message, type, is_read, created_at 
+      `SELECT id, title, message, type, is_read, reference_type, reference_id, created_at 
        FROM notifications 
        WHERE user_id = $1 
        ORDER BY created_at DESC`,
@@ -50,9 +50,14 @@ export const markAsRead = async (req, res) => {
 // @route   POST /api/notifications
 // @access  Private
 export const createNotification = async (req, res) => {
-  const { userId, title, message, type } = req.body;
+  const targetUserId = req.body.userId || req.user.id;
+  const { title, message, type } = req.body;
 
-  if (!userId || !title || !message || !type) {
+  if (targetUserId !== req.user.id && req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Forbidden: You can only create notifications for yourself' });
+  }
+
+  if (!title || !message || !type) {
     return res.status(400).json({ success: false, message: 'Missing required fields' });
   }
 
@@ -61,11 +66,37 @@ export const createNotification = async (req, res) => {
       `INSERT INTO notifications (user_id, title, message, type)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [userId, title, message, type]
+      [targetUserId, title, message, type]
     );
     res.status(201).json({ success: true, notification: newNotif.rows[0] });
   } catch (error) {
     console.error('Create notification error:', error);
     res.status(500).json({ success: false, message: 'Server error creating notification' });
+  }
+};
+
+// @desc    Delete notification(s)
+// @route   DELETE /api/notifications/:id
+// @access  Private
+export const deleteNotification = async (req, res) => {
+  const userId = req.user.id;
+  const { id } = req.params;
+
+  try {
+    if (id === 'all') {
+      await pool.query(
+        `DELETE FROM notifications WHERE user_id = $1`,
+        [userId]
+      );
+    } else {
+      await pool.query(
+        `DELETE FROM notifications WHERE id = $1 AND user_id = $2`,
+        [id, userId]
+      );
+    }
+    res.json({ success: true, message: 'Notification(s) deleted successfully' });
+  } catch (error) {
+    console.error('Delete notification error:', error);
+    res.status(500).json({ success: false, message: 'Server error deleting notification' });
   }
 };

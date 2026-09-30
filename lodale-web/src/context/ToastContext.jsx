@@ -20,8 +20,22 @@ export function ToastProvider({ children }) {
     return "User";
   };
 
+  // Ref to track recently fired toast messages for deduplication
+  const recentToastsRef = React.useRef(new Map());
+
   const showToast = useCallback((message, type = "success", title = "", action = null) => {
-    const id = Date.now() + Math.random().toString(36).substring(2, 9);
+    if (!message) return;
+
+    // Deduplicate identical message + type within 2000ms
+    const dedupKey = `${type}:${message}`;
+    const now = Date.now();
+    const lastFired = recentToastsRef.current.get(dedupKey);
+    if (lastFired && now - lastFired < 2000) {
+      return; // Skip duplicate toast
+    }
+    recentToastsRef.current.set(dedupKey, now);
+
+    const id = now + Math.random().toString(36).substring(2, 9);
     const userName = getUserName();
 
     let finalMsg = message;
@@ -37,10 +51,16 @@ export function ToastProvider({ children }) {
       type,
       title: title || (type === "success" ? "Success" : type === "error" ? "Action Failed" : type === "warning" ? "Notice" : "Update"),
       action,
-      createdAt: Date.now()
+      createdAt: now
     };
 
-    setToasts((prev) => [newToast, ...prev].slice(0, 5));
+    setToasts((prev) => {
+      // Also ensure message isn't already visible at top of current toast stack
+      if (prev.some(t => t.message === finalMsg && t.type === type)) {
+        return prev;
+      }
+      return [newToast, ...prev].slice(0, 5);
+    });
   }, []);
 
   const removeToast = useCallback((id) => {

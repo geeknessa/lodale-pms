@@ -2,31 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { handlePropertySubmit } from "../../utils/propertyUtils";
 import { propertyService } from "../../services/propertyService";
-import { chatService } from "../../services/chatService";
 import { notificationService } from "../../services/notificationService";
 
-const GENERAL_UNIT_AMENITIES = [
-  "24/7 Security",
-  "Prepaid Meter",
-  "Air Conditioning",
-  "Balcony",
-  "Water Heater",
-  "Parking Space",
-  "24/7 Power / Generator",
-  "En-suite Bathrooms",
-  "Fitted Kitchen",
-  "CCTV Camera",
-  "Elevator"
-];
 
-const GENERAL_UNIT_RULES = [
-  "No Pets Allowed",
-  "No Smoking Inside",
-  "No Parties / Loud Noise",
-  "Quiet Hours (10 PM - 6 AM)",
-  "Commercial Use Prohibited",
-  "Prompt Rent Payment"
-];
 
 export const ADD_PROPERTY_TOUR_STEPS = [
   {
@@ -41,7 +19,7 @@ export const ADD_PROPERTY_TOUR_STEPS = [
     stepNum: 2,
     target: ".tour-step-nav-2",
     title: "2. Units & Specifications",
-    content: "Setup unit layout & rental pricing. Add individual flats manually, use the ⚡ Bulk Generator for multi-unit buildings, or import unit spreadsheets via CSV.",
+    content: "Setup unit layout & rental pricing. Add individual flats manually, use the Bulk Generator for multi-unit buildings, or import unit spreadsheets via CSV.",
     placement: "right",
     formStep: 2
   },
@@ -94,8 +72,8 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
   // Tour Guide State
   const [runTour, setRunTour] = useState(false);
   const [tourStep, setTourStep] = useState(0);
-  const [spotlightStyle, setSpotlightStyle] = useState({});
-  const [tooltipStyle, setTooltipStyle] = useState({});
+  const [spotlightStyle] = useState({});
+  const [tooltipStyle] = useState({});
   const [recalcTrigger, setRecalcTrigger] = useState(0);
 
   // Property Type & Subtype
@@ -218,22 +196,14 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
     async function loadNotifications() {
       try {
         const notifs = await notificationService.getMyNotifications();
-        if (notifs && notifs.length > 0) {
+        if (Array.isArray(notifs)) {
           setNotifications(notifs);
         } else {
-          setNotifications([
-            {
-              id: "n-init-1",
-              title: "Welcome to Portfolio Wizard",
-              message: "Establish property identity, set up units, attach legal proof, and invite tenants.",
-              type: "info",
-              time: "Just now",
-              read: false
-            }
-          ]);
+          setNotifications([]);
         }
       } catch (err) {
         console.warn("Failed to load notifications", err);
+        setNotifications([]);
       }
     }
     loadNotifications();
@@ -256,7 +226,7 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
     return "Landlord Account";
   });
 
-  const [landlordAvatar, setLandlordAvatar] = useState(() => {
+  const [landlordAvatar] = useState(() => {
     const emailKey = sessionStorage.getItem("lastLoggedInEmail");
     if (emailKey) {
       const savedUserAvatar = localStorage.getItem("landlordAvatar_" + emailKey.toLowerCase());
@@ -587,12 +557,11 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
     loadEditData();
   }, [id, isEditing]);
 
-  const markAllNotifsRead = () => {
-    setNotifications((prev) => {
-      const updated = prev.map((n) => ({ ...n, read: true }));
-      localStorage.setItem("landlordNotifications", JSON.stringify(updated));
-      return updated;
-    });
+  const markAllNotifsRead = async () => {
+    try {
+      await notificationService.markAsRead('all');
+    } catch (_e) {}
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true, is_read: true })));
   };
 
   const handleDetectGpsLocation = () => {

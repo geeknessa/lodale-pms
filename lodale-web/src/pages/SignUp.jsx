@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import {
@@ -16,12 +16,10 @@ import {
   Check,
   Minus,
   CheckCircle2,
-  HelpCircle,
   Loader2,
 } from "lucide-react";
-import { Logo, VerifiedBadge } from "../components/Logo";
+import { Logo } from "../components/Logo";
 import Button from "../components/Button";
-import { authService } from "../services/authService";
 import heroBg from "../assets/modern_villa.png";
 import { useTheme } from "../context/ThemeContext";
 import { useSignUpForm } from "../hooks/useSignUpForm";
@@ -56,11 +54,11 @@ export default function SignUp() {
     role, step, isSubmitting, nin, isVerifying, progress, loadingStep,
     pulledFullName, showIdentityConfirmation, verified, firstName, lastName,
     email, password, showPassword, agreeToTerms, inlineError, googleLoading,
-    hasMinLength, hasUppercase, hasNumber, hasSpecialChar, isPasswordValid, isEmailValid
+    hasMinLength, hasUppercase, hasNumber, hasSpecialChar
   } = formState;
 
   const {
-    setRole, setStep, setNin, setShowPassword, setFirstName, setLastName,
+    setRole, setStep, setNin, setShowPassword,
     setEmail, setPassword, setAgreeToTerms, setInlineError, setShowIdentityConfirmation,
     handleVerify, handleConfirmIdentity, handleRejectIdentity,
     handleGoogleSignUp, handleCompleteSignUp

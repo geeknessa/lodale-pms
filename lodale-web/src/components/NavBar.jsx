@@ -18,11 +18,6 @@ export default function NavBar({ transparentMode = false }) {
   const [userRole, setUserRole] = useState(() => {
     return (sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") || "").toLowerCase();
   });
-  const [isAdmin, setIsAdmin] = useState(() => {
-    const r = (sessionStorage.getItem("userRole") || sessionStorage.getItem("userRole") || "").toLowerCase();
-    const email = sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "";
-    return r === "admin" || email === "admin" || sessionStorage.getItem("adminAuthenticated") === "true";
-  });
   const [activeSection, setActiveSection] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -32,11 +27,9 @@ export default function NavBar({ transparentMode = false }) {
       const hasTabSession = sessAuth !== null;
       const auth = hasTabSession ? sessAuth === "true" : sessionStorage.getItem("isAuthenticated") === "true";
       const role = (sessionStorage.getItem("userRole") || (!hasTabSession ? sessionStorage.getItem("userRole") : "") || "").toLowerCase();
-      const email = sessionStorage.getItem("lastLoggedInEmail") || (!hasTabSession ? sessionStorage.getItem("lastLoggedInEmail") : "") || "";
 
       setIsAuthenticated(auth);
       setUserRole(role);
-      setIsAdmin(role === "admin" || email === "admin" || sessionStorage.getItem("adminAuthenticated") === "true");
     };
 
     handleAuth();

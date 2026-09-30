@@ -646,3 +646,12 @@ body.dark .ap-property-card.pastel-pink .ap-action-btn.btn-secondary {
 body.dark .ap-property-card.pastel-pink .ap-action-btn.btn-secondary:hover {
   background-color: rgba(239, 68, 68, 0.22);
 }
+
+body.dark .ap-action-btn.btn-primary {
+  color: #FFFFFF !important;
+}
+
+body.dark .ap-action-btn.btn-primary:hover {
+  color: #FFFFFF !important;
+}
+

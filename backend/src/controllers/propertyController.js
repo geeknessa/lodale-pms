@@ -1,6 +1,9 @@
 import { PropertyModel } from '../models/propertyModel.js';
 import { UserModel } from '../models/userModel.js';
+import { pool } from '../db/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { PropertyVerificationService } from '../services/propertyVerificationService.js';
+import { autoApprovalService } from '../services/autoApprovalService.js';
 
 const formatSafePrice = (rentAmount, period) => {
   const num = Number(rentAmount || 0);
@@ -8,9 +11,30 @@ const formatSafePrice = (rentAmount, period) => {
   return `₦${isNaN(num) ? '0' : num.toLocaleString()}${suffix}`;
 };
 
-const formatSafeLocation = (addr, city) => {
-  if (addr && city) return `${addr}, ${city}`;
-  return addr || city || 'Location not specified';
+const formatSafeLocation = (addr, city, state) => {
+  const parts = [addr, city, state].filter(Boolean);
+  if (parts.length > 0) return parts.join(', ');
+  return 'Location not specified';
+};
+
+const LIVE_PROPERTY_STATUSES = ['active_vacant', 'approved', 'live', 'active', 'occupied', 'active_occupied'];
+
+const stripPrivatePropertyFields = (prop) => {
+  const sanitized = { ...prop };
+  delete sanitized.ownership_doc;
+  delete sanitized.ownership_doc_url;
+  delete sanitized.ownership_doc_type;
+  delete sanitized.verification_score;
+  delete sanitized.risk_level;
+  delete sanitized.verification_results;
+  delete sanitized.auto_approve_at;
+  delete sanitized.deletion_reason;
+  Object.keys(sanitized).forEach(key => {
+    if (key.startsWith('restoration_fee_')) {
+      delete sanitized[key];
+    }
+  });
+  return sanitized;
 };
 
 export const propertyController = {
@@ -24,15 +48,18 @@ export const propertyController = {
       
       const actualCoverImage = p.cover_image || p.fetched_cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
 
-      return {
+      const formattedProp = {
         ...p,
         amenities,
         images: parsedImages,
         cover_image: actualCoverImage,
         price: formatSafePrice(p.rent_amount, p.rent_period),
-        location: formatSafeLocation(p.address_line1, p.city),
+        location: formatSafeLocation(p.address_line1, p.city, p.state),
         landlord: p.landlord_data?.id ? p.landlord_data : null
       };
+
+      const isOwnerOrAdmin = req.user && (req.user.role === 'admin' || req.user.id === p.landlord_id);
+      return isOwnerOrAdmin ? formattedProp : stripPrivatePropertyFields(formattedProp);
     });
 
     res.json(formatted);
@@ -40,6 +67,9 @@ export const propertyController = {
 
   getPropertiesByLandlord: asyncHandler(async (req, res) => {
     const { landlordId } = req.params;
+    if (req.user && req.user.role !== 'admin' && req.user.id !== landlordId) {
+      return res.status(403).json({ error: 'Forbidden: You can only access your own properties' });
+    }
     const properties = await PropertyModel.getPropertiesByLandlord(landlordId);
 
     const formatted = properties.map(p => {
@@ -61,7 +91,7 @@ export const propertyController = {
         cover_image: actualCoverImage,
         admin_notes: p.fetched_admin_notes,
         price: formatSafePrice(p.rent_amount, p.rent_period),
-        location: formatSafeLocation(p.address_line1, p.city),
+        location: formatSafeLocation(p.address_line1, p.city, p.state),
         landlord: p.landlord_data?.id ? p.landlord_data : null
       };
     });
@@ -77,6 +107,14 @@ export const propertyController = {
       return res.status(404).json({ error: 'Property not found' });
     }
 
+    const isOwnerOrAdmin = req.user && (req.user.role === 'admin' || req.user.id === property.landlord_id);
+    const isLive = LIVE_PROPERTY_STATUSES.includes(String(property.status || '').toLowerCase());
+    const isDeleted = property.is_deleted === true || property.status === 'deleted';
+
+    if (!isOwnerOrAdmin && (!isLive || isDeleted)) {
+      return res.status(404).json({ error: 'Property not found' });
+    }
+
     const amenities = Array.isArray(property.fetched_amenities) && property.fetched_amenities.length > 0 && property.fetched_amenities[0] !== null ? property.fetched_amenities : [];
     const blocks = Array.isArray(property.fetched_blocks) && property.fetched_blocks.length > 0 && property.fetched_blocks[0] !== null ? property.fetched_blocks : [];
     const units = Array.isArray(property.fetched_units) && property.fetched_units.length > 0 && property.fetched_units[0] !== null ? property.fetched_units : [];
@@ -86,7 +124,7 @@ export const propertyController = {
     
     const actualCoverImage = property.cover_image || property.fetched_cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
 
-    res.json({
+    const formatted = {
       ...property,
       amenities,
       blocks,
@@ -95,8 +133,10 @@ export const propertyController = {
       cover_image: actualCoverImage,
       landlord: property.landlord_data?.id ? property.landlord_data : null,
       price: formatSafePrice(property.rent_amount, property.rent_period),
-      location: formatSafeLocation(property.address_line1, property.city),
-    });
+      location: formatSafeLocation(property.address_line1, property.city, property.state),
+    };
+
+    res.json(isOwnerOrAdmin ? formatted : stripPrivatePropertyFields(formatted));
   }),
 
   createProperty: asyncHandler(async (req, res) => {
@@ -104,7 +144,8 @@ export const propertyController = {
       title, description, address_line1, city, state, rent_amount, 
       bedrooms, bathrooms, property_type, amenities, 
       ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
-      rules, images, cover_image, blocks, units 
+      rules, images, cover_image, blocks, units,
+      is_occupied, tenant_name, tenant_contact, lease_start_date, available_from 
     } = req.body;
 
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
@@ -114,11 +155,28 @@ export const propertyController = {
     }
     const sanitizedPropertyType = (property_type || 'single_house').toString().trim().toLowerCase().replace(/\s+/g, '_');
 
+    // Run Automated Rule-Based Property Verification Engine
+    const verification = await PropertyVerificationService.verifyProperty(req.body, effectiveLandlordId);
+    
+    const qualifiesForAutoApproval = verification.decision === 'AUTO_APPROVE';
+    const assignedStatus = qualifiesForAutoApproval ? 'active_vacant' : 'pending_review';
+    const approvalType = qualifiesForAutoApproval ? 'automatic' : 'pending';
+    const approvedAt = qualifiesForAutoApproval ? new Date().toISOString() : null;
+    const autoApproveAt = null;
+
     const property = await PropertyModel.createProperty({
       effectiveLandlordId, title, slug, description, sanitizedPropertyType, 
-      address_line1, city, state, bedrooms, bathrooms, rent_amount, status: 'pending_review', 
+      address_line1, city, state, bedrooms, bathrooms, rent_amount, 
+      status: assignedStatus, 
       ownership_doc, ownership_doc_url, ownership_doc_type, latitude, longitude,
-      rules, images, cover_image, blocks, units
+      rules, images, cover_image, blocks, units,
+      is_occupied, tenant_name, tenant_contact, lease_start_date, available_from,
+      verification_score: verification.score,
+      approval_type: approvalType,
+      risk_level: verification.riskLevel,
+      verification_results: verification.results,
+      approved_at: approvedAt,
+      auto_approve_at: autoApproveAt
     });
 
     if (Array.isArray(amenities) && amenities.length > 0) {
@@ -127,17 +185,47 @@ export const propertyController = {
       }
     }
 
-    await PropertyModel.queueForApproval(property.id, effectiveLandlordId);
+    // Queue status in listing_approval_queue
+    const queueStatus = qualifiesForAutoApproval ? 'approved' : 'queued';
+    await PropertyModel.queueForApproval(property.id, effectiveLandlordId, queueStatus);
 
     const createdBlocks = await PropertyModel.getBlocks(property.id);
     const createdUnits = await PropertyModel.getUnits(property.id);
+
+    const responseMessage = qualifiesForAutoApproval
+      ? 'Property passed automated verification! It is now active and live.'
+      : 'Property submitted successfully! It is now pending admin review before going live.';
+
+    // Send notifications to landlord and system admins
+    try {
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, message, type)
+         VALUES ($1, $2, $3, $4)`,
+        [effectiveLandlordId, 'Property Submitted', `"${title || 'New property'}" has been submitted and is queued for verification.`, 'info']
+      );
+      const admins = await pool.query("SELECT id FROM users WHERE primary_role = 'admin' OR LOWER(email) = 'admin'");
+      for (const admin of admins.rows) {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [admin.id, 'New Property Submitted', `A new property "${title || 'Untitled'}" was submitted for review.`, 'info']
+        );
+      }
+    } catch (_e) {}
 
     res.status(201).json({
       ...property,
       blocks: createdBlocks,
       units: createdUnits,
-      status: 'pending_review',
-      message: 'Property submitted successfully! It is now pending admin review before going live.'
+      status: assignedStatus,
+      approval_type: approvalType,
+      auto_approve_at: autoApproveAt,
+      verification_score: verification.score,
+      risk_level: verification.riskLevel,
+      verification_results: verification.results,
+      approved_at: approvedAt,
+      review_reasons: verification.reviewReasons,
+      message: responseMessage
     });
   }),
 
@@ -152,6 +240,7 @@ export const propertyController = {
     }
 
     const data = req.body;
+    delete data.status;
     
     // Quick sanitization of price from rent string to number if needed, but only if rent_amount isn't explicitly provided
     if (data.price && (data.rent_amount === undefined || data.rent_amount === null || data.rent_amount === "")) {
@@ -197,6 +286,7 @@ export const propertyController = {
       return res.status(403).json({ error: 'Forbidden: You can only delete your own properties' });
     }
 
+    autoApprovalService.cancelScheduledAutoApproval(id);
     await PropertyModel.deleteProperty(id);
     res.json({ message: 'Property deleted successfully' });
   }),
@@ -217,12 +307,26 @@ export const propertyController = {
       return res.status(403).json({ error: 'Forbidden: You can only update status of your own properties' });
     }
 
-    const updated = await PropertyModel.updatePropertyStatus(id, status);
+    const normalizedStatus = String(status).trim().toLowerCase();
+    const LIVE_STATUSES = ['active_vacant', 'approved', 'live', 'active'];
+    const ALLOWED_LANDLORD_STATUSES = ['inactive', 'occupied', 'active_occupied'];
+
+    if (req.user.role !== 'admin') {
+      if (LIVE_STATUSES.includes(normalizedStatus)) {
+        return res.status(403).json({ error: 'Forbidden: Landlords cannot approve listings or set them to live/approved status' });
+      }
+      if (!ALLOWED_LANDLORD_STATUSES.includes(normalizedStatus)) {
+        return res.status(400).json({ error: `Forbidden: Landlords can only set status to: ${ALLOWED_LANDLORD_STATUSES.join(', ')}` });
+      }
+    }
+
+    autoApprovalService.cancelScheduledAutoApproval(id);
+    const updated = await PropertyModel.updatePropertyStatus(id, normalizedStatus);
     if (!updated) {
       return res.status(404).json({ error: 'Property not found' });
     }
     
-    res.json({ message: `Property status updated to ${status}`, property: updated });
+    res.json({ message: `Property status updated to ${normalizedStatus}`, property: updated });
   }),
 
   requestPropertyDeletion: asyncHandler(async (req, res) => {
@@ -246,6 +350,17 @@ export const propertyController = {
       return res.status(400).json({ error: 'Property not found or is currently occupied.' });
     }
     
+    try {
+      const admins = await pool.query("SELECT id FROM users WHERE primary_role = 'admin' OR LOWER(email) = 'admin'");
+      for (const admin of admins.rows) {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [admin.id, 'Property Deletion Requested', `Landlord requested deletion for "${existingProperty.title || 'property'}". Reason: ${reason}`, 'warning']
+        );
+      }
+    } catch (_e) {}
+
     res.json({ message: 'Property deletion requested. Pending admin approval.', property: updated });
   }),
 
@@ -270,30 +385,78 @@ export const propertyController = {
       return res.status(400).json({ error: 'Property not found or is currently occupied.' });
     }
 
+    try {
+      const admins = await pool.query("SELECT id FROM users WHERE primary_role = 'admin' OR LOWER(email) = 'admin'");
+      for (const admin of admins.rows) {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [admin.id, 'Property Suspension Requested', `Landlord requested suspension for "${existingProperty.title || 'property'}". Reason: ${reason}`, 'warning']
+        );
+      }
+    } catch (_e) {}
+
     res.json({ message: 'Property suspension requested. Pending admin approval.', property: updated });
   }),
 
   approvePropertyDeletion: asyncHandler(async (req, res) => {
     const { id } = req.params;
+    const existing = await PropertyModel.findByIdOrSlug(id);
     const result = await PropertyModel.approveDeletion(id);
+    if (existing?.landlord_id) {
+      try {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [existing.landlord_id, 'Property Deletion Approved', `Your request to delete "${existing.title || 'listing'}" has been approved.`, 'info']
+        );
+      } catch (_e) {}
+    }
     res.json({ message: 'Property deletion approved and removed successfully.', result });
   }),
 
   rejectPropertyDeletion: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const updated = await PropertyModel.rejectDeletion(id);
+    if (updated?.landlord_id) {
+      try {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [updated.landlord_id, 'Property Deletion Request Rejected', `Your request to delete "${updated.title || 'listing'}" was rejected by admin.`, 'warning']
+        );
+      } catch (_e) {}
+    }
     res.json({ message: 'Property deletion request rejected.', property: updated });
   }),
 
   approvePropertySuspension: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const updated = await PropertyModel.approveSuspension(id);
+    if (updated?.landlord_id) {
+      try {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [updated.landlord_id, 'Property Suspension Approved', `Your request to suspend "${updated.title || 'listing'}" has been approved.`, 'info']
+        );
+      } catch (_e) {}
+    }
     res.json({ message: 'Property suspension approved.', property: updated });
   }),
 
   rejectPropertySuspension: asyncHandler(async (req, res) => {
     const { id } = req.params;
     const updated = await PropertyModel.rejectSuspension(id);
+    if (updated?.landlord_id) {
+      try {
+        await pool.query(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [updated.landlord_id, 'Property Suspension Request Rejected', `Your request to suspend "${updated.title || 'listing'}" was rejected by admin.`, 'warning']
+        );
+      } catch (_e) {}
+    }
     res.json({ message: 'Property suspension request rejected.', property: updated });
   }),
 

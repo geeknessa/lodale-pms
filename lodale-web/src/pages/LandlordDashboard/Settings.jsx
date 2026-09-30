@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
-import { User, Lock, Sun, Moon, Calendar, LogOut, Pencil, FileText, CheckCircle2, ShieldCheck, Loader2, Settings as SettingsIcon, Award, Clock, AlertTriangle } from "lucide-react";
+import { User, Lock, Sun, Moon, Calendar, LogOut, Pencil, FileText, CheckCircle2, ShieldCheck, Loader2, Settings as SettingsIcon, Award, Clock, AlertTriangle, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
@@ -8,7 +8,6 @@ import { profileService } from "../../services/profileService";
 import { leaseService } from "../../services/leaseService";
 import { reminderService } from "../../services/reminderService";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
-import EmailVerificationModal from "../../components/EmailVerificationModal";
 import "./Settings.css";
 
 const ToggleSwitch = ({ checked, onChange, label }) => (
@@ -126,9 +125,31 @@ export default function Settings({ onShowReportModal }) {
         }
 
         if (roleProfile) {
+          if (roleProfile.address) setAddress(roleProfile.address);
           if (roleProfile.bank_name) setBankName(roleProfile.bank_name);
           if (roleProfile.bank_account_number) setBankAccountNumber(roleProfile.bank_account_number);
           if (roleProfile.bank_account_name) setBankAccountName(roleProfile.bank_account_name);
+        }
+
+        const currentStored = sessionStorage.getItem("currentUserProfile");
+        if (currentStored) {
+          try {
+            const parsed = JSON.parse(currentStored);
+            const merged = {
+              ...parsed,
+              firstName: profile?.first_name || parsed.firstName,
+              lastName: profile?.last_name || parsed.lastName,
+              first_name: profile?.first_name || parsed.first_name,
+              last_name: profile?.last_name || parsed.last_name,
+              phone: profile?.phone_number || parsed.phone,
+              phone_number: profile?.phone_number || parsed.phone_number,
+              address: roleProfile?.address || profile?.address || parsed.address || "",
+              role: "landlord",
+              primary_role: "landlord"
+            };
+            sessionStorage.setItem("currentUserProfile", JSON.stringify(merged));
+            sessionStorage.setItem("landlordCurrentProfile", JSON.stringify(merged));
+          } catch (e) {}
         }
       } catch (err) {
         console.warn("Failed to fetch landlord profile", err);
@@ -231,7 +252,8 @@ export default function Settings({ onShowReportModal }) {
           profileService.updateMyProfile({
             bank_name: bankName.trim(),
             bank_account_number: bankAccountNumber.trim(),
-            bank_account_name: bankAccountName.trim()
+            bank_account_name: bankAccountName.trim(),
+            address: address.trim()
           })
         ]);
       } catch (apiErr) {
@@ -241,18 +263,29 @@ export default function Settings({ onShowReportModal }) {
       const updatedProf = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         email: cleanEmail,
         phone: phone.trim(),
+        phone_number: phone.trim(),
         address: address.trim(),
         dob: dob.trim(),
         location: location,
         postalCode: postalCode.trim(),
+        postal_code: postalCode.trim(),
         gender: gender,
         avatar: avatarUrl,
-        role: "landlord"
+        avatar_url: avatarUrl,
+        role: "landlord",
+        primary_role: "landlord"
       };
 
       setUserProfile(updatedProf);
+      sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
+      sessionStorage.setItem("landlordCurrentProfile", JSON.stringify(updatedProf));
+      if (cleanEmail) {
+        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
+      }
       if (updatedName) {
         sessionStorage.setItem("username", updatedName);
       }
@@ -376,7 +409,29 @@ export default function Settings({ onShowReportModal }) {
           <CheckCircle2 className="h-4.5 w-4.5 shrink-0" />
           <span>{toastMessage || "Profile changes saved successfully!"}</span>
         </div>
-      )}      <div className="set-ref-layout">
+      )}
+
+      {/* Landlord Profile Completeness Guidance Banner */}
+      <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0 border border-amber-200 dark:border-amber-800/50">
+              <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                Landlord Settings & Portfolio Verification
+              </h4>
+              <p className="text-xs text-amber-700/80 dark:text-amber-200/70 mt-1 leading-relaxed max-w-2xl">
+                You can always return to <strong>Settings</strong> anytime to update your account details. 
+                Please note: <strong>You must complete your required profile fields to manage listings and receive tenant applications.</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="set-ref-layout">
 
         {/* LEFT COLUMN - USER PROFILE CARD */}
         <div className="set-ref-left">
@@ -601,10 +656,11 @@ export default function Settings({ onShowReportModal }) {
                 <div className="set-ref-input-group full pt-6 mt-4 border-t border-neutral-200 dark:border-white/10">
                   <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                     <h3 className="text-sm font-bold text-ink-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                      🏦 Banking Details (Default Account for Invoices)
+                      <CreditCard className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" />
+                      Banking Details (Default Account for Invoices)
                     </h3>
                     <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-cream-100 border border-emerald-500/20">
-                      ★ Auto-prefilled on Digital Invoices
+                      Auto-prefilled on Digital Invoices
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">

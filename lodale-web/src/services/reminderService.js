@@ -138,7 +138,7 @@ export const reminderService = {
 
       // 2. Deliver to Tenant Chat via Backend
       try {
-        await chatService.sendMessage(tenantId, `🔔 REMINDER: ${message}`);
+        await chatService.sendMessage(tenantId, `[REMINDER]: ${message}`);
       } catch (e) {
         console.warn("Failed to dispatch chat reminder via API");
       }
@@ -203,7 +203,7 @@ export const reminderService = {
 
       // 2. Deliver to Tenant Chat via Backend
       try {
-        await chatService.sendMessage(tenantId, `📅 INSPECTION REMINDER: ${message}`);
+        await chatService.sendMessage(tenantId, `[INSPECTION REMINDER]: ${message}`);
       } catch (e) {
         console.warn("Failed to dispatch chat inspection reminder via API");
       }
@@ -369,7 +369,7 @@ export const reminderService = {
                 type: "renewal_intent"
               }
             });
-            await chatService.sendMessage(tenantId, `🔄 ${message}`);
+            await chatService.sendMessage(tenantId, `[LEASE RENEWAL]: ${message}`);
             this.recordDispatch(dispatchId);
             dispatchedCount++;
           } catch (e) {

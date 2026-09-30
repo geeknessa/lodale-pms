@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -73,7 +74,14 @@ export async function initDb() {
         throw err;
       }
     }
-    console.log('[PostgreSQL] Connected to local PostgreSQL database: lodale_db');
+    const realDbName = (() => {
+      try {
+        return new URL(process.env.DATABASE_URL).pathname.replace(/^\//, '') || 'lodale_db';
+      } catch (e) {
+        return 'lodale_db';
+      }
+    })();
+    console.log(`[PostgreSQL] Connected to local PostgreSQL database: ${realDbName}`);
 
     // Initialize Schema
     try {
@@ -116,6 +124,12 @@ export async function initDb() {
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS deletion_reason TEXT;
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS restoration_fee_amount NUMERIC(15, 2);
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS restoration_fee_status VARCHAR(50) DEFAULT 'none';
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS auto_approve_at TIMESTAMPTZ;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS verification_score NUMERIC;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS approval_type VARCHAR(20);
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS risk_level VARCHAR(20);
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS verification_results JSONB;
+      ALTER TABLE properties ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
     `);
 
     // Widen numeric columns to prevent overflow with large Nigerian property values
@@ -173,23 +187,23 @@ export async function initDb() {
       -- Avoid ON CONFLICT which fails without a unique constraint
     `);
 
-    // Ensure any legacy 'admin@lodale.com' email is updated to 'admin'
-    await client.query("UPDATE users SET email = 'admin' WHERE LOWER(email) = 'admin@lodale.com'");
-
-    const adminCheck = await client.query("SELECT id FROM users WHERE LOWER(email) = 'admin'");
+    // Ensure admin user exists (create only if none exists, never overwrite existing admin)
+    const adminCheck = await client.query("SELECT id FROM users WHERE primary_role = 'admin' OR LOWER(email) = 'admin'");
     if (adminCheck.rowCount === 0) {
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      if (!adminPassword) {
+        console.error('[FATAL] Database has no admin user and ADMIN_PASSWORD environment variable is missing.');
+        process.exit(1);
+      }
+      const adminEmail = (process.env.ADMIN_EMAIL || 'admin').trim();
+      const hashedPassword = await bcrypt.hash(adminPassword, 12);
       await client.query(`
-        INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number)
+        INSERT INTO users (first_name, last_name, email, password_hash, primary_role, id_verification_status, phone_number, account_status)
         VALUES 
-          ('System', 'Admin', 'admin', '$2a$10$oGLTVt6pnp30pVGSiVmAmu8FgTjGo/2IYOD/gZhzhaaY/obTdBdlK', 'admin', 'verified', '+234 801 000 0000')
-      `);
+          ('System', 'Admin', $1, $2, 'admin', 'verified', '+234 801 000 0000', 'active')
+      `, [adminEmail, hashedPassword]);
+      console.log(`[PostgreSQL] Initial admin account created with email/username: ${adminEmail}`);
     }
-
-    // Ensure single admin account in database (remove duplicate admin-role users if any)
-    await client.query(`
-      DELETE FROM users 
-      WHERE primary_role = 'admin' AND LOWER(email) != 'admin'
-    `);
 
     // --- Migration: Role-Specific Profile Tables ---
     await client.query(`
@@ -241,6 +255,7 @@ export async function initDb() {
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS address TEXT;
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS location VARCHAR(255);
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS postal_code VARCHAR(50);
+      ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS address TEXT;
 
       CREATE TABLE IF NOT EXISTS support_messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -267,9 +282,14 @@ export async function initDb() {
         title VARCHAR(255) NOT NULL,
         message TEXT NOT NULL,
         type VARCHAR(50) NOT NULL,
+        reference_type VARCHAR(50),
+        reference_id UUID,
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_type VARCHAR(50);
+      ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_id UUID;
 
       CREATE TABLE IF NOT EXISTS property_inspections (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -341,6 +361,29 @@ export async function initDb() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
+      ALTER TABLE rent_invoices ALTER COLUMN lease_id DROP NOT NULL;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES property_applications(id) ON DELETE CASCADE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE CASCADE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS landlord_id UUID REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS subtotal NUMERIC(20, 2);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS lodale_fee NUMERIC(20, 2);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS grand_total NUMERIC(20, 2);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS issue_date DATE DEFAULT CURRENT_DATE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS bank_name VARCHAR(100);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(100);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(150);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS notes TEXT;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(150);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS payment_proof_url TEXT;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+
+      CREATE INDEX IF NOT EXISTS idx_rent_invoices_application_id ON rent_invoices(application_id);
+      CREATE INDEX IF NOT EXISTS idx_rent_invoices_tenant_id ON rent_invoices(tenant_id);
+      CREATE INDEX IF NOT EXISTS idx_rent_invoices_landlord_id ON rent_invoices(landlord_id);
+
       CREATE TABLE IF NOT EXISTS rent_payments (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         invoice_id UUID REFERENCES rent_invoices(id) ON DELETE SET NULL,
@@ -352,6 +395,11 @@ export async function initDb() {
         notes TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE rent_payments ALTER COLUMN lease_id DROP NOT NULL;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES property_applications(id) ON DELETE CASCADE;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE CASCADE;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES users(id) ON DELETE CASCADE;
 
       CREATE TABLE IF NOT EXISTS maintenance_requests (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -370,33 +418,17 @@ export async function initDb() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS lease_id UUID REFERENCES leases(id) ON DELETE CASCADE;
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS reported_by UUID REFERENCES users(id) ON DELETE CASCADE;
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS tenant_handled BOOLEAN DEFAULT FALSE;
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS actual_cost NUMERIC(10, 2);
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS estimated_cost NUMERIC(10, 2);
     `);
 
     client.release();
   } catch (error) {
     console.error('[PostgreSQL Connection Error]:', error.message);
-  }
-}
-
-/**
- * Clears all user accounts (except system admin), property listings, units, and approval queues
- * so users can freely register fresh accounts.
- */
-export async function clearDatabase() {
-  const client = await pool.connect();
-  try {
-    console.log('[PostgreSQL] Clearing user accounts and property listings...');
-    await client.query(`
-      TRUNCATE listing_approval_queue, property_amenities, property_units, property_blocks, properties CASCADE;
-      DELETE FROM users WHERE LOWER(email) != 'admin';
-    `);
-    console.log('[PostgreSQL] Database successfully cleared! Users can now register fresh accounts.');
-    return { success: true, message: 'Database cleared successfully. System admin preserved.' };
-  } catch (error) {
-    console.error('[PostgreSQL Clear DB Error]:', error.message);
-    throw error;
-  } finally {
-    client.release();
   }
 }
 

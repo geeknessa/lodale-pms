@@ -7,7 +7,7 @@ export const notificationService = {
   async getMyNotifications() {
     try {
       const data = await apiClient('/notifications');
-      return data || [];
+      return Array.isArray(data) ? data : (data?.notifications || []);
     } catch (err) {
       console.warn('[notificationService.getMyNotifications error]:', err.message);
       return [];
@@ -27,6 +27,35 @@ export const notificationService = {
       console.warn('[notificationService.markAsRead error]:', err.message);
       throw err;
     }
+  },
+
+  /**
+   * Mark all notifications as read
+   */
+  async markAllAsRead() {
+    return this.markAsRead('all');
+  },
+
+  /**
+   * Delete a notification or all notifications ('all')
+   */
+  async deleteNotification(notificationId) {
+    try {
+      const data = await apiClient(`/notifications/${notificationId}`, {
+        method: 'DELETE'
+      });
+      return data;
+    } catch (err) {
+      console.warn('[notificationService.deleteNotification error]:', err.message);
+      throw err;
+    }
+  },
+
+  /**
+   * Clear all notifications
+   */
+  async clearAll() {
+    return this.deleteNotification('all');
   },
 
   /**
