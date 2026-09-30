@@ -38,45 +38,31 @@ export default function TenantLeaseModal({ isOpen, onClose, application, onSucce
       return;
     }
 
+    if (!leaseData || !leaseData.id) {
+      triggerToast("Lease document could not be found. Please try again.", "error");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const appId = application.id;
-      const landlordId = application.landlordId || application.landlord_id || (application.landlordFirstName ? `landlord-${application.landlordFirstName.toLowerCase()}` : "landlord");
+      // 1. Actually sign the lease via backend API
+      const signedLease = await leaseService.signLease(leaseData.id);
 
-      // Update signed lease record in localStorage
-      const localLeases = JSON.parse(localStorage.getItem("tenantLeases") || "[]");
-      const idx = localLeases.findIndex(l => String(l.applicationId || l.application_id) === String(appId));
-      const signedObj = {
-        ...(leaseData || {}),
-        applicationId: String(appId),
-        status: "signed",
-        signedByTenant: true,
-        tenantSignature: signatureName.trim(),
-        signedAt: new Date().toISOString()
-      };
-
-      if (idx >= 0) {
-        localLeases[idx] = signedObj;
-      } else {
-        localLeases.push(signedObj);
-      }
-      localStorage.setItem("tenantLeases", JSON.stringify(localLeases));
-
-      // Persist signed status in signedLeaseAppIds
-      const signedIds = JSON.parse(localStorage.getItem("signedLeaseAppIds") || "[]");
-      if (!signedIds.includes(String(appId))) {
-        signedIds.push(String(appId));
-        localStorage.setItem("signedLeaseAppIds", JSON.stringify(signedIds));
+      if (!signedLease) {
+        throw new Error("Failed to sign lease.");
       }
 
-      // Send chat notification to landlord
+      // 2. Send chat notification to landlord (using actual IDs)
+      const landlordId = application.landlordId || application.landlord_id || leaseData.landlord_id;
       if (landlordId) {
-        const msg = `[LEASE AGREEMENT SIGNED BY TENANT]\nProperty: ${application.propertyTitle}\nDigital Signature: "${signatureName.trim()}"\nSigned Date: ${new Date().toLocaleDateString("en-GB")}\n\nLease agreement successfully signed. Next step: Move-in guidelines & key pickup!`;
-        await chatService.sendMessage(landlordId, msg, application.propertyId);
+        const msg = `[LEASE AGREEMENT SIGNED BY TENANT]\nProperty: ${application.propertyTitle || leaseData.property_title}\nDigital Signature: "${signatureName.trim()}"\nSigned Date: ${new Date().toLocaleDateString("en-GB")}\n\nLease agreement successfully signed. Next step: Initial rent payment and Move-in guidelines!`;
+        await chatService.sendMessage(landlordId, msg, application.propertyId || leaseData.property_id);
       }
 
       triggerToast("Lease agreement digitally signed and submitted to landlord!", "success");
-      if (onSuccess) onSuccess(signedObj);
+      
+      // Update local state and fire callback
+      if (onSuccess) onSuccess(signedLease);
       onClose();
     } catch (err) {
       console.error(err);
@@ -87,9 +73,9 @@ export default function TenantLeaseModal({ isOpen, onClose, application, onSucce
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-2xl bg-white dark:bg-[#16241F] rounded-3xl p-6 sm:p-8 shadow-2xl border border-neutral-200 dark:border-neutral-800 max-h-[92vh] overflow-y-auto relative text-left"
+        className="w-full max-w-2xl bg-white dark:bg-[#07130D] rounded-3xl p-6 sm:p-8 shadow-2xl border border-neutral-200 dark:border-neutral-800 max-h-[92vh] overflow-y-auto relative text-left"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-4 mb-5 border-b border-neutral-100 dark:border-white/10">
@@ -121,7 +107,7 @@ export default function TenantLeaseModal({ isOpen, onClose, application, onSucce
               This Residential Lease Agreement ("Agreement") is made between <strong>Landlord</strong> and <strong>{application.tenant_first_name ? `${application.tenant_first_name} ${application.tenant_last_name || ''}` : "Tenant Candidate"}</strong> regarding tenancy at <strong>{application.propertyTitle}</strong>.
             </p>
 
-            <div className="grid grid-cols-2 gap-3 p-3 bg-white dark:bg-[#12221C] rounded-xl border border-neutral-200 dark:border-neutral-800 font-semibold">
+            <div className="grid grid-cols-2 gap-3 p-3 bg-white dark:bg-[#07130D] rounded-xl border border-neutral-200 dark:border-neutral-800 font-semibold">
               <div>
                 <span className="text-[10px] text-ink-400 dark:text-cream-100/50 uppercase block">Rent Amount</span>
                 <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">
@@ -151,7 +137,7 @@ export default function TenantLeaseModal({ isOpen, onClose, application, onSucce
           </div>
 
           {/* DIGITAL SIGNATURE FORM */}
-          <form onSubmit={handleSubmitSignature} className="p-4 rounded-2xl bg-moss-50/50 dark:bg-moss-900/20 border border-moss-200 dark:border-moss-800/40 space-y-3">
+          <form onSubmit={handleSubmitSignature} className="p-4 rounded-2xl bg-moss-50/50 dark:bg-white/10 border border-moss-200 dark:border-white/10 space-y-3">
             <h4 className="font-extrabold text-xs text-moss-900 dark:text-[#E5C583] flex items-center gap-1.5">
               <PenTool className="h-4 w-4" /> Digital Signature Required
             </h4>
@@ -164,7 +150,7 @@ export default function TenantLeaseModal({ isOpen, onClose, application, onSucce
                 placeholder="e.g. Vanessa Ikem"
                 value={signatureName}
                 onChange={(e) => setSignatureName(e.target.value)}
-                className="w-full rounded-xl border border-neutral-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-white dark:bg-[#12221C] outline-none focus:border-moss-600 font-bold"
+                className="w-full rounded-xl border border-neutral-200 dark:border-white/10 p-2.5 text-xs text-ink-900 dark:text-white bg-white dark:bg-[#07130D] outline-none focus:border-moss-600 font-bold"
               />
             </div>
 

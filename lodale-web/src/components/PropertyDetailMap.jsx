@@ -100,7 +100,7 @@ export default function PropertyDetailMap({
   }, []);
 
   return (
-    <div className="bg-white dark:bg-[#12221C] p-6 rounded-2xl border border-ink-200 dark:border-white/10 shadow-lg space-y-4 text-left">
+    <div className="bg-white dark:bg-[#07130D] p-6 rounded-2xl border border-ink-200 dark:border-white/10 shadow-lg space-y-4 text-left">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h3 className="text-lg font-bold text-ink-900 dark:text-white flex items-center gap-2">
           <MapPin className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" /> Location & Neighbourhood Map

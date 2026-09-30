@@ -29,21 +29,7 @@ export const generateLease = async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized or property not found' });
     }
 
-    // Check if tenant already has an active lease on another property
-    const existingLeaseCheck = await pool.query(
-      `SELECT l.id, l.end_date, p.title as property_title 
-       FROM leases l 
-       JOIN properties p ON l.property_id = p.id 
-       WHERE l.tenant_id = $1 AND l.status IN ('active', 'leased') AND l.property_id != $2`,
-      [tenantId, propertyId]
-    );
-    if (existingLeaseCheck.rows.length > 0) {
-      const existingLease = existingLeaseCheck.rows[0];
-      const formattedEnd = existingLease.end_date ? new Date(existingLease.end_date).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
-      return res.status(400).json({ 
-        error: `Tenant already has an active lease for "${existingLease.property_title}" ending on ${formattedEnd}. A tenant cannot have two active leased properties simultaneously.` 
-      });
-    }
+
 
     // Begin transaction
     const client = await pool.connect();
@@ -184,7 +170,7 @@ export const getMyLeases = async (req, res) => {
     if (role === 'landlord' || role === 'admin') {
       query = `
         SELECT l.*, 
-               p.title as property_title, p.address_line1 as property_address, p.state as property_location, p.city as property_city,
+               p.title as property_title, p.address_line1 as property_address, p.state as property_location, p.city as property_city, p.images as property_images,
                t.first_name || ' ' || t.last_name as tenant_name, t.email as tenant_email
         FROM leases l
         JOIN properties p ON l.property_id = p.id
@@ -195,7 +181,7 @@ export const getMyLeases = async (req, res) => {
     } else {
       query = `
         SELECT l.*, 
-               p.title as property_title, p.address_line1 as property_address, p.state as property_location, p.city as property_city,
+               p.title as property_title, p.address_line1 as property_address, p.state as property_location, p.city as property_city, p.images as property_images,
                ld.first_name || ' ' || ld.last_name as landlord_name, ld.email as landlord_email
         FROM leases l
         JOIN properties p ON l.property_id = p.id
@@ -220,7 +206,7 @@ export const getLeaseById = async (req, res) => {
 
     const leaseRes = await pool.query(`
       SELECT l.*, 
-             p.title as property_title, p.address_line1 as property_address, p.city as property_city,
+             p.title as property_title, p.address_line1 as property_address, p.city as property_city, p.images as property_images,
              t.first_name || ' ' || t.last_name as tenant_name, t.email as tenant_email,
              ld.first_name || ' ' || ld.last_name as landlord_name, ld.email as landlord_email
       FROM leases l
@@ -245,5 +231,39 @@ export const getLeaseById = async (req, res) => {
   } catch (error) {
     console.error('Error fetching lease:', error);
     res.status(500).json({ error: 'Server error fetching lease' });
+  }
+};
+
+export const updateLeaseStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user.id;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    const leaseRes = await pool.query('SELECT * FROM leases WHERE id = $1', [id]);
+    if (leaseRes.rowCount === 0) {
+      return res.status(404).json({ error: 'Lease not found' });
+    }
+
+    const lease = leaseRes.rows[0];
+
+    // Auth check: only landlord can end/update the lease status
+    if (lease.landlord_id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized to modify this lease' });
+    }
+
+    const updated = await pool.query(
+      'UPDATE leases SET status = $1 WHERE id = $2 RETURNING *',
+      [status, id]
+    );
+
+    res.json({ message: 'Lease status updated', lease: updated.rows[0] });
+  } catch (error) {
+    console.error('Error updating lease status:', error);
+    res.status(500).json({ error: 'Server error updating lease' });
   }
 };

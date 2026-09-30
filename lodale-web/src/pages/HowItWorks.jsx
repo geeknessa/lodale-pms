@@ -405,7 +405,7 @@ export default function HowItWorks() {
       <NavBar />
 
       {/* Hero Section with Transparent Marquee */}
-      <div className="relative w-full overflow-hidden bg-cream-50/45 dark:bg-moss-700/20 py-12 border-b border-ink-200/20 text-center flex flex-col items-center justify-center">
+      <div className="relative w-full overflow-hidden bg-cream-50/45 dark:bg-white/10 py-12 border-b border-ink-200/20 text-center flex flex-col items-center justify-center">
         <div ref={marqueeRef} className="absolute inset-0 flex items-center whitespace-nowrap overflow-hidden pointer-events-none select-none opacity-[0.08] dark:opacity-[0.02]">
           <div className="marquee-part flex items-center gap-12 pr-12 text-[9vw] font-display font-bold uppercase tracking-widest text-ink-900 dark:text-white">
             <span>Lodale</span>

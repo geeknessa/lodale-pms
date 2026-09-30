@@ -50,7 +50,7 @@ export const formatDate = (dateVal, options = { day: "numeric", month: "long", y
  * @param {string|Date|number} dateInput - The timestamp to format
  * @returns {string} Relative time string
  */
-export const formatDistanceToNow = (dateInput) => {
+const formatDistanceToNow = (dateInput) => {
   if (!dateInput) return "Recently listed";
   const date = new Date(dateInput);
   if (isNaN(date.getTime())) return "Recently listed";

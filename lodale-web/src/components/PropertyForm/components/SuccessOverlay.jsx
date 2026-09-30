@@ -84,7 +84,9 @@ export default function SuccessOverlay({
             onClick={handleReturn}
             className="mt-6 w-full py-3 text-xs font-bold rounded-xl cursor-pointer"
           >
-            Return to Landlord Dashboard
+            {sessionStorage.getItem("autoOpenAddTenantModal") === "true"
+              ? "Return & Complete Adding Tenant"
+              : "Return to Landlord Dashboard"}
           </Button>
         </div>
       </div>

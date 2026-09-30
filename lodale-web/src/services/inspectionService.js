@@ -1,17 +1,17 @@
-// Service for persisting and managing application inspection appointments
-const STORAGE_PREFIX = "appInspection_";
+import { apiClient } from '../lib/apiClient';
 
 export const inspectionService = {
   /**
    * Get inspection details for a specific application ID
    */
-  getInspection(appId) {
+  async getInspection(appId) {
     if (!appId) return null;
     try {
-      const stored = localStorage.getItem(`${STORAGE_PREFIX}${appId}`);
-      return stored ? JSON.parse(stored) : null;
+      const all = await this.getAllInspections();
+      const match = all.find(i => String(i.applicationId || i.application_id) === String(appId));
+      return match || null;
     } catch (e) {
-      console.error("Error reading inspection data:", e);
+      console.error("Error fetching inspection data:", e);
       return null;
     }
   },
@@ -19,40 +19,40 @@ export const inspectionService = {
   /**
    * Save or schedule a new inspection for an application
    */
-  saveInspection(appId, data) {
-    if (!appId) return null;
+  async saveInspection(appId, data) {
     try {
-      const existing = this.getInspection(appId) || {};
-      const inspectionObj = {
-        appId: String(appId),
-        propertyId: data.propertyId || existing.propertyId,
-        propertyTitle: data.propertyTitle || existing.propertyTitle || "Property Listing",
-        landlordId: data.landlordId || existing.landlordId,
-        landlordName: data.landlordName || existing.landlordName || "Landlord",
-        tenantId: data.tenantId || existing.tenantId,
-        tenantName: data.tenantName || existing.tenantName || "Tenant",
-        date: data.date || existing.date,
-        time: data.time || existing.time || "10:00 AM",
-        location: data.location || existing.location || "On-site at property",
-        notes: data.notes || existing.notes || "",
-        status: data.status || existing.status || "Scheduled", // "Scheduled", "Confirmed", "Requested", "Reschedule Requested", "Cancelled"
-        createdBy: data.createdBy || existing.createdBy || "landlord",
-        updatedAt: new Date().toISOString(),
-        ...data
-      };
-      localStorage.setItem(`${STORAGE_PREFIX}${appId}`, JSON.stringify(inspectionObj));
-
-      // Also maintain a master list index for calendar queries
-      const masterList = JSON.parse(localStorage.getItem("allAppInspectionsList") || "[]");
-      const idx = masterList.findIndex(item => String(item.appId) === String(appId));
-      if (idx >= 0) {
-        masterList[idx] = inspectionObj;
+      const existing = await this.getInspection(appId);
+      
+      if (existing) {
+        // Update existing
+        const res = await apiClient(`/inspections/${existing.id}`, {
+          method: 'PATCH',
+          body: {
+            date: data.date,
+            time: data.time,
+            notes: data.notes,
+            status: data.status,
+            location: data.location
+          }
+        });
+        return res?.inspection || null;
       } else {
-        masterList.push(inspectionObj);
+        // Create new
+        const res = await apiClient('/inspections', {
+          method: 'POST',
+          body: {
+            applicationId: appId,
+            propertyId: data.propertyId,
+            tenantId: data.tenantId,
+            date: data.date,
+            time: data.time,
+            location: data.location,
+            notes: data.notes,
+            status: data.status
+          }
+        });
+        return res?.inspection || null;
       }
-      localStorage.setItem("allAppInspectionsList", JSON.stringify(masterList));
-
-      return inspectionObj;
     } catch (e) {
       console.error("Error saving inspection data:", e);
       return null;
@@ -62,24 +62,32 @@ export const inspectionService = {
   /**
    * Update the status or fields of an existing inspection
    */
-  updateInspectionStatus(appId, status, extraFields = {}) {
-    const existing = this.getInspection(appId);
-    if (!existing) return null;
-    return this.saveInspection(appId, {
-      ...existing,
-      status,
-      ...extraFields,
-      updatedAt: new Date().toISOString()
-    });
+  async updateInspectionStatus(appId, status, extraFields = {}) {
+    try {
+      const existing = await this.getInspection(appId);
+      if (!existing) return null;
+      
+      const res = await apiClient(`/inspections/${existing.id}`, {
+        method: 'PATCH',
+        body: {
+          status,
+          ...extraFields
+        }
+      });
+      return res?.inspection || null;
+    } catch (e) {
+      console.error("Error updating inspection status:", e);
+      return null;
+    }
   },
 
   /**
    * Get all inspections across all applications (for calendar display)
    */
-  getAllInspections() {
+  async getAllInspections() {
     try {
-      const masterList = JSON.parse(localStorage.getItem("allAppInspectionsList") || "[]");
-      return masterList;
+      const data = await apiClient('/inspections');
+      return data || [];
     } catch (e) {
       console.error("Error fetching all inspections:", e);
       return [];

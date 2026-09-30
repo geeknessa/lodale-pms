@@ -435,20 +435,7 @@ export default function AdminDashboard() {
 
 
 
-    // Send notification to landlord
-    try {
-      const savedNotifs = localStorage.getItem("landlordNotifications");
-      const currentNotifs = savedNotifs ? JSON.parse(savedNotifs) : [];
-      const newNotif = {
-        id: "notif-app-" + Date.now(),
-        title: "Property Approved & Live!",
-        message: `Your property "${propertyTitle}" has been reviewed and approved by Admin. It is now active on tenant search listings.`,
-        time: "Just now",
-        type: "success",
-        read: false
-      };
-      localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
-    } catch (_err) { }
+
 
     showToast(`Listing "${propertyTitle}" approved and is now live!`);
     if (selectedListing?.id === listingId) {
@@ -476,21 +463,7 @@ export default function AdminDashboard() {
 
 
 
-    // Send notification to landlord
-    try {
-      const savedNotifs = localStorage.getItem("landlordNotifications");
-      const currentNotifs = savedNotifs ? JSON.parse(savedNotifs) : [];
-      const newNotif = {
-        id: "notif-rej-" + Date.now(),
-        title: "Property Review Update",
-        message: `Your property "${propertyTitle}" review status was updated to Rejected by Admin. Reason: ${reason}`,
-        time: "Just now",
-        type: "warning",
-        read: false
-      };
-      localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
-      window.dispatchEvent(new Event("storage"));
-    } catch (_err) { }
+
 
     showToast(`Listing "${propertyTitle}" rejected.`);
     setIsRejectingModalOpen(false);
@@ -523,20 +496,7 @@ export default function AdminDashboard() {
 
 
 
-    // Send notification to landlord
-    try {
-      const savedNotifs = localStorage.getItem("landlordNotifications");
-      const currentNotifs = savedNotifs ? JSON.parse(savedNotifs) : [];
-      const newNotif = {
-        id: "notif-req-" + Date.now(),
-        title: "Proof of Ownership Update Required",
-        message: `Your property "${propertyTitle}" requires additional proof of ownership. Please upload a new document.`,
-        time: "Just now",
-        type: "warning",
-        read: false
-      };
-      localStorage.setItem("landlordNotifications", JSON.stringify([newNotif, ...currentNotifs]));
-    } catch (_err) { }
+
 
     window.dispatchEvent(new Event("storage"));
     window.dispatchEvent(new CustomEvent("propertyUpdated", { detail: { id: listingId, status: "info_requested" } }));
@@ -738,7 +698,7 @@ export default function AdminDashboard() {
       )}
 
       {/* --- MOBILE/TABLET HEADER --- */}
-      <header className="sticky top-0 z-30 md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-[#16241F] border-b border-[#3A5A40]/20 dark:border-[#263D33] shadow-sm transition-colors duration-200">
+      <header className="sticky top-0 z-30 md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-[#07130D] border-b border-[#3A5A40]/20 dark:border-[#263D33] shadow-sm transition-colors duration-200">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsSidebarOpen(true)}
@@ -761,7 +721,7 @@ export default function AdminDashboard() {
         {/* --- BACKDROP OVERLAY FOR DRAWER --- */}
         {isSidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300"
+            className="fixed inset-0 z-[9999] bg-black/50 backdrop-blur-sm md:hidden transition-opacity duration-300"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}
@@ -1022,7 +982,7 @@ export default function AdminDashboard() {
                 {/* Card 1: Total Users */}
                 <div
                   onClick={() => setActiveTab("users")}
-                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+                  className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
                 >
                   <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
                     <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
@@ -1048,7 +1008,7 @@ export default function AdminDashboard() {
                 {/* Card 2: Listings Waiting Approval */}
                 <div
                   onClick={() => setActiveTab("listings")}
-                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+                  className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
                 >
                   <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
                     <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
@@ -1074,7 +1034,7 @@ export default function AdminDashboard() {
                 {/* Card 3: Flagged Reviews */}
                 <div
                   onClick={() => setActiveTab("reviews")}
-                  className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
+                  className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 cursor-pointer hover:border-[#3A5A40] dark:hover:border-[#E5C583] transition-all shadow-sm"
                 >
                   <div className="flex items-center justify-between text-[#344E41] dark:text-[#A3BCA7]">
                     <span className="text-xs font-semibold uppercase tracking-wider text-[#262626]/70 dark:text-[#A3BCA7]">
@@ -1099,7 +1059,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Short list: What needs action right now */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 sm:p-6 shadow-sm">
+              <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between pb-4 border-b border-[#DAD7CD] dark:border-[#233B31]">
                   <div>
                     <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2] flex items-center gap-2">
@@ -1221,7 +1181,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Search and Filters Bar */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
                 <div className="relative w-full md:w-80">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#262626]/50 dark:text-[#A3BCA7]/60" />
                   <input
@@ -1261,7 +1221,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Users Table */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
+              <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-[#344E41] dark:bg-[#1A2E26] text-white text-xs font-semibold uppercase tracking-wider">
@@ -1368,7 +1328,7 @@ export default function AdminDashboard() {
                 <div className="flex flex-col items-center justify-center pt-2 pb-2">
                   <button
                     onClick={() => setUserDisplayLimit((prev) => prev + 10)}
-                    className="px-6 py-2 rounded-xl bg-[#344E41] hover:bg-[#2A3E34] dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                    className="px-6 py-2 rounded-xl bg-[#344E41] hover:bg-[#2A3E34] dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
                   >
                     Load More Users ({filteredUsers.length - userDisplayLimit} remaining)
                   </button>
@@ -1393,7 +1353,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Filter Tabs & Search */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
                 <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
                   {["All", "Pending Approval", "Live", "Rejected"].map((tab) => (
                     <button
@@ -1424,20 +1384,20 @@ export default function AdminDashboard() {
               {/* Listings Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {isLoadingAdminData ? (
-                  <div className="col-span-2 py-16 flex flex-col items-center justify-center text-center bg-white/60 dark:bg-[#16241F] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                  <div className="col-span-2 py-16 flex flex-col items-center justify-center text-center bg-white/60 dark:bg-[#07130D] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
                     <Loader2 className="w-8 h-8 animate-spin text-[#3A5A40] dark:text-[#E5C583] mb-3" />
                     <p className="text-sm font-semibold text-[#262626] dark:text-[#F0F5F2]">Loading property listings...</p>
                     <p className="text-xs text-[#262626]/60 dark:text-[#A3BCA7]/70 mt-1">Fetching property submissions from backend API</p>
                   </div>
                 ) : filteredListings.length === 0 ? (
-                  <div className="col-span-2 py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                  <div className="col-span-2 py-10 text-center bg-white/60 dark:bg-[#07130D] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
                     No listings found for the selected filter.
                   </div>
                 ) : (
                   filteredListings.slice(0, listingDisplayLimit).map((lst) => (
                     <div
                       key={lst.id}
-                      className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col justify-between space-y-4 shadow-sm"
+                      className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col justify-between space-y-4 shadow-sm"
                     >
                       <div>
                         <div className="flex items-center justify-between mb-2">
@@ -1534,7 +1494,7 @@ export default function AdminDashboard() {
                 <div className="flex flex-col items-center justify-center pt-4 pb-2">
                   <button
                     onClick={() => setListingDisplayLimit((prev) => prev + 10)}
-                    className="px-6 py-2 rounded-xl bg-[#344E41] hover:bg-[#2A3E34] dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                    className="px-6 py-2 rounded-xl bg-[#344E41] hover:bg-[#2A3E34] dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer"
                   >
                     Load More Listings ({filteredListings.length - listingDisplayLimit} remaining)
                   </button>
@@ -1559,7 +1519,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Filter Toggle & Search */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
+              <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-4 flex flex-col md:flex-row gap-3 items-center justify-between">
                 <div className="flex items-center gap-1.5 bg-[#DAD7CD]/50 dark:bg-[#1B2C25] p-1 rounded-lg overflow-x-auto max-w-full w-full md:w-auto shrink-0">
                   <button
                     onClick={() => setReviewFilter("Flagged")}
@@ -1596,19 +1556,19 @@ export default function AdminDashboard() {
               {/* Reviews Feed */}
               <div className="space-y-4">
                 {isLoadingAdminData ? (
-                  <div className="py-16 flex flex-col items-center justify-center text-center bg-white/60 dark:bg-[#16241F] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
+                  <div className="py-16 flex flex-col items-center justify-center text-center bg-white/60 dark:bg-[#07130D] rounded-xl border border-[#3A5A40]/20 dark:border-[#263D33]">
                     <Loader2 className="w-8 h-8 animate-spin text-[#3A5A40] dark:text-[#E5C583] mb-3" />
                     <p className="text-sm font-semibold text-[#262626] dark:text-[#F0F5F2]">Loading review moderation data...</p>
                   </div>
                 ) : filteredReviews.length === 0 ? (
-                  <div className="py-10 text-center bg-white/60 dark:bg-[#16241F] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
+                  <div className="py-10 text-center bg-white/60 dark:bg-[#07130D] rounded-xl text-sm text-[#262626]/60 dark:text-[#A3BCA7]/70">
                     No reviews match your current view.
                   </div>
                 ) : (
                   filteredReviews.map((rev) => (
                     <div
                       key={rev.id}
-                      className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm"
+                      className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-sm"
                     >
                       <div className="space-y-2 max-w-2xl">
                         <div className="flex items-center gap-2">
@@ -1691,12 +1651,12 @@ export default function AdminDashboard() {
               </div>
 
               {isLoadingAdminData ? (
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-2xl p-12 text-center flex flex-col items-center justify-center">
+                <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-2xl p-12 text-center flex flex-col items-center justify-center">
                   <Loader2 className="w-8 h-8 animate-spin text-[#3A5A40] dark:text-[#E5C583] mb-3" />
                   <h3 className="text-sm font-bold text-ink-900 dark:text-white">Loading Property Requests...</h3>
                 </div>
               ) : propertyRequests.length === 0 ? (
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-2xl p-12 text-center">
+                <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-2xl p-12 text-center">
                   <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-3" />
                   <h3 className="text-base font-bold text-ink-900 dark:text-white">No Pending Requests</h3>
                   <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-1">
@@ -1710,7 +1670,7 @@ export default function AdminDashboard() {
                     const reason = isDeletion ? req.deletion_reason : req.suspension_reason;
 
                     return (
-                      <div key={req.id} className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 shadow-sm space-y-4">
+                      <div key={req.id} className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-5 shadow-sm space-y-4">
                         <div className="flex items-start justify-between">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
@@ -1797,7 +1757,7 @@ export default function AdminDashboard() {
                   onClick={() => setRecycleSubTab("users")}
                   className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 ${recycleSubTab === "users"
                     ? "bg-[#3A5A40] text-white shadow"
-                    : "bg-white/60 dark:bg-[#16241F] text-[#262626] dark:text-[#A3BCA7] hover:bg-[#DAD7CD]/50"
+                    : "bg-white/60 dark:bg-[#07130D] text-[#262626] dark:text-[#A3BCA7] hover:bg-[#DAD7CD]/50"
                     }`}
                 >
                   <Users className="h-4 w-4" />
@@ -1808,7 +1768,7 @@ export default function AdminDashboard() {
                   onClick={() => setRecycleSubTab("properties")}
                   className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-2 ${recycleSubTab === "properties"
                     ? "bg-[#3A5A40] text-white shadow"
-                    : "bg-white/60 dark:bg-[#16241F] text-[#262626] dark:text-[#A3BCA7] hover:bg-[#DAD7CD]/50"
+                    : "bg-white/60 dark:bg-[#07130D] text-[#262626] dark:text-[#A3BCA7] hover:bg-[#DAD7CD]/50"
                     }`}
                 >
                   <Building2 className="h-4 w-4" />
@@ -1818,7 +1778,7 @@ export default function AdminDashboard() {
 
               {/* SUB TAB 1: DELETED USERS */}
               {recycleSubTab === "users" && (
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
+                <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[#344E41] dark:bg-[#1A2E26] text-white text-xs font-semibold uppercase tracking-wider">
@@ -1884,7 +1844,7 @@ export default function AdminDashboard() {
 
               {/* SUB TAB 2: DELETED PROPERTIES */}
               {recycleSubTab === "properties" && (
-                <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
+                <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl overflow-x-auto shadow-sm">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-[#344E41] dark:bg-[#1A2E26] text-white text-xs font-semibold uppercase tracking-wider">
@@ -1964,7 +1924,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Profile Details Form Card */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
+              <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-6">
                 <div>
                   <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
                     <User className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
@@ -2095,7 +2055,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Change Password Card directly underneath Profile Details */}
-              <div className="bg-white/80 dark:bg-[#16241F] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
+              <div className="bg-white/80 dark:bg-[#07130D] border border-[#3A5A40]/20 dark:border-[#263D33] rounded-xl p-6 shadow-sm space-y-4">
                 <div>
                   <h2 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#DAD7CD] flex items-center gap-2">
                     <KeyRound className="h-5 w-5 text-[#3A5A40] dark:text-[#DAD7CD]" />
@@ -2161,8 +2121,8 @@ export default function AdminDashboard() {
 
       {/* --- MODAL 1: VIEW USER PROFILE --- */}
       {selectedUser && (
-        <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
               <div>
                 <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
@@ -2237,8 +2197,8 @@ export default function AdminDashboard() {
 
       {/* --- MODAL 2: INSPECT LISTING DETAILS --- */}
       {selectedListing && !isRejectingModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-2xl w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-2xl w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
               <div>
                 <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
@@ -2288,7 +2248,7 @@ export default function AdminDashboard() {
 
               {/* Units & Blocks Summary */}
               {Array.isArray(selectedListing.units) && selectedListing.units.length > 0 && (
-                <div className="bg-[#DAD7CD]/20 dark:bg-[#12221C] p-3.5 rounded-xl border border-[#3A5A40]/20 dark:border-[#2C4638]">
+                <div className="bg-[#DAD7CD]/20 dark:bg-[#07130D] p-3.5 rounded-xl border border-[#3A5A40]/20 dark:border-[#2C4638]">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-xs font-bold uppercase text-[#262626] dark:text-[#E5C583] flex items-center gap-1.5">
                       <Building2 className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
@@ -2369,7 +2329,7 @@ export default function AdminDashboard() {
                       <Building2 className="h-4 w-4 text-[#3A5A40] dark:text-[#E5C583]" />
                       <span>Uploaded Property Photos ({validPhotos.length})</span>
                     </h4>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-1.5 bg-[#DAD7CD]/20 dark:bg-[#12221C] rounded-xl border border-[#3A5A40]/20 dark:border-[#2C4638]">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-1.5 bg-[#DAD7CD]/20 dark:bg-[#07130D] rounded-xl border border-[#3A5A40]/20 dark:border-[#2C4638]">
                       {validPhotos.map((photoUrl, pIdx) => (
                         <div
                           key={pIdx}
@@ -2485,8 +2445,8 @@ export default function AdminDashboard() {
 
       {/* --- MODAL 2B: REJECT REASON INPUT --- */}
       {isRejectingModalOpen && selectedListing && (
-        <div className="fixed inset-0 z-50 bg-[#262626]/70 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-4 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] bg-[#262626]/70 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-md w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-4 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
             <h3 className="font-serif text-lg font-semibold text-[#262626] dark:text-[#F0F5F2]">
               Reject Listing Submission
             </h3>
@@ -2525,8 +2485,8 @@ export default function AdminDashboard() {
 
       {/* --- MODAL 3: VIEW REVIEW FLAG REPORT --- */}
       {selectedReviewFlag && (
-        <div className="fixed inset-0 z-50 bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] bg-[#262626]/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-lg w-full p-6 shadow-xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-5 text-[#262626] dark:text-[#E4EBE6] max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
               <div>
                 <h2 className="font-serif text-xl font-semibold text-[#262626] dark:text-[#F0F5F2]">
@@ -2550,7 +2510,7 @@ export default function AdminDashboard() {
 
               <div>
                 <div className="text-xs font-semibold uppercase text-[#262626]/70 dark:text-[#A3BCA7]">Review Content:</div>
-                <p className="text-xs text-[#262626] dark:text-[#E4EBE6] italic mt-1 bg-gray-50 dark:bg-[#0E1714] p-3 rounded border border-gray-200 dark:border-[#263D33]">
+                <p className="text-xs text-[#262626] dark:text-[#E4EBE6] italic mt-1 bg-gray-50 dark:bg-[#07130D] p-3 rounded border border-gray-200 dark:border-[#263D33]">
                   "{selectedReviewFlag.comment}"
                 </p>
               </div>
@@ -2586,8 +2546,8 @@ export default function AdminDashboard() {
 
       {/* --- MODAL 3: IN-APP LEGAL DOCUMENT VIEWER --- */}
       {selectedDocViewer && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-4 text-[#262626] dark:text-[#E4EBE6] max-h-[92vh] flex flex-col">
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-[#3A5A40]/30 dark:border-[#284439] space-y-4 text-[#262626] dark:text-[#E4EBE6] max-h-[92vh] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-[#DAD7CD] dark:border-[#233B31]">
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-[#3A5A40] dark:text-[#E5C583]" />
@@ -2603,7 +2563,7 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-auto bg-[#F4F6F4] dark:bg-[#0E1714] rounded-xl p-4 min-h-[350px] flex flex-col items-center justify-center border border-[#DAD7CD]/50 dark:border-[#233B31]">
+            <div className="flex-1 overflow-auto bg-[#F4F6F4] dark:bg-[#07130D] rounded-xl p-4 min-h-[350px] flex flex-col items-center justify-center border border-[#DAD7CD]/50 dark:border-[#233B31]">
               {selectedDocViewer.url ? (
                 selectedDocViewer.url.startsWith("data:image/") ||
                   /\.(jpg|jpeg|png|webp|gif|svg)($|\?)/i.test(selectedDocViewer.url) ||
@@ -2699,8 +2659,8 @@ export default function AdminDashboard() {
 
       {/* RESTORE RECYCLE BIN ITEM MODAL */}
       {showRestoreModal && selectedRestoreItem && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#16241F] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#07130D] border border-[#3A5A40]/30 dark:border-[#2C4638] rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-[#DAD7CD] dark:border-[#233B31] pb-3">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />

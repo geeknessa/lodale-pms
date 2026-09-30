@@ -30,7 +30,10 @@ export const AdminModel = {
              u.phone_number AS landlord_phone,
              q.queue_status,
              q.rejection_reason AS admin_notes,
-             q.submitted_at
+             q.submitted_at,
+             COALESCE((SELECT json_agg(a.amenity) FROM property_amenities a WHERE a.property_id = p.id), '[]'::json) as fetched_amenities,
+             COALESCE((SELECT json_agg(b.*) FROM property_blocks b WHERE b.property_id = p.id), '[]'::json) as fetched_blocks,
+             COALESCE((SELECT json_agg(pu.*) FROM property_units pu WHERE pu.property_id = p.id), '[]'::json) as fetched_units
       FROM properties p
       LEFT JOIN users u ON p.landlord_id = u.id
       LEFT JOIN (

@@ -91,7 +91,7 @@ export default function Step4LegalPhotos({
                   className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                     isCover
                       ? "bg-[#2C4633]/10 dark:bg-[#E5C583]/10 border-[#2C4633] dark:border-[#E5C583]"
-                      : "bg-white dark:bg-[#16241F] border-slate-200 dark:border-white/10"
+                      : "bg-white dark:bg-[#07130D] border-slate-200 dark:border-white/10"
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0 pr-2">
@@ -155,7 +155,7 @@ export default function Step4LegalPhotos({
             {safeUnits.map((unit, unitIdx) => {
               const uImgs = unit.images || unit.photos || [];
               return (
-                <div key={unitIdx} className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#16241F] space-y-2">
+                <div key={unitIdx} className="p-3 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#07130D] space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="font-bold text-xs text-slate-900 dark:text-white">{unit.unit_name}</span>

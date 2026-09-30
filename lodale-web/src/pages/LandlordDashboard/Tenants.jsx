@@ -1,71 +1,113 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, Plus, MessageSquare, Phone, Mail, Star, X, Info, UserCheck, ShieldAlert, CheckCircle, Trash2, Bell, AlertTriangle, RotateCcw, Link2, Copy, Send, ExternalLink, CheckCircle2 } from "lucide-react";
 import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency } from "../../utils/formatters";
 import { propertyService } from "../../services/propertyService";
 import { leaseService } from "../../services/leaseService";
 import { applicationService } from "../../services/applicationService";
 import { chatService } from "../../services/chatService";
+import { reminderService } from "../../services/reminderService";
 import { apiClient } from "../../lib/apiClient";
 import Avatar from "../../components/Avatar";
+import RenewalOfferModal from "./components/RenewalOfferModal";
+import RateTenantModal from "../../components/RateTenantModal";
+import { profileService } from "../../services/profileService";
 import "./Tenants.css";
 
 const TenantsSkeleton = () => (
   <div className="tenants-grid">
     {[1, 2, 3, 4, 5, 6].map((n) => (
-      <div key={n} className="tenant-card animate-pulse border border-slate-200/80 dark:border-white/10 bg-slate-50/50 dark:bg-white/5 p-5 rounded-2xl">
+      <div key={n} className="tenant-card animate-pulse border border-slate-200/80 dark:border-white/10 bg-slate-50/50 dark:bg-[#FFFFFF]/5 p-5 rounded-2xl">
         <div className="flex items-center justify-between pb-4 border-b border-slate-200/60 dark:border-white/10">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-slate-200 dark:bg-white/10 shrink-0" />
+            <div className="w-11 h-11 rounded-full bg-slate-200 dark:bg-[#FFFFFF]/10 shrink-0" />
             <div className="space-y-2">
-              <div className="h-4 w-32 bg-slate-200 dark:bg-white/10 rounded-md" />
-              <div className="h-3 w-20 bg-slate-200 dark:bg-white/10 rounded-md" />
+              <div className="h-4 w-32 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-md" />
+              <div className="h-3 w-20 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-md" />
             </div>
           </div>
-          <div className="h-4 w-12 bg-slate-200 dark:bg-white/10 rounded-md" />
+          <div className="h-4 w-12 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-md" />
         </div>
 
         <div className="py-4 space-y-3">
           <div className="flex justify-between items-center">
-            <div className="h-3.5 w-16 bg-slate-200 dark:bg-white/10 rounded" />
-            <div className="h-3.5 w-32 bg-slate-200 dark:bg-white/10 rounded" />
+            <div className="h-3.5 w-16 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
+            <div className="h-3.5 w-32 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
           </div>
           <div className="flex justify-between items-center">
-            <div className="h-3.5 w-14 bg-slate-200 dark:bg-white/10 rounded" />
-            <div className="h-3.5 w-36 bg-slate-200 dark:bg-white/10 rounded" />
+            <div className="h-3.5 w-14 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
+            <div className="h-3.5 w-36 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
           </div>
           <div className="flex justify-between items-center">
-            <div className="h-3.5 w-16 bg-slate-200 dark:bg-white/10 rounded" />
-            <div className="h-3.5 w-24 bg-slate-200 dark:bg-white/10 rounded" />
+            <div className="h-3.5 w-16 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
+            <div className="h-3.5 w-24 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
           </div>
           <div className="flex justify-between items-center">
-            <div className="h-3.5 w-20 bg-slate-200 dark:bg-white/10 rounded" />
-            <div className="h-3.5 w-14 bg-slate-200 dark:bg-white/10 rounded" />
+            <div className="h-3.5 w-20 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
+            <div className="h-3.5 w-14 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded" />
           </div>
         </div>
 
         <div className="pt-3 border-t border-slate-200/60 dark:border-white/10 flex gap-2">
-          <div className="h-9 flex-1 bg-slate-200 dark:bg-white/10 rounded-xl" />
-          <div className="h-9 flex-1 bg-slate-200 dark:bg-white/10 rounded-xl" />
-          <div className="h-9 flex-1 bg-slate-200 dark:bg-white/10 rounded-xl" />
+          <div className="h-9 flex-1 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-xl" />
+          <div className="h-9 flex-1 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-xl" />
+          <div className="h-9 flex-1 bg-slate-200 dark:bg-[#FFFFFF]/10 rounded-xl" />
         </div>
       </div>
     ))}
   </div>
 );
 
-export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
+export default function Tenants({ setSelectedTenantForDetails, setActiveTab, initialShowAddModal, onResetInitialAddModal }) {
+  const navigate = useNavigate();
   const [tenantsList, setTenantsList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [displayLimit, setDisplayLimit] = useState(8);
   const [properties, setProperties] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All"); // All, Active, Pending, Past
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(initialShowAddModal || false);
+  const [createdInvite, setCreatedInvite] = useState(null);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  useEffect(() => {
+    const autoOpen = sessionStorage.getItem("autoOpenAddTenantModal");
+    if (autoOpen === "true") {
+      setShowAddModal(true);
+      sessionStorage.removeItem("autoOpenAddTenantModal");
+      
+      try {
+        const savedDraft = sessionStorage.getItem("draftTenantFormData");
+        if (savedDraft) {
+          const parsed = JSON.parse(savedDraft);
+          const newlyCreatedId = sessionStorage.getItem("latestCreatedPropertyId");
+          if (newlyCreatedId) {
+            parsed.propertyId = newlyCreatedId;
+            sessionStorage.removeItem("latestCreatedPropertyId");
+          }
+          setFormData(parsed);
+          sessionStorage.removeItem("draftTenantFormData");
+        }
+      } catch (e) {}
+    } else if (initialShowAddModal) {
+      setShowAddModal(true);
+      if (onResetInitialAddModal) onResetInitialAddModal();
+    }
+  }, [initialShowAddModal, onResetInitialAddModal]);
   const [tenantToRate, setTenantToRate] = useState(null);
+  const [showRateTenantModal, setShowRateTenantModal] = useState(false);
+  const [selectedTenantToRate, setSelectedTenantToRate] = useState(null);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [rentAgain, setRentAgain] = useState("yes");
+  
+  const [renewalTenant, setRenewalTenant] = useState(null);
+  const [settings, setSettings] = useState(null);
+
+  useEffect(() => {
+    setSettings(reminderService.getSettings());
+  }, []);
 
   // Form State for Adding Tenant
   const [formData, setFormData] = useState({
@@ -82,11 +124,14 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     status: "active"
   });
 
+  const [error, setError] = useState(null);
+
   // Load properties and tenants
   const loadData = async (isSilent = false) => {
     if (!isSilent && tenantsList.length === 0) {
       setIsLoading(true);
     }
+    setError(null);
     
     let currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
     if (!currentUserId) {
@@ -171,11 +216,16 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
           else badgeLabel = 'Pending';
         }
 
-        const key = String(l.tenant_id || l.id || l.tenant_email || l.tenant_name).toLowerCase();
-        if (key) seenKeys.add(key);
+        const tenantIdentifier = String(l.tenant_email || l.tenant_name || l.tenant_id).toLowerCase();
+        const propIdentifier = String(l.property_title || l.property_id).toLowerCase();
+        const compositeKey = `${tenantIdentifier}-${propIdentifier}`;
+
+        if (compositeKey && seenKeys.has(compositeKey)) return;
+        seenKeys.add(compositeKey);
 
         allTenants.push({
-          id: l.tenant_id || l.id,
+          id: l.tenant_id || l.tenantId, // keep tenant's user ID as main ID
+          leaseId: l.id, // the actual lease ID for API calls
           name: l.tenant_name || "Unknown Tenant",
           email: l.tenant_email || "",
           phone: l.tenant_contact || l.phone || "",
@@ -185,6 +235,8 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
           leaseStatus: badgeLabel,
           rentAmount: l.rent_amount,
           rentPeriod: l.rent_period,
+          startDate: l.start_date || l.startDate,
+          endDate: l.end_date || l.endDate,
           dueDate: l.start_date ? new Date(l.start_date).toLocaleDateString("en-US", { day: 'numeric', month: 'short' }) : "1st of month",
           paymentStatus: isPaid ? "Paid" : "Unpaid"
         });
@@ -195,9 +247,11 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
         const tenantId = String(a.tenantId || a.tenant_id || a.tenant?.id || a.id || '');
         const tenantEmail = a.tenant?.email || a.email || "";
         const tenantName = `${a.tenant?.firstName || a.first_name || ''} ${a.tenant?.lastName || a.last_name || ''}`.trim() || a.tenantName || a.tenant?.name || "Tenant";
-        const key = String(tenantId || tenantEmail || tenantName).toLowerCase();
+        const tenantKey = String(tenantId || tenantEmail || tenantName).toLowerCase();
+        const propKey = String(a.propertyTitle || a.property_title || a.propertyId || a.property_id).toLowerCase();
+        const compositeKey = `${tenantKey}-${propKey}`;
 
-        if (key && !seenKeys.has(key)) {
+        if (compositeKey && !seenKeys.has(compositeKey)) {
           const s = (a.status || '').toLowerCase();
           const isFullyLeased = s === 'leased' || s === 'active';
           const isLeaseSent = s === 'approved' || s === 'lease_generated' || s === 'pending_tenant' || s === 'signed';
@@ -205,7 +259,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
           // Strictly skip raw applicants who have not been sent a lease agreement
           if (!isFullyLeased && !isLeaseSent) return;
 
-          seenKeys.add(key);
+          seenKeys.add(compositeKey);
 
           let status = isFullyLeased ? 'active' : 'pending';
           let badgeLabel = isFullyLeased ? 'Active Tenant' : 'Pending Sign & Pay';
@@ -226,48 +280,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
         }
       });
 
-      // 3. Process Local Storage Property Tenants
-      try {
-        const rawLocal = localStorage.getItem("propertyTenants");
-        if (rawLocal) {
-          const localMap = JSON.parse(rawLocal);
-          if (Array.isArray(localMap)) {
-            localMap.forEach(t => {
-              const key = String(t.id || t.email || t.name).toLowerCase();
-              if (key && !seenKeys.has(key)) {
-                seenKeys.add(key);
-                allTenants.push(t);
-              }
-            });
-          } else if (typeof localMap === 'object') {
-            Object.keys(localMap).forEach(propId => {
-              const list = Array.isArray(localMap[propId]) ? localMap[propId] : [localMap[propId]];
-              list.forEach(t => {
-                if (!t) return;
-                const key = String(t.id || t.email || t.name).toLowerCase();
-                if (key && !seenKeys.has(key)) {
-                  seenKeys.add(key);
-                  allTenants.push({
-                    id: t.id || Date.now(),
-                    name: t.name || t.tenantName || "Tenant",
-                    email: t.email || "",
-                    phone: t.phone || "",
-                    propertyId: propId,
-                    propertyTitle: t.propertyTitle || "Property",
-                    status: (t.status || 'active').toLowerCase(),
-                    leaseStatus: t.leaseStatus || "Active Tenant",
-                    rentAmount: t.rentAmount || 0,
-                    dueDate: t.dueDate || "1st of month",
-                    paymentStatus: t.paymentStatus || "Paid"
-                  });
-                }
-              });
-            });
-          }
-        }
-      } catch (err) {
-        console.warn("Error reading local propertyTenants:", err);
-      }
+      // 3. (localStorage propertyTenants logic removed in favor of pure API data)
 
       // 4. Process Embedded Tenants directly from Property Listings (ONLY if explicit tenant contact info exists)
       const combinedProperties = [...(propertyList || [])];
@@ -405,10 +418,36 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
         }
       });
 
-      setTenantsList(allTenants);
+      // Merge local storage invited tenants
+      try {
+        const storedInvites = JSON.parse(localStorage.getItem("lodale_invited_tenants") || "[]");
+        if (Array.isArray(storedInvites)) {
+          storedInvites.forEach((inv) => allTenants.unshift(inv));
+        }
+      } catch (err) {}
+
+      // Final Deduplication by Email+Property to prevent duplicates
+      const uniqueTenantsMap = new Map();
+      allTenants.forEach(t => {
+        const tenantKey = String(t.email || t.phone || t.name || "").toLowerCase();
+        const propKey = String(t.propertyTitle || t.propertyId || "none").toLowerCase();
+        const finalKey = `${tenantKey}-${propKey}`;
+        
+        // If we already have this tenant for this property, overwrite only if the new one is 'active'
+        if (uniqueTenantsMap.has(finalKey)) {
+           const existing = uniqueTenantsMap.get(finalKey);
+           if (t.status === 'active' && existing.status !== 'active') {
+             uniqueTenantsMap.set(finalKey, t);
+           }
+        } else {
+           uniqueTenantsMap.set(finalKey, t);
+        }
+      });
+
+      setTenantsList(Array.from(uniqueTenantsMap.values()));
     } catch (e) {
       console.warn("Could not load tenants list:", e);
-      setTenantsList([]);
+      setError("Failed to load tenant directory. Please check your network connection.");
     } finally {
       setIsLoading(false);
     }
@@ -463,102 +502,116 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Add Tenant Submit
-  const handleAddTenant = (e) => {
+  // Quick add property handler from Add Tenant modal
+  const handleQuickAddProperty = () => {
+    const rawProf = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("landlordCurrentProfile");
+    let userProf = null;
+    try {
+      if (rawProf) userProf = JSON.parse(rawProf);
+    } catch (e) {}
+
+    const completeness = profileService.checkProfileCompleteness(userProf);
+    if (!completeness.isComplete) {
+      triggerToast(`Profile Incomplete! You must complete all required profile fields (${completeness.missingFields.join(", ")}) in Settings before adding a property.`, "error", "Profile Incomplete");
+      if (setActiveTab) setActiveTab(4); // Navigate to Landlord Settings Tab
+      return;
+    }
+
+    try {
+      sessionStorage.setItem("draftTenantFormData", JSON.stringify(formData));
+      sessionStorage.setItem("autoOpenAddTenantModal", "true");
+    } catch (err) {}
+    navigate("/dashboard/landlord/add-property");
+  };
+
+  // Add Tenant Submit & Generate Invitation Link
+  const handleAddTenant = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.propertyId) {
       triggerToast("Please fill in all required fields (Name, Email, and Property)", "warning", "Missing Fields");
       return;
     }
 
-    // Get selected property details
-    const selectedProp = properties.find((p) => p.id === formData.propertyId);
-    const propTitle = selectedProp ? selectedProp.title : "Property";
+    const cleanEmail = formData.email.trim().toLowerCase();
+    const existingTenant = tenantsList.find(
+      (t) => (t.email || "").trim().toLowerCase() === cleanEmail && String(t.propertyId || "") === String(formData.propertyId || "")
+    );
 
-    const isPendingStatus = (formData.status || "pending") === "pending";
-    const newTenantObj = {
-      id: Date.now(),
+    if (existingTenant) {
+      triggerToast(`A tenant entry with email (${formData.email}) already exists for this property. Each tenant must have a unique email address.`, "warning", "Duplicate Email Blocked");
+      return;
+    }
+
+    let defaultPassword = "LodaleTenant2026!";
+    try {
+      const nameParts = formData.name.trim().split(" ");
+      const res = await apiClient.post("/users/invite-tenant", {
+        firstName: nameParts[0] || "",
+        lastName: nameParts.length > 1 ? nameParts.slice(1).join(" ") : "",
+        email: cleanEmail
+      });
+      if (res && res.defaultPassword) {
+        defaultPassword = res.defaultPassword;
+      }
+    } catch (err) {
+      if (err.message && err.message.includes("User already exists")) {
+        triggerToast("An account with this email already exists on Lodale. Please ask the tenant to sign in.", "warning", "User Exists");
+      } else {
+        triggerToast("Failed to provision invited tenant. Please try again.", "error", "Invite Failed");
+      }
+      return;
+    }
+
+    const selectedProp = properties.find((p) => String(p.id) === String(formData.propertyId));
+    const onboardingLink = `${window.location.origin}/apply/${formData.propertyId}?invitedEmail=${encodeURIComponent(formData.email)}&tenantName=${encodeURIComponent(formData.name)}`;
+
+    const newTenant = {
+      id: `invited-${Date.now()}`,
       name: formData.name,
-      tenantName: formData.name,
-      avatar: "",
       email: formData.email,
-      phone: formData.phone || "",
-      reliabilityScore: 0,
-      occupation: formData.occupation || "Independent Professional",
-      income: formData.income ? formatCurrency(formData.income, "/mo") : "₦450,000/mo",
-      notes: formData.notes || "Invitation sent via Lodale portal.",
-      leaseStatus: isPendingStatus ? "Pending Invitation" : `Active Tenant (${formData.unit ? "Unit " + formData.unit : "Main Unit"})`,
-      paymentStatus: formData.paymentStatus || "Unpaid",
-      dueDate: formData.dueDate,
-      status: formData.status || "pending",
+      phone: formData.phone || "Pending Tenant Entry",
       propertyId: formData.propertyId,
-      propertyTitle: propTitle
+      propertyTitle: selectedProp ? selectedProp.title : "Assigned Property",
+      unit: formData.unit || "",
+      occupation: formData.occupation || "Pending Tenant Entry",
+      income: formData.income || "",
+      notes: formData.notes || "",
+      status: "pending",
+      leaseStatus: "Invited (Pending Onboarding)",
+      paymentStatus: formData.paymentStatus || "Grace Period",
+      dueDate: formData.dueDate || "1st of every month",
+      rentAmount: selectedProp ? (selectedProp.price || 0) : 0,
+      invitedAt: new Date().toISOString(),
+      onboardingLink: onboardingLink,
+      incompleteFields: {
+        phone: !formData.phone,
+        occupation: !formData.occupation,
+        income: !formData.income,
+        unit: !formData.unit,
+      }
     };
 
-    // Load current tenants list map from localStorage
-    const savedTenants = localStorage.getItem("propertyTenants");
-    const tenantsMap = savedTenants ? JSON.parse(savedTenants) : {};
+    // Prepend to active directory state
+    setTenantsList((prev) => [newTenant, ...prev]);
 
-    if (!tenantsMap[formData.propertyId]) {
-      tenantsMap[formData.propertyId] = [];
-    }
-
-    tenantsMap[formData.propertyId].push(newTenantObj);
-    localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
-
-    // Register tenant into global users list for Admin visibility
+    // Persist to local storage cache so it remains present
     try {
-      const tenantEmail = (formData.email || `${formData.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@tenant.lodale.com`).toLowerCase();
-      const tenantRecord = {
-        id: newTenantObj.id,
-        name: formData.name,
-        email: tenantEmail,
-        phone: formData.phone || '',
-        role: 'Tenant',
-        status: isPendingStatus ? 'Pending' : 'Active'
-      };
-      localStorage.setItem("registeredUser_" + tenantEmail, JSON.stringify(tenantRecord));
-      const existingStr = localStorage.getItem("registeredUsers");
-      let existing = existingStr ? JSON.parse(existingStr) : [];
-      existing = existing.filter(u => u && u.email && u.email.toLowerCase() !== tenantEmail);
-      existing.push(tenantRecord);
-      localStorage.setItem("registeredUsers", JSON.stringify(existing));
-    } catch (e) {}
+      const storedInvites = JSON.parse(localStorage.getItem("lodale_invited_tenants") || "[]");
+      localStorage.setItem("lodale_invited_tenants", JSON.stringify([newTenant, ...storedInvites]));
+    } catch (err) {}
 
-    // Seed chat thread for this tenant
-    const savedChats = localStorage.getItem("landlordChats");
-    const chatsList = savedChats ? JSON.parse(savedChats) : [];
-    const chatExists = chatsList.some((c) => c.name === formData.name);
+    triggerToast(`Onboarding invitation sent to ${formData.email}! Direct onboarding link ready.`, "success", "Invitation Dispatched");
 
-    if (!chatExists) {
-      const newChat = {
-        id: formData.name.toLowerCase().replace(/\s+/g, "-") + "-" + Date.now(),
-        name: formData.name,
-        avatar: newTenantObj.avatar,
-        email: formData.email,
-        phone: newTenantObj.phone,
-        reliabilityScore: newTenantObj.reliabilityScore,
-        occupation: newTenantObj.occupation,
-        income: newTenantObj.income,
-        notes: newTenantObj.notes,
-        leaseStatus: newTenantObj.leaseStatus,
-        lastMessage: "Tenant invitation sent.",
-        time: "Just now",
-        type: "tenant",
-        messages: [
-          {
-            id: 1,
-            sender: "landlord",
-            text: `Welcome to Lodale! I have registered your profile for ${propTitle}. You can accept your invite, manage payments, and submit requests here once onboarded.`,
-            time: "Just now"
-          }
-        ]
-      };
-      chatsList.push(newChat);
-      localStorage.setItem("landlordChats", JSON.stringify(chatsList));
-    }
+    // Open Invitation Modal
+    setCreatedInvite({
+      tenantName: formData.name,
+      email: formData.email,
+      propertyTitle: selectedProp ? selectedProp.title : "Assigned Property",
+      link: onboardingLink
+    });
 
-    // Reset Form
+    setShowAddModal(false);
+    // Reset form data
     setFormData({
       name: "",
       email: "",
@@ -570,15 +623,8 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
       notes: "",
       paymentStatus: "Paid",
       dueDate: "1st of every month",
-      status: "pending"
+      status: "active"
     });
-
-    setShowAddModal(false);
-    loadData();
-
-    // Notify other components/tabs
-    window.dispatchEvent(new Event("storage"));
-    triggerToast(`Invitation sent to ${formData.name}! They will show as Pending Invitation until onboarded.`, "success", "Invitation Sent");
   };
 
   // Direct contact helper -> goes to chat tab
@@ -592,8 +638,6 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
     } catch (e) { }
 
     sessionStorage.setItem("activeChatPartnerId", partnerId);
-    localStorage.setItem("activeChatPartnerId", partnerId);
-    localStorage.setItem("activeChatTenantName", tenantName);
     window.dispatchEvent(new Event("storage"));
 
     // 3. Change tab to Chat (Tab index 3)
@@ -601,85 +645,38 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
   };
 
   // End Lease & Rate Action
-  const handleRateAndEndLease = (e) => {
+  const handleRateAndEndLease = async (e) => {
     e.preventDefault();
+    if (!tenantToRate) return;
 
-    const { id: tenantId, propertyId } = tenantToRate;
-    const savedTenants = localStorage.getItem("propertyTenants");
-    if (!savedTenants) return;
+    if (!tenantToRate.leaseId) {
+      triggerToast("Cannot end lease: No active lease found for this tenant.", "error");
+      return;
+    }
 
     try {
-      const tenantsMap = JSON.parse(savedTenants);
-      const list = tenantsMap[propertyId] || [];
-      const updatedList = list.map((t) => {
-        if (t.id === tenantId) {
-          let updatedScore = t.reliabilityScore;
-          let customReviews = t.customReviews || [];
-
-          // Only update score if rating is selected (> 0)
-          if (rating > 0) {
-            const prevScore = parseFloat(t.reliabilityScore) || 0;
-            updatedScore = prevScore > 0 ? ((prevScore + rating) / 2).toFixed(1) : rating.toFixed(1);
-          }
-
-          // Add review if rating > 0 or comment is filled
-          if (rating > 0 || comment.trim()) {
-            const newReview = {
-              landlord: "You (Current Landlord)",
-              rating: rating > 0 ? rating : parseFloat(t.reliabilityScore) || 0,
-              text: comment.trim() || "Lease ended. No written review comment provided.",
-              rentAgain: rentAgain === "yes" ? "Yes" : "No"
-            };
-            customReviews = [newReview, ...customReviews];
-          }
-
-          return {
-            ...t,
-            status: "past",
-            leaseStatus: "Lease Ended / Past Tenant",
-            reliabilityScore: updatedScore,
-            customReviews: customReviews
-          };
-        }
-        return t;
-      });
-
-      tenantsMap[propertyId] = updatedList;
-      localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
-
-      // Close modal & reset fields
+      await leaseService.endLease(tenantToRate.leaseId);
+      triggerToast("Lease agreement successfully ended.", "info", "Lease Ended");
+    } catch (error) {
+      console.error("Error rating and ending lease:", error);
+      triggerToast("Failed to end lease. Please try again.", "error", "Operation Failed");
+    } finally {
       setTenantToRate(null);
       setRating(0);
       setComment("");
       setRentAgain("yes");
-
       loadData();
-      window.dispatchEvent(new Event("storage"));
-      triggerToast("Lease agreement successfully ended.", "info", "Lease Ended");
-    } catch (error) {
-      console.error("Error rating and ending lease:", error);
     }
   };
 
   // Remove Tenant entirely
-  const handleDeleteTenant = (tenantId, propertyId) => {
+  const handleDeleteTenant = async (tenantId) => {
     if (!window.confirm("Are you sure you want to remove this tenant from the system entirely? This action cannot be undone.")) {
       return;
     }
 
-    const savedTenants = localStorage.getItem("propertyTenants");
-    if (!savedTenants) return;
-
     try {
-      const tenantsMap = JSON.parse(savedTenants);
-      const list = tenantsMap[propertyId] || [];
-      const updatedList = list.filter((t) => t.id !== tenantId);
-
-      tenantsMap[propertyId] = updatedList;
-      localStorage.setItem("propertyTenants", JSON.stringify(tenantsMap));
-      loadData();
-      window.dispatchEvent(new Event("storage"));
-      triggerToast("Tenant record removed successfully.", "success", "Tenant Removed");
+      triggerToast("To fully remove a tenant from your portfolio, please terminate their lease in the Leases tab.", "warning", "Action Restricted");
     } catch (e) {
       console.error("Error removing tenant:", e);
     }
@@ -736,6 +733,18 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
       {/* CARDS GRID */}
       {isLoading ? (
         <TenantsSkeleton />
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center p-8 text-center bg-rose-50/60 dark:bg-rose-950/20 rounded-2xl border border-rose-200 dark:border-rose-900/40 max-w-md mx-auto my-6">
+          <AlertTriangle className="h-10 w-10 text-rose-500 mb-3" />
+          <h3 className="font-bold text-ink-800 dark:text-white mb-1">Failed to load tenant records</h3>
+          <p className="text-sm text-rose-700 dark:text-rose-400 mb-4">{error}</p>
+          <button
+            onClick={() => loadData(false)}
+            className="flex items-center gap-2 px-4 py-2 bg-moss-600 hover:bg-moss-700 dark:bg-[#E5C583] dark:hover:bg-[#D8B672] text-white dark:text-[#263b33] text-sm font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+          >
+            <RotateCcw className="h-4 w-4" /> Try Again
+          </button>
+        </div>
       ) : filteredTenants.length === 0 ? (
         <div className="tenants-empty-state">
           <div className="tenants-empty-icon-wrapper">
@@ -763,7 +772,12 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                       />
                     </div>
                     <div className="tenant-card-meta">
-                      <h4 className="tenant-card-name">{tenant.name}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="tenant-card-name">{tenant.name}</h4>
+                        {settings?.loyaltyRewardsEnabled && tenant.paymentStatus === "Paid" && (
+                          <Star className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" title="Perfect Payment History" />
+                        )}
+                      </div>
                       <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
                         {tenant.leaseStatus || (tenant.status === 'active' ? "Active Tenant" : "Pending Sign & Pay")}
                       </span>
@@ -811,47 +825,31 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                 {/* Card Footer Actions */}
                 <div className="tenant-card-actions">
                   <button
-                    className="tenant-action-btn chat-btn"
+                    className="tenant-action-btn chat-btn w-full"
                     onClick={() => handleMessageTenant(tenant.name, tenant.avatar, tenant)}
                     title="Open Chat"
                   >
-                    <MessageSquare className="h-3.5 w-3.5" /> Chat
+                    <MessageSquare className="h-4 w-4" /> Chat
                   </button>
 
                   <button
-                    className="tenant-action-btn"
+                    className="tenant-action-btn w-full hover:bg-moss-50 hover:text-moss-700 dark:hover:bg-moss-950/30"
                     onClick={() => setSelectedTenantForDetails(tenant)}
                     title="View Details"
                   >
-                    <Info className="h-3.5 w-3.5" /> Details
+                    <Info className="h-4 w-4" /> View Details
                   </button>
 
-                  {tenant.status !== "past" ? (
-                    <button
-                      className="tenant-action-btn hover:text-red-500 hover:border-red-500"
-                      onClick={() => {
-                        setTenantToRate({
-                          id: tenant.id,
-                          propertyId: tenant.propertyId,
-                          name: tenant.name
-                        });
-                        setRating(0);
-                        setComment("");
-                        setRentAgain("yes");
-                      }}
-                      title="End Lease"
-                    >
-                      <X className="h-3.5 w-3.5" /> End Lease
-                    </button>
-                  ) : (
-                    <button
-                      className="tenant-action-btn hover:text-red-600 hover:border-red-600"
-                      onClick={() => handleDeleteTenant(tenant.id, tenant.propertyId)}
-                      title="Delete Record"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Delete
-                    </button>
-                  )}
+                  <button
+                    className="tenant-action-btn w-full hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/30"
+                    onClick={() => {
+                      setSelectedTenantToRate(tenant);
+                      setShowRateTenantModal(true);
+                    }}
+                    title="Rate Tenant"
+                  >
+                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> Rate
+                  </button>
                 </div>
 
               </div>
@@ -863,7 +861,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
             <div className="flex flex-col items-center justify-center pt-8 pb-4">
               <button
                 onClick={() => setDisplayLimit((prev) => prev + 8)}
-                className="px-6 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs tracking-wide shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs tracking-wide shadow-md transition-all flex items-center gap-2 cursor-pointer"
               >
                 Load More Tenants ({filteredTenants.length - displayLimit} remaining)
               </button>
@@ -898,15 +896,33 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
 
                   {/* Property Dropdown (Required) */}
                   <div className="tenant-form-group tenant-form-full">
-                    <label className="tenant-form-label">Assign Property *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="tenant-form-label mb-0">Assign Property *</label>
+                      <button
+                        type="button"
+                        onClick={handleQuickAddProperty}
+                        className="text-xs font-bold text-moss-700 hover:text-moss-800 dark:text-[#E5C583] dark:hover:text-amber-300 flex items-center gap-1 cursor-pointer bg-transparent border-none outline-none transition-colors"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add Property
+                      </button>
+                    </div>
                     <select
                       name="propertyId"
                       value={formData.propertyId}
-                      onChange={handleInputChange}
+                      onChange={(e) => {
+                        if (e.target.value === "__ADD_NEW_PROPERTY__") {
+                          handleQuickAddProperty();
+                        } else {
+                          handleInputChange(e);
+                        }
+                      }}
                       className="tenant-form-select"
                       required
                     >
                       <option value="">Select property unit...</option>
+                      <option value="__ADD_NEW_PROPERTY__" className="font-bold text-moss-700 dark:text-[#E5C583]">
+                        + Add New Property...
+                      </option>
                       {properties.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.title} ({p.location})
@@ -1064,13 +1080,77 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
                 </button>
                 <button
                   type="submit"
-                  className="tenant-submit-btn"
+                  className="tenant-submit-btn flex items-center gap-1.5 justify-center"
                 >
-                  Register Tenant
+                  <Send className="h-4 w-4" /> Add Tenant & Send Invite
                 </button>
               </div>
             </form>
 
+          </div>
+        </div>
+      )}
+
+      {/* ONBOARDING INVITATION DISPATCHED MODAL */}
+      {createdInvite && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in" onClick={() => setCreatedInvite(null)}>
+          <div className="bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/15 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 text-center relative" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setCreatedInvite(null)}
+              className="absolute top-4 right-4 text-ink-400 hover:text-ink-900 dark:hover:text-white p-1 rounded-full cursor-pointer bg-transparent border-none"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 dark:bg-[#FFFFFF]/5 text-emerald-700 dark:text-cream-100 flex items-center justify-center shadow-inner">
+              <Send className="h-7 w-7" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-xl font-black text-ink-900 dark:text-white">Onboarding Invitation Sent!</h3>
+              <p className="text-xs text-ink-600 dark:text-cream-100/75 leading-relaxed">
+                An invitation email has been dispatched to <strong className="text-ink-900 dark:text-white">{createdInvite.email}</strong> for <strong className="text-moss-700 dark:text-[#E5C583]">{createdInvite.propertyTitle}</strong>.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 text-left space-y-2">
+              <span className="text-[11px] font-bold text-ink-500 dark:text-cream-100/60 uppercase tracking-wider block">Direct Shareable Link</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={createdInvite.link}
+                  className="w-full text-xs bg-[#FFFFFF] dark:bg-black/40 border border-ink-200 dark:border-white/15 rounded-xl px-3 py-2.5 text-ink-800 dark:text-cream-100 select-all font-mono truncate"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(createdInvite.link);
+                    setCopiedLink(true);
+                    triggerToast("Invitation link copied to clipboard!", "success", "Link Copied");
+                    setTimeout(() => setCopiedLink(false), 3000);
+                  }}
+                  className="px-3.5 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs shrink-0 flex items-center gap-1.5 cursor-pointer transition-all border-none outline-none shadow-xs"
+                >
+                  {copiedLink ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  {copiedLink ? "Copied" : "Copy Link"}
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-left">
+              <p className="text-[11.5px] text-amber-900 dark:text-amber-200 leading-relaxed font-medium">
+                If the tenant does not have a Lodale account, opening this link guides them to sign up and complete any profile details you left blank. If they already have an account, it logs them in directly.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setCreatedInvite(null)}
+              className="w-full py-3 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs cursor-pointer transition-all border-none outline-none shadow-sm"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}
@@ -1178,6 +1258,30 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab }) {
         </div>
       )}
 
+      {/* RENEWAL OFFER MODAL */}
+      <RenewalOfferModal
+        isOpen={!!renewalTenant}
+        onClose={() => setRenewalTenant(null)}
+        tenant={renewalTenant}
+        onConfirm={(lease, t) => {
+          triggerToast(`Renewal lease generated for ${t.name || t.tenantName}!`, "success");
+          loadData(true);
+        }}
+      />
+
+      {/* RATE TENANT MODAL */}
+      {showRateTenantModal && selectedTenantToRate && (
+        <RateTenantModal
+          isOpen={showRateTenantModal}
+          onClose={() => setShowRateTenantModal(false)}
+          tenantId={selectedTenantToRate.id || selectedTenantToRate.tenantId || selectedTenantToRate.email}
+          tenantName={selectedTenantToRate.name || selectedTenantToRate.tenantName || "Tenant"}
+          landlordId={sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "landlord"}
+          landlordName="Landlord"
+          propertyTitle={selectedTenantToRate.propertyTitle || ""}
+          onSuccess={() => loadData(true)}
+        />
+      )}
     </div>
   );
 }

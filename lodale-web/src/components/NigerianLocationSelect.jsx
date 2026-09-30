@@ -84,7 +84,7 @@ export default function NigerianLocationSelect({ value, onChange, className = ""
     <div className="relative w-full text-left" ref={dropdownRef}>
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center justify-between cursor-pointer px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#1C3328] text-ink-900 dark:text-white text-[13.5px] transition-all hover:border-moss-600 dark:hover:border-[#E5C583] ${className}`}
+        className={`flex items-center justify-between cursor-pointer px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#07130D] text-ink-900 dark:text-white text-[13.5px] transition-all hover:border-moss-600 dark:hover:border-[#E5C583] ${className}`}
       >
         <div className="flex items-center gap-2 overflow-hidden truncate">
           <MapPin className="h-4 w-4 shrink-0 text-moss-600 dark:text-[#E5C583]" />
@@ -94,7 +94,7 @@ export default function NigerianLocationSelect({ value, onChange, className = ""
       </div>
 
       {isOpen && (
-        <div className="absolute z-[300] left-0 right-0 mt-1.5 max-h-60 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#12221C] shadow-xl overflow-hidden flex flex-col">
+        <div className="absolute z-[300] left-0 right-0 mt-1.5 max-h-60 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-[#07130D] shadow-xl overflow-hidden flex flex-col">
           {/* Search Header */}
           <div className="p-2 border-b border-neutral-100 dark:border-neutral-800 shrink-0 bg-neutral-50 dark:bg-[#172A22]">
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#1F362C] border border-neutral-200 dark:border-neutral-700">
@@ -124,7 +124,7 @@ export default function NigerianLocationSelect({ value, onChange, className = ""
                     key={loc}
                     onClick={() => handleSelect(loc)}
                     className={`flex items-center justify-between px-3.5 py-2 text-[13px] cursor-pointer transition-colors ${isSelected
-                      ? "bg-moss-100/70 dark:bg-[#1E382A] text-moss-700 dark:text-[#E5C583] font-semibold"
+                      ? "bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] font-semibold"
                       : "text-ink-900 dark:text-cream-100 hover:bg-neutral-100 dark:hover:bg-white/5"
                       }`}
                   >

@@ -2,7 +2,7 @@ import React from "react";
 
 export default function ListingCardSkeleton() {
   return (
-    <div className="group block overflow-hidden rounded-2xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#16241F]">
+    <div className="group block overflow-hidden rounded-2xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#07130D]">
       {/* Image Skeleton */}
       <div className="h-48 w-full bg-ink-200 dark:bg-white/10 animate-pulse"></div>
       

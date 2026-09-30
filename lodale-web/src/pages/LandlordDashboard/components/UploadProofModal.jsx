@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { X, Upload, ShieldAlert, FileText, CheckCircle2, Loader2 } from 'lucide-react';
-import { propertyService } from '../../../services/propertyService';
+import { propertyService } from "../../../services/propertyService";
+import { notificationService } from "../../../services/notificationService";
 import { triggerToast } from '../../../context/ToastContext';
 
 export default function UploadProofModal({ isOpen, onClose, property, onSuccess }) {
-  if (!isOpen || !property) return null;
-
   const [docType, setDocType] = useState('Certificate of Occupancy (C of O)');
   const [docFile, setDocFile] = useState(null);
   const [docFileName, setDocFileName] = useState('');
   const [docDataUrl, setDocDataUrl] = useState('');
   const [landlordNotes, setLandlordNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!isOpen || !property) return null;
 
   const handleFileChange = (e) => {
     const file = e.target.files && e.target.files[0];
@@ -74,18 +75,15 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
 
       // Add notification to landlord feed
       try {
-        const savedNotifs = localStorage.getItem('landlordNotifications');
-        const currentNotifs = savedNotifs ? JSON.parse(savedNotifs) : [];
-        const newNotif = {
-          id: 'notif-proof-' + Date.now(),
+        await notificationService.createNotification({
+          userId: currentUserId || userEmail,
           title: 'Proof Submitted to Admin',
           message: `Your updated proof of ownership for "${property.title}" has been submitted and is under admin review.`,
-          time: 'Just now',
-          type: 'info',
-          read: false
-        };
-        localStorage.setItem('landlordNotifications', JSON.stringify([newNotif, ...currentNotifs]));
-      } catch (_e) {}
+          type: 'info'
+        });
+      } catch (err) {
+        console.warn('Failed to create notification via API', err);
+      }
 
       window.dispatchEvent(new Event('storage'));
       window.dispatchEvent(new CustomEvent('propertyUpdated', { detail: { id: property.id, status: 'pending_review' } }));
@@ -103,11 +101,11 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
   };
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg bg-white dark:bg-[#12221C] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 text-left text-ink-900 dark:text-white font-sans">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
+      <div className="relative w-full max-w-lg bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden my-6 text-left text-ink-900 dark:text-white font-sans">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#162721]">
+        <div className="flex items-center justify-between p-5 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#07130D]">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
               <Upload className="h-5 w-5" />
@@ -119,7 +117,7 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl bg-ink-100 hover:bg-ink-200 dark:bg-white/10 dark:hover:bg-white/20 text-ink-600 dark:text-cream-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl bg-ink-100 hover:bg-ink-200 dark:bg-[#FFFFFF]/10 dark:hover:bg-[#FFFFFF]/20 text-ink-600 dark:text-cream-100 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -128,7 +126,7 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           
           {/* Target Property Info */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#FFFFFF]/5 border border-slate-200 dark:border-white/10">
             <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Target Property</span>
             <p className="font-bold text-sm text-ink-900 dark:text-white">{property.title}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{property.location}</p>
@@ -155,7 +153,7 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
             <select
               value={docType}
               onChange={(e) => setDocType(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 rounded-xl text-xs font-bold text-ink-900 dark:text-white focus:outline-none focus:border-moss-600 dark:focus:border-[#E5C583]"
+              className="w-full px-3.5 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/15 rounded-xl text-xs font-bold text-ink-900 dark:text-white focus:outline-none focus:border-moss-600 dark:focus:border-[#E5C583]"
             >
               <option value="Certificate of Occupancy (C of O)">Certificate of Occupancy (C of O)</option>
               <option value="Deed of Assignment">Deed of Assignment</option>
@@ -171,7 +169,7 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-cream-100/70 mb-1.5">
               Proof File (PDF, PNG, JPG) <span className="text-rose-500">*</span>
             </label>
-            <div className="relative border-2 border-dashed border-ink-200 dark:border-white/20 hover:border-moss-600 dark:hover:border-[#E5C583] rounded-2xl p-5 text-center transition-all bg-cream-50/50 dark:bg-white/5 cursor-pointer">
+            <div className="relative border-2 border-dashed border-ink-200 dark:border-white/20 hover:border-moss-600 dark:hover:border-[#E5C583] rounded-2xl p-5 text-center transition-all bg-cream-50/50 dark:bg-[#FFFFFF]/5 cursor-pointer">
               <input
                 type="file"
                 accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
@@ -181,7 +179,7 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
               <FileText className="h-8 w-8 text-moss-700 dark:text-[#E5C583] mx-auto mb-2" />
               {docFileName ? (
                 <div>
-                  <span className="font-bold text-xs text-emerald-600 dark:text-emerald-400 block">{docFileName}</span>
+                  <span className="font-bold text-xs text-emerald-600 dark:text-cream-100 block">{docFileName}</span>
                   <span className="text-[10px] text-slate-400 block mt-0.5">Click to select a different file</span>
                 </div>
               ) : (
@@ -203,7 +201,7 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
               value={landlordNotes}
               onChange={(e) => setLandlordNotes(e.target.value)}
               placeholder="e.g. Attached is the newly stamped Deed of Assignment from the Land Registry..."
-              className="w-full p-3 bg-white dark:bg-[#16241F] border border-ink-200 dark:border-white/15 rounded-xl text-xs text-ink-900 dark:text-white focus:outline-none focus:border-moss-600 dark:focus:border-[#E5C583] resize-none"
+              className="w-full p-3 bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/15 rounded-xl text-xs text-ink-900 dark:text-white focus:outline-none focus:border-moss-600 dark:focus:border-[#E5C583] resize-none"
             />
           </div>
 
@@ -213,14 +211,14 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
               type="button"
               disabled={isSubmitting}
               onClick={onClose}
-              className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer"
+              className="px-4 py-2.5 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#FFFFFF]/5 rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2.5 bg-moss-700 hover:bg-moss-800 text-white dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] dark:text-[#16241F] font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 bg-moss-700 hover:bg-moss-800 text-white dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] dark:text-[#07130D] font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting ? (
                 <>

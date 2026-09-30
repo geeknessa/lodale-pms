@@ -8,42 +8,28 @@ export const propertyService = {
    * Get public active property listings
    */
   async getProperties(filters = {}) {
-    try {
-      const params = new URLSearchParams();
-      if (filters.city) params.append('city', filters.city);
-      if (filters.search) params.append('search', filters.search);
-      if (filters.propertyType) params.append('propertyType', filters.propertyType);
+    const params = new URLSearchParams();
+    if (filters.city) params.append('city', filters.city);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.propertyType) params.append('propertyType', filters.propertyType);
 
-      const queryString = params.toString() ? `?${params.toString()}` : '';
-      return await apiClient(`/properties${queryString}`);
-    } catch (error) {
-      console.warn('[PropertyService] Failed to fetch properties:', error.message);
-      return [];
-    }
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return await apiClient(`/properties${queryString}`);
   },
 
   /**
    * Get properties owned by a specific landlord (including pending/draft/info_requested)
    */
   async getLandlordProperties(landlordId) {
-    try {
-      if (!landlordId) return [];
-      return await apiClient(`/properties/landlord/${landlordId}`);
-    } catch (error) {
-      console.warn('[PropertyService] Failed to fetch landlord properties:', error.message);
-      return [];
-    }
+    if (!landlordId) return [];
+    return await apiClient(`/properties/landlord/${landlordId}`);
   },
 
   /**
    * Get single property detail by ID
    */
   async getPropertyById(id) {
-    try {
-      return await apiClient(`/properties/${id}`);
-    } catch {
-      return null;
-    }
+    return await apiClient(`/properties/${id}`);
   },
 
   /**
@@ -102,6 +88,35 @@ export const propertyService = {
     return await apiClient(`/properties/${id}/request-suspension`, {
       method: 'POST',
       body: { reason },
+    });
+  },
+
+  /**
+   * Get saved properties for the logged-in user
+   */
+  async getSavedProperties() {
+    try {
+      return await apiClient('/properties/saved');
+    } catch {
+      return [];
+    }
+  },
+
+  /**
+   * Save a property for the user
+   */
+  async saveProperty(id) {
+    return await apiClient(`/properties/${id}/save`, {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Unsave a property for the user
+   */
+  async unsaveProperty(id) {
+    return await apiClient(`/properties/${id}/save`, {
+      method: 'DELETE',
     });
   },
 };

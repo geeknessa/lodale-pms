@@ -138,5 +138,23 @@ export const UserModel = {
       // If foreign key constraint exists, fallback to soft deletion / archive
       return await this.softDeleteUser(id, 'Archived by Admin');
     }
+  },
+
+  async updatePassword(id, passwordHash) {
+    if (!id || typeof id !== 'string' || !UUID_REGEX.test(id)) return null;
+    const res = await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING id, first_name, last_name, email, primary_role',
+      [passwordHash, id]
+    );
+    return res.rows[0] || null;
+  },
+
+  async updateEmail(id, newEmail) {
+    if (!id || typeof id !== 'string' || !UUID_REGEX.test(id)) return null;
+    const res = await pool.query(
+      'UPDATE users SET email = $1 WHERE id = $2 RETURNING id, first_name, last_name, email, primary_role',
+      [newEmail, id]
+    );
+    return res.rows[0] || null;
   }
 };

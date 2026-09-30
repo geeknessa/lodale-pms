@@ -8,18 +8,18 @@
   --tenant-text-main: #1A1A1A;
   --tenant-text-sec: #8A8D93;
   --tenant-border: rgba(38, 38, 38, 0.06);
-  --active-pill-bg: #2C4633;
+  --active-pill-bg: #1E3324;
 }
 
 body.dark {
-  --tenant-canvas: #0B120F;
-  --tenant-card-bg: #121F1A;
+  --tenant-canvas: #07130D;
+  --tenant-card-bg: #07130D;
   --tenant-charcoal: #E5C583;
-  --tenant-light-grey: #1D2D26;
+  --tenant-light-grey: #07130D;
   --tenant-text-main: #FFFFFF;
   --tenant-text-sec: #A3BCA7;
   --tenant-border: rgba(255, 255, 255, 0.08);
-  --active-pill-bg: #3a5a40;
+  --active-pill-bg: #07130D;
 }
 
 .tenant-wrapper {
@@ -110,13 +110,13 @@ body.dark {
 
 body.dark .tenant-sidebar-btn.active {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 .tenant-sidebar-tooltip {
   position: absolute;
   left: 65px;
-  background-color: #2C4633;
+  background-color: #1E3324;
   color: #FFFFFF;
   font-size: 11px;
   font-weight: 700;
@@ -132,7 +132,7 @@ body.dark .tenant-sidebar-btn.active {
 
 body.dark .tenant-sidebar-tooltip {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 .tenant-sidebar-btn:hover .tenant-sidebar-tooltip {
@@ -262,6 +262,7 @@ body.dark .db-breadcrumb-active {
 @media (min-width: 1150px) {
   .db-grid {
     grid-template-columns: 1.05fr 1.2fr 1.1fr;
+    align-items: stretch;
   }
 }
 
@@ -269,6 +270,8 @@ body.dark .db-breadcrumb-active {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  height: 100%;
+  justify-content: space-between;
 }
 
 .db-card {
@@ -678,7 +681,7 @@ body.dark .wallet-progress-fill {
   border: 1.5px solid rgba(44, 70, 51, 0.15);
   border-radius: 32px;
   padding: 24px;
-  color: #1E382A;
+  color: #07130D;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -691,8 +694,8 @@ body.dark .wallet-progress-fill {
 }
 
 body.dark .visa-card-widget {
-  background: linear-gradient(135deg, #1C3326 0%, #2A4D3B 100%);
-  border: 1.5px solid rgba(229, 197, 131, 0.2);
+  background: #07130D;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
   color: #FFFFFF;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
 }
@@ -714,7 +717,7 @@ body.dark .visa-card-widget {
   font-weight: 900;
   font-style: italic;
   font-size: 16px;
-  color: #1E382A;
+  color: #07130D;
 }
 
 body.dark .visa-logo {
@@ -770,7 +773,7 @@ body.dark .visa-progress-track {
 .visa-progress-fill {
   height: 100%;
   border-radius: 10px;
-  background-color: #1E382A;
+  background-color: #07130D;
   transition: width 0.5s ease;
 }
 
@@ -791,7 +794,7 @@ body.dark .visa-progress-fill {
 }
 
 .visa-pay-btn {
-  background-color: #1E382A;
+  background-color: #07130D;
   color: #FFFFFF;
   border: none;
   font-size: 10.5px;
@@ -805,7 +808,7 @@ body.dark .visa-progress-fill {
 
 body.dark .visa-pay-btn {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 .visa-pay-btn:hover {
@@ -813,21 +816,32 @@ body.dark .visa-pay-btn {
 }
 
 /* Equalized heights for Column 1, 2, and 3 cards for perfect grid alignment */
-.pro-card {
-  min-height: 475px;
-}
+@media (min-width: 1150px) {
+  /* ALL THREE TOP CARDS END ON THE EXACT SAME LINE */
+  .property-info-card,
+  .tour-tracker,
+  .visa-card-widget {
+    height: 310px !important;
+    min-height: 310px !important;
+    max-height: 310px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box;
+    flex: 0 0 auto !important;
+  }
 
-.property-info-card,
-.visa-card-widget {
-  min-height: 275px;
-}
-
-.tour-tracker,
-.breakdown-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 285px;
+  /* ALL THREE BOTTOM CARDS START & END ON THE EXACT SAME LINES */
+  .streak-widget-card,
+  .reliability-rating-card,
+  .breakdown-card {
+    flex: 1 !important;
+    min-height: 160px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    box-sizing: border-box;
+  }
 }
 
 /* Compact Rectangular Streak Preview Card */
@@ -1458,7 +1472,7 @@ body.dark .property-visual-banner {
 }
 
 .meta-val.highlight-gold {
-  color: #2C4633;
+  color: #1E3324;
 }
 
 body.dark .meta-val.highlight-gold {
@@ -1551,7 +1565,7 @@ body.dark .stepper-line-fill {
 body.dark .stepper-step.active .step-circle {
   background-color: #E5C583;
   border-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
   box-shadow: 0 0 0 4px rgba(229, 197, 131, 0.2);
 }
 
@@ -1974,7 +1988,7 @@ body.dark .welcome-sparkle-icon {
 
 body.dark .welcome-checklist li .chk-icon {
   background-color: #E5C583;
-  color: #0B1512;
+  color: #09090b;
 }
 
 .welcome-checklist li strong {
@@ -2145,7 +2159,7 @@ body.dark .welcome-checklist li .chk-icon {
 }
 
 body.dark .tour-btn-next {
-  color: #0B1512 !important;
+  color: #09090b !important;
 }
 
 .tour-btn-prev {
@@ -2320,7 +2334,7 @@ body.dark .tour-btn-next {
 }
 
 body.dark .tour-ask-btn-yes {
-  color: #0B1512 !important;
+  color: #09090b !important;
 }
 
 

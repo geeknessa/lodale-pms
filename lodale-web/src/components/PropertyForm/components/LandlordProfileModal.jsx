@@ -9,8 +9,8 @@ export default function LandlordProfileModal({
   if (!showLandlordProfileModal) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 animate-in fade-in">
-      <div className="bg-white dark:bg-[#12221C] rounded-3xl border border-[#E4EAE1] dark:border-white/10 max-w-sm w-full p-8 shadow-2xl relative text-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-md p-4 animate-in fade-in">
+      <div className="bg-white dark:bg-[#07130D] rounded-3xl border border-[#E4EAE1] dark:border-white/10 max-w-sm w-full p-8 shadow-2xl relative text-center">
         {/* Close Button */}
         <button
           className="absolute top-4 right-4 text-slate-400 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xl font-bold p-1 bg-[#FAF8F6] dark:bg-white/5 rounded-full h-8 w-8 flex items-center justify-center cursor-pointer transition-colors border-none outline-none"
@@ -21,14 +21,14 @@ export default function LandlordProfileModal({
 
         {/* Profile Avatar */}
         <div className="relative mx-auto w-24 h-24 mb-4">
-          <div className="w-full h-full flex items-center justify-center bg-[#2C4633]/10 dark:bg-[#1E382A] rounded-full border-4 border-[#E4EAE1] dark:border-white/10 text-[#2C4633] dark:text-[#E5C583] overflow-hidden text-2xl font-bold">
+          <div className="w-full h-full flex items-center justify-center bg-[#2C4633]/10 dark:bg-[#07130D] rounded-full border-4 border-[#E4EAE1] dark:border-white/10 text-[#2C4633] dark:text-[#E5C583] overflow-hidden text-2xl font-bold">
             {landlordAvatar ? (
               <img src={landlordAvatar} alt="Landlord profile" className="w-full h-full object-cover" />
             ) : (
               <span>{username ? username.charAt(0).toUpperCase() : <User className="w-12 h-12" />}</span>
             )}
           </div>
-          <span className="absolute bottom-0 right-0 bg-emerald-500 h-5 w-5 rounded-full border-2 border-white dark:border-[#12221C] shadow-sm z-10" />
+          <span className="absolute bottom-0 right-0 bg-emerald-500 h-5 w-5 rounded-full border-2 border-white dark:border-[#07130D] shadow-sm z-10" />
         </div>
 
         {/* Name & Role */}
@@ -110,7 +110,7 @@ export default function LandlordProfileModal({
         <button
           type="button"
           onClick={() => setShowLandlordProfileModal(false)}
-          className="mt-6 w-full py-3 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#0B1512] font-bold text-[13.5px] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.98] shadow-md border-none outline-none"
+          className="mt-6 w-full py-3 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#09090b] font-bold text-[13.5px] rounded-xl cursor-pointer transition-all duration-150 active:scale-[0.98] shadow-md border-none outline-none"
         >
           Close Profile
         </button>

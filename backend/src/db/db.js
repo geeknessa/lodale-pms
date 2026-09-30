@@ -228,11 +228,19 @@ export async function initDb() {
         emergency_contact_relationship VARCHAR(100),
         preferred_move_in_date DATE,
         max_budget TEXT,
+        gender VARCHAR(50),
+        address TEXT,
+        location VARCHAR(255),
+        postal_code VARCHAR(50),
         bio TEXT,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
 
       ALTER TABLE tenant_profiles ALTER COLUMN monthly_income TYPE TEXT USING monthly_income::text;
+      ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS gender VARCHAR(50);
+      ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS address TEXT;
+      ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS location VARCHAR(255);
+      ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS postal_code VARCHAR(50);
 
       CREATE TABLE IF NOT EXISTS support_messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -241,6 +249,42 @@ export async function initDb() {
         message TEXT NOT NULL,
         is_read BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS notifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS property_inspections (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        application_id UUID,
+        property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+        tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        landlord_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        date DATE NOT NULL,
+        time VARCHAR(20) NOT NULL,
+        location TEXT,
+        notes TEXT,
+        status VARCHAR(50) DEFAULT 'Scheduled',
+        created_by VARCHAR(50) DEFAULT 'landlord',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
 
       CREATE TABLE IF NOT EXISTS property_applications (
@@ -313,11 +357,16 @@ export async function initDb() {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
         tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        lease_id UUID REFERENCES leases(id) ON DELETE CASCADE,
+        reported_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         title VARCHAR(255) NOT NULL,
         description TEXT NOT NULL,
         priority VARCHAR(30) DEFAULT 'medium',
         status VARCHAR(50) DEFAULT 'pending',
         notes TEXT,
+        tenant_handled BOOLEAN DEFAULT FALSE,
+        actual_cost NUMERIC(10, 2),
+        estimated_cost NUMERIC(10, 2),
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );

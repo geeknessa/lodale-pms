@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
   Search,
   FileText,
@@ -10,96 +10,256 @@ import {
   Wallet,
   Wrench,
   ArrowRight,
-  BookOpen
+  AlertTriangle,
+  ChevronDown,
+  UserCheck,
+  Key,
+  Star,
+  CheckCircle2,
+  HelpCircle,
+  Home,
+  CreditCard,
+  ArrowLeft,
+  Users
 } from "lucide-react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import NavBar from "../components/NavBar";
 import Button from "../components/Button";
 import ListingCard from "../components/ListingCard";
 import ListingCardSkeleton from "../components/ListingCardSkeleton";
 import Footer from "../components/Footer";
 import { propertyService } from "../services/propertyService";
-import heroBgDark from "../assets/dark_modern_villa.png";
-import heroBgLight from "../assets/lodale_hero_light.png";
 import heroBg from "../assets/lodale_hero.png";
+import heroBuildingImg from "../assets/lodale_hero_building.png";
 import { useTheme } from "../context/ThemeContext";
 
-gsap.registerPlugin(ScrollTrigger);
-
-const BLOG = [
-  { id: 1, tag: "Market Report", tagColor: "#C9963E", gA: "#1A2E20", gB: "#2D4A32", date: "Aug 5, 2026", read: "6 min", title: "Rental Market Trends 2026: What Tenants and Landlords Need to Know", excerpt: "Lagos rental prices have risen 18% in prime districts this year. Here's how to navigate the market whether you're searching or listing." },
-  { id: 2, tag: "Legal Guide", tagColor: "#2D6A4F", gA: "#1A1A2E", gB: "#2A2A4A", date: "Jul 28, 2026", read: "9 min", title: "Landlord Rights & Tenant Checklist: Nigeria 2026 Edition", excerpt: "A comprehensive breakdown of tenant rights under the Tenancy Law of Lagos State, deposit regulations, and legal eviction procedures." },
-  { id: 3, tag: "Spotlight", tagColor: "#2B5F7E", gA: "#1A2A2E", gB: "#2A3A4A", date: "Jul 15, 2026", read: "5 min", title: "What ₦4,000,000/Year Rent Gets You Across Lagos", excerpt: "From Ajah to Ikoyi — we break down exactly what the same budget gets you in 6 different parts of Nigeria's commercial capital." },
-];
-
-function Pill({ color, borderColor, children }) {
-  return (
-    <div className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-[0.12em]"
-      style={{ background: `${color}18`, border: `1px solid ${borderColor || `${color}35`}`, color }}>
-      {children}
-    </div>
-  );
-}
-
 function HeroSection({ C, isDark }) {
-  const heroRef = useRef(null);
-  const titleRef = useRef(null);
-  const descRef = useRef(null);
-  const btnRef = useRef(null);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.fromTo(titleRef.current, { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 1, delay: 0.15 })
-        .fromTo(descRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8 }, "-=0.6")
-        .fromTo(btnRef.current, { scale: 0.85, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.7, ease: "back.out(1.8)" }, "-=0.5");
-    }, heroRef);
-    return () => ctx.revert();
-  }, []);
-
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const heroBg_light = "#EDE8DF";
+  const heroBg_dark = "#07130D";
+  const bg = isDark ? heroBg_dark : heroBg_light;
+
   return (
-    <section ref={heroRef} className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden" id="hero">
-      <div className="absolute inset-0 bg-cover bg-center transition-all duration-500" style={{ backgroundImage: `url(${isDark ? heroBg : heroBgLight})` }} />
-      <div className="absolute inset-0 transition-colors duration-300" style={{ background: C.heroOverlay }} />
-      <div className="absolute top-0 right-0 pointer-events-none"
+    <section
+      id="hero"
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100vh",
+        minHeight: "620px",
+        maxHeight: "1020px",
+        overflow: "hidden",
+        background: bg,
+      }}
+    >
+      {/* Right photo - covers right 58% on desktop, full width on mobile */}
+      <div
+        className="absolute top-0 right-0 bottom-0 w-full md:w-[58%] z-[1] pointer-events-none"
+      >
+        <img
+          src={isDark ? heroBg : heroBuildingImg}
+          alt="Modern luxury residential building"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center top",
+            display: "block",
+          }}
+        />
+        {/* Desktop Gradient */}
+        <div
+          className="absolute inset-0 hidden md:block"
+          style={{
+            background: isDark
+              ? "linear-gradient(90deg,#07130D 0%,rgba(7,19,13,0.92) 12%,rgba(7,19,13,0.62) 36%,rgba(7,19,13,0.18) 62%,transparent 84%)"
+              : "linear-gradient(90deg,#EDE8DF 0%,rgba(237,232,223,0.92) 12%,rgba(237,232,223,0.62) 36%,rgba(237,232,223,0.18) 62%,transparent 84%)",
+          }}
+        />
+        {/* Mobile Gradient (stronger to make text readable) */}
+        <div
+          className="absolute inset-0 md:hidden"
+          style={{
+            background: isDark
+              ? "linear-gradient(90deg,#07130D 0%,rgba(7,19,13,0.95) 40%,rgba(7,19,13,0.7) 70%,transparent 100%)"
+              : "linear-gradient(90deg,#EDE8DF 0%,rgba(237,232,223,0.95) 40%,rgba(237,232,223,0.7) 70%,transparent 100%)",
+          }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            left: 0, right: 0, bottom: 0,
+            height: "20%",
+            background: isDark
+              ? "linear-gradient(to top,#07130D 0%,transparent 100%)"
+              : "linear-gradient(to top,#EDE8DF 0%,transparent 100%)",
+          }}
+        />
+      </div>
+
+      {/* Inscription top-right */}
+      <div
+        className="hidden md:block"
         style={{
-          width: 700, height: 700,
-          background: isDark
-            ? "radial-gradient(circle,rgba(201,150,62,0.11) 0%,transparent 70%)"
-            : "radial-gradient(circle,rgba(184,130,40,0.14) 0%,transparent 70%)",
-          transform: "translate(22%,-30%)"
-        }} />
+          position: "absolute",
+          top: "17%",
+          right: "3.5%",
+          zIndex: 8,
+          textAlign: "right",
+          pointerEvents: "none",
+          userSelect: "none",
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontStyle: "italic",
+            fontWeight: 400,
+            fontSize: "clamp(0.6rem,0.85vw,0.78rem)",
+            lineHeight: 1.65,
+            color: isDark ? "rgba(229,197,131,0.45)" : "rgba(28,25,23,0.28)",
+            letterSpacing: "0.01em",
+          }}
+        >
+          Quality homes.<br />Stress-free<br />management.
+        </p>
+        <div
+          style={{
+            marginTop: "7px",
+            height: "1px",
+            width: "38px",
+            marginLeft: "auto",
+            background: isDark ? "rgba(229,197,131,0.22)" : "rgba(28,25,23,0.14)",
+          }}
+        />
+      </div>
 
-
-      <div className="relative z-10 max-w-5xl mx-auto px-5 lg:px-8 pt-48 pb-16 text-center">
-        <h1 ref={titleRef} className="font-bold leading-[1.08] tracking-tight mb-5"
-          style={{ fontFamily: "'Playfair Display',Georgia,serif", fontSize: "clamp(2.2rem,5.5vw,4.2rem)", color: C.textPrimary }}>
-          Find Your Next Lease
-          <br />
-          <em className="not-italic" style={{ color: isDark ? C.goldLight : C.gold }}>with Complete</em>
-          <br />
-          Clarity.
-        </h1>
-
-        <p ref={descRef} className="max-w-xl mx-auto mb-8 leading-relaxed text-sm sm:text-base"
-          style={{ color: C.textMuted }}>
-          Seamless property leasing, verified listings, and transparent management for landlords and tenants across Nigeria.
+      {/* Left content column - responsive width */}
+      <div
+        className="relative z-[5] h-full flex flex-col justify-center box-border w-[90%] md:w-[50%] lg:w-[40%]"
+        style={{
+          paddingLeft: "clamp(20px,6.5vw,94px)",
+          paddingRight: "clamp(12px,2vw,32px)",
+          paddingTop: "80px",
+          paddingBottom: "48px",
+        }}
+      >
+        <p
+          style={{
+            margin: "0 0 20px 0",
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "10px",
+            fontWeight: 500,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            color: isDark ? "rgba(229,197,131,0.5)" : "rgba(28,25,23,0.35)",
+          }}
+        >
+          Property Management System
         </p>
 
-        <div ref={btnRef} className="flex justify-center items-center">
+        <h1
+          style={{
+            margin: "0 0 22px 0",
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: "clamp(2.8rem,5.4vw,5.2rem)",
+            fontWeight: 400,
+            lineHeight: 1.06,
+            letterSpacing: "-0.025em",
+            color: isDark ? "#EDE8DF" : "#1C1917",
+          }}
+        >
+          Better Living<br />
+          Starts with<br />
+          Better{" "}
+          <em style={{ fontStyle: "italic", color: isDark ? "#E5C583" : "#2C4633" }}>
+            Management
+          </em>
+        </h1>
+
+        <p
+          style={{
+            margin: "0 0 38px 0",
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "clamp(0.8rem,1.1vw,0.9rem)",
+            lineHeight: 1.76,
+            fontWeight: 400,
+            color: isDark ? "rgba(237,232,223,0.52)" : "rgba(28,25,23,0.5)",
+            maxWidth: "330px",
+          }}
+        >
+          Lodale is a modern property management platform that makes it easy to find, rent, and manage properties for tenants and landlords.
+        </p>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "22px", flexWrap: "wrap" }}>
           <button
+            id="hero-explore-btn"
             onClick={() => scrollToSection("listings")}
-            className="flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold transition-all hover:scale-105 hover:brightness-110 active:scale-95 shadow-xl cursor-pointer"
-            style={{ background: C.btnBg, color: C.btnText }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "9px",
+              padding: "11px 22px",
+              background: isDark ? "#EDE8DF" : "#1C1917",
+              color: isDark ? "#1C1917" : "#EDE8DF",
+              border: "none",
+              borderRadius: "5px",
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "12px",
+              fontWeight: 600,
+              letterSpacing: "0.03em",
+              cursor: "pointer",
+              outline: "none",
+              transition: "opacity 0.15s ease",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = "0.8"; }}
+            onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
           >
-            <Search className="w-4 h-4" />
-            Browse Listings
-            <ArrowRight className="w-4 h-4 ml-0.5" />
+            Explore Properties
+            <ArrowRight style={{ width: "13px", height: "13px" }} />
+          </button>
+
+          <button
+            id="hero-howitworks-btn"
+            onClick={() => scrollToSection("features")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "9px",
+              padding: "0",
+              background: "transparent",
+              border: "none",
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "12px",
+              fontWeight: 500,
+              color: isDark ? "rgba(237,232,223,0.55)" : "rgba(28,25,23,0.5)",
+              cursor: "pointer",
+              outline: "none",
+              transition: "color 0.15s ease",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = isDark ? "#EDE8DF" : "#1C1917"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = isDark ? "rgba(237,232,223,0.55)" : "rgba(28,25,23,0.5)"; }}
+          >
+            <span
+              style={{
+                width: "28px",
+                height: "28px",
+                borderRadius: "50%",
+                border: isDark ? "1.5px solid rgba(237,232,223,0.2)" : "1.5px solid rgba(28,25,23,0.18)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <svg width="8" height="9" viewBox="0 0 8 9" fill="none">
+                <path d="M2 1.5L7 4.5L2 7.5V1.5Z" fill={isDark ? "rgba(237,232,223,0.65)" : "rgba(28,25,23,0.6)"} />
+              </svg>
+            </span>
+            How it works
           </button>
         </div>
       </div>
@@ -107,143 +267,628 @@ function HeroSection({ C, isDark }) {
   );
 }
 
-function BlogSection({ C, isDark }) {
-  const sectionRef = useRef(null);
-  const headerRef = useRef(null);
-  const cardsRef = useRef(null);
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.fromTo(headerRef.current, { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.85, ease: "power3.out", scrollTrigger: { trigger: sectionRef.current, start: "top 75%" } });
-      if (cardsRef.current) {
-        gsap.fromTo(cardsRef.current.children, { y: 55, opacity: 0, scale: 0.93 }, { y: 0, opacity: 1, scale: 1, duration: 0.75, stagger: 0.16, ease: "power3.out", scrollTrigger: { trigger: cardsRef.current, start: "top 80%" } });
-      }
-    }, sectionRef);
-    return () => ctx.revert();
-  }, []);
+function HowItWorksSection({ C, isDark }) {
+  const [activeStep, setActiveStep] = useState(0);
+
+  const renderPhoneScreen = () => {
+    switch (activeStep) {
+      case 0:
+        // Property Listings
+        return (
+          <div style={{ flex: 1, padding: "20px 20px 0 20px", display: "flex", flexDirection: "column", gap: "16px", background: "#FAFAFA", fontFamily: "'Inter', sans-serif", zIndex: 10, animation: "fadeIn 0.3s ease-out", overflowY: "hidden" }}>
+            <style>{`@keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }`}</style>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+              <div>
+                <div style={{ fontSize: "13px", color: "#666", marginBottom: "2px" }}>Good morning,</div>
+                <div style={{ fontSize: "20px", fontWeight: "700", color: "#1C1917", letterSpacing: "-0.5px" }}>User</div>
+              </div>
+              <div style={{ width: "40px", height: "40px", borderRadius: "50%", overflow: "hidden", background: "#E5E5E5" }}>
+                <img src="https://images.unsplash.com/photo-1531123897727-8f129e1bf98c?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80" alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+              <div style={{ fontSize: "16px", fontWeight: "700", color: "#1C1917" }}>Your Properties</div>
+              <div style={{ fontSize: "12px", color: "#666", fontWeight: "500" }}>View all</div>
+            </div>
+
+            {/* Main Property Card */}
+            <div style={{ background: "#FFFFFF", borderRadius: "20px", padding: "12px", border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 8px 24px rgba(0,0,0,0.04)", flexShrink: 0 }}>
+              <div style={{ width: "100%", height: "130px", borderRadius: "12px", background: "#E5E5E5", marginBottom: "12px", overflow: "hidden" }}>
+                <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="Living room" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+              <div style={{ padding: "0 4px" }}>
+                <div style={{ fontSize: "11px", color: "#888", fontWeight: "500", marginBottom: "6px" }}>Lekki Phase 1, Lagos</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <div style={{ fontSize: "15px", fontWeight: "700", color: "#1C1917" }}>2 Bedroom Apartment</div>
+                  <div style={{ background: "#E8F5E9", color: "#2E7D32", fontSize: "10px", fontWeight: "600", padding: "4px 10px", borderRadius: "12px" }}>Occupied</div>
+                </div>
+                <div style={{ borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div><span style={{ fontSize: "14px", fontWeight: "700", color: "#1C1917" }}>₦ 1,800,000</span> <span style={{ fontSize: "12px", color: "#888" }}>/ year</span></div>
+                  <ArrowRight style={{ width: "14px", height: "14px", color: "#1C1917" }} />
+                </div>
+              </div>
+            </div>
+
+            {/* Second Property Card (Partially Visible) */}
+            <div style={{ background: "#FFFFFF", borderRadius: "20px", padding: "12px", border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 8px 24px rgba(0,0,0,0.04)", flexShrink: 0, opacity: 0.9 }}>
+              <div style={{ width: "100%", height: "90px", borderRadius: "12px", background: "#E5E5E5", marginBottom: "10px", overflow: "hidden" }}>
+                <img src="https://images.unsplash.com/photo-1512917774080-9991f1c4c750?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" alt="House" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+              <div style={{ padding: "0 4px" }}>
+                <div style={{ fontSize: "11px", color: "#888", fontWeight: "500", marginBottom: "4px" }}>Victoria Island</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: "15px", fontWeight: "700", color: "#1C1917" }}>4 Bed Duplex</div>
+                  <div style={{ background: "#F5F5F5", color: "#666", fontSize: "10px", fontWeight: "600", padding: "4px 10px", borderRadius: "12px" }}>Vacant</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 1:
+        // Automated Application Tracking (Dense UI)
+        return (
+          <div style={{ flex: 1, padding: "20px 20px 0 20px", display: "flex", flexDirection: "column", gap: "16px", background: "#0C1410", fontFamily: "'Inter', sans-serif", zIndex: 10, animation: "fadeIn 0.3s ease-out", overflowY: "hidden" }}>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <ArrowLeft style={{ width: "16px", height: "16px", color: "#FFFFFF" }} />
+                <h3 style={{ fontSize: "16px", fontWeight: "bold", color: "#FFF" }}>Emeka Obi</h3>
+              </div>
+              <span style={{ fontSize: "10px", background: "rgba(229,197,131,0.2)", color: "#E5C583", padding: "4px 8px", borderRadius: "12px", fontWeight: "bold" }}>Pending</span>
+            </div>
+
+            {/* Top Cards */}
+            <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ flex: 1, background: "#11261B", padding: "12px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <p style={{ fontSize: "9px", color: "rgba(255,255,255,0.5)", marginBottom: "4px" }}>Income (Verified)</p>
+                <p style={{ fontSize: "12px", fontWeight: "bold", color: "#FFF" }}>₦850,000/mo</p>
+              </div>
+              <div style={{ flex: 1, background: "#11261B", padding: "12px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <p style={{ fontSize: "9px", color: "rgba(255,255,255,0.5)", marginBottom: "4px" }}>Move-in Date</p>
+                <p style={{ fontSize: "12px", fontWeight: "bold", color: "#FFF" }}>Oct 1, 2026</p>
+              </div>
+            </div>
+
+            {/* Timeline */}
+            <div className="bg-[#11261B] p-5 rounded-[20px] border border-white/5 relative shadow-xl">
+              <h4 className="text-[9px] uppercase tracking-[0.2em] text-[#E5C583] font-bold mb-4 ml-5">Application Journey</h4>
+              <div className="relative pl-5 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-white/10">
+                <div className="relative flex items-start gap-3">
+                  <div className="absolute -left-5 top-0 h-4 w-4 rounded-full flex items-center justify-center text-[10px] font-bold bg-[#E5C583] text-[#0C1410]">
+                    <CheckCircle2 className="h-3 w-3" />
+                  </div>
+                  <div>
+                    <h5 className="text-[12px] font-bold text-white">Application Submitted</h5>
+                    <p className="text-[10px] text-stone-400 mt-0.5">Profile & Income Verified</p>
+                  </div>
+                </div>
+                <div className="relative flex items-start gap-3">
+                  <div className="absolute -left-5 top-0 h-4 w-4 rounded-full flex items-center justify-center text-[10px] font-bold bg-[#E5C583] text-[#0C1410]">
+                    <CheckCircle2 className="h-3 w-3" />
+                  </div>
+                  <div>
+                    <h5 className="text-[12px] font-bold text-white">Identity Check Passed</h5>
+                    <p className="text-[10px] text-stone-400 mt-0.5">NIMC Official NIN Match</p>
+                  </div>
+                </div>
+                <div className="relative flex items-start gap-3">
+                  <div className="absolute -left-5 top-0 h-4 w-4 rounded-full flex items-center justify-center border-2 border-[#E5C583] bg-[#11261B]">
+                    <div className="w-1 h-1 rounded-full bg-[#E5C583]" />
+                  </div>
+                  <div className="w-full">
+                    <h5 className="text-[12px] font-bold text-white">Pending Approval</h5>
+                    <p className="text-[10px] text-stone-400 mt-0.5 mb-3">Awaiting your final review.</p>
+                    <button className="w-full py-2 bg-[#E5C583] text-[#0C1410] font-bold text-[10px] rounded-lg shadow-sm">
+                      Approve Applicant
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h4 style={{ fontSize: "12px", fontWeight: "bold", color: "#FFF", marginTop: "4px", paddingLeft: "4px" }}>Other Applicants</h4>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#11261B", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div>
+                <p style={{ fontSize: "12px", fontWeight: "bold", color: "#FFF" }}>Sarah Johnson</p>
+                <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Declined • Insufficient Income</p>
+              </div>
+              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(239, 68, 68, 0.2)", display: "flex", alignItems: "center", justifyItems: "center" }}>
+                <span style={{ margin: "auto", fontSize: "12px", color: "#EF4444" }}>×</span>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 2:
+        // Digital Tenancy Contracts (Dense UI)
+        return (
+          <div style={{ flex: 1, padding: "20px 20px 0 20px", display: "flex", flexDirection: "column", gap: "16px", background: "#FAFAFA", fontFamily: "'Inter', sans-serif", zIndex: 10, animation: "fadeIn 0.3s ease-out", overflowY: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: "bold", color: "#1C1917", letterSpacing: "-0.5px" }}>Contracts</h3>
+              <span style={{ fontSize: "10px", background: "rgba(0,0,0,0.05)", padding: "4px 8px", borderRadius: "12px", fontWeight: "bold" }}>2 Action Required</span>
+            </div>
+
+            <div className="bg-white p-5 rounded-[20px] border border-stone-200 shadow-lg">
+              <div className="text-center border-b border-stone-100 pb-4 mb-4">
+                <FileText className="w-6 h-6 text-[#2C4633] mx-auto mb-2" />
+                <h4 className="text-[12px] font-bold text-[#1C1917] uppercase tracking-wider">Tenancy Agreement</h4>
+                <p className="text-[10px] text-stone-500 mt-1">1 Year Lease (Aug 2026 – Jul 2027)</p>
+              </div>
+              <div className="space-y-3 mb-5">
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-stone-500">Annual Rent</span>
+                  <span className="font-bold text-[#1C1917]">₦1,800,000</span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-stone-500">Caution Deposit</span>
+                  <span className="font-bold text-[#1C1917]">₦200,000</span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-2.5 bg-[#F4F7F5] rounded-xl border border-[#E2EBE5] text-center">
+                  <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold mb-1.5">Landlord</p>
+                  <p className="text-[10px] font-bold text-[#2C4633] italic">Ada Benson ✓</p>
+                </div>
+                <div className="p-2.5 bg-white rounded-xl border border-dashed border-stone-300 text-center flex flex-col justify-center cursor-pointer hover:bg-stone-50 shadow-sm">
+                  <p className="text-[8px] uppercase tracking-widest text-stone-500 font-bold mb-1.5">Tenant</p>
+                  <p className="text-[10px] font-semibold text-[#1C1917]">Tap to Sign</p>
+                </div>
+              </div>
+            </div>
+
+            <h4 style={{ fontSize: "13px", fontWeight: "bold", color: "#1C1917", marginTop: "4px", paddingLeft: "4px" }}>Signed Contracts</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#FFFFFF", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.08)" }}>
+                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                  <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#E8F5E9", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <FileText style={{ width: "14px", height: "14px", color: "#2E7D32" }} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: "12px", fontWeight: "bold", color: "#1C1917" }}>Flat 2 Lease.pdf</p>
+                    <p style={{ fontSize: "10px", color: "#666", marginTop: "2px" }}>Signed Aug 15, 2026</p>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#FFFFFF", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(0,0,0,0.08)" }}>
+                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                  <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#E8F5E9", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <FileText style={{ width: "14px", height: "14px", color: "#2E7D32" }} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: "12px", fontWeight: "bold", color: "#1C1917" }}>Flat 5 Lease.pdf</p>
+                    <p style={{ fontSize: "10px", color: "#666", marginTop: "2px" }}>Signed Mar 10, 2026</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 3:
+        // Maintenance & Insights (Dense UI)
+        return (
+          <div style={{ flex: 1, padding: "20px 20px 0 20px", display: "flex", flexDirection: "column", gap: "16px", background: "#0C1410", fontFamily: "'Inter', sans-serif", zIndex: 10, animation: "fadeIn 0.3s ease-out", overflowY: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ fontSize: "18px", fontWeight: "bold", color: "#FFF", letterSpacing: "-0.5px" }}>Maintenance</h3>
+              <span style={{ fontSize: "10px", background: "rgba(239, 68, 68, 0.2)", color: "#EF4444", padding: "4px 8px", borderRadius: "12px", fontWeight: "bold" }}>1 Urgent</span>
+            </div>
+
+            {/* Quick Stats */}
+            <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ flex: 1, background: "#11261B", padding: "12px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <p style={{ fontSize: "9px", color: "rgba(255,255,255,0.5)", marginBottom: "4px" }}>MTD Expenses</p>
+                <p style={{ fontSize: "14px", fontWeight: "bold", color: "#FFF" }}>₦145,000</p>
+              </div>
+              <div style={{ flex: 1, background: "#11261B", padding: "12px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+                <p style={{ fontSize: "9px", color: "rgba(255,255,255,0.5)", marginBottom: "4px" }}>Open Tickets</p>
+                <p style={{ fontSize: "14px", fontWeight: "bold", color: "#FFF" }}>3 Active</p>
+              </div>
+            </div>
+
+            {/* Active Urgent Ticket */}
+            <div className="bg-[#11261B] p-4 rounded-[20px] border border-white/5 shadow-xl">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h4 className="text-[12px] font-bold text-white">Repair #MN-104</h4>
+                  <p className="text-[9px] text-stone-400 mt-1">AC Unit Malfunction</p>
+                </div>
+                <span className="px-2 py-1 rounded-full bg-red-950 text-red-400 text-[8px] font-bold uppercase tracking-wider">
+                  Urgent
+                </span>
+              </div>
+
+              <div className="flex gap-3 mb-4">
+                <div className="w-[50px] h-[50px] rounded-lg bg-white/10 overflow-hidden flex-shrink-0">
+                  <img src="https://images.unsplash.com/photo-1599619351208-3e6c839d6828?auto=format&fit=crop&w=200&q=80" alt="AC Unit" className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 p-2 bg-white/5 rounded-lg border border-white/5">
+                  <p className="text-[8px] uppercase tracking-widest text-stone-400 font-bold mb-1">Contractor</p>
+                  <p className="text-[10px] font-bold text-white">Adesina AC Repair</p>
+                  <p className="text-[9px] font-semibold text-[#E5C583] mt-1">ETA: 2:00 PM</p>
+                </div>
+              </div>
+
+              <button className="w-full py-2 bg-[#E5C583] text-[#0C1410] font-bold text-[11px] rounded-lg flex justify-center items-center gap-2 shadow-sm">
+                <Wrench className="w-3 h-3" /> Approve ₦35k Quote
+              </button>
+            </div>
+
+            {/* Past Ticket */}
+            <h4 style={{ fontSize: "12px", fontWeight: "bold", color: "#FFF", marginTop: "2px", paddingLeft: "4px" }}>Recent History</h4>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#11261B", padding: "12px 16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+              <div>
+                <p style={{ fontSize: "12px", fontWeight: "bold", color: "#FFF" }}>Leaking Faucet (#MN-103)</p>
+                <p style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>Fixed • ₦12,000 paid</p>
+              </div>
+              <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "rgba(34, 197, 94, 0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <CheckCircle2 style={{ width: "12px", height: "12px", color: "#22c55e" }} />
+              </div>
+            </div>
+
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
-    <section ref={sectionRef} id="blog" className="min-h-screen flex flex-col justify-center py-12 lg:py-16 transition-colors duration-300" style={{ background: isDark ? "#07130d" : C.bgMid }}>
-      <div className="max-w-7xl mx-auto px-5 lg:px-8 w-full">
-        <div ref={headerRef} className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 lg:mb-10">
-          <div>
-            <h2 className="text-3xl md:text-4xl font-bold mt-3" style={{ color: C.textPrimary, fontFamily: "'Playfair Display',Georgia,serif" }}>
-              Market Reports &amp;<br /><em className="not-italic" style={{ color: C.gold }}>Expert Insights.</em>
-            </h2>
-          </div>
-          <a href="#" className="flex items-center gap-1.5 text-xs sm:text-sm font-bold shrink-0 mb-1 group transition-colors hover:brightness-125"
-            style={{ color: C.gold }}>
-            View All Articles <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </a>
+    <section id="features" style={{
+      backgroundColor: isDark ? "#07130D" : "#F7F5EF",
+      backgroundImage: isDark ? `linear-gradient(90deg, #07130D 0%, #07130D 50%, rgba(7,19,13,0.8) 75%, rgba(7,19,13,0.4) 100%), url('https://images.unsplash.com/photo-1600607686527-6fb886090705?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80')` : "none",
+      backgroundSize: "cover",
+      backgroundPosition: "center right",
+      backgroundRepeat: "no-repeat",
+      color: isDark ? "#EDE8DF" : "#1C1917",
+      padding: "clamp(80px, 12vw, 160px) clamp(20px, 6vw, 92px) 40px clamp(20px, 6vw, 92px)", // reduced bottom padding
+      overflow: "hidden",
+      position: "relative"
+    }}>
+      <div style={{
+        maxWidth: "1200px",
+        margin: "0 auto",
+        display: "flex",
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: "40px",
+        alignItems: "center",
+        position: "relative",
+        zIndex: 2
+      }}>
+
+        {/* Left Column: Text & CTA */}
+        <div className="flex-[1_1_300px] min-w-[300px] pr-0 lg:pr-10">
+          <span style={{
+            fontSize: "11px",
+            textTransform: "uppercase",
+            letterSpacing: "0.15em",
+            fontWeight: 600,
+            color: isDark ? "rgba(229,197,131,0.5)" : "rgba(28,25,23,0.5)",
+            display: "block",
+            marginBottom: "16px"
+          }}>
+            FEATURES
+          </span>
+          <h2 style={{
+            fontFamily: "'Playfair Display', Georgia, serif",
+            fontSize: "clamp(2.4rem, 3.8vw, 3.8rem)",
+            fontWeight: 400,
+            lineHeight: 1.1,
+            marginBottom: "24px",
+            color: isDark ? "#EDE8DF" : "#1C1917"
+          }}>
+            Everything You Need<br />in One Place
+          </h2>
+          <p style={{
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "15px",
+            lineHeight: 1.6,
+            color: isDark ? "rgba(237,232,223,0.7)" : "rgba(28,25,23,0.7)",
+            maxWidth: "340px"
+          }}>
+            Whether you're a tenant or landlord, Lodale gives you the tools to stay in control — anytime, anywhere.
+          </p>
         </div>
-        <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6">
-          {BLOG.map(p => <BlogCard key={p.id} {...p} C={C} isDark={isDark} />)}
+
+        {/* Middle Column: Interactive Features List */}
+        <div style={{ flex: "1 1 300px", minWidth: "300px", display: "flex", flexDirection: "column", gap: "20px", paddingTop: "20px" }}>
+
+          {[
+            {
+              icon: Home,
+              title: "Property Listings",
+              desc: "Discover verified properties with ease."
+            },
+            {
+              icon: CreditCard,
+              title: "Automated Application Tracking",
+              desc: "Review tenant NINs and income verification instantly in real-time."
+            },
+            {
+              icon: FileText,
+              title: "Digital Tenancy Contracts",
+              desc: "Review lease terms and sign legally binding contracts online."
+            },
+            {
+              icon: LineChart,
+              title: "Real-Time Insights",
+              desc: "Log repairs, track expenses, and monitor financial performance."
+            }
+          ].map((feature, idx) => {
+            const IconComponent = feature.icon;
+            const isActive = activeStep === idx;
+            return (
+              <div
+                key={idx}
+                onClick={() => setActiveStep(idx)}
+                style={{
+                  display: "flex",
+                  gap: "20px",
+                  alignItems: "flex-start",
+                  cursor: "pointer",
+                  padding: "16px",
+                  borderRadius: "16px",
+                  backgroundColor: isActive ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)") : "transparent",
+                  border: isActive ? (isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.06)") : "1px solid transparent",
+                  transition: "all 0.3s ease",
+                  opacity: isActive ? 1 : 0.5
+                }}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.opacity = 0.8; }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.opacity = 0.5; }}
+              >
+                <IconComponent style={{ width: "24px", height: "24px", color: isActive ? (isDark ? "#E5C583" : "#2C4633") : (isDark ? "#EDE8DF" : "#1C1917"), flexShrink: 0, marginTop: "2px", strokeWidth: 1.5 }} />
+                <div>
+                  <h4 style={{ fontFamily: "'Inter', sans-serif", fontSize: "15px", fontWeight: 600, marginBottom: "6px", color: isActive ? (isDark ? "#E5C583" : "#2C4633") : (isDark ? "#EDE8DF" : "#1C1917") }}>
+                    {feature.title}
+                  </h4>
+                  <p style={{ fontFamily: "'Inter', sans-serif", fontSize: "13px", color: isDark ? "rgba(237,232,223,0.7)" : "rgba(28,25,23,0.6)", margin: 0, maxWidth: "220px", lineHeight: 1.5 }}>
+                    {feature.desc}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Right Column: Exact Tilted iPhone Mockup (Interactive inner screen) */}
+        <div className="flex-[1_1_300px] min-w-[300px] relative h-[540px] flex justify-center lg:justify-end mt-10 lg:mt-0">
+
+          <div className={`absolute top-[20px] right-[-20px] sm:right-[auto] lg:right-[-50px] w-[340px] h-[760px] ${(activeStep === 0 || activeStep === 2) ? "mockup-light" : ""}`} style={{
+            backgroundColor: (activeStep === 1 || activeStep === 3) ? "#0C1410" : "#FAFAFA", // Adapts to inner screen dark/light mode
+            color: (activeStep === 1 || activeStep === 3) ? "#FFFFFF" : "#1C1917", // Fix text color bleeding in global dark mode
+            borderRadius: "50px",
+            border: "12px solid #202020",
+            boxShadow: "20px 40px 80px rgba(0,0,0,0.8), inset 0 0 0 2px #333",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            transform: "rotate(9deg)", // more tilt
+            transformOrigin: "center center",
+            zIndex: 10,
+            transition: "background-color 0.3s ease"
+          }}>
+            {/* The Notch */}
+            <div style={{
+              position: "absolute",
+              top: "-2px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "140px",
+              height: "28px",
+              backgroundColor: "#202020",
+              borderBottomLeftRadius: "20px",
+              borderBottomRightRadius: "20px",
+              zIndex: 30
+            }} />
+
+            {/* Top Status Bar */}
+            <div style={{
+              padding: "16px 24px 8px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              height: "48px",
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "13px",
+              fontWeight: 600,
+              color: (activeStep === 1 || activeStep === 3) ? "#FFFFFF" : "#1C1917", // Dynamic status bar color
+              zIndex: 20
+            }}>
+              <span style={{ letterSpacing: "-0.5px" }}>9:41</span>
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                <div style={{ width: "16px", height: "10px", backgroundColor: (activeStep === 1 || activeStep === 3) ? "#FFFFFF" : "#1C1917", borderRadius: "2px" }} />
+                <div style={{ width: "16px", height: "10px", backgroundColor: (activeStep === 1 || activeStep === 3) ? "#FFFFFF" : "#1C1917", borderRadius: "2px" }} />
+              </div>
+            </div>
+
+            {/* INTERACTIVE UI SCREEN */}
+            {renderPhoneScreen()}
+
+            {/* Bottom Tab Bar (Visible on all screens) */}
+            <div style={{ height: "80px", borderTop: "1px solid rgba(0,0,0,0.05)", background: (activeStep === 1 || activeStep === 3) ? "#11261B" : "#FFFFFF", display: "flex", justifyContent: "space-around", alignItems: "center", padding: "0 16px 20px", zIndex: 20 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", color: (activeStep === 1 || activeStep === 3) ? "#E5C583" : "#1C1917" }}><Home style={{ width: "22px", height: "22px", margin: "0 auto" }} /><span style={{ fontSize: "10px", fontWeight: "600", textAlign: "center" }}>Home</span></div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", color: (activeStep === 1 || activeStep === 3) ? "rgba(255,255,255,0.4)" : "#A0A0A0" }}><Building2 style={{ width: "22px", height: "22px", margin: "0 auto" }} /><span style={{ fontSize: "10px", fontWeight: "500", textAlign: "center" }}>Properties</span></div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", color: (activeStep === 1 || activeStep === 3) ? "rgba(255,255,255,0.4)" : "#A0A0A0" }}><CreditCard style={{ width: "22px", height: "22px", margin: "0 auto" }} /><span style={{ fontSize: "10px", fontWeight: "500", textAlign: "center" }}>Payments</span></div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", color: (activeStep === 1 || activeStep === 3) ? "rgba(255,255,255,0.4)" : "#A0A0A0" }}><Users style={{ width: "22px", height: "22px", margin: "0 auto" }} /><span style={{ fontSize: "10px", fontWeight: "500", textAlign: "center" }}>Profile</span></div>
+            </div>
+
+            <div style={{ position: "absolute", bottom: "8px", left: "50%", transform: "translateX(-50%)", width: "120px", height: "5px", borderRadius: "3px", backgroundColor: (activeStep === 1 || activeStep === 3) ? "rgba(255,255,255,0.2)" : "#E5E5E5", zIndex: 30 }} />
+          </div>
+        </div>
+
+      </div>
+    </section>
+  );
+}
+
+
+
+
+
+
+function AboutLodaleSection({ C, isDark }) {
+  return (
+    <section id="about" style={{
+      position: "relative",
+      padding: "clamp(80px, 12vw, 160px) clamp(20px, 6vw, 92px)",
+      minHeight: "750px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "flex-start",
+      backgroundColor: "#07130D",
+      overflow: "hidden"
+    }}>
+      {/* Full bleed background image */}
+      <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
+        <img 
+          src="/nigerian_couple_keys.png" 
+          alt="Happy Nigerian couple holding keys to their new apartment" 
+          style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "100% center", display: "block" }} 
+        />
+        {/* Gradient overlay to make text pop on the left side */}
+        <div style={{ 
+          position: "absolute", 
+          inset: 0, 
+          background: "linear-gradient(90deg, #07130D 0%, rgba(7,19,13,0.95) 55%, rgba(7,19,13,0) 100%)" 
+        }} />
+      </div>
+
+      {/* Content over the image */}
+      <div style={{ position: "relative", zIndex: 2, maxWidth: "600px" }}>
+        <span style={{
+          fontSize: "11px",
+          textTransform: "uppercase",
+          letterSpacing: "0.22em",
+          fontWeight: 600,
+          color: "rgba(229,197,131,0.8)",
+          display: "block",
+          marginBottom: "20px"
+        }}>
+          ABOUT LODALE
+        </span>
+        <h2 style={{
+          fontFamily: "'Playfair Display', Georgia, serif",
+          fontSize: "clamp(2.5rem, 4vw, 3.5rem)",
+          fontWeight: 400,
+          lineHeight: 1.15,
+          color: "#EDE8DF",
+          marginBottom: "36px"
+        }}>
+          Renting made safe,<br />simple, and transparent.
+        </h2>
+        
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "24px"
+        }}>
+          <p style={{
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "16px",
+            lineHeight: 1.7,
+            color: "rgba(237,232,223,0.8)",
+          }}>
+            Lodale removes the uncertainty from renting by building trust directly into the platform. We verify every user's identity through NIN before they can even use the system, so you always know exactly who you are dealing with.
+          </p>
+          <div style={{ width: "40px", height: "1px", backgroundColor: "rgba(229,197,131,0.3)" }}></div>
+          <p style={{
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "16px",
+            lineHeight: 1.7,
+            color: "rgba(237,232,223,0.8)"
+          }}>
+            <strong style={{ color: "#E5C583", fontWeight: 600 }}>For tenants</strong>, this means you can move in with confidence. You get access to real, verified reviews of properties and landlords left by previous tenants before you make a decision.
+          </p>
+          <p style={{
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "16px",
+            lineHeight: 1.7,
+            color: "rgba(237,232,223,0.8)"
+          }}>
+            <strong style={{ color: "#E5C583", fontWeight: 600 }}>For landlords</strong>, you get the full picture. Review a tenant's trust profile and rental history, complete with ratings from past landlords, so you only accept reliable people into your property.
+          </p>
         </div>
       </div>
     </section>
   );
 }
 
-function BlogCard({ tag, tagColor, gA, gB, date, read, title, excerpt, C, isDark }) {
-  const [h, setH] = useState(false);
+
+function FinalCtaSection({ C, isDark }) {
+  const navigate = useNavigate();
   return (
-    <article className="flex flex-col rounded-2xl overflow-hidden cursor-pointer transition-all duration-300"
-      style={{
-        background: isDark ? (h ? "rgba(255,255,255,0.05)" : C.bgCard) : C.bgCard,
-        border: `1px solid ${h ? `${C.gold}45` : C.border}`,
-        transform: h ? "translateY(-4px)" : "none",
-        boxShadow: isDark ? "none" : (h ? "0 14px 36px rgba(0,0,0,0.07)" : "0 2px 10px rgba(0,0,0,0.03)")
-      }}
-      onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}>
-      <div className="h-36 relative flex items-end p-4" style={{ background: `linear-gradient(135deg,${gA},${gB})` }}>
-        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.5) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.5) 1px,transparent 1px)`, backgroundSize: "32px 32px" }} />
-        <span className="relative z-10 px-2 py-0.5 rounded text-[11px] font-bold" style={{ background: tagColor, color: "white" }}>{tag}</span>
+    <section className="min-h-[50vh] lg:min-h-[60vh] flex flex-col justify-end" style={{ position: "relative", padding: "clamp(60px, 10vw, 100px) clamp(20px, 6vw, 92px)", overflow: "hidden" }}>
+      {/* Background Image */}
+      <div style={{ position: "absolute", inset: 0, zIndex: 1 }}>
+        <img src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=1600&q=80" alt="Beautiful Architecture" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to right, rgba(7,19,13,0.95) 0%, rgba(7,19,13,0.9) 40%, rgba(7,19,13,0.7) 100%)" }} />
       </div>
-      <div className="flex flex-col flex-1 p-5">
-        <div className="flex items-center gap-2 mb-3 text-[11px]" style={{ color: C.textFaint }}>
-          <span>{date}</span><span>·</span><span>{read} read</span>
+
+      {/* Content */}
+      <div className="relative z-[2] w-full mx-auto flex flex-col lg:flex-row lg:items-end justify-between gap-12">
+        {/* Left Side */}
+        <div className="max-w-[600px]">
+          <span style={{
+            fontSize: "10px",
+            textTransform: "uppercase",
+            letterSpacing: "0.22em",
+            fontWeight: 500,
+            color: "rgba(229,197,131,0.6)",
+            display: "block",
+            marginBottom: "16px"
+          }}>
+            READY TO GET STARTED?
+          </span>
+          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "clamp(2.5rem, 4vw, 3.5rem)", fontWeight: 400, color: "#EDE8DF", margin: 0, lineHeight: 1.1 }}>
+            Property Management,<br />
+            <em style={{ fontStyle: "italic", color: "#E5C583" }}>Simplified.</em>
+          </h2>
         </div>
-        <h3 className="text-sm font-bold mb-2 leading-snug transition-colors duration-200"
-          style={{ color: h ? C.gold : C.textPrimary }}>{title}</h3>
-        <p className="text-xs leading-relaxed flex-1 mb-4" style={{ color: C.textMuted }}>{excerpt}</p>
-        <div className="flex items-center gap-2 text-xs font-bold group" style={{ color: C.gold }}>
-          Read More <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+
+        {/* Right Side */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-8 lg:gap-12">
+          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+            <button onClick={() => navigate("/signup")} style={{ background: "#EDE8DF", color: "#1C1917", border: "none", padding: "14px 28px", fontSize: "12px", fontWeight: 600, fontFamily: "'Inter', sans-serif", letterSpacing: "0.03em", borderRadius: "2px", cursor: "pointer", outline: "none", transition: "opacity 0.2s", display: "inline-flex", alignItems: "center", gap: "10px" }} onMouseEnter={e => e.currentTarget.style.opacity = "0.9"} onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+              Get Started <ArrowRight style={{ width: "14px", height: "14px" }} />
+            </button>
+          </div>
+
+          {/* Divider on desktop */}
+          <div className="hidden lg:block w-[1px] h-[40px] bg-[rgba(255,255,255,0.1)]"></div>
+
+          {/* Logo element on far right as seen in reference */}
+          <div className="hidden lg:flex flex-col items-start">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-[20px] h-[20px] bg-[#EDE8DF] rounded-sm flex items-center justify-center">
+                <Building2 style={{ width: "13px", height: "13px", color: "#1C1917" }} />
+              </div>
+              <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: "22px", color: "#EDE8DF", letterSpacing: "0.02em" }}>Lodale</span>
+            </div>
+            <span style={{ fontSize: "9px", color: "rgba(237,232,223,0.4)", textTransform: "uppercase", letterSpacing: "0.1em" }}>Property Management, Simplified.</span>
+          </div>
         </div>
       </div>
-    </article>
+    </section>
   );
 }
 
-const TENANT_FEATURES = [
-  {
-    icon: Search,
-    title: "Browse Verified Listings Only",
-    desc: "Every home listed on Lodale undergoes ownership verification. Rest easy knowing you are dealing with real landlords, shielding you from fake agents and double-rent scams.",
-  },
-  {
-    icon: FileText,
-    title: "Digital Direct Applications",
-    desc: "Send your verified profile and ID verification directly to landlords in one tap. Remove expensive agent/agency search fees and speed up approvals.",
-  },
-  {
-    icon: LineChart,
-    title: "Automated Rent & Ledger",
-    desc: "Pay rent securely online. Every payment is logged instantly on a digital ledger, issuing official, legally-binding receipts automatically. No more paper receipts to lose.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Landlord Reliability Scores",
-    desc: "Review ratings from past tenants before signing. Know in advance how quickly a landlord responds to repairs and how fairly they handle security deposits.",
-  },
-];
-
-const LANDLORD_FEATURES = [
-  {
-    icon: Building2,
-    title: "Direct Listings, No Agency Cut",
-    desc: "List your property for free in under five minutes. Connect directly with thousands of prospective tenants, cutting out middleman agent fees and communication delays.",
-  },
-  {
-    icon: Inbox,
-    title: "Instant Digital Screening",
-    desc: "Evaluate tenant applications containing verified ID credentials, job statuses, and rent history. Choose premium tenants with high trust scores with absolute confidence.",
-  },
-  {
-    icon: Wallet,
-    title: "Automated Billing & Reminders",
-    desc: "The system automatically issues rent invoices, tracks payment statuses, and sends gentle automated reminders, ensuring cash flow is collected directly to your bank account.",
-  },
-  {
-    icon: Wrench,
-    title: "Smart Maintenance Workflows",
-    desc: "Receive repair tickets complete with photos and status logs. Coordinate contractors and track resolutions in-app, building a verifiable history of property care.",
-  },
-];
 
 export default function GuestDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [displayLimit, setDisplayLimit] = useState(9);
-  const listingsGridRef = useRef(null);
+  const [displayLimit, setDisplayLimit] = useState(8);
 
   const [allListings, setAllListings] = useState([]);
+  const [listingsError, setListingsError] = useState(null);
 
-  const [fallbackTheme, setFallbackTheme] = useState("dark");
-  
-  let themeState;
-  try {
-    themeState = useTheme();
-  } catch {
-    themeState = {
-      theme: fallbackTheme,
-      isDark: fallbackTheme === "dark",
-      toggleTheme: () => setFallbackTheme(t => t === "dark" ? "light" : "dark")
-    };
-  }
-
-  const { isDark } = themeState;
+  const { isDark } = useTheme();
 
   const darkC = {
     bg: "#07130D",
@@ -293,71 +938,71 @@ export default function GuestDashboard() {
 
   const C = isDark ? darkC : lightC;
 
-  useEffect(() => {
-    async function fetchPublicListings() {
-      try {
-        let apiProps = [];
-        try {
-          const apiRes = await propertyService.getProperties();
-          if (Array.isArray(apiRes)) {
-            apiProps = apiRes;
-          } else if (apiRes && Array.isArray(apiRes.properties)) {
-            apiProps = apiRes.properties;
-          }
-        } catch (e) { }
-
-        const formatted = apiProps.map((item) => {
-          if (!item) return null;
-          const key = String(item.id || item.title);
-          
-          let landlordObj;
-          if (item.landlord && typeof item.landlord === "object" && (item.landlord.first_name || item.landlord.name)) {
-            const l = item.landlord;
-            landlordObj = {
-              id: l.id || null,
-              name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
-              score: l.score ?? "New",
-              reviews: l.reviews ?? 0,
-              phone_number: l.phone_number || null
-            };
-          } else {
-            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: "New", reviews: 0, phone_number: null };
-          }
-          
-          return {
-            id: item.id || key,
-            title: item.title || item.address_line1 || "Property",
-            location: item.location || item.city || "Lagos, Nigeria",
-            price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
-            beds: item.beds || item.bedrooms || 1,
-            baths: item.baths || item.bathrooms || 1,
-            type: item.type || item.property_type || "apartment",
-            image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-            amenities: item.amenities || [],
-            landlord: landlordObj,
-            status: item.status,
-            isPending: item.isPending
-          };
-        }).filter(Boolean);
-
-        // STRICT FILTER: Exclude unapproved / pending / rejected listings from guest view
-        const approvedOnly = formatted.filter((p) => {
-          if (!p) return false;
-          const status = (p.status || "").toLowerCase();
-          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
-            return false;
-          }
-          return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
-        });
-
-        setAllListings(approvedOnly);
-      } catch (err) {
-        console.warn("Failed to load public listings:", err);
-      } finally {
-        setIsLoading(false);
+  const fetchPublicListings = async () => {
+    setIsLoading(true);
+    setListingsError(null);
+    try {
+      let apiProps = [];
+      const apiRes = await propertyService.getProperties();
+      if (Array.isArray(apiRes)) {
+        apiProps = apiRes;
+      } else if (apiRes && Array.isArray(apiRes.properties)) {
+        apiProps = apiRes.properties;
       }
-    }
 
+      const formatted = apiProps.map((item) => {
+        if (!item) return null;
+        const key = String(item.id || item.title);
+
+        let landlordObj;
+        if (item.landlord && typeof item.landlord === "object" && (item.landlord.first_name || item.landlord.name)) {
+          const l = item.landlord;
+          landlordObj = {
+            id: l.id || null,
+            name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified House Owner",
+            score: l.score ?? "New",
+            reviews: l.reviews ?? 0,
+            phone_number: l.phone_number || null
+          };
+        } else {
+          landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified House Owner", score: "New", reviews: 0, phone_number: null };
+        }
+
+        return {
+          id: item.id || key,
+          title: item.title || item.address_line1 || "Property",
+          location: item.location || item.city || "Lagos, Nigeria",
+          price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
+          beds: item.beds || item.bedrooms || 1,
+          baths: item.baths || item.bathrooms || 1,
+          type: item.type || item.property_type || "apartment",
+          image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
+          amenities: item.amenities || [],
+          landlord: landlordObj,
+          status: item.status,
+          isPending: item.isPending
+        };
+      }).filter(Boolean);
+
+      const approvedOnly = formatted.filter((p) => {
+        if (!p) return false;
+        const status = (p.status || "").toLowerCase();
+        if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
+          return false;
+        }
+        return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
+      });
+
+      setAllListings(approvedOnly);
+    } catch (err) {
+      console.warn("Failed to load public listings:", err);
+      setListingsError(err.message || "We could not load properties right now.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchPublicListings();
   }, []);
 
@@ -369,306 +1014,286 @@ export default function GuestDashboard() {
     return titleMatch || locMatch || landlordMatch;
   });
 
-  useEffect(() => {
-    setDisplayLimit(9);
-  }, [searchQuery]);
-
-  function signUpAs(role) {
+  const signUpAs = (role) => {
     navigate("/signup", { state: { presetRole: role } });
-  }
-
-  // Listings Grid Stagger Animation when listings change
-  useEffect(() => {
-    if (listingsGridRef.current) {
-      const cards = listingsGridRef.current.children;
-      if (cards.length > 0) {
-        gsap.killTweensOf(cards);
-        gsap.fromTo(
-          cards,
-          { opacity: 0, y: 20 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.5,
-            stagger: 0.08,
-            ease: "power2.out",
-          }
-        );
-      }
-    }
-  }, [filteredListings.length]);
-
-  useEffect(() => {
-    if (location.hash) {
-      const id = location.hash.substring(1);
-      const element = document.getElementById(id);
-      if (element) {
-        setTimeout(() => {
-          // Adjust scroll offset to account for the sticky navbar height (approx 80px)
-          const offset = 80;
-          const elementPosition =
-            element.getBoundingClientRect().top + window.pageYOffset;
-          window.scrollTo({
-            top: elementPosition - offset,
-            behavior: "smooth",
-          });
-        }, 100);
-      }
-    }
-  }, [location]);
-
-  useEffect(() => {
-    // ScrollTrigger general section animations
-    const sections = [
-      { id: "#listings", cardSelector: null },
-      { id: "#for-tenants", cardSelector: ".tenant-feature-card" },
-      { id: "#for-landlords", cardSelector: ".landlord-feature-card" }
-    ];
-
-    sections.forEach(({ id, cardSelector }) => {
-      const sectionEl = document.querySelector(id);
-      if (sectionEl) {
-        if (cardSelector) {
-          const cards = sectionEl.querySelectorAll(cardSelector);
-          if (cards.length > 0) {
-            gsap.fromTo(
-              cards,
-              { opacity: 0, y: 35 },
-              {
-                opacity: 1,
-                y: 0,
-                duration: 0.6,
-                stagger: 0.12,
-                ease: "power2.out",
-                scrollTrigger: {
-                  trigger: sectionEl,
-                  start: "top 75%",
-                  toggleActions: "play none none none",
-                }
-              }
-            );
-          }
-        } else {
-          gsap.fromTo(
-            sectionEl,
-            { opacity: 0, y: 30 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 0.75,
-              ease: "power2.out",
-              scrollTrigger: {
-                trigger: sectionEl,
-                start: "top 85%",
-                toggleActions: "play none none none",
-              },
-            }
-          );
-        }
-      }
-    });
-  }, []);
+  };
 
   return (
-    <div className="min-h-screen bg-theme-bg text-theme-text">
+    <div
+      className="w-full text-ink-900 dark:text-white transition-colors duration-300 font-sans selection:bg-moss-700 selection:text-white dark:selection:bg-[#E5C583] dark:selection:text-[#07130d]"
+      style={{ background: C.bg }}
+    >
       <NavBar transparentMode={true} />
 
       <HeroSection C={C} isDark={isDark} />
 
-      {/* listings */}
+      {/* Featured Properties Section */}
       <section
         id="listings"
-        className="min-h-[100vh] flex flex-col relative z-16 mx-auto max-w-[1400px] px-8 pt-24 pb-32"
+        style={{
+          padding: "clamp(64px, 9vw, 112px) clamp(20px, 6vw, 92px)",
+          background: isDark ? "#07130D" : "#F7F5EF",
+        }}
       >
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8 border-b border-ink-100 dark:border-white/10 pb-8">
-          <div>
-            <h2 className="text-3xl md:text-5xl font-normal text-ink-900 dark:text-white" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Browse Listings
-            </h2>
-            <p className="text-[14px] md:text-[15px] text-ink-600 dark:text-cream-100/70 mt-4 max-w-md leading-relaxed">
-              Verified homes currently accepting rental applications directly through the Lodale system.
-            </p>
-          </div>
-
-          <div className="w-full md:w-auto flex-1 max-w-md relative">
-            <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" />
-            <input
-              placeholder="Search by address, area, or landlord..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent border-b border-ink-200 hover:border-ink-400 dark:border-white/20 dark:hover:border-white/40 py-2.5 pl-8 pr-4 text-[13px] md:text-[14px] outline-none focus:border-moss-700 dark:focus:border-[#E5C583] transition-colors text-ink-900 dark:text-white placeholder:text-ink-400 dark:placeholder:text-white/40 rounded-none shadow-none"
-            />
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <ListingCardSkeleton key={n} />
-            ))}
-          </div>
-        ) : filteredListings.length > 0 ? (
-          <>
-            <div ref={listingsGridRef} className="grid gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredListings.slice(0, displayLimit).map((listing) => (
-                <ListingCard key={listing.id} listing={listing} />
-              ))}
+        {/* Stack layout: Horizontal header, grid underneath */}
+        <div className="flex flex-col gap-10">
+          {/* Horizontal Header */}
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 border-b border-stone-200 dark:border-white/10 pb-8">
+            <div className="max-w-[540px]">
+              <p
+                style={{
+                  margin: "0 0 14px 0",
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: "10px",
+                  fontWeight: 500,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: isDark ? "rgba(229,197,131,0.5)" : "rgba(28,25,23,0.35)",
+                }}
+              >
+                Featured Properties
+              </p>
+              <h2
+                style={{
+                  margin: "0 0 18px 0",
+                  fontFamily: "'Playfair Display', Georgia, serif",
+                  fontSize: "clamp(1.9rem, 3.2vw, 3rem)",
+                  fontWeight: 400,
+                  lineHeight: 1.1,
+                  letterSpacing: "-0.02em",
+                  color: isDark ? "#EDE8DF" : "#1C1917",
+                }}
+              >
+                Find Your<br />Next Home
+              </h2>
+              <p
+                style={{
+                  margin: "0",
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: "clamp(0.78rem, 1vw, 0.86rem)",
+                  lineHeight: 1.74,
+                  fontWeight: 400,
+                  color: isDark ? "rgba(237,232,223,0.48)" : "rgba(28,25,23,0.46)",
+                }}
+              >
+                Verified properties with transparent pricing and direct landlord contact across Nigeria.
+              </p>
             </div>
 
-            {filteredListings.length > displayLimit && (
-              <div className="flex flex-col items-center justify-center pt-12 pb-4">
-                <button
-                  onClick={() => setDisplayLimit((prev) => prev + 9)}
-                  className="px-8 py-3 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#16241F] font-bold text-xs tracking-wider uppercase shadow-lg transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  Load More Listings ({filteredListings.length - displayLimit} remaining)
-                </button>
-                <span className="text-[12px] text-ink-500 dark:text-cream-100/60 mt-3 font-medium">
-                  Showing {Math.min(displayLimit, filteredListings.length)} of {filteredListings.length} listings
-                </span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-6 w-full lg:w-auto">
+              {/* Search */}
+              <div style={{ position: "relative", flex: 1, minWidth: "260px" }}>
+                <Search
+                  style={{
+                    position: "absolute",
+                    left: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "13px",
+                    height: "13px",
+                    color: isDark ? "rgba(237,232,223,0.3)" : "rgba(28,25,23,0.28)",
+                    pointerEvents: "none",
+                  }}
+                />
+                <input
+                  id="listings-search"
+                  type="text"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    paddingLeft: "36px",
+                    paddingRight: "14px",
+                    paddingTop: "10px",
+                    paddingBottom: "10px",
+                    background: isDark ? "rgba(255,255,255,0.05)" : "#FFFFFF",
+                    border: "1px solid " + (isDark ? "rgba(237,232,223,0.1)" : "rgba(28,25,23,0.1)"),
+                    borderRadius: "4px",
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: "12px",
+                    fontWeight: 400,
+                    color: isDark ? "#EDE8DF" : "#1C1917",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    transition: "border-color 0.15s ease",
+                  }}
+                  onFocus={e => { e.target.style.borderColor = isDark ? "rgba(237,232,223,0.28)" : "rgba(28,25,23,0.26)"; }}
+                  onBlur={e => { e.target.style.borderColor = isDark ? "rgba(237,232,223,0.1)" : "rgba(28,25,23,0.1)"; }}
+                />
               </div>
-            )}
-          </>
-        ) : (
-          <div className="mt-12 text-center p-8 bg-transparent border-0 flex flex-col items-center justify-center max-w-sm mx-auto">
-            <div className="h-16 w-16 rounded-2xl bg-transparent border border-ink-200/40 dark:border-white/10 flex items-center justify-center mb-4 text-ink-400 dark:text-cream-100/40">
-              <Search className="h-7 w-7" />
+
             </div>
-            {searchQuery.trim() !== "" ? (
-              <>
-                <h3 className="font-bold text-lg text-ink-900 dark:text-white mb-1">
-                  No matching listings found
+          </div>
+
+          {/* Property grid underneath */}
+          <div>
+            {isLoading ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(240px, 100%), 1fr))", gap: "clamp(24px, 3.5vw, 40px) clamp(14px, 2vw, 24px)" }}>
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <ListingCardSkeleton key={n} />
+                ))}
+              </div>
+            ) : listingsError ? (
+              <div
+                style={{
+                  padding: "48px 24px",
+                  border: "1px solid " + (isDark ? "rgba(237,232,223,0.08)" : "rgba(28,25,23,0.08)"),
+                  borderRadius: "4px",
+                  textAlign: "center",
+                  maxWidth: "360px",
+                }}
+              >
+                <AlertTriangle style={{ width: "22px", height: "22px", margin: "0 auto 16px", color: isDark ? "rgba(237,232,223,0.35)" : "rgba(28,25,23,0.28)" }} />
+                <h3
+                  style={{
+                    fontFamily: "'Playfair Display', Georgia, serif",
+                    fontSize: "17px",
+                    fontWeight: 400,
+                    color: isDark ? "#EDE8DF" : "#1C1917",
+                    margin: "0 0 8px 0",
+                  }}
+                >
+                  Listings unavailable
                 </h3>
-                <p className="text-xs text-ink-500 dark:text-cream-100/60 max-w-xs leading-relaxed mb-4">
-                  We couldn't find any properties matching "{searchQuery}". Try adjusting your keywords.
+                <p
+                  style={{
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: "12px",
+                    color: isDark ? "rgba(237,232,223,0.42)" : "rgba(28,25,23,0.42)",
+                    lineHeight: 1.65,
+                    margin: "0 0 24px 0",
+                  }}
+                >
+                  We could not load properties right now.
                 </p>
                 <button
                   type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="px-4 py-2 rounded-xl bg-moss-700 dark:bg-[#E5C583] text-white dark:text-[#263b33] font-bold text-xs cursor-pointer border-none outline-none"
+                  onClick={fetchPublicListings}
+                  style={{
+                    padding: "10px 22px",
+                    background: isDark ? "#EDE8DF" : "#1C1917",
+                    color: isDark ? "#1C1917" : "#EDE8DF",
+                    border: "none",
+                    borderRadius: "4px",
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    outline: "none",
+                  }}
                 >
-                  Clear Search
+                  Retry
                 </button>
+              </div>
+            ) : filteredListings.length > 0 ? (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(min(240px, 100%), 1fr))",
+                    gap: "clamp(28px, 4.5vw, 48px) clamp(14px, 2vw, 24px)",
+                  }}
+                >
+                  {filteredListings.slice(0, displayLimit).map((listing) => (
+                    <ListingCard key={listing.id} listing={listing} />
+                  ))}
+                </div>
+                {filteredListings.length > displayLimit && (
+                  <div className="flex justify-center mt-12">
+                    <button
+                      onClick={() => setDisplayLimit((prev) => prev + 8)}
+                      style={{
+                        padding: "12px 28px",
+                        background: "transparent",
+                        border: "1px solid " + (isDark ? "rgba(237,232,223,0.25)" : "rgba(28,25,23,0.25)"),
+                        borderRadius: "8px",
+                        fontFamily: "'Inter', sans-serif",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        color: isDark ? "#EDE8DF" : "#1C1917",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = isDark ? "#EDE8DF" : "#1C1917";
+                        e.currentTarget.style.color = isDark ? "#1C1917" : "#FFFFFF";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = isDark ? "#EDE8DF" : "#1C1917";
+                      }}
+                    >
+                      See More Properties
+                    </button>
+                  </div>
+                )}
               </>
             ) : (
-              <>
-                <h3 className="font-bold text-lg text-ink-900 dark:text-white mb-1">
-                  No listings yet
-                </h3>
-                <p className="text-xs text-ink-500 dark:text-cream-100/60 max-w-xs leading-relaxed">
-                  Be the first to list a property on Lodale!
-                </p>
-              </>
+              <div style={{ padding: "64px 0" }}>
+                {searchQuery.trim() !== "" ? (
+                  <>
+                    <p
+                      style={{
+                        fontFamily: "'Playfair Display', Georgia, serif",
+                        fontSize: "20px",
+                        fontWeight: 400,
+                        color: isDark ? "#EDE8DF" : "#1C1917",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      No results for "{searchQuery}"
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      style={{
+                        marginTop: "16px",
+                        padding: "10px 22px",
+                        background: "transparent",
+                        border: "1px solid " + (isDark ? "rgba(237,232,223,0.18)" : "rgba(28,25,23,0.16)"),
+                        borderRadius: "4px",
+                        fontFamily: "'Inter', sans-serif",
+                        fontSize: "12px",
+                        color: isDark ? "rgba(237,232,223,0.6)" : "rgba(28,25,23,0.58)",
+                        cursor: "pointer",
+                        outline: "none",
+                      }}
+                    >
+                      Clear search
+                    </button>
+                  </>
+                ) : (
+                  <p
+                    style={{
+                      fontFamily: "'Playfair Display', Georgia, serif",
+                      fontSize: "20px",
+                      fontWeight: 400,
+                      color: isDark ? "#EDE8DF" : "#1C1917",
+                    }}
+                  >
+                    No listings yet
+                  </p>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </section>
-
-      {/* for tenants */}
-      <section
-        id="for-tenants"
-        className="min-h-screen flex flex-col justify-center bg-[#0D1F17] px-8 py-32 overflow-hidden relative"
-      >
-        <div className="mx-auto max-w-[1400px] w-full flex flex-col lg:flex-row gap-16 lg:gap-24 relative z-10">
-
-          <div className="lg:w-1/3 flex flex-col justify-center">
-            <span className="text-[10px] font-bold tracking-[0.2em] text-[#E5C583] uppercase mb-4 block">
-              Tenant Experience
-            </span>
-            <h2 className="text-4xl md:text-5xl font-normal text-white leading-[1.1] mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Secure,<br />Seamless,<br /><i className="text-[#E5C583]">Verified.</i>
-            </h2>
-            <p className="text-[14px] md:text-[15px] leading-relaxed text-white/70 max-w-sm">
-              Take control of your tenancy. Apply with verification, track payments automatically, and grow a reliability rating that makes finding your next home effortless.
-            </p>
-            <div className="mt-12">
-              <button onClick={() => signUpAs("tenant")} className="px-8 py-3.5 rounded-full border border-white/20 text-white hover:bg-white hover:text-[#0D1F17] transition-colors text-[11px] font-bold tracking-widest uppercase outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer">
-                Sign Up as Tenant
-              </button>
-            </div>
-
-            {/* Minimal Editorial Pull-Quote / Banner */}
-            <div className="mt-16 pt-8 border-t border-white/10">
-              <span className="text-[10px] text-white/40 uppercase tracking-[0.2em] block mb-3 font-semibold">Platform Update</span>
-              <p className="text-white/90 font-medium italic text-[16px] md:text-[18px] leading-relaxed" style={{ fontFamily: "'Playfair Display', serif" }}>
-                "Maintenance requests now sync to your ledger seamlessly. Every repair is timestamped and filed automatically."
-              </p>
-            </div>
-          </div>
-
-          <div className="lg:w-2/3 grid gap-x-12 gap-y-16 sm:grid-cols-2 place-content-center">
-            {TENANT_FEATURES.map(({ title, desc }, idx) => (
-              <div
-                key={title}
-                className="tenant-feature-card group flex flex-col pt-6 border-t border-white/5 hover:border-[#E5C583]/30 transition-colors duration-500"
-              >
-                <div className="text-[3.5rem] leading-[0.8] font-normal text-white/10 mb-6 transition-colors duration-500 group-hover:text-[#E5C583]/40" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  0{idx + 1}
-                </div>
-                <h3 className="text-[18px] md:text-[20px] font-normal text-white mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>{title}</h3>
-                <p className="text-[13px] md:text-[14px] leading-relaxed text-white/60">
-                  {desc}
-                </p>
-              </div>
-            ))}
-          </div>
-
         </div>
       </section>
 
-      {/* for landlords */}
-      <section
-        id="for-landlords"
-        className="min-h-screen flex flex-col justify-center bg-[#F4F6F6] dark:bg-[#07130d] px-8 py-32 overflow-hidden relative"
-      >
-        <div className="mx-auto max-w-[1400px] w-full flex flex-col lg:flex-row-reverse gap-16 lg:gap-24 relative z-10">
+      {/* About Lodale */}
+      <AboutLodaleSection C={C} isDark={isDark} />
 
-          <div className="lg:w-1/3 flex flex-col justify-center">
-            <span className="text-[10px] font-bold tracking-[0.2em] text-moss-700 dark:text-[#E5C583] uppercase mb-4 block">
-              Landlord Experience
-            </span>
-            <h2 className="text-4xl md:text-5xl font-normal text-ink-900 dark:text-white leading-[1.1] mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Professional.<br />Profitable.<br /><i className="text-moss-700 dark:text-[#E5C583]">Direct.</i>
-            </h2>
-            <p className="text-[14px] md:text-[15px] leading-relaxed text-ink-600 dark:text-white/70 max-w-sm">
-              Automate tenant checks, generate contracts, log rent collections, and respond to issues digitally. Keep your investments secure and organized without the middleman.
-            </p>
-            <div className="mt-12">
-              <button onClick={() => signUpAs("landlord")} className="px-8 py-3.5 rounded-full border border-ink-200 dark:border-white/20 text-[#262626] dark:text-white hover:bg-ink-900 hover:text-white dark:hover:bg-white dark:hover:text-[#07130d] transition-colors text-[11px] font-bold tracking-widest uppercase outline-none focus-visible:ring-2 focus-visible:ring-ink-900 dark:focus-visible:ring-white cursor-pointer">
-                Sign Up as Landlord
-              </button>
-            </div>
+      {/* Interactive How It Works One-Pager Section */}
+      <HowItWorksSection C={C} isDark={isDark} />
 
-            {/* Minimal Editorial Pull-Quote / Banner */}
-            <div className="mt-16 pt-8 border-t border-ink-100 dark:border-white/10">
-              <span className="text-[10px] text-ink-400 dark:text-white/40 uppercase tracking-[0.2em] block mb-3 font-semibold">Automated Alert</span>
-              <p className="text-ink-900 dark:text-white/90 font-medium italic text-[16px] md:text-[18px] leading-relaxed" style={{ fontFamily: "'Playfair Display', serif" }}>
-                "March rent is due in 3 days. 12 units are pending payment. Send a reminder to keep every record current."
-              </p>
-            </div>
-          </div>
 
-          <div className="lg:w-2/3 grid gap-x-12 gap-y-16 sm:grid-cols-2 place-content-center">
-            {LANDLORD_FEATURES.map(({ title, desc }, idx) => (
-              <div
-                key={title}
-                className="landlord-feature-card group flex flex-col pt-6 border-t border-ink-100 dark:border-white/5 hover:border-moss-700/30 dark:hover:border-[#E5C583]/30 transition-colors duration-500"
-              >
-                <div className="text-[3.5rem] leading-[0.8] font-normal text-ink-200/50 dark:text-white/10 mb-6 transition-colors duration-500 group-hover:text-moss-700/40 dark:group-hover:text-[#E5C583]/40" style={{ fontFamily: "'Playfair Display', serif" }}>
-                  0{idx + 1}
-                </div>
-                <h3 className="text-[18px] md:text-[20px] font-normal text-ink-900 dark:text-white mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>{title}</h3>
-                <p className="text-[13px] md:text-[14px] leading-relaxed text-ink-600 dark:text-white/60">
-                  {desc}
-                </p>
-              </div>
-            ))}
-          </div>
 
-        </div>
-      </section>
 
-      <BlogSection C={darkC} isDark={true} />
+
+      {/* Final CTA */}
+      <FinalCtaSection C={C} isDark={isDark} />
+
       <Footer />
     </div>
   );

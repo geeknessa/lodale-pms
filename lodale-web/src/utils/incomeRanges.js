@@ -5,7 +5,7 @@
 
 export const INCOME_RANGES = [
   "Less than ₦500,000 / yr",
-  "₦500,000 ₦1,000,000 / yr",
+  "₦500,000 - ₦1,000,000 / yr",
   "₦1,000,000 - ₦2,500,000 / yr",
   "₦2,500,000 - ₦5,000,000 / yr",
   "₦5,000,000 - ₦10,000,000 / yr",
@@ -28,7 +28,7 @@ export const PRESET_HOUSE_RULES = [
  * Returns a numerical tier (1 to 5) for income level comparisons.
  * Returns 0 if invalid or unspecified.
  */
-export function getIncomeTierLevel(rangeStr) {
+function getIncomeTierLevel(rangeStr) {
   if (!rangeStr || typeof rangeStr !== 'string') return 0;
   const str = rangeStr.trim();
   const lower = str.toLowerCase();

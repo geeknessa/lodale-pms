@@ -35,16 +35,9 @@ export default function MoveInSetupModal({ isOpen, onClose, application, onSucce
         additionalNotes,
         issuedAt: new Date().toISOString()
       };
-
-      // Store move-in instructions in localStorage
-      localStorage.setItem(`moveInRules_${appId}`, JSON.stringify(moveInSetupObj));
-
-      // Persist application status as move_in_ready / leased
-      const localLeasedIds = JSON.parse(localStorage.getItem("leasedAppIds") || "[]");
-      if (!localLeasedIds.includes(String(appId))) {
-        localLeasedIds.push(String(appId));
-        localStorage.setItem("leasedAppIds", JSON.stringify(localLeasedIds));
-      }
+      // Removed localStorage spoofing. 
+      // The application status will be updated to "leased" separately by the landlord approving/generating a lease.
+      // The tenant will receive the move-in guidelines via the real-time chat service below.
 
       // Send chat notification to tenant
       if (tenantId) {
@@ -64,9 +57,9 @@ export default function MoveInSetupModal({ isOpen, onClose, application, onSucce
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-lg bg-white dark:bg-[#16241F] rounded-3xl p-6 sm:p-8 shadow-2xl border border-neutral-200 dark:border-neutral-800 max-h-[90vh] overflow-y-auto relative text-left"
+        className="w-full max-w-lg bg-white dark:bg-[#07130D] rounded-3xl p-6 sm:p-8 shadow-2xl border border-neutral-200 dark:border-neutral-800 max-h-[90vh] overflow-y-auto relative text-left"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between pb-4 mb-5 border-b border-neutral-100 dark:border-white/10">

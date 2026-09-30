@@ -36,6 +36,7 @@ export default function Avatar({ src, name, className = "", style = {} }) {
         <img 
           src={src} 
           alt={name || "User Avatar"} 
+          loading="lazy"
           className="h-full w-full object-cover" 
           onError={() => setImgFailed(true)}
         />
