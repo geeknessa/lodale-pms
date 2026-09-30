@@ -11,13 +11,24 @@ dotenv.config();
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  console.error('[FATAL] DATABASE_URL environment variable is required. Set it in backend/.env');
-  process.exit(1);
+let dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  if (process.env.DB_USER || process.env.DB_NAME || process.env.DB_HOST) {
+    const user = process.env.DB_USER || 'postgres';
+    const password = process.env.DB_PASSWORD ? encodeURIComponent(process.env.DB_PASSWORD) : '';
+    const host = process.env.DB_HOST || 'localhost';
+    const port = process.env.DB_PORT || 5432;
+    const dbName = process.env.DB_NAME || 'lodale_db';
+    dbUrl = `postgres://${user}${password ? `:${password}` : ''}@${host}:${port}/${dbName}`;
+    process.env.DATABASE_URL = dbUrl;
+  } else {
+    console.error('[FATAL] DATABASE_URL or DB_* environment variables are required. Set them in backend/.env');
+    process.exit(1);
+  }
 }
 
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: dbUrl,
 });
 
 pool.on('error', (err, client) => {
