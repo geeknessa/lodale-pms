@@ -26,6 +26,10 @@ export const validate = (schemaOrSchemas) => (req, res, next) => {
       return res.status(400).json({ error: 'Validation failed', details: formattedErrors });
     }
     console.error('Validation Error Details:', error);
-    return res.status(400).json({ error: 'Invalid input', message: error?.message, stack: error?.stack });
+    return res.status(400).json({
+      error: 'Invalid input',
+      message: error?.message,
+      stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+    });
   }
 };

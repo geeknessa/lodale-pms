@@ -3,7 +3,14 @@ export const errorHandler = (err, req, res, next) => {
   if (err.stack) console.error('[Error Middleware Stack]:', err.stack);
   if (req.body && Object.keys(req.body).length > 0) {
     try {
-      console.error('[Error Middleware Body]:', JSON.stringify(req.body).substring(0, 500));
+      const sanitizedBody = { ...req.body };
+      const sensitiveKeys = ['password', 'currentPassword', 'newPassword', 'token', 'bank_account_number', 'tax_id', 'bankAccountNumber', 'taxId'];
+      for (const key of sensitiveKeys) {
+        if (key in sanitizedBody) {
+          sanitizedBody[key] = '[REDACTED]';
+        }
+      }
+      console.error('[Error Middleware Body]:', JSON.stringify(sanitizedBody).substring(0, 500));
     } catch (e) {
       console.error('[Error Middleware Body]: [Unserializable]');
     }

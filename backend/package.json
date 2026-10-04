@@ -24,7 +24,8 @@
     "nodemon": "^3.1.14"
   },
   "overrides": {
-    "qs": "^6.16.0"
+    "qs": "^6.16.0",
+    "chokidar": "^4.0.3"
   },
   "allowScripts": {
     "unrs-resolver@1.12.2": true

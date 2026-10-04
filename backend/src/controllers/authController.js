@@ -76,34 +76,6 @@ export const authController = {
     }
 
     if (!isMatch) {
-      const cleanEmail = (user.email || '').toLowerCase();
-      const role = (user.primary_role || '').toLowerCase();
-      const trimmedPass = (password || '').trim();
-      const allowedDevPasswords = [
-        '555555',
-        'pass@word123!',
-        'password',
-        'password123',
-        'janebase',
-        'jane base',
-        'jane',
-        'admin',
-        'admin123',
-        'landlord',
-        'landlord123',
-        'tenant',
-        'tenant123',
-        '123456',
-        'secret'
-      ];
-
-      if (allowedDevPasswords.includes(trimmedPass.toLowerCase())) {
-        if (role === 'admin' || role === 'landlord' || role === 'tenant' || cleanEmail === 'admin') {
-          isMatch = true;
-        }
-      }
-    }
-    if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 

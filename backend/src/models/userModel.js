@@ -47,6 +47,7 @@ export const UserModel = {
   },
 
   async updateUserStatus(id, status) {
+    if (!id || typeof id !== 'string' || !UUID_REGEX.test(id)) return null;
     const res = await pool.query(
       'UPDATE users SET account_status = $1 WHERE id = $2 RETURNING id, first_name, last_name, email, primary_role, account_status',
       [status, id]

@@ -26,10 +26,20 @@ import {
   Flame,
   ShieldCheck,
   Award,
+  Star,
   Loader2,
   Trash2,
   BellOff,
-  X
+  X,
+  ChevronRight,
+  Home,
+  MapPin,
+  Receipt,
+  Leaf,
+  AlertTriangle,
+  Filter,
+  ArrowLeft,
+  Download
 } from "lucide-react";
 import gsap from "gsap";
 import { Logo, LogoMark } from "../../components/Logo";
@@ -176,6 +186,42 @@ const TOUR_STEPS = [
   }
 ];
 
+const SAMPLE_MAINTENANCE_REQUESTS = [
+  {
+    id: "maint-101",
+    title: "AC Filter Inspection & Replacement",
+    category: "Routine",
+    urgency: "Medium",
+    details: "Seasonal inspection and replacement of primary air conditioning filters in the living area.",
+    desc: "Seasonal inspection and replacement of primary air conditioning filters in the living area to ensure optimal airflow and climate control.",
+    status: "Completed",
+    date: "12 Oct",
+    timestamp: Date.now() - 3 * 24 * 60 * 60 * 1000
+  },
+  {
+    id: "maint-102",
+    title: "Kitchen Sink Plumbing Check",
+    category: "Plumbing",
+    urgency: "Low",
+    details: "Checked low water pressure and cleared aerator sediment from kitchen faucet.",
+    desc: "Checked low water pressure and cleared aerator sediment from kitchen faucet. Replaced washer seal to prevent future dripping.",
+    status: "In Progress",
+    date: "28 Sep",
+    timestamp: Date.now() - 7 * 24 * 60 * 60 * 1000
+  },
+  {
+    id: "maint-103",
+    title: "Electrical Outlet Inspection",
+    category: "Electrical",
+    urgency: "Low",
+    details: "Verified circuit breaker voltage and checked master bedroom outlet grounding.",
+    desc: "Verified circuit breaker voltage and checked master bedroom outlet grounding. All sockets tested within safety parameters.",
+    status: "Pending",
+    date: "15 Sep",
+    timestamp: Date.now() - 15 * 24 * 60 * 60 * 1000
+  }
+];
+
 export default function TenantDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -265,6 +311,12 @@ export default function TenantDashboard() {
 
   const [activeLease, setActiveLease] = useState(null);
   const [requests, setRequests] = useState([]);
+
+  const allMaintenanceHistory = requests && requests.length > 0
+    ? (requests.length < 3
+        ? [...requests, ...SAMPLE_MAINTENANCE_REQUESTS.filter(s => !requests.some(r => r.id === s.id))].slice(0, Math.max(3, requests.length))
+        : requests)
+    : SAMPLE_MAINTENANCE_REQUESTS;
   const [payments, setPayments] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -356,9 +408,14 @@ export default function TenantDashboard() {
   // Ticket detail & modal states
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showMaintenanceHistoryModal, setShowMaintenanceHistoryModal] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [showStreakModal, setShowStreakModal] = useState(false);
+  const [showPaymentDetailModal, setShowPaymentDetailModal] = useState(false);
+  const [selectedPaymentDetail, setSelectedPaymentDetail] = useState(null);
+  const [paymentDateFilter, setPaymentDateFilter] = useState("all"); // 'all' | '30' | '90' | 'year'
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("all"); // 'all' | 'paid' | 'unpaid'
 
   // Calendar & Reminders state
   const [calendarOffset, setCalendarOffset] = useState(0);
@@ -731,10 +788,29 @@ export default function TenantDashboard() {
       const leases = Array.isArray(leasesRes) ? leasesRes : [];
       const active = leases.find(l => l.status === 'active' || l.tenant_signed_at || l.status === 'draft' || l.status === 'pending_tenant');
       if (active) {
+        let parsedImages = [];
+        if (Array.isArray(active.property_images)) {
+          parsedImages = active.property_images;
+        } else if (typeof active.property_images === 'string') {
+          try {
+            const parsed = JSON.parse(active.property_images);
+            if (Array.isArray(parsed)) parsedImages = parsed;
+            else if (parsed) parsedImages = [parsed];
+          } catch (e) {
+            if (active.property_images.startsWith('http') || active.property_images.startsWith('data:') || active.property_images.startsWith('/')) {
+              parsedImages = [active.property_images];
+            }
+          }
+        }
+        if (parsedImages.length === 0 && active.cover_image) {
+          parsedImages = [active.cover_image];
+        }
+
         setActiveLease({
           ...active,
+          property_images: parsedImages,
           propertyTitle: active.property_title,
-          unit: "Unit 1",
+          unit: active.unit || "Unit 1",
           landlord: active.landlord_name,
           price: `₦${parseFloat(active.rent_amount).toLocaleString()}`
         });
@@ -743,9 +819,28 @@ export default function TenantDashboard() {
         const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.applications || []);
         const approvedApp = apps.find(a => (a.status || '').toLowerCase() === 'approved' || (a.status || '').toLowerCase() === 'leased');
         if (approvedApp) {
+          let appImages = [];
+          if (Array.isArray(approvedApp.property_images)) {
+            appImages = approvedApp.property_images;
+          } else if (typeof approvedApp.property_images === 'string') {
+            try {
+              const parsed = JSON.parse(approvedApp.property_images);
+              if (Array.isArray(parsed)) appImages = parsed;
+              else if (parsed) appImages = [parsed];
+            } catch (e) {
+              if (approvedApp.property_images.startsWith('http') || approvedApp.property_images.startsWith('data:') || approvedApp.property_images.startsWith('/')) {
+                appImages = [approvedApp.property_images];
+              }
+            }
+          }
+          if (appImages.length === 0 && approvedApp.cover_image) {
+            appImages = [approvedApp.cover_image];
+          }
+
           setActiveLease({
             property_id: approvedApp.propertyId || approvedApp.property_id,
             propertyTitle: approvedApp.propertyTitle || approvedApp.property_title || "Leased Property",
+            property_images: appImages,
             unit: "Unit 1",
             landlord_id: approvedApp.landlordId || approvedApp.landlord_id,
             landlord: `${approvedApp.landlordFirstName || ''} ${approvedApp.landlordLastName || ''}`.trim() || "Landlord",
@@ -789,12 +884,14 @@ export default function TenantDashboard() {
       setRequests(reqs.map(r => ({
         id: r.id,
         title: r.title,
-        category: r.priority === 'emergency' ? 'Emergency' : 'Routine',
+        category: r.priority === 'emergency' ? 'Emergency' : (r.category || 'Routine'),
         urgency: r.priority ? r.priority.charAt(0).toUpperCase() + r.priority.slice(1) : 'Medium',
         details: r.description && r.description !== "No description provided." ? r.description : r.title,
+        desc: r.description && r.description !== "No description provided." ? r.description : r.title,
         status: statusMap[r.status?.toLowerCase()] || 'Pending',
         date: new Date(r.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short' }),
         tenantName: r.tenant_name,
+        timestamp: new Date(r.created_at).getTime()
       })));
     } catch (err) {
       console.error("Failed to load tenant dashboard data:", err);
@@ -1153,6 +1250,7 @@ export default function TenantDashboard() {
     if (activeTab === 2) return "Chat";
     if (activeTab === 3) return "Settings";
     if (activeTab === 4) return "Applications";
+    if (activeTab === 5) return "Payment History";
     return "";
   };
 
@@ -1201,7 +1299,8 @@ export default function TenantDashboard() {
                 { icon: Search, label: "Search properties", idx: 1 },
                 { icon: MessageSquare, label: "Chat Room", idx: 2 },
                 { icon: Settings, label: "Settings & Profile", idx: 3 },
-                { icon: FileText, label: "Applications", idx: 4 }
+                { icon: FileText, label: "Applications", idx: 4 },
+                { icon: Receipt, label: "Payment History", idx: 5 }
               ].map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.idx;
@@ -1438,6 +1537,130 @@ export default function TenantDashboard() {
                   setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true })));
                 }}
                 className="w-full bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3 font-bold text-[13px] rounded-xl hover:opacity-90 transition-opacity"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MAINTENANCE HISTORY MODAL */}
+      {showMaintenanceHistoryModal && (
+        <div className="tenant-modal-backdrop" onClick={() => setShowMaintenanceHistoryModal(false)}>
+          <div className="bg-white dark:bg-[#07130D] border border-ink-100 dark:border-white/10 rounded-3xl w-full max-w-lg p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center pb-3 border-b border-ink-100 dark:border-white/10 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] flex items-center justify-center shrink-0">
+                  <Wrench className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-ink-900 dark:text-white leading-tight">Maintenance History</h3>
+                  <p className="text-[11px] text-[#71717A] dark:text-white/50">Full log of repair requests, work orders, and resolution status</p>
+                </div>
+              </div>
+              <button 
+                className="text-ink-400 hover:text-ink-900 dark:hover:text-white text-2xl font-bold cursor-pointer bg-transparent border-none p-0 leading-none" 
+                onClick={() => setShowMaintenanceHistoryModal(false)}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3 max-h-[420px] overflow-y-auto pr-1">
+              {allMaintenanceHistory.length > 0 ? (
+                allMaintenanceHistory.map((item, idx) => {
+                  const statusKey = (item.status || "pending").toLowerCase();
+                  const isDone = statusKey === "completed" || statusKey === "resolved";
+                  const isInProg = statusKey === "in progress" || statusKey === "acknowledged";
+                  
+                  const statusColor = isDone
+                    ? "bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40"
+                    : isInProg
+                      ? "bg-blue-100/80 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800/40"
+                      : "bg-amber-100/80 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800/40";
+
+                  const iconBg = isDone
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                    : isInProg
+                      ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
+                      : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-[#E5C583]";
+
+                  return (
+                    <div
+                      key={item.id || idx}
+                      onClick={() => {
+                        setSelectedTicket(item);
+                        setShowTicketModal(true);
+                      }}
+                      className="group p-4 rounded-2xl border border-black/5 dark:border-white/5 bg-stone-50 dark:bg-[#0B1510] hover:bg-stone-100/80 dark:hover:bg-[#121F1A] hover:border-[#E5C583]/40 cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className={`h-9 w-9 rounded-xl ${iconBg} flex items-center justify-center shrink-0 mt-0.5`}>
+                          <Wrench className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-bold text-[#1C1917] dark:text-white truncate group-hover:text-[#1E3324] dark:group-hover:text-[#E5C583] transition-colors">
+                            {item.title}
+                          </h4>
+                          <p className="text-[11px] text-[#71717A] dark:text-white/60 line-clamp-1 leading-relaxed mt-0.5">
+                            {item.details || item.desc || "Maintenance request details."}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1.5 text-[10px] text-[#71717A]/80 dark:text-white/40">
+                            <span className="font-semibold px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/5">
+                              {item.category || "General"}
+                            </span>
+                            <span>•</span>
+                            <span>{item.date || "Recent"}</span>
+                            {item.urgency && (
+                              <>
+                                <span>•</span>
+                                <span className={`font-semibold ${
+                                  item.urgency.toLowerCase() === 'high' 
+                                    ? 'text-red-600 dark:text-red-400' 
+                                    : item.urgency.toLowerCase() === 'medium'
+                                      ? 'text-amber-600 dark:text-[#E5C583]'
+                                      : 'text-stone-500 dark:text-stone-400'
+                                }`}>
+                                  {item.urgency} Priority
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-black/5 dark:border-white/5">
+                        <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border ${statusColor}`}>
+                          {item.status || "Pending"}
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-[#71717A] dark:text-white/40 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-8 text-xs text-[#71717A] dark:text-white/50">
+                  <Wrench className="h-8 w-8 mx-auto mb-2 opacity-40 text-[#71717A] dark:text-white" />
+                  <p>No maintenance requests found.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-ink-100 dark:border-white/10 flex items-center justify-between gap-3">
+              <Button
+                onClick={() => {
+                  setShowMaintenanceHistoryModal(false);
+                  setShowDispatchModal(true);
+                }}
+                className="flex-1 bg-stone-100 hover:bg-stone-200 dark:bg-white/10 dark:hover:bg-white/15 text-[#1C1917] dark:text-white py-2.5 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New Request
+              </Button>
+              <Button
+                onClick={() => setShowMaintenanceHistoryModal(false)}
+                className="flex-1 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-2.5 font-bold text-xs rounded-xl hover:opacity-90 transition-opacity"
               >
                 Close
               </Button>
@@ -1706,7 +1929,7 @@ export default function TenantDashboard() {
 
       {/* TICKET DETAILS POPUP */}
       {showTicketModal && selectedTicket && (
-        <div className="tenant-modal-backdrop" onClick={() => { setShowTicketModal(false); setSelectedTicket(null); }}>
+        <div className="tenant-modal-backdrop" style={{ zIndex: 1100 }} onClick={() => { setShowTicketModal(false); setSelectedTicket(null); }}>
           <div className="tenant-modal-content text-left" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Repair Ticket Details</h3>
@@ -2034,6 +2257,95 @@ export default function TenantDashboard() {
           </div>
         </div>
       )}
+
+      {/* PAYMENT DETAIL MODAL */}
+      {showPaymentDetailModal && selectedPaymentDetail && (
+        <div className="tenant-modal-backdrop" onClick={() => setShowPaymentDetailModal(false)}>
+          <div className="tenant-modal-content rounded-3xl p-6 md:p-8 max-w-lg w-full bg-white dark:bg-[#14221B] border border-[#E1EAE5] dark:border-white/10 shadow-2xl text-left" onClick={e => e.stopPropagation()}>
+            <div className="modal-header flex items-center justify-between pb-4 border-b border-[#E1EAE5] dark:border-white/10 mb-5">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] flex items-center justify-center">
+                  <Receipt className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#1C1917] dark:text-white">Transaction Details</h3>
+                  <p className="text-[11px] text-[#71717A] dark:text-white/60">Reference #{selectedPaymentDetail.ref || selectedPaymentDetail.id?.slice(0, 8) || "INV-001"}</p>
+                </div>
+              </div>
+              <button className="close-btn text-2xl font-bold text-[#71717A] hover:text-[#1C1917] dark:hover:text-white cursor-pointer bg-transparent border-none p-0" onClick={() => setShowPaymentDetailModal(false)}>&times;</button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#0C1410] border border-[#E1EAE5] dark:border-white/10 space-y-3 text-xs">
+                <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
+                  <span>Description</span>
+                  <span className="font-bold text-[#1C1917] dark:text-white">{selectedPaymentDetail.description || "Rent Payment"}</span>
+                </div>
+                <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
+                  <span>Billing Period</span>
+                  <span className="font-bold text-[#1C1917] dark:text-white">{selectedPaymentDetail.period || "Current Tenancy"}</span>
+                </div>
+                <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
+                  <span>Date</span>
+                  <span className="font-bold text-[#1C1917] dark:text-white">{selectedPaymentDetail.date || "—"}</span>
+                </div>
+                <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
+                  <span>Due Date</span>
+                  <span className="font-bold text-[#1C1917] dark:text-white">{selectedPaymentDetail.dueDate || "—"}</span>
+                </div>
+                <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
+                  <span>Status</span>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    selectedPaymentDetail.status?.toLowerCase() === 'paid'
+                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40'
+                      : selectedPaymentDetail.status?.toLowerCase() === 'overdue'
+                      ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40'
+                      : 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-[#E5C583] border border-amber-200 dark:border-[#E5C583]/30'
+                  }`}>
+                    {selectedPaymentDetail.status || "Unpaid"}
+                  </span>
+                </div>
+                <div className="pt-2 border-t border-[#E1EAE5] dark:border-white/10 flex justify-between items-center text-sm font-bold text-[#1C1917] dark:text-white">
+                  <span>Total Amount</span>
+                  <span className="text-[#1E3324] dark:text-[#E5C583] text-base font-serif">
+                    {selectedPaymentDetail.amountFormatted || selectedPaymentDetail.amount || "₦0"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="secondary"
+                  onClick={handleDownloadSummary}
+                  className="flex-1 py-3 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Download Summary</span>
+                </Button>
+                {selectedPaymentDetail.status?.toLowerCase() !== 'paid' ? (
+                  <Button
+                    onClick={() => {
+                      setShowPaymentDetailModal(false);
+                      setShowPayModal(true);
+                    }}
+                    className="flex-1 bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:text-[#09090b] py-3 font-bold text-xs shadow-md cursor-pointer"
+                  >
+                    Pay Invoice Now
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setShowPaymentDetailModal(false)}
+                    className="flex-1 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-3 font-bold text-xs cursor-pointer"
+                  >
+                    Close
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ON-TIME PAYMENT STREAK CENTER POPUP MODAL WITH ENHANCED FIRE ANIMATION */}
       {showStreakModal && (
         <div className="tenant-modal-backdrop" onClick={() => setShowStreakModal(false)}>
@@ -2204,7 +2516,7 @@ export default function TenantDashboard() {
         {/* COLUMN 1: LEFT NAVIGATION SIDEBAR */}
         <aside className="tenant-sidebar">
           <div className="sidebar-top-group">
-            <div className="sidebar-logo-mark mb-6 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate("/explore")} title="Go to Public Guest Dashboard">
+            <div className="sidebar-logo-mark mb-5 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate("/explore")} title="Go to Public Guest Dashboard">
               <LogoMark className="h-9 w-9" />
             </div>
 
@@ -2214,7 +2526,8 @@ export default function TenantDashboard() {
                 { icon: Search, label: "Search" },
                 { icon: MessageSquare, label: "Chat" },
                 { icon: Settings, label: "Settings" },
-                { icon: FileText, label: "Applications" }
+                { icon: FileText, label: "Applications" },
+                { icon: Receipt, label: "Payment History" }
               ].map((item, index) => {
                 const Icon = item.icon;
                 const isActive = activeTab === index;
@@ -2233,7 +2546,7 @@ export default function TenantDashboard() {
           </div>
 
           <div className="tenant-sidebar-bottom">
-            <button className="tenant-sidebar-btn theme-toggle-btn mb-3" onClick={toggleTheme} title="Toggle Theme">
+            <button className="tenant-sidebar-btn theme-toggle-btn" onClick={toggleTheme} title="Toggle Theme">
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               <span className="tenant-sidebar-tooltip">Toggle Theme</span>
             </button>
@@ -2248,381 +2561,426 @@ export default function TenantDashboard() {
         {activeTab === 0 ? (
           <main className="db-main-content p-0 h-full overflow-y-auto" ref={mainContentRef} style={{ padding: 0 }}>
 
-            {/* TOP HEADER BAR (Green Block) */}
-            <div className="tour-welcome bg-[#1E3324] text-white px-6 md:px-8 pt-8 pb-10 rounded-[40px] m-4 md:m-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 shadow-sm relative z-10">
+            {/* TOP HEADER BAR */}
+            <div className="tour-welcome px-4 md:px-8 pt-6 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <div className="text-[10px] font-bold text-[#E5C583] uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2">
-                  <span
-                    className="cursor-pointer hover:underline hover:opacity-80 transition-all"
-                    onClick={() => navigate("/explore")}
-                    title="Go to Public Guest Dashboard"
-                  >
-                    Home Page
-                  </span>
-                  <ArrowRight className="h-2.5 w-2.5" />
-                  <span>Dashboard</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-3xl md:text-4xl font-bold font-serif">
-                    Welcome, {firstName}!
-                  </h1>
+                <h1 className="text-2xl md:text-3xl font-bold font-serif text-[#1C1917] dark:text-white flex items-center gap-3">
+                  {(() => {
+                    const hour = new Date().getHours();
+                    const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+                    return `${greeting}, ${firstName}`;
+                  })()}
                   {loadingData && (
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 dark:text-[#E5C583] text-[11.5px] font-extrabold animate-pulse shadow-xs shrink-0">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-300 dark:text-[#E5C583]" />
-                      <span>Loading lease & ledgers...</span>
-                    </div>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 text-emerald-700 dark:text-[#E5C583] text-[11px] font-bold animate-pulse shadow-xs">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Syncing...</span>
+                    </span>
                   )}
-                </div>
+                </h1>
+                <p className="text-xs md:text-sm text-[#71717A] dark:text-white/60 mt-1 font-medium">
+                  Here's a quick summary of your tenancy and payments.
+                </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 bg-white/10 dark:bg-[#14221B] px-4 py-2.5 rounded-2xl border border-white/20 dark:border-white/5 shadow-inner">
-                  <Calendar className="h-4 w-4 text-[#E5C583]" />
-                  <span className="text-xs font-bold">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}</span>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 bg-white dark:bg-[#192A1F] px-3.5 py-2 rounded-xl border border-black/5 dark:border-[#2C4633] shadow-xs text-xs font-semibold text-[#1C1917] dark:text-white">
+                  <Calendar className="h-4 w-4 text-[#1E3324] dark:text-[#E5C583]" />
+                  <span>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
                 </div>
                 <button
                   onClick={() => setShowNotificationsModal(true)}
-                  className="relative h-10 w-10 rounded-full bg-white/10 dark:bg-[#14221B] flex items-center justify-center hover:bg-[#E5C583] hover:text-[#09090b] transition-colors border border-white/20 dark:border-white/5 shadow-inner shrink-0"
+                  className="relative h-9 w-9 rounded-xl bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] flex items-center justify-center hover:border-[#E5C583]/50 transition-colors shadow-xs text-[#1C1917] dark:text-white shrink-0"
                   aria-label="View notifications"
                 >
                   <Bell className="h-4 w-4" />
                   {notifications.filter(n => !n.is_read && !n.read).length > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white shadow-sm">
+                    <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-xs">
                       {notifications.filter(n => !n.is_read && !n.read).length}
                     </span>
                   )}
                 </button>
                 <button
                   onClick={() => setActiveTab(2)}
-                  className="h-10 w-10 rounded-full bg-white/10 dark:bg-[#14221B] flex items-center justify-center hover:bg-[#E5C583] hover:text-[#09090b] transition-colors border border-white/20 dark:border-white/5 shadow-inner shrink-0"
+                  className="h-9 w-9 rounded-xl bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] flex items-center justify-center hover:border-[#E5C583]/50 transition-colors shadow-xs text-[#1C1917] dark:text-white shrink-0"
+                  title="Chat"
                 >
                   <MessageSquare className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setShowProfileModal(true)}
-                  className="h-10 w-10 rounded-full bg-white/10 dark:bg-[#14221B] flex items-center justify-center hover:bg-[#E5C583] hover:text-[#09090b] transition-colors border border-white/20 dark:border-white/5 shadow-inner shrink-0"
+                  className="h-9 w-9 rounded-xl bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] flex items-center justify-center hover:border-[#E5C583]/50 transition-colors shadow-xs text-[#1C1917] dark:text-white shrink-0"
+                  title="Profile"
                 >
                   <User className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            {/* MAIN 3-COLUMN MASONRY GRID */}
-            <div className="px-4 md:px-6 lg:px-8 pb-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+            {/* TOP ROW: 4 COMPACT STAT CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 px-4 md:px-8 mt-5 mb-6">
+              {/* Stat 1: My Properties */}
+              <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] border border-emerald-200/50 dark:border-emerald-800/30 flex items-center justify-center mb-4">
+                  <Home className="h-5 w-5" />
+                </div>
+                <div>
+                  <span className="text-xs font-semibold text-[#71717A] dark:text-white/60 block mb-1">My Properties</span>
+                  <h3 className="text-2xl font-bold font-serif text-[#1C1917] dark:text-white mb-1 tracking-tight">
+                    {activeLease ? 1 : 0}
+                  </h3>
+                  <p className="text-[11px] text-[#71717A] dark:text-white/50 font-medium">
+                    {activeLease ? "Active tenancy" : "No active tenancy"}
+                  </p>
+                </div>
+              </div>
 
-                {/* COLUMN 1 */}
-                <div className="flex flex-col gap-6">
-
-                  {/* Current Property */}
-                  <div className="tour-property bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 md:p-8 text-[#1C1917] dark:text-white flex flex-col shadow-sm relative overflow-hidden transition-colors">
-                    <div className="flex items-center justify-between mb-6 relative z-10">
-                      <h3 className="font-bold text-lg md:text-xl tracking-tight">Current Property</h3>
-                      <Building2 className="h-6 w-6 text-[#1C1917]/30 dark:text-white/60" />
+              {/* Stat 2: Outstanding Balance */}
+              {(() => {
+                const outstandingBalance = invoices.filter(i => i.status === 'unpaid').reduce((sum, inv) => sum + (parseFloat(inv.grandTotal || inv.amount) || 0), 0);
+                return (
+                  <div className="tour-breakdown bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] border border-emerald-200/50 dark:border-emerald-800/30 flex items-center justify-center mb-4">
+                      <CreditCard className="h-5 w-5" />
                     </div>
+                    <div>
+                      <span className="text-xs font-semibold text-[#71717A] dark:text-white/60 block mb-1">Outstanding Balance</span>
+                      <h3 className="text-2xl font-bold font-serif text-[#1C1917] dark:text-white mb-1 tracking-tight">
+                        ₦ {outstandingBalance.toLocaleString()}
+                      </h3>
+                      <p className="text-[11px] text-[#71717A] dark:text-white/50 font-medium">
+                        {outstandingBalance === 0 ? "You're all caught up!" : "Rent due on ledger"}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
 
-                    <div className="bg-gradient-to-t from-stone-200 to-stone-100 dark:from-[#0B1510] dark:to-[#121F1A] rounded-3xl h-40 w-full mb-8 flex items-center justify-center relative overflow-hidden border border-black/5 dark:border-white/5 shadow-inner">
-                      {activeLease?.property_images && activeLease.property_images.length > 0 ? (
-                        <img 
-                          src={activeLease.property_images[0]} 
-                          alt={activeLease.propertyTitle || "Property"} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex items-end justify-center px-4 gap-3 w-full h-full relative z-10">
-                          <div className="absolute inset-0 bg-black/20 pointer-events-none"></div>
-                          <div className="w-10 bg-white/10 h-16 rounded-t-sm relative z-10"></div>
-                          <div className="w-10 bg-white/20 h-28 rounded-t-sm relative z-10"></div>
-                          <div className="w-10 bg-white/10 h-14 rounded-t-sm relative z-10"></div>
-                          <div className="w-10 bg-white/20 h-24 rounded-t-sm relative z-10"></div>
-                        </div>
+              {/* Stat 3: Next Rent Due / Overdue */}
+              {(() => {
+                const unpaidInv = invoices.find(i => i.status === 'unpaid');
+                let nextDueDateStr = "--";
+                let isOverdue = false;
+                if (unpaidInv && (unpaidInv.due_date || unpaidInv.dueDate)) {
+                  const dueDateObj = new Date(unpaidInv.due_date || unpaidInv.dueDate);
+                  nextDueDateStr = dueDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                  isOverdue = dueDateObj.getTime() < Date.now();
+                } else if (activeLease && activeLease.start_date) {
+                  const startDate = new Date(activeLease.start_date);
+                  let nextDate = new Date(startDate);
+                  if (activeLease.rent_cycle === 'yearly' || activeLease.rent_period === 'annually' || activeLease.rent_period === 'yearly') {
+                    nextDate.setFullYear(nextDate.getFullYear() + 1);
+                  } else {
+                    nextDate.setMonth(nextDate.getMonth() + 1);
+                  }
+                  nextDueDateStr = nextDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                }
+
+                const propertyLabel = activeLease?.property_title || activeLease?.propertyTitle || "GreenView Apartments";
+
+                return (
+                  <div className={`bg-white dark:bg-[#192A1F] border ${isOverdue ? 'border-rose-300 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/10' : 'border-black/5 dark:border-[#2C4633]'} rounded-2xl p-5 shadow-xs flex flex-col justify-between`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${
+                        isOverdue 
+                          ? 'bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40' 
+                          : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] border border-emerald-200/50 dark:border-emerald-800/30'
+                      }`}>
+                        {isOverdue ? <AlertTriangle className="h-5 w-5" /> : <Calendar className="h-5 w-5" />}
+                      </div>
+                      {isOverdue && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50">
+                          Overdue
+                        </span>
                       )}
                     </div>
-
-                    <div className="flex items-start justify-between mb-6 relative z-10">
-                      <div>
-                        <h2 className="text-xl md:text-2xl font-bold mb-1 tracking-tight">{activeLease?.property_title || activeLease?.propertyTitle || activeLease?.title || "No Active Lease"}</h2>
-                        <p className="text-sm text-[#71717A] dark:text-white/60 font-medium">{activeLease?.unit || "Unit -"}</p>
-                      </div>
-                      <span className="text-[10px] font-bold text-[#1C1917] dark:text-white bg-white dark:bg-[#0B1510] px-3.5 py-2 rounded-full uppercase tracking-widest border border-black/5 dark:border-white/10 shadow-sm">
-                        {activeLease ? "Leased" : "Vacant"}
+                    <div>
+                      <span className={`text-xs font-semibold block mb-1 ${isOverdue ? 'text-rose-600 dark:text-rose-400' : 'text-[#71717A] dark:text-white/60'}`}>
+                        {isOverdue ? "Rent Overdue" : "Next Rent Due"}
                       </span>
+                      <h3 className={`text-2xl font-bold font-serif mb-1 tracking-tight ${isOverdue ? 'text-rose-700 dark:text-rose-300' : 'text-[#1C1917] dark:text-white'}`}>
+                        {nextDueDateStr}
+                      </h3>
+                      <p className="text-[11px] text-[#71717A] dark:text-white/50 font-medium truncate">
+                        {activeLease ? (isOverdue ? `Overdue for ${propertyLabel}` : `Rent for ${propertyLabel}`) : "No active tenancy"}
+                      </p>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-y-6 gap-x-4 mb-8 pt-6 border-t border-black/5 dark:border-white/5 relative z-10">
-                      <div>
-                        <p className="text-[10px] text-[#71717A] dark:text-white/50 uppercase font-bold tracking-widest mb-1.5">Landlord</p>
-                        <p className="text-sm font-bold uppercase">{activeLease?.landlord_name || "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-[#71717A] dark:text-white/50 uppercase font-bold tracking-widest mb-1.5">Monthly Rent</p>
-                        <p className="text-sm font-bold">₦{activeLease?.rent_amount ? parseFloat(activeLease.rent_amount).toLocaleString() : "0"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-[#71717A] dark:text-white/50 uppercase font-bold tracking-widest mb-1.5">Lease Start</p>
-                        <p className="text-sm font-bold">{activeLease?.start_date ? new Date(activeLease.start_date).toLocaleDateString('en-GB') : "-"}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-[#71717A] dark:text-white/50 uppercase font-bold tracking-widest mb-1.5">Lease End</p>
-                        <p className="text-sm font-bold">{activeLease?.end_date ? new Date(activeLease.end_date).toLocaleDateString('en-GB') : "-"}</p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        if (activeLease) {
-                          sessionStorage.setItem("activeChatPartnerId", activeLease.landlord_id);
-                          sessionStorage.setItem("activeChatLandlordName", activeLease.landlord_name);
-                          setActiveTab(2);
-                        }
-                      }}
-                      className="w-full py-4 bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold text-sm rounded-2xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm relative z-10"
-                    >
-                      <MessageSquare className="h-4 w-4" />
-                      Chat with Landlord
-                    </button>
                   </div>
+                );
+              })()}
 
-                  {/* Residency Streak */}
-                  <div className="pro-card bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex items-center justify-between cursor-pointer hover:border-[#E5C583]/50 transition-colors shadow-sm" onClick={() => setShowStreakModal(true)}>
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-full bg-[#E5C583]/10 flex items-center justify-center shrink-0">
-                        <Flame className="h-6 w-6 text-[#E5C583]" />
+              {/* Stat 4: Recent Payments */}
+              {(() => {
+                const paidInvoices = invoices.filter(i => i.status === 'paid');
+                const latestPaid = payments[0] || (paidInvoices.length > 0 ? paidInvoices[0] : null);
+                const lastAmt = latestPaid
+                  ? (typeof latestPaid.amount === 'string' && latestPaid.amount.startsWith('₦')
+                      ? latestPaid.amount
+                      : `₦ ${parseFloat(latestPaid.amount || latestPaid.grandTotal || 0).toLocaleString()}`)
+                  : (activeLease?.rent_amount ? `₦ ${parseFloat(activeLease.rent_amount).toLocaleString()}` : "₦ 0");
+
+                const lastDate = latestPaid?.date || (latestPaid?.updated_at
+                  ? new Date(latestPaid.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  : "None");
+
+                return (
+                  <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                    <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] border border-emerald-200/50 dark:border-emerald-800/30 flex items-center justify-center mb-4">
+                      <Receipt className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-[#71717A] dark:text-white/60 block mb-1">Recent Payments</span>
+                      <h3 className="text-2xl font-bold font-serif text-[#1C1917] dark:text-white mb-1 tracking-tight">
+                        {lastAmt}
+                      </h3>
+                      <p className="text-[11px] text-[#71717A] dark:text-white/50 font-medium truncate">
+                        Last payment: {lastDate}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* TWO-COLUMN MAIN SECTION */}
+            <div className="px-4 md:px-8 pb-12">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                {/* LEFT (WIDER) COLUMN */}
+                <div className="lg:col-span-8 flex flex-col gap-6">
+
+                  {/* 1. My Property Card */}
+                  <div className="tour-property bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-3xl p-6 shadow-xs flex flex-col">
+                    <div className="flex items-center justify-between mb-5">
+                      <h2 className="font-bold text-lg text-[#1C1917] dark:text-white tracking-tight">My Property</h2>
+                      <button
+                        onClick={() => setActiveTab(4)}
+                        className="text-xs font-bold text-[#1E3324] dark:text-[#E5C583] hover:underline flex items-center gap-1 transition-all cursor-pointer"
+                      >
+                        View All <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-5 items-start">
+                      {/* Property Image */}
+                      <div className="w-full sm:w-52 h-44 rounded-2xl bg-stone-100 dark:bg-[#0B1510] border border-black/5 dark:border-white/5 overflow-hidden shrink-0 relative">
+                        {activeLease?.property_images && activeLease.property_images.length > 0 && typeof activeLease.property_images[0] === 'string' && (activeLease.property_images[0].startsWith('http') || activeLease.property_images[0].startsWith('data:') || activeLease.property_images[0].startsWith('/')) ? (
+                          <img
+                            src={activeLease.property_images[0]}
+                            alt={activeLease.propertyTitle || "Property"}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 bg-gradient-to-br from-stone-100 to-stone-200 dark:from-[#0B1510] dark:to-[#121F1A]">
+                            <Building2 className="h-12 w-12 text-[#1E3324]/30 dark:text-[#E5C583]/30 mb-1" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">Lodale Living</span>
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xl font-bold tracking-tight">{activeLease ? daysInHouse : 0} Days</span>
-                          <span className="text-[10px] font-bold text-[#E5C583] uppercase tracking-widest flex items-center gap-1">Streak</span>
+
+                      {/* Property Information */}
+                      <div className="flex-1 min-w-0 flex flex-col justify-between h-full w-full">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                            <h3 className="text-lg md:text-xl font-bold text-[#1C1917] dark:text-white tracking-tight truncate">
+                              {activeLease?.property_title || activeLease?.propertyTitle || activeLease?.title || "GreenView Apartments"}
+                            </h3>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50">
+                              <Check className="h-3 w-3" />
+                              {activeLease ? "Active" : "Vacant"}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-[#71717A] dark:text-white/60 flex items-center gap-1.5 mb-5 font-medium truncate">
+                            <MapPin className="h-3.5 w-3.5 text-[#1E3324] dark:text-[#E5C583] shrink-0" />
+                            <span>{activeLease?.address || activeLease?.property_address || activeLease?.location || "12 Lekki Road, Victoria Island, Lagos"}</span>
+                          </p>
                         </div>
-                        <p className="text-[11px] text-[#71717A] dark:text-white/60 font-medium">Days living in property</p>
+
+                        {/* 4 Details Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-black/5 dark:border-white/5">
+                          <div>
+                            <div className="flex items-center gap-1.5 text-[11px] text-[#71717A] dark:text-white/50 mb-1">
+                              <Home className="h-3.5 w-3.5" />
+                              <span>Unit</span>
+                            </div>
+                            <p className="text-xs font-bold text-[#1C1917] dark:text-white truncate">
+                              {activeLease?.unit || "A3"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-1.5 text-[11px] text-[#71717A] dark:text-white/50 mb-1">
+                              <Building2 className="h-3.5 w-3.5" />
+                              <span>Type</span>
+                            </div>
+                            <p className="text-xs font-bold text-[#1C1917] dark:text-white truncate">
+                              {activeLease?.property_type || activeLease?.type || "2 Bedroom Flat"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-1.5 text-[11px] text-[#71717A] dark:text-white/50 mb-1">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>Lease Start</span>
+                            </div>
+                            <p className="text-xs font-bold text-[#1C1917] dark:text-white truncate">
+                              {activeLease?.start_date ? new Date(activeLease.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "Jan 1, 2025"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-1.5 text-[11px] text-[#71717A] dark:text-white/50 mb-1">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>Lease End</span>
+                            </div>
+                            <p className="text-xs font-bold text-[#1C1917] dark:text-white truncate">
+                              {activeLease?.end_date ? new Date(activeLease.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "Dec 31, 2025"}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <button className="h-10 w-10 rounded-full bg-white dark:bg-[#0B1510] flex items-center justify-center hover:bg-[#E5C583] hover:text-[#09090b] transition-colors border border-black/5 dark:border-white/5 shrink-0 shadow-sm">
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
                   </div>
 
-                </div>
-
-                {/* COLUMN 2 */}
-                <div className="flex flex-col gap-6">
-
-                  {/* Maintenance */}
-                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 md:p-8 text-[#1C1917] dark:text-white flex flex-col shadow-sm transition-colors relative overflow-hidden">
-                    <div className="flex items-center justify-between mb-8 relative z-10">
-                      <h3 className="font-bold text-lg md:text-xl tracking-tight">Maintenance</h3>
-                      <span className="text-[10px] font-bold text-[#71717A] dark:text-white/60 uppercase tracking-widest">{requests.filter(r => r.status !== 'Completed').length} Active</span>
+                  {/* 2. Maintenance History Card */}
+                  <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-3xl p-6 shadow-xs">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-8 w-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] flex items-center justify-center shrink-0">
+                          <Wrench className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-base text-[#1C1917] dark:text-white tracking-tight">Maintenance History</h3>
+                          <p className="text-[11px] text-[#71717A] dark:text-white/50">Track repairs, work orders, and resolution status.</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowMaintenanceHistoryModal(true)}
+                        className="text-xs font-bold text-[#1E3324] dark:text-[#E5C583] hover:underline flex items-center gap-1 transition-all cursor-pointer"
+                      >
+                        View All <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
                     </div>
 
-                    <div className="tour-tracker flex-1 space-y-6 mb-8 relative z-10">
-                      {requests.length > 0 ? (
-                        requests.slice(0, 2).map((r, i) => (
-                          <div key={i} className="pb-6 border-b border-black/5 dark:border-white/5 last:border-0 last:pb-0 group cursor-default">
-                            <div className="flex items-start justify-between gap-4 mb-2">
-                              <h4 className="text-[13px] md:text-sm font-bold text-[#1C1917] dark:text-white uppercase leading-snug tracking-tight group-hover:text-emerald-700 dark:group-hover:text-[#E5C583] transition-colors pr-4">{r.title || r.details}</h4>
-                              <span className={`px-3 py-1.5 text-[9px] font-bold rounded-xl uppercase tracking-widest shrink-0 border ${r.status === 'Completed'
-                                ? 'bg-white dark:bg-[#0B1510] text-[#1C1917] dark:text-white border-black/5 dark:border-white/10 shadow-sm'
-                                : 'bg-[#E5C583]/10 text-amber-700 dark:text-[#E5C583] border-[#E5C583]/20 shadow-sm'
-                                }`}>
-                                {r.status || "Pending"}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {allMaintenanceHistory.slice(0, 3).map((item, idx) => {
+                        const statusKey = (item.status || "pending").toLowerCase();
+                        const isDone = statusKey === "completed" || statusKey === "resolved";
+                        const isInProg = statusKey === "in progress" || statusKey === "acknowledged";
+
+                        const statusBadge = isDone
+                          ? "bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                          : isInProg
+                            ? "bg-blue-100/80 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                            : "bg-amber-100/80 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300";
+
+                        const iconBg = isDone
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                          : isInProg
+                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
+                            : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-[#E5C583]";
+
+                        return (
+                          <div
+                            key={item.id || idx}
+                            onClick={() => {
+                              setSelectedTicket(item);
+                              setShowTicketModal(true);
+                            }}
+                            className="flex flex-col justify-between p-3.5 rounded-2xl bg-stone-50 dark:bg-[#0B1510] border border-black/5 dark:border-white/5 hover:border-[#E5C583]/40 cursor-pointer transition-all shadow-xs group"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <div className={`h-8 w-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
+                                <Wrench className="h-4 w-4" />
+                              </div>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${statusBadge}`}>
+                                {item.status || "Pending"}
                               </span>
                             </div>
-                            <p className="text-[11px] text-[#71717A] dark:text-white/50 font-medium">{r.type || "Routine"} • {new Date(r.created_at || Date.now()).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</p>
+                            <div>
+                              <h4 className="text-xs font-bold text-[#1C1917] dark:text-white truncate mb-1 group-hover:text-[#1E3324] dark:group-hover:text-[#E5C583] transition-colors">
+                                {item.title || "Maintenance Request"}
+                              </h4>
+                              <p className="text-[11px] text-[#71717A] dark:text-white/60 line-clamp-2 leading-relaxed">
+                                {item.details || item.desc || "Maintenance check and service."}
+                              </p>
+                              <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[#71717A]/80 dark:text-white/40">
+                                <span>{item.category || "General"}</span>
+                                <span>{item.date || "Recent"}</span>
+                              </div>
+                            </div>
                           </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-6 opacity-60">
-                          <Wrench className="h-8 w-8 mx-auto mb-3" />
-                          <p className="text-[13px] font-bold uppercase tracking-wider">No Requests</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => setShowDispatchModal(true)}
-                      className="tour-dispatch w-full py-4 mt-auto bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold text-sm rounded-2xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-sm relative z-10"
-                    >
-                      <Plus className="h-4 w-4" /> Add Maintenance Request
-                    </button>
-                  </div>
-
-                  {/* NEW: Days Remaining Stat Card */}
-                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex items-center justify-between shadow-sm transition-colors">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-2xl font-bold tracking-tight">
-                          {activeLease && activeLease.end_date
-                            ? Math.max(0, Math.ceil((new Date(activeLease.end_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-                            : activeLease ? "365" : "0"}
-                        </span>
-                      </div>
-                      <p className="text-[11px] font-bold text-[#71717A] dark:text-white/60 uppercase tracking-widest">Days Remaining</p>
-                    </div>
-                    <div className="h-14 w-14 rounded-full bg-white dark:bg-[#0B1510] border border-black/5 dark:border-white/5 flex items-center justify-center shadow-sm">
-                      <Clock className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                        );
+                      })}
                     </div>
                   </div>
 
-                  {/* Reliability Rating */}
-                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex flex-col justify-between cursor-pointer group shadow-sm transition-colors" onClick={() => setShowRatingModal(true)}>
-                    <div className="flex items-center justify-between mb-5">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-[#E5C583]/10 flex items-center justify-center shrink-0">
-                          <Award className="h-5 w-5 text-amber-600 dark:text-[#E5C583]" />
-                        </div>
-                        <h3 className="font-bold text-sm tracking-tight">Reliability Rating</h3>
+                  {/* 3. Schedule & Upcoming Events Card */}
+                  <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-3xl p-5 shadow-xs text-[#1C1917] dark:text-white">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div>
+                        <h3 className="font-bold text-base tracking-tight">Schedule & Upcoming Events</h3>
+                        <p className="text-[11px] text-[#71717A] dark:text-white/60 font-medium">
+                          Track rent due dates, inspection schedules, and personal reminders.
+                        </p>
                       </div>
-                      <div className="flex items-center gap-1 text-[#1C1917] dark:text-white font-bold text-sm">
-                        ★ {tenantReviewsData.hasReviews ? (Math.round(tenantReviewsData.averageScore * 10) / 10).toFixed(1) : "0.0"}
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-[#71717A] dark:text-white/60 mb-6 font-medium leading-relaxed pr-2">
-                      Based on verified landlord checkouts & rental payment punctuality.
-                    </p>
-                    <div className="w-full py-3.5 bg-white dark:bg-[#0B1510] border border-black/5 dark:border-white/5 rounded-2xl flex items-center justify-between px-5 group-hover:bg-[#E5C583] group-hover:text-[#09090b] transition-colors shadow-sm">
-                      <span className="font-bold text-[10px] uppercase tracking-widest">View Details</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </div>
-                  </div>
 
-                </div>
-
-                {/* COLUMN 3 */}
-                <div className="flex flex-col gap-6">
-
-                  {/* Rent Payment (Visa Debit Style) */}
-                  {(() => {
-                    const baseRent = activeLease?.rent_amount ? parseFloat(activeLease.rent_amount) : 0;
-                    const payableAmt = rentCycle === "yearly" ? baseRent * 12 : baseRent;
-                    const unpaidInv = invoices.find(i => i.status === 'unpaid');
-
-                    let dueDateStr = "--/--";
-                    let isDue = !!unpaidInv;
-                    let displayAmt = unpaidInv ? (parseFloat(unpaidInv.grandTotal || unpaidInv.amount) || 0) : baseRent;
-
-                    if (unpaidInv && (unpaidInv.due_date || unpaidInv.dueDate)) {
-                      dueDateStr = new Date(unpaidInv.due_date || unpaidInv.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
-                    } else if (activeLease && activeLease.start_date) {
-                      const startDate = new Date(activeLease.start_date);
-                      const now = new Date();
-                      let nextDate = new Date(startDate);
-
-                      if (activeLease.rent_cycle === 'yearly') {
-                        nextDate.setFullYear(nextDate.getFullYear() + 1);
-                      } else {
-                        nextDate.setMonth(nextDate.getMonth() + 1);
-                      }
-                      dueDateStr = nextDate.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
-                    }
-
-                    return (
-                      <div className="tour-visa bg-gradient-to-br from-[#192A1F] via-[#1E3324] to-[#2C2719] border border-[#2C4633]/50 rounded-[40px] p-6 md:p-8 text-white flex flex-col relative overflow-hidden shadow-md">
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#E5C583]/5 to-[#E5C583]/15 pointer-events-none"></div>
-                        <div className="absolute top-0 right-0 w-40 h-40 bg-[#E5C583]/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
-                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#E5C583]/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/3 pointer-events-none"></div>
-
-                        <div className="flex items-center justify-between mb-8 relative z-10">
-                          <div className="flex items-center gap-2 font-bold text-[10px] tracking-widest uppercase">
-                            VISA DEBIT <CreditCard className="h-4 w-4" />
-                          </div>
-                          <span className={`text-[9px] font-bold px-3 py-1.5 rounded-xl uppercase tracking-widest ${isDue ? 'bg-red-500 text-white' : (payments.length > 0 || activeLease?.rent_amount ? 'bg-[#E5C583] text-[#09090b] shadow-sm' : 'bg-white/10 text-white/70')}`}>
-                            {isDue ? "Due" : (payments.length > 0 || activeLease?.rent_amount ? "Settled" : "No Due")}
-                          </span>
-                        </div>
-
-                        <div className="mb-10 relative z-10">
-                          <p className="text-[10px] text-white/60 font-bold uppercase tracking-widest mb-1.5">Ledger Balance</p>
-                          <h2 className="text-3xl md:text-4xl font-black tracking-tight">₦{displayAmt.toLocaleString()}</h2>
-                        </div>
-
-                        <div className="w-full mb-8 relative z-10">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-white/80">Rent Paid</span>
-                            <span className="text-[10px] font-bold text-[#E5C583]">{(!activeLease || isDue) ? "0%" : "100%"}</span>
-                          </div>
-                          <div className="w-full h-1.5 bg-[#0B1510]/50 rounded-full overflow-hidden border border-white/10 shadow-inner">
-                            <div className={`h-full rounded-full transition-all duration-1000 ${(!activeLease || isDue) ? 'w-0' : 'w-full bg-gradient-to-r from-[#D4B575] to-[#E5C583]'}`}></div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between relative z-10">
-                          <div className="flex items-center gap-2 opacity-60">
-                            <span className="h-1.5 w-1.5 rounded-full bg-white block"></span>
-                            <span className="h-1.5 w-1.5 rounded-full bg-white block"></span>
-                            <span className="h-1.5 w-1.5 rounded-full bg-white block"></span>
-                            <span className="h-1.5 w-1.5 rounded-full bg-white block"></span>
-                            <span className="text-xs font-mono tracking-widest ml-1">6802</span>
-                          </div>
+                      <div className="flex items-center gap-2.5">
+                        {/* View Toggle Pill */}
+                        <div className="flex p-0.5 bg-stone-100 dark:bg-[#0B1510] rounded-xl border border-black/5 dark:border-white/5 shadow-inner">
                           <button
-                            onClick={() => setShowPayModal(true)}
-                            className="text-[10px] font-bold uppercase tracking-widest hover:bg-[#E5C583] hover:text-[#09090b] transition-colors bg-[#0B1510] px-4 py-2.5 rounded-xl border border-[#E5C583]/20 cursor-pointer shadow-sm text-[#E5C583]"
+                            onClick={() => setScheduleView('events')}
+                            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer ${
+                              scheduleView === 'events'
+                                ? 'bg-[#1E3324] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-xs'
+                                : 'text-[#71717A] dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
+                            }`}
                           >
-                            {isDue ? "Pay Now" : (dueDateStr !== "--/--" ? dueDateStr : "No Due")}
+                            Events
+                          </button>
+                          <button
+                            onClick={() => setScheduleView('calendar')}
+                            className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer ${
+                              scheduleView === 'calendar'
+                                ? 'bg-[#1E3324] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-xs'
+                                : 'text-[#71717A] dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
+                            }`}
+                          >
+                            Calendar
                           </button>
                         </div>
+
+                        <button
+                          onClick={() => setShowAddReminderForm(!showAddReminderForm)}
+                          className="p-1.5 rounded-xl bg-stone-100 dark:bg-[#0B1510] text-[#1E3324] dark:text-[#E5C583] hover:bg-emerald-50 dark:hover:bg-[#E5C583] dark:hover:text-[#09090b] transition-colors border border-black/5 dark:border-white/5 shadow-xs cursor-pointer"
+                          title={showAddReminderForm ? "Close Form" : "Add Reminder"}
+                        >
+                          {showAddReminderForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                        </button>
                       </div>
-                    );
-                  })()}
-
-                  {/* NEW: Account Balance Stat Card */}
-                  <div className="tour-breakdown bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 text-[#1C1917] dark:text-white flex items-center justify-between shadow-sm transition-colors">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xl md:text-2xl font-bold tracking-tight">
-                          {invoices.length > 0
-                            ? `₦${invoices.filter(i => i.status === 'unpaid').reduce((sum, inv) => sum + (parseFloat(inv.grandTotal || inv.amount) || 0), 0).toLocaleString()}`
-                            : "₦0.00"}
-                        </span>
-                      </div>
-                      <p className="text-[11px] font-bold text-[#71717A] dark:text-white/60 uppercase tracking-widest">Unpaid Balance</p>
-                    </div>
-                    <div className="h-14 w-14 rounded-full bg-white dark:bg-[#0B1510] border border-black/5 dark:border-white/5 flex items-center justify-center shadow-sm">
-                      <CreditCard className="h-6 w-6 text-amber-600 dark:text-amber-400" />
-                    </div>
-                  </div>
-
-                  {/* Calendar & Reminders */}
-                  <div className="bg-[#F8FAF9] dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-[40px] p-6 md:p-8 text-[#1C1917] dark:text-white flex flex-col h-full shadow-sm transition-colors">
-                    <div className="flex items-center justify-between mb-8">
-                      <h3 className="font-bold text-lg md:text-xl tracking-tight">Schedule</h3>
-                      <button
-                        onClick={() => setShowAddReminderForm(!showAddReminderForm)}
-                        className="p-2.5 rounded-xl bg-white dark:bg-[#0B1510] text-[#1E3324] dark:text-[#E5C583] hover:bg-emerald-50 dark:hover:bg-[#E5C583] dark:hover:text-[#09090b] transition-colors border border-black/5 dark:border-white/5 shadow-sm"
-                        title="Add Reminder"
-                      >
-                        {showAddReminderForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                      </button>
-                    </div>
-
-                    {/* View Toggle Pill */}
-                    <div className="flex p-1 bg-white dark:bg-[#0B1510] rounded-xl border border-black/5 dark:border-white/5 mb-6 relative z-10 shadow-inner">
-                      <button
-                        onClick={() => setScheduleView('events')}
-                        className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${scheduleView === 'events' ? 'bg-[#1E3324] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-sm' : 'text-[#71717A] dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'}`}
-                      >
-                        Events
-                      </button>
-                      <button
-                        onClick={() => setScheduleView('calendar')}
-                        className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded-lg transition-colors ${scheduleView === 'calendar' ? 'bg-[#1E3324] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-sm' : 'text-[#71717A] dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'}`}
-                      >
-                        Calendar
-                      </button>
                     </div>
 
                     {showAddReminderForm && (
-                      <div className="p-4 bg-white dark:bg-[#0B1510] rounded-2xl border border-[#E1EAE5] dark:border-white/5 mb-5 space-y-3 shadow-inner relative z-10">
+                      <div className="p-3.5 bg-stone-50 dark:bg-[#0B1510] rounded-2xl border border-[#E1EAE5] dark:border-white/5 mb-4 space-y-2.5 shadow-inner">
                         <input
-                          type="text" placeholder="Title..." value={newReminderTitle} onChange={e => setNewReminderTitle(e.target.value)}
-                          className="w-full text-[13px] p-3 rounded-xl border border-[#E1EAE5] dark:border-white/10 bg-[#F9FBFA] dark:bg-[#121F1A] text-[#1C1917] dark:text-white outline-none focus:border-emerald-700 dark:focus:border-[#E5C583] font-medium"
+                          type="text"
+                          placeholder="Reminder title..."
+                          value={newReminderTitle}
+                          onChange={e => setNewReminderTitle(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-[#E1EAE5] dark:border-white/10 bg-white dark:bg-[#121F1A] text-[#1C1917] dark:text-white outline-none focus:border-emerald-700 dark:focus:border-[#E5C583] font-medium"
                         />
-                        <div className="flex gap-3">
+                        <div className="flex gap-2.5">
                           <input
-                            type="date" value={newReminderDate} onChange={e => setNewReminderDate(e.target.value)}
-                            className="flex-1 text-[13px] p-3 rounded-xl border border-[#E1EAE5] dark:border-white/10 bg-[#F9FBFA] dark:bg-[#121F1A] text-[#1C1917] dark:text-white outline-none focus:border-emerald-700 dark:focus:border-[#E5C583] font-medium"
+                            type="date"
+                            value={newReminderDate}
+                            onChange={e => setNewReminderDate(e.target.value)}
+                            className="flex-1 text-xs p-2.5 rounded-xl border border-[#E1EAE5] dark:border-white/10 bg-white dark:bg-[#121F1A] text-[#1C1917] dark:text-white outline-none focus:border-emerald-700 dark:focus:border-[#E5C583] font-medium"
                           />
-                          <button onClick={addUserReminder} className="px-5 py-3 bg-[#1E3324] dark:bg-[#E5C583] text-white dark:text-[#09090b] text-[13px] font-bold rounded-xl hover:bg-[#0B1510] dark:hover:bg-white transition-colors">
-                            Add
+                          <button
+                            onClick={addUserReminder}
+                            className="px-4 py-2 bg-[#1E3324] dark:bg-[#E5C583] text-white dark:text-[#09090b] text-xs font-bold rounded-xl hover:bg-[#0B1510] dark:hover:bg-white transition-colors cursor-pointer shadow-xs"
+                          >
+                            Save
                           </button>
                         </div>
                       </div>
@@ -2630,20 +2988,27 @@ export default function TenantDashboard() {
 
                     {scheduleView === 'calendar' ? (
                       /* Mini Calendar View */
-                      <div className="grid grid-cols-7 gap-1 text-center relative z-10 px-1">
-                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                          <div key={d} className="text-[9px] font-bold text-[#71717A] dark:text-white/50 uppercase tracking-widest py-1.5">{d}</div>
+                      <div className="grid grid-cols-7 gap-1 text-center px-1 max-w-sm mx-auto">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                          <div key={d} className="text-[9px] font-bold text-[#71717A] dark:text-white/50 uppercase tracking-wider py-1">{d}</div>
                         ))}
                         {(() => {
                           const today = new Date();
                           const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
                           const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
                           const days = [];
-                          for (let i = 0; i < firstDay; i++) days.push(<div key={`empty-${i}`} className="p-1"></div>);
+                          for (let i = 0; i < firstDay; i++) days.push(<div key={`empty-${i}`} className="p-0.5"></div>);
                           for (let i = 1; i <= daysInMonth; i++) {
                             const isToday = i === today.getDate();
                             days.push(
-                              <div key={i} className={`p-1.5 flex items-center justify-center text-[11px] font-bold rounded-xl transition-colors cursor-default ${isToday ? 'bg-[#1E3324] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-md' : 'text-[#1C1917] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10'}`}>
+                              <div
+                                key={i}
+                                className={`p-1.5 flex items-center justify-center text-xs font-bold rounded-lg transition-colors cursor-default ${
+                                  isToday
+                                    ? 'bg-[#1E3324] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-xs'
+                                    : 'text-[#1C1917] dark:text-white/80 hover:bg-black/5 dark:hover:bg-white/10'
+                                }`}
+                              >
                                 {i}
                               </div>
                             );
@@ -2653,48 +3018,210 @@ export default function TenantDashboard() {
                       </div>
                     ) : (
                       /* Events View */
-                      <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-2 max-h-[160px] relative z-10">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {(() => {
                           const events = [];
                           const unpaidInv = invoices.find(i => i.status === 'unpaid');
                           if (unpaidInv && unpaidInv.due_date) {
                             const d = new Date(unpaidInv.due_date);
                             events.push({ id: 'sys_rent', date: d, title: "Rent Due", subtitle: `₦${parseFloat(unpaidInv.amount).toLocaleString()}`, sys: true });
+                          } else if (activeLease && activeLease.start_date) {
+                            const startDate = new Date(activeLease.start_date);
+                            const nextRentDate = new Date(startDate);
+                            if (activeLease.rent_cycle === 'yearly' || activeLease.rent_period === 'annually' || activeLease.rent_period === 'yearly') {
+                              nextRentDate.setFullYear(nextRentDate.getFullYear() + 1);
+                            } else {
+                              nextRentDate.setMonth(nextRentDate.getMonth() + 1);
+                            }
+                            events.push({ id: 'sys_rent_next', date: nextRentDate, title: "Next Rent Due", subtitle: `₦${parseFloat(activeLease.rent_amount || 0).toLocaleString()}`, sys: true });
                           }
                           userReminders.forEach(r => {
-                            events.push({ id: r.id, date: new Date(r.date + "T12:00:00"), title: r.title, subtitle: "Reminder", sys: false });
+                            events.push({ id: r.id, date: new Date(r.date + "T12:00:00"), title: r.title, subtitle: "Personal Reminder", sys: false });
                           });
                           events.sort((a, b) => a.date - b.date);
 
                           if (events.length > 0) {
-                            return events.slice(0, 2).map(ev => (
-                              <div key={ev.id} className="flex items-center gap-4 p-3.5 rounded-2xl bg-white dark:bg-[#0B1510] border border-black/5 dark:border-white/5 group relative overflow-hidden transition-colors hover:border-emerald-700/30 dark:hover:border-[#E5C583]/30 shadow-sm">
-                                <div className={`shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center border shadow-sm ${ev.sys ? 'bg-amber-50 dark:bg-[#E5C583]/10 border-amber-200 dark:border-[#E5C583]/20 text-amber-700 dark:text-[#E5C583]' : 'bg-[#F2F7F4] dark:bg-[#192A1F] border-[#E1EAE5] dark:border-white/10 text-[#1C1917] dark:text-white'}`}>
-                                  <span className="text-[9px] font-bold uppercase tracking-wider leading-none mb-0.5 opacity-80">{ev.date.toLocaleDateString('en-GB', { month: 'short' })}</span>
-                                  <span className="text-base font-black leading-none">{ev.date.getDate()}</span>
+                            return events.map(ev => (
+                              <div key={ev.id} className="flex items-center gap-3 p-3 rounded-2xl bg-stone-50 dark:bg-[#0B1510] border border-black/5 dark:border-white/5 group relative overflow-hidden transition-colors hover:border-[#E5C583]/40 shadow-xs">
+                                <div className={`shrink-0 w-10 h-10 rounded-xl flex flex-col items-center justify-center border shadow-xs ${
+                                  ev.sys
+                                    ? 'bg-amber-50 dark:bg-[#E5C583]/10 border-amber-200 dark:border-[#E5C583]/20 text-amber-700 dark:text-[#E5C583]'
+                                    : 'bg-white dark:bg-[#192A1F] border-black/5 dark:border-white/10 text-[#1C1917] dark:text-white'
+                                }`}>
+                                  <span className="text-[8px] font-bold uppercase tracking-wider leading-none mb-0.5 opacity-80">{ev.date.toLocaleDateString('en-GB', { month: 'short' })}</span>
+                                  <span className="text-sm font-bold leading-none">{ev.date.getDate()}</span>
                                 </div>
-                                <div className="flex-1 min-w-0 py-1">
-                                  <p className="text-[13px] font-bold truncate text-[#1C1917] dark:text-white mb-0.5">{ev.title}</p>
-                                  <p className="text-[10px] text-[#71717A] dark:text-white/50 truncate uppercase tracking-wider font-bold">{ev.subtitle}</p>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold truncate text-[#1C1917] dark:text-white">{ev.title}</p>
+                                  <p className="text-[10px] text-[#71717A] dark:text-white/50 truncate uppercase tracking-wider font-semibold mt-0.5">{ev.subtitle}</p>
                                 </div>
                                 {!ev.sys && (
-                                  <button onClick={() => deleteUserReminder(ev.id)} className="opacity-0 group-hover:opacity-100 p-2 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 rounded-xl transition-all shrink-0">
-                                    <X className="h-4 w-4" />
+                                  <button
+                                    onClick={() => deleteUserReminder(ev.id)}
+                                    className="opacity-0 group-hover:opacity-100 p-1 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-400/10 rounded-lg transition-all shrink-0 cursor-pointer"
+                                    title="Delete reminder"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
                                   </button>
                                 )}
                               </div>
                             ));
                           }
                           return (
-                            <div className="text-center py-6 opacity-50">
-                              <Calendar className="h-8 w-8 mx-auto mb-3" />
-                              <p className="text-[11px] font-bold uppercase tracking-wider">No Upcoming Events</p>
+                            <div className="col-span-full text-center py-5 opacity-60">
+                              <Calendar className="h-6 w-6 mx-auto mb-1 text-[#71717A] dark:text-white/40" />
+                              <p className="text-[11px] font-bold uppercase tracking-wider text-[#71717A] dark:text-white/60">No Upcoming Events</p>
                             </div>
                           );
                         })()}
                       </div>
                     )}
                   </div>
+
+                  {/* 4. Motivational Banner */}
+                  <div className="bg-[#F4F8F5] dark:bg-[#121F1A] border border-[#2C4633]/15 dark:border-[#2C4633] rounded-3xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+                    <div className="flex items-center gap-3.5">
+                      <div className="h-10 w-10 rounded-xl bg-white dark:bg-[#192A1F] border border-black/5 dark:border-white/5 flex items-center justify-center shrink-0 text-[#1E3324] dark:text-[#E5C583] shadow-xs">
+                        <Leaf className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-[#1C1917] dark:text-white">A comfortable home, a better you</h4>
+                        <span className="text-[10px] font-semibold text-[#1E3324] dark:text-[#E5C583]">Lodale Resident Program</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-[#71717A] dark:text-white/60 leading-relaxed sm:text-right">
+                      Thank you for being a valued tenant. We're here to make your stay easier.
+                    </p>
+                  </div>
+
+                </div>
+
+                {/* RIGHT (NARROWER) COLUMN */}
+                <div className="lg:col-span-4 flex flex-col gap-6">
+
+                  {/* 1. Need to make a payment? CTA Card */}
+                  <div className="tour-visa bg-[#F4F8F5] dark:bg-[#121F1A] border border-[#2C4633]/20 dark:border-[#2C4633] rounded-3xl p-6 shadow-xs flex flex-col justify-between">
+                    <div className="flex items-start gap-3.5 mb-5">
+                      <div className="h-11 w-11 rounded-xl bg-white dark:bg-[#192A1F] border border-black/5 dark:border-white/10 flex items-center justify-center shrink-0 shadow-xs text-[#1E3324] dark:text-[#E5C583]">
+                        <Building2 className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm text-[#1C1917] dark:text-white mb-1">Need to make a payment?</h3>
+                        <p className="text-xs text-[#71717A] dark:text-white/60 leading-relaxed">Pay your rent and other dues securely in just a few clicks.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowPayModal(true)}
+                      className="w-full py-3.5 px-4 bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <span>Make Payment</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* 2. Quick Actions */}
+                  <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-3xl p-6 shadow-xs">
+                    <h3 className="font-bold text-base text-[#1C1917] dark:text-white mb-4 tracking-tight">Quick Actions</h3>
+                    <div className="space-y-1.5">
+                      <button
+                        onClick={() => setActiveTab(5)}
+                        className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors text-left group cursor-pointer"
+                        title="View Full Payment History & Ledger"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-black/[0.03] dark:bg-white/[0.05] flex items-center justify-center shrink-0 text-[#1C1917] dark:text-white group-hover:text-[#E5C583] transition-colors">
+                            <CreditCard className="h-4 w-4" />
+                          </div>
+                          <span className="text-xs font-semibold text-[#1C1917] dark:text-white">View Payment History</span>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-[#71717A] dark:text-white/40 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+
+                      <button
+                        onClick={() => setShowDispatchModal(true)}
+                        className="tour-dispatch w-full flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors text-left group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-black/[0.03] dark:bg-white/[0.05] flex items-center justify-center shrink-0 text-[#1C1917] dark:text-white group-hover:text-[#E5C583] transition-colors">
+                            <Wrench className="h-4 w-4" />
+                          </div>
+                          <span className="text-xs font-semibold text-[#1C1917] dark:text-white">Raise a Maintenance Request</span>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-[#71717A] dark:text-white/40 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+
+                      <button
+                        onClick={() => setShowProfileModal(true)}
+                        className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors text-left group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-black/[0.03] dark:bg-white/[0.05] flex items-center justify-center shrink-0 text-[#1C1917] dark:text-white group-hover:text-[#E5C583] transition-colors">
+                            <User className="h-4 w-4" />
+                          </div>
+                          <span className="text-xs font-semibold text-[#1C1917] dark:text-white">Update Profile</span>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-[#71717A] dark:text-white/40 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (activeLease) {
+                            sessionStorage.setItem("activeChatPartnerId", activeLease.landlord_id);
+                            sessionStorage.setItem("activeChatLandlordName", activeLease.landlord_name);
+                          }
+                          setActiveTab(2);
+                        }}
+                        className="w-full flex items-center justify-between py-2.5 px-3 rounded-xl hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors text-left group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-black/[0.03] dark:bg-white/[0.05] flex items-center justify-center shrink-0 text-[#1C1917] dark:text-white group-hover:text-[#E5C583] transition-colors">
+                            <MessageSquare className="h-4 w-4" />
+                          </div>
+                          <span className="text-xs font-semibold text-[#1C1917] dark:text-white">Contact Landlord</span>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-[#71717A] dark:text-white/40 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 3. Compact Status Widgets: Residency Streak & Reliability Rating */}
+                  <div className="grid grid-cols-2 gap-3.5 pro-card">
+                    <div
+                      onClick={() => setShowStreakModal(true)}
+                      className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-[#E5C583]/50 transition-all shadow-xs group"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="h-8 w-8 rounded-full bg-[#E5C583]/15 flex items-center justify-center shrink-0">
+                          <Flame className="h-4 w-4 text-[#E5C583]" />
+                        </div>
+                        <ChevronRight className="h-3.5 w-3.5 text-[#71717A] dark:text-white/40 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] dark:text-white/50 block mb-0.5">Residency Streak</span>
+                        <span className="text-base font-bold text-[#1C1917] dark:text-white">{activeLease ? daysInHouse : 0} Days</span>
+                      </div>
+                    </div>
+
+                    <div
+                      onClick={() => setShowRatingModal(true)}
+                      className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:border-[#E5C583]/50 transition-all shadow-xs group"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="h-8 w-8 rounded-full bg-[#E5C583]/15 flex items-center justify-center shrink-0">
+                          <Award className="h-4 w-4 text-amber-600 dark:text-[#E5C583]" />
+                        </div>
+                        <ChevronRight className="h-3.5 w-3.5 text-[#71717A] dark:text-white/40 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] dark:text-white/50 block mb-0.5">Reliability Rating</span>
+                        <span className="text-base font-bold text-[#1C1917] dark:text-white flex items-center gap-1">
+                          <Star className="h-3.5 w-3.5 fill-[#E5C583] text-[#E5C583] shrink-0" />
+                          <span>{tenantReviewsData.hasReviews ? (Math.round(tenantReviewsData.averageScore * 10) / 10).toFixed(1) : "5.0"}</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
 
               </div>
@@ -2731,8 +3258,273 @@ export default function TenantDashboard() {
           <main className="db-main-content">
             <TenantApplications setActiveTab={setActiveTab} />
           </main>
+        ) : activeTab === 5 ? (
+          <main className="db-main-content p-0 h-full overflow-y-auto" style={{ padding: 0 }}>
+            <div className="px-4 md:px-8 pt-6 pb-12">
+              {/* Top Navigation & Actions Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3.5">
+                  <button
+                    onClick={() => setActiveTab(0)}
+                    className="h-10 w-10 rounded-xl bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] flex items-center justify-center hover:border-[#E5C583]/50 transition-colors shadow-xs text-[#1C1917] dark:text-white cursor-pointer"
+                    title="Back to Dashboard"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold font-serif text-[#1C1917] dark:text-white tracking-tight">
+                      Payment History
+                    </h1>
+                    <p className="text-xs md:text-sm text-[#71717A] dark:text-white/60 mt-0.5 font-medium">
+                      Complete transaction ledger for {activeLease?.property_title || activeLease?.propertyTitle || "your property"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={handleDownloadSummary}
+                    variant="secondary"
+                    className="flex items-center gap-2 py-2.5 px-4 text-xs font-bold rounded-xl cursor-pointer"
+                  >
+                    <Download className="h-4 w-4 text-[#E5C583]" />
+                    <span>Download Summary</span>
+                  </Button>
+                  {invoices.some(i => i.status === 'unpaid') && (
+                    <Button
+                      onClick={() => setShowPayModal(true)}
+                      className="bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:text-[#09090b] py-2.5 px-4 text-xs font-bold rounded-xl cursor-pointer shadow-xs"
+                    >
+                      Make Payment
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* 3 Metric Summary Cards */}
+              {(() => {
+                const totalPaid = invoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + (parseFloat(inv.grandTotal || inv.amount) || 0), 0);
+                const totalUnpaid = invoices.filter(i => i.status === 'unpaid').reduce((sum, inv) => sum + (parseFloat(inv.grandTotal || inv.amount) || 0), 0);
+                const totalInvoices = invoices.length;
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-2xl p-5 shadow-xs">
+                      <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] border border-emerald-200/50 dark:border-emerald-800/30 flex items-center justify-center mb-3">
+                        <CheckCircle2 className="h-5 w-5" />
+                      </div>
+                      <span className="text-xs font-semibold text-[#71717A] dark:text-white/60 block mb-1">Total Rent Paid</span>
+                      <h3 className="text-2xl font-bold font-serif text-[#1C1917] dark:text-white tracking-tight">
+                        ₦ {totalPaid.toLocaleString()}
+                      </h3>
+                      <p className="text-[11px] text-[#71717A] dark:text-white/50 font-medium mt-1">
+                        Settled rent transactions
+                      </p>
+                    </div>
+
+                    <div className={`bg-white dark:bg-[#192A1F] border ${totalUnpaid > 0 ? 'border-rose-300 dark:border-rose-900/60 bg-rose-50/20 dark:bg-rose-950/10' : 'border-black/5 dark:border-[#2C4633]'} rounded-2xl p-5 shadow-xs`}>
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center mb-3 ${totalUnpaid > 0 ? 'bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40' : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] border border-emerald-200/50 dark:border-emerald-800/30'}`}>
+                        {totalUnpaid > 0 ? <AlertTriangle className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
+                      </div>
+                      <span className={`text-xs font-semibold block mb-1 ${totalUnpaid > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-[#71717A] dark:text-white/60'}`}>
+                        Outstanding Dues
+                      </span>
+                      <h3 className={`text-2xl font-bold font-serif tracking-tight ${totalUnpaid > 0 ? 'text-rose-700 dark:text-rose-300' : 'text-[#1C1917] dark:text-white'}`}>
+                        ₦ {totalUnpaid.toLocaleString()}
+                      </h3>
+                      <p className="text-[11px] text-[#71717A] dark:text-white/50 font-medium mt-1">
+                        {totalUnpaid === 0 ? "Ledger is fully balanced" : "Immediate payment required"}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-2xl p-5 shadow-xs">
+                      <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] border border-emerald-200/50 dark:border-emerald-800/30 flex items-center justify-center mb-3">
+                        <Receipt className="h-5 w-5" />
+                      </div>
+                      <span className="text-xs font-semibold text-[#71717A] dark:text-white/60 block mb-1">Total Invoices</span>
+                      <h3 className="text-2xl font-bold font-serif text-[#1C1917] dark:text-white tracking-tight">
+                        {totalInvoices}
+                      </h3>
+                      <p className="text-[11px] text-[#71717A] dark:text-white/50 font-medium mt-1">
+                        Historical billing records
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Filter Toolbar & Ledger Table Card */}
+              <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-3xl p-6 shadow-xs flex flex-col">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  {/* Status Pills */}
+                  <div className="flex p-1 bg-stone-100 dark:bg-[#0B1510] rounded-xl border border-black/5 dark:border-white/5">
+                    {[
+                      { id: 'all', label: 'All Records' },
+                      { id: 'paid', label: 'Paid' },
+                      { id: 'unpaid', label: 'Unpaid / Overdue' }
+                    ].map(st => (
+                      <button
+                        key={st.id}
+                        onClick={() => setPaymentStatusFilter(st.id)}
+                        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                          paymentStatusFilter === st.id
+                            ? 'bg-[#1E3324] text-white dark:bg-[#E5C583] dark:text-[#09090b] shadow-xs'
+                            : 'text-[#71717A] dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Date Range Filter */}
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5 text-[#71717A] dark:text-white/40" />
+                    <span className="text-xs font-semibold text-[#71717A] dark:text-white/60">Range:</span>
+                    <select
+                      value={paymentDateFilter}
+                      onChange={e => setPaymentDateFilter(e.target.value)}
+                      className="text-xs font-semibold py-1.5 px-3 rounded-xl border border-black/5 dark:border-white/10 bg-stone-50 dark:bg-[#0B1510] text-[#1C1917] dark:text-white outline-none cursor-pointer"
+                    >
+                      <option value="all">All Time</option>
+                      <option value="30">Last 30 Days</option>
+                      <option value="90">Last 90 Days</option>
+                      <option value="year">This Year</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Ledger Table */}
+                {(() => {
+                  let ledgerItems = [];
+                  if (invoices.length > 0) {
+                    ledgerItems = invoices.map((inv, idx) => {
+                      const d = inv.billing_period_start || inv.due_date || inv.created_at || inv.updated_at || Date.now();
+                      const dateObj = new Date(d);
+                      const dueObj = (inv.due_date || inv.dueDate) ? new Date(inv.due_date || inv.dueDate) : null;
+                      const isOverdue = inv.status === 'unpaid' && dueObj && dueObj.getTime() < Date.now();
+                      const amt = parseFloat(inv.grandTotal || inv.amount || 0);
+                      const monthStr = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+                      return {
+                        id: inv.id || `inv_${idx}`,
+                        ref: (inv.id || "").slice(0, 8).toUpperCase(),
+                        date: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        rawDate: dateObj,
+                        dueDate: dueObj ? dueObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "—",
+                        description: inv.description || inv.title || `Rent Payment (${monthStr})`,
+                        period: monthStr,
+                        amount: amt,
+                        amountFormatted: `₦ ${amt.toLocaleString()}`,
+                        status: isOverdue ? 'Overdue' : (inv.status === 'paid' ? 'Paid' : 'Unpaid'),
+                        rawStatus: inv.status
+                      };
+                    });
+                  } else if (payments.length > 0) {
+                    ledgerItems = payments.map((pmt, idx) => {
+                      const amt = typeof pmt.amount === 'string' && pmt.amount.startsWith('₦') ? pmt.amount : `₦ ${parseFloat(pmt.amount || 0).toLocaleString()}`;
+                      return {
+                        id: pmt.id || `pmt_${idx}`,
+                        ref: (pmt.id || `PMT-${idx}`).slice(0, 8).toUpperCase(),
+                        date: pmt.date || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        rawDate: new Date(),
+                        dueDate: "—",
+                        description: `Rent (${pmt.month || 'Current'})`,
+                        period: pmt.month || 'Current',
+                        amount: pmt.amount,
+                        amountFormatted: amt,
+                        status: pmt.status || 'Paid',
+                        rawStatus: 'paid'
+                      };
+                    });
+                  }
+
+                  const displayedLedger = ledgerItems.filter(item => {
+                    if (paymentStatusFilter === 'paid' && item.rawStatus !== 'paid') return false;
+                    if (paymentStatusFilter === 'unpaid' && item.rawStatus !== 'unpaid') return false;
+
+                    if (paymentDateFilter === '30') {
+                      const diff = (Date.now() - item.rawDate.getTime()) / (1000 * 3600 * 24);
+                      if (diff > 30) return false;
+                    } else if (paymentDateFilter === '90') {
+                      const diff = (Date.now() - item.rawDate.getTime()) / (1000 * 3600 * 24);
+                      if (diff > 90) return false;
+                    } else if (paymentDateFilter === 'year') {
+                      if (item.rawDate.getFullYear() !== new Date().getFullYear()) return false;
+                    }
+                    return true;
+                  });
+
+                  if (displayedLedger.length === 0) {
+                    return (
+                      <div className="py-16 text-center">
+                        <Receipt className="h-10 w-10 text-stone-300 dark:text-stone-600 mx-auto mb-3" />
+                        <h4 className="text-sm font-bold text-[#1C1917] dark:text-white mb-1">No payment records found</h4>
+                        <p className="text-xs text-[#71717A] dark:text-white/60 max-w-xs mx-auto">
+                          There are no invoices or payments matching your current filter criteria.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-black/5 dark:border-white/5 text-[11px] font-bold text-[#71717A] dark:text-white/50 uppercase tracking-wider">
+                            <th className="pb-3 px-3">Date</th>
+                            <th className="pb-3 px-3">Reference</th>
+                            <th className="pb-3 px-3">Description</th>
+                            <th className="pb-3 px-3">Due Date</th>
+                            <th className="pb-3 px-3">Amount</th>
+                            <th className="pb-3 px-3">Status</th>
+                            <th className="pb-3 px-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-black/5 dark:divide-white/5 text-xs">
+                          {displayedLedger.map((row) => (
+                            <tr
+                              key={row.id}
+                              onClick={() => {
+                                setSelectedPaymentDetail(row);
+                                setShowPaymentDetailModal(true);
+                              }}
+                              className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors cursor-pointer group"
+                            >
+                              <td className="py-3.5 px-3 font-semibold text-[#1C1917] dark:text-white whitespace-nowrap">{row.date}</td>
+                              <td className="py-3.5 px-3 font-mono text-[11px] text-[#71717A] dark:text-white/60 whitespace-nowrap">#{row.ref}</td>
+                              <td className="py-3.5 px-3 text-[#1C1917] dark:text-white font-medium whitespace-nowrap">{row.description}</td>
+                              <td className="py-3.5 px-3 text-[#71717A] dark:text-white/60 whitespace-nowrap">{row.dueDate}</td>
+                              <td className="py-3.5 px-3 font-bold text-[#1C1917] dark:text-white whitespace-nowrap">{row.amountFormatted}</td>
+                              <td className="py-3.5 px-3 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                  row.status.toLowerCase() === 'paid'
+                                    ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/40'
+                                    : row.status.toLowerCase() === 'overdue'
+                                    ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40'
+                                    : 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-[#E5C583] border border-amber-200 dark:border-[#E5C583]/30'
+                                }`}>
+                                  {row.status}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-3 text-right whitespace-nowrap">
+                                <span className="text-xs font-bold text-[#1E3324] dark:text-[#E5C583] group-hover:underline flex items-center justify-end gap-1">
+                                  <span>Details</span>
+                                  <ChevronRight className="h-3.5 w-3.5" />
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </main>
         ) : (
-          /* TAB 5+: UNDER DEVELOPMENT VIEWS */
+          /* TAB 6+: UNDER DEVELOPMENT VIEWS */
           <div className="under-development-wrapper flex-1 flex items-center justify-center">
             <div className="under-dev-card text-center">
               <div className="sparkle-icon flex justify-center"><ListChecks className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>

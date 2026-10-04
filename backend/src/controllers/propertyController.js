@@ -149,7 +149,10 @@ export const propertyController = {
     } = req.body;
 
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
-    const effectiveLandlordId = req.user ? req.user.id : req.body.landlord_id;
+    let effectiveLandlordId = req.user ? req.user.id : null;
+    if (req.user && req.user.role === 'admin' && req.body.landlord_id) {
+      effectiveLandlordId = req.body.landlord_id;
+    }
     if (!effectiveLandlordId) {
       return res.status(401).json({ error: 'Unauthorized: Landlord identity required' });
     }
