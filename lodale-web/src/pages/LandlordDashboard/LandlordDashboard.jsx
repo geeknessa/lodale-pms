@@ -245,12 +245,54 @@ export default function LandlordDashboard() {
       });
   };
 
-  const getLandlordRatingData = () => {
-    const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "landlord";
-    return ratingService.getLandlordReviews(currentUserId);
-  };
+  const [ratingData, setRatingData] = useState({ hasReviews: false, rating: "New", count: 0, reviews: [] });
 
-  const ratingData = getLandlordRatingData();
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLandlordRating = async () => {
+      const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
+      if (currentUserId) {
+        try {
+          const res = await ratingService.getLandlordReviews(currentUserId);
+          if (isMounted && res) setRatingData(res);
+        } catch (e) {}
+      }
+    };
+    fetchLandlordRating();
+    window.addEventListener("landlordRatingUpdated", fetchLandlordRating);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("landlordRatingUpdated", fetchLandlordRating);
+    };
+  }, []);
+
+  // Re-fetch fresh profile from backend on reload instead of trusting stale sessionStorage
+  useEffect(() => {
+    let isMounted = true;
+    const syncFreshLandlordProfile = async () => {
+      try {
+        const [profile, roleProfile] = await Promise.all([
+          userService.getProfile().catch(() => null),
+          profileService.getMyProfile().catch(() => null)
+        ]);
+        if (isMounted && profile) {
+          const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
+          if (fullName) {
+            setUsername(fullName);
+            sessionStorage.setItem("username", fullName);
+          }
+          if (profile.avatar_url) {
+            setLandlordAvatar(profile.avatar_url);
+            sessionStorage.setItem("landlordAvatarUrl", profile.avatar_url);
+          }
+          const merged = { ...profile, ...(roleProfile || {}), role: "landlord", primary_role: "landlord" };
+          sessionStorage.setItem("currentUserProfile", JSON.stringify(merged));
+          sessionStorage.setItem("landlordCurrentProfile", JSON.stringify(merged));
+        }
+      } catch (err) {}
+    };
+    syncFreshLandlordProfile();
+  }, []);
 
   const location = useLocation();
   // Active sidebar tab

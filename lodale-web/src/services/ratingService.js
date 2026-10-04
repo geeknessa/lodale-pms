@@ -1,219 +1,157 @@
-/**
- * Rating & Review Service for Landlords and Tenants
- */
+import { apiClient } from '../lib/apiClient';
 
+// In-memory cache for instant fallback while network revalidates
+const ratingsCache = new Map();
+
+/**
+ * Rating & Review Service for Landlords and Tenants backed by PostgreSQL
+ */
 export const ratingService = {
   /**
    * Submit a review for a Landlord by a Tenant.
    */
-  submitLandlordReview({ landlordId, landlordName, tenantId, tenantName, rating, comment, wouldRecommend = true, propertyTitle = "" }) {
+  async submitLandlordReview({
+    landlordId,
+    landlordName,
+    tenantId,
+    tenantName,
+    rating,
+    comment,
+    wouldRecommend = true,
+    propertyTitle = "",
+    propertyId = null,
+    leaseId = null
+  }) {
     if (!landlordId) return { success: false, message: "Missing landlord identifier." };
 
-    const key = `landlord_reviews_${landlordId}`;
-    let existing = [];
     try {
-      const raw = localStorage.getItem(key);
-      if (raw) existing = JSON.parse(raw);
-    } catch (e) {
-      console.warn("Error reading landlord reviews:", e);
+      const payload = {
+        ratee_id: landlordId,
+        landlordId,
+        rating_type: 'tenant_rates_landlord',
+        property_id: propertyId,
+        lease_id: leaseId,
+        rating: Number(rating) || 5,
+        comment: (comment || "").trim(),
+        would_recommend: Boolean(wouldRecommend)
+      };
+
+      const res = await apiClient('/ratings', {
+        method: 'POST',
+        body: payload
+      });
+
+      // Invalidate cache for this landlord
+      ratingsCache.delete(`landlord_${landlordId}`);
+      window.dispatchEvent(new CustomEvent('landlordRatingUpdated', { detail: { landlordId } }));
+
+      return {
+        success: true,
+        review: res.rating || payload
+      };
+    } catch (err) {
+      console.error('[ratingService.submitLandlordReview error]:', err);
+      return {
+        success: false,
+        message: err.message || 'Failed to submit landlord rating.'
+      };
     }
-
-    // Replace previous review by this tenant if already reviewed
-    const filtered = existing.filter(r => String(r.tenantId) !== String(tenantId));
-    const newReview = {
-      id: "rev_" + Date.now(),
-      landlordId: String(landlordId),
-      landlordName: landlordName || "Landlord",
-      tenantId: String(tenantId),
-      tenantName: tenantName || "Tenant",
-      rating: Number(rating) || 5,
-      comment: comment || "",
-      wouldRecommend: Boolean(wouldRecommend),
-      propertyTitle: propertyTitle || "",
-      createdAt: new Date().toISOString()
-    };
-
-    const updatedList = [newReview, ...filtered];
-    try {
-      localStorage.setItem(key, JSON.stringify(updatedList));
-      // Also update global landlord review store
-      const globalKey = `all_landlord_reviews`;
-      const allRaw = localStorage.getItem(globalKey);
-      let allList = allRaw ? JSON.parse(allRaw) : [];
-      allList = [newReview, ...allList.filter(r => r.id !== newReview.id)];
-      localStorage.setItem(globalKey, JSON.stringify(allList));
-    } catch (e) {
-      console.warn("Error persisting landlord review:", e);
-    }
-
-    return { success: true, review: newReview };
   },
 
   /**
    * Get all reviews and computed average score for a Landlord.
    */
-  getLandlordReviews(landlordId) {
+  async getLandlordReviews(landlordId) {
     if (!landlordId) return { hasReviews: false, rating: "New", count: 0, reviews: [] };
 
-    const key = `landlord_reviews_${landlordId}`;
-    let reviews = [];
     try {
-      const raw = localStorage.getItem(key);
-      if (raw) reviews = JSON.parse(raw);
-    } catch (e) {}
-
-    if (!reviews || reviews.length === 0) {
-      return { hasReviews: false, rating: "New", count: 0, reviews: [] };
+      const data = await apiClient(`/ratings/user/${encodeURIComponent(landlordId)}?type=tenant_rates_landlord`);
+      if (data && typeof data === 'object') {
+        ratingsCache.set(`landlord_${landlordId}`, data);
+        return data;
+      }
+    } catch (err) {
+      console.warn('[ratingService.getLandlordReviews error]:', err.message);
     }
 
-    const sum = reviews.reduce((acc, r) => acc + (Number(r.rating) || 5), 0);
-    const avg = (sum / reviews.length).toFixed(1);
-
-    return {
-      hasReviews: true,
-      rating: String(avg),
-      count: reviews.length,
-      reviews
-    };
+    return ratingsCache.get(`landlord_${landlordId}`) || { hasReviews: false, rating: "New", count: 0, reviews: [] };
   },
 
   /**
    * Submit a review for a Tenant by a Landlord.
    */
-  submitTenantReview({ tenantId, tenantName, tenantEmail, landlordId, landlordName, rating, comment, wouldRentAgain = true, propertyTitle = "" }) {
+  async submitTenantReview({
+    tenantId,
+    tenantName,
+    tenantEmail,
+    landlordId,
+    landlordName,
+    rating,
+    comment,
+    wouldRentAgain = true,
+    propertyTitle = "",
+    propertyId = null,
+    leaseId = null
+  }) {
     if (!tenantId && !tenantEmail) return { success: false, message: "Missing tenant identifier." };
 
-    const cleanTenantId = String(tenantId || tenantEmail);
-    const cleanTenantEmail = (tenantEmail || (cleanTenantId.includes("@") ? cleanTenantId : "")).toLowerCase();
-
-    const key = `tenant_reviews_${cleanTenantId}`;
-    let existing = [];
     try {
-      const raw = localStorage.getItem(key);
-      if (raw) existing = JSON.parse(raw);
-    } catch (e) {}
+      const payload = {
+        ratee_id: tenantId,
+        tenantId,
+        tenantEmail,
+        rating_type: 'landlord_rates_tenant',
+        property_id: propertyId,
+        lease_id: leaseId,
+        rating: Number(rating) || 5,
+        comment: (comment || "").trim(),
+        would_recommend: Boolean(wouldRentAgain)
+      };
 
-    const filtered = existing.filter(r => String(r.landlordId) !== String(landlordId));
-    const newReview = {
-      id: "ten_rev_" + Date.now(),
-      tenantId: cleanTenantId,
-      tenantEmail: cleanTenantEmail,
-      tenantName: tenantName || "Tenant",
-      landlordId: String(landlordId || "landlord"),
-      landlordName: landlordName || "Landlord",
-      rating: Number(rating) || 5,
-      comment: comment || "",
-      wouldRentAgain: Boolean(wouldRentAgain),
-      propertyTitle: propertyTitle || "",
-      createdAt: new Date().toISOString()
-    };
+      const res = await apiClient('/ratings', {
+        method: 'POST',
+        body: payload
+      });
 
-    const updatedList = [newReview, ...filtered];
-    try {
-      localStorage.setItem(key, JSON.stringify(updatedList));
+      // Invalidate cache for this tenant
+      ratingsCache.delete(`tenant_${tenantId}`);
+      if (tenantEmail) ratingsCache.delete(`tenant_${tenantEmail.toLowerCase()}`);
+      window.dispatchEvent(new CustomEvent('tenantRatingUpdated', { detail: { tenantId, tenantEmail } }));
 
-      if (cleanTenantEmail) {
-        const emailKey = `tenant_reviews_${cleanTenantEmail}`;
-        localStorage.setItem(emailKey, JSON.stringify(updatedList));
-      }
-
-      // Also store in global tenant reviews repository
-      const globalKey = `all_tenant_reviews`;
-      const allRaw = localStorage.getItem(globalKey);
-      let allList = allRaw ? JSON.parse(allRaw) : [];
-      allList = [newReview, ...allList.filter(r => r.id !== newReview.id && String(r.landlordId) !== String(landlordId))];
-      localStorage.setItem(globalKey, JSON.stringify(allList));
-
-      // Update tenant's profile reliability rating
-      if (cleanTenantEmail) {
-        const profKey = `tenantProfile_${cleanTenantEmail}`;
-        const rawProf = localStorage.getItem(profKey);
-        if (rawProf) {
-          try {
-            const parsed = JSON.parse(rawProf);
-            const sum = updatedList.reduce((acc, r) => acc + Number(r.rating), 0);
-            const avg = (sum / updatedList.length).toFixed(1);
-            parsed.reliabilityScore = String(avg);
-            localStorage.setItem(profKey, JSON.stringify(parsed));
-          } catch (err) {}
-        }
-      }
-    } catch (e) {
-      console.warn("Error persisting tenant review:", e);
+      return {
+        success: true,
+        review: res.rating || payload
+      };
+    } catch (err) {
+      console.error('[ratingService.submitTenantReview error]:', err);
+      return {
+        success: false,
+        message: err.message || 'Failed to submit tenant rating.'
+      };
     }
-
-    return { success: true, review: newReview };
   },
 
   /**
    * Get all reviews and reliability score for a Tenant.
    */
-  getTenantReviews(tenantId, tenantEmail) {
-    const idStr = String(tenantId || "").trim();
-    const emailStr = String(tenantEmail || (idStr.includes("@") ? idStr : "")).trim().toLowerCase();
+  async getTenantReviews(tenantId, tenantEmail) {
+    const idOrEmail = tenantId || tenantEmail;
+    if (!idOrEmail) return { hasReviews: false, rating: "New", count: 0, reviews: [] };
 
-    if (!idStr && !emailStr) {
-      return { hasReviews: false, rating: "New", count: 0, reviews: [] };
-    }
+    const cacheKey = `tenant_${String(idOrEmail).toLowerCase()}`;
 
-    let rawList = [];
-
-    // 1. Try global storage
     try {
-      const globalRaw = localStorage.getItem("all_tenant_reviews");
-      if (globalRaw) {
-        const globalParsed = JSON.parse(globalRaw);
-        if (Array.isArray(globalParsed)) rawList.push(...globalParsed);
+      const data = await apiClient(`/ratings/user/${encodeURIComponent(idOrEmail)}?type=landlord_rates_tenant`);
+      if (data && typeof data === 'object') {
+        ratingsCache.set(cacheKey, data);
+        if (tenantId) ratingsCache.set(`tenant_${tenantId}`, data);
+        if (tenantEmail) ratingsCache.set(`tenant_${tenantEmail.toLowerCase()}`, data);
+        return data;
       }
-    } catch (e) {}
-
-    // 2. Try ID-specific key
-    if (idStr) {
-      try {
-        const idRaw = localStorage.getItem(`tenant_reviews_${idStr}`);
-        if (idRaw) {
-          const idParsed = JSON.parse(idRaw);
-          if (Array.isArray(idParsed)) rawList.push(...idParsed);
-        }
-      } catch (e) {}
+    } catch (err) {
+      console.warn('[ratingService.getTenantReviews error]:', err.message);
     }
 
-    // 3. Try Email-specific key
-    if (emailStr && emailStr !== idStr) {
-      try {
-        const emailRaw = localStorage.getItem(`tenant_reviews_${emailStr}`);
-        if (emailRaw) {
-          const emailParsed = JSON.parse(emailRaw);
-          if (Array.isArray(emailParsed)) rawList.push(...emailParsed);
-        }
-      } catch (e) {}
-    }
-
-    // Deduplicate and filter by tenant identifier/email
-    const reviewsMap = new Map();
-    rawList.forEach(r => {
-      if (!r || !r.id) return;
-      const matchId = idStr && (String(r.tenantId) === idStr || String(r.tenantEmail) === idStr);
-      const matchEmail = emailStr && (String(r.tenantEmail).toLowerCase() === emailStr || String(r.tenantId).toLowerCase() === emailStr);
-      if (matchId || matchEmail || (!idStr && !emailStr)) {
-        reviewsMap.set(r.id, r);
-      }
-    });
-
-    const reviews = Array.from(reviewsMap.values());
-
-    if (reviews.length === 0) {
-      return { hasReviews: false, rating: "New", count: 0, reviews: [] };
-    }
-
-    const sum = reviews.reduce((acc, r) => acc + (Number(r.rating) || 5), 0);
-    const avg = (sum / reviews.length).toFixed(1);
-
-    return {
-      hasReviews: true,
-      rating: String(avg),
-      count: reviews.length,
-      reviews
-    };
+    return ratingsCache.get(cacheKey) || { hasReviews: false, rating: "New", count: 0, reviews: [] };
   }
 };

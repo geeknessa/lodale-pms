@@ -278,8 +278,6 @@ export default function App() {
       "leasedAppIds",
       "withdrawnTenantAppIds",
       "landlordNotifications",
-      "all_tenant_reviews",
-      "all_landlord_reviews",
       "dismissedLandlordMessages",
       "lodale_props_purged_v1"
     ];
@@ -290,15 +288,13 @@ export default function App() {
       } catch (_err) {}
     });
 
-    // Remove legacy review caches and test user artifacts from localStorage
+    // Remove legacy test user artifacts from localStorage
     try {
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
         if (
           k &&
-          (k.startsWith("tenant_reviews_") ||
-            k.startsWith("landlord_reviews_") ||
-            k.startsWith("moveInRules_") ||
+          (k.startsWith("moveInRules_") ||
             k.toLowerCase().includes("audit") ||
             k.toLowerCase().includes("testtenant"))
         ) {

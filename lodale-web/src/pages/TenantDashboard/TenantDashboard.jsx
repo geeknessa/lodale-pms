@@ -202,8 +202,55 @@ export default function TenantDashboard() {
 
   const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
   const currentUserEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-  const tenantReviewsData = ratingService.getTenantReviews(currentUserId, currentUserEmail);
+  const [tenantReviewsData, setTenantReviewsData] = useState({ hasReviews: false, rating: "New", count: 0, reviews: [] });
   const scoreVal = Number(tenantReviewsData.rating) || 0;
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadRating = async () => {
+      const idOrEmail = currentUserId || currentUserEmail;
+      if (idOrEmail) {
+        try {
+          const res = await ratingService.getTenantReviews(currentUserId, currentUserEmail);
+          if (isMounted && res) setTenantReviewsData(res);
+        } catch (e) {}
+      }
+    };
+    loadRating();
+    window.addEventListener("tenantRatingUpdated", loadRating);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("tenantRatingUpdated", loadRating);
+    };
+  }, [currentUserId, currentUserEmail]);
+
+  // Re-fetch fresh profile from backend on reload instead of trusting stale sessionStorage
+  useEffect(() => {
+    let isMounted = true;
+    const syncFreshProfile = async () => {
+      try {
+        const [profile, roleProfile] = await Promise.all([
+          userService.getProfile().catch(() => null),
+          profileService.getMyProfile().catch(() => null)
+        ]);
+        if (isMounted && profile) {
+          const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
+          if (fullName) {
+            setUsername(fullName);
+            sessionStorage.setItem("username", fullName);
+          }
+          if (profile.avatar_url) {
+            setTenantAvatar(profile.avatar_url);
+            sessionStorage.setItem("tenantAvatarUrl", profile.avatar_url);
+          }
+          const merged = { ...profile, ...(roleProfile || {}) };
+          sessionStorage.setItem("currentUserProfile", JSON.stringify(merged));
+          sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(merged));
+        }
+      } catch (err) {}
+    };
+    syncFreshProfile();
+  }, []);
 
   // Dynamic real-time date formatting
   const currentDateStr = new Date().toLocaleDateString("en-GB", {

@@ -17,6 +17,7 @@ import rentRoutes from './routes/rent.js';
 import maintenanceRoutes from './routes/maintenance.js';
 import notificationRoutes from './routes/notifications.js';
 import inspectionRoutes from './routes/inspections.js';
+import ratingRoutes from './routes/ratingRoutes.js';
 import { autoApprovalService } from './services/autoApprovalService.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
@@ -101,6 +102,7 @@ app.use('/api/rent', rentRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/inspections', inspectionRoutes);
+app.use('/api/ratings', ratingRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

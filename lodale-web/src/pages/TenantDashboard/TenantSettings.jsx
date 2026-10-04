@@ -65,6 +65,21 @@ import "./TenantSettings.css";
   } catch (e) { /* ignore if localStorage is inaccessible */ }
 })();
 
+const formatDobForDisplay = (val) => {
+  if (!val) return "";
+  const s = String(val).trim();
+  if (!s || s.toLowerCase() === 'dd-mm-yyyy' || s.toLowerCase() === 'yyyy-mm-dd') return "";
+  const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (isoMatch) {
+    return `${isoMatch[3].padStart(2, '0')}-${isoMatch[2].padStart(2, '0')}-${isoMatch[1]}`;
+  }
+  const ddmmyyyy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (ddmmyyyy) {
+    return `${ddmmyyyy[1].padStart(2, '0')}-${ddmmyyyy[2].padStart(2, '0')}-${ddmmyyyy[3]}`;
+  }
+  return s;
+};
+
 export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChange, onProfileUpdate }) {
   const [activeTab, setActiveTab] = useState("personal"); // "personal" | "security" | "documents"
   const [docSubTab, setDocSubTab] = useState("pending"); // "pending" | "signed"
@@ -178,8 +193,20 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         if (merged.location) setLocation(merged.location);
         if (merged.postal_code || merged.postalCode) setPostalCode(merged.postal_code || merged.postalCode);
         if (merged.gender) setGender(merged.gender);
-        if (merged.date_of_birth || merged.dob) setDob(merged.date_of_birth || merged.dob);
+        const formattedDob = formatDobForDisplay(merged.date_of_birth || merged.dob);
+        if (formattedDob) setDob(formattedDob);
         if (merged.avatar_url && !avatarUrl) setAvatarUrl(merged.avatar_url);
+
+        const fullSync = {
+          ...merged,
+          firstName: merged.first_name || merged.firstName || firstName,
+          lastName: merged.last_name || merged.lastName || lastName,
+          phone: merged.phone_number || merged.phone || phone,
+          dob: formattedDob,
+          date_of_birth: formattedDob
+        };
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(fullSync));
+        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(fullSync));
       } catch (err) {
         console.warn("Failed to fetch tenant profile:", err);
       }
@@ -298,8 +325,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 location: location.trim(),
                 postal_code: postalCode.trim(),
                 postalCode: postalCode.trim(),
-                date_of_birth: dob,
-                dob: dob
+                date_of_birth: formatDobForDisplay(dob),
+                dob: formatDobForDisplay(dob)
               };
               sessionStorage.setItem("currentUserProfile", JSON.stringify(fullMergedProf));
               sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(fullMergedProf));

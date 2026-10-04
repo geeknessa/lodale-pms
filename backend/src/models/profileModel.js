@@ -67,19 +67,23 @@ export const ProfileModel = {
       business_name, business_type, tax_id,
       bank_name, bank_account_number, bank_account_name,
       total_properties_managed, years_in_business,
-      professional_license, website_url, bio, address
+      professional_license, website_url, bio, address,
+      gender, date_of_birth, dob, location, postal_code, postalCode
     } = data;
 
     const numProperties = parseSafeNumber(total_properties_managed);
     const numYears = parseSafeNumber(years_in_business);
+    const safeDob = parseSafeDate(date_of_birth || dob);
+    const safePostalCode = toNullableStr(postal_code || postalCode);
 
     const res = await pool.query(`
       INSERT INTO landlord_profiles (
         user_id, business_name, business_type, tax_id,
         bank_name, bank_account_number, bank_account_name,
         total_properties_managed, years_in_business,
-        professional_license, website_url, bio, address, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, NOW())
+        professional_license, website_url, bio, address,
+        gender, date_of_birth, location, postal_code, updated_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, NOW())
       ON CONFLICT (user_id) DO UPDATE SET
         business_name         = COALESCE(EXCLUDED.business_name, landlord_profiles.business_name),
         business_type         = COALESCE(EXCLUDED.business_type, landlord_profiles.business_type),
@@ -93,6 +97,10 @@ export const ProfileModel = {
         website_url           = COALESCE(EXCLUDED.website_url, landlord_profiles.website_url),
         bio                   = COALESCE(EXCLUDED.bio, landlord_profiles.bio),
         address               = COALESCE(EXCLUDED.address, landlord_profiles.address),
+        gender                = COALESCE(EXCLUDED.gender, landlord_profiles.gender),
+        date_of_birth         = COALESCE(EXCLUDED.date_of_birth, landlord_profiles.date_of_birth),
+        location              = COALESCE(EXCLUDED.location, landlord_profiles.location),
+        postal_code           = COALESCE(EXCLUDED.postal_code, landlord_profiles.postal_code),
         updated_at            = NOW()
       RETURNING *
     `, [
@@ -103,12 +111,16 @@ export const ProfileModel = {
       toNullableStr(bank_name),
       toNullableStr(bank_account_number),
       toNullableStr(bank_account_name),
-      toNullableInt(total_properties_managed),
-      toNullableInt(years_in_business),
+      numProperties,
+      numYears,
       toNullableStr(professional_license),
       toNullableStr(website_url),
       toNullableStr(bio),
-      toNullableStr(address)
+      toNullableStr(address),
+      toNullableStr(gender),
+      safeDob,
+      toNullableStr(location),
+      safePostalCode
     ]);
     return res.rows[0];
   },
@@ -135,18 +147,19 @@ export const ProfileModel = {
 
   async upsertTenantProfile(userId, data) {
     const {
-      date_of_birth, nationality, occupation,
+      date_of_birth, dob, nationality, occupation,
       employer_name, employment_status, monthly_income,
       marital_status, number_of_dependants,
       guarantor_name, guarantor_phone, guarantor_email, guarantor_relationship,
       emergency_contact_name, emergency_contact_phone, emergency_contact_relationship,
-      preferred_move_in_date, max_budget, gender, address, location, postal_code, bio
+      preferred_move_in_date, max_budget, gender, address, location, postal_code, postalCode, bio
     } = data;
 
-    const safeDob = parseSafeDate(date_of_birth);
+    const safeDob = parseSafeDate(date_of_birth || dob);
     const safeMoveIn = parseSafeDate(preferred_move_in_date);
     const safeDependants = parseSafeNumber(number_of_dependants);
     const safeBudget = parseSafeNumber(max_budget);
+    const safePostalCode = toNullableStr(postal_code || postalCode);
 
     const res = await pool.query(`
       INSERT INTO tenant_profiles (
@@ -204,7 +217,7 @@ export const ProfileModel = {
       toNullableStr(gender),
       toNullableStr(address),
       toNullableStr(location),
-      toNullableStr(postal_code),
+      safePostalCode,
       toNullableStr(bio)
     ]);
     return res.rows[0];

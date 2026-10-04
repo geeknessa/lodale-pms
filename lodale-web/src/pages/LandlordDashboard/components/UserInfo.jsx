@@ -16,10 +16,10 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
   const tenantId = tenant?.id || tenant?.tenantId || tenant?.userId || tenant?.email || "";
   const emailId = tenant?.email || tenant?.tenant_email || (tenant?.tenant && tenant.tenant.email) || "";
 
-  const refreshReviews = () => {
+  const refreshReviews = async () => {
     if (!tenantId && !emailId) return;
-    const data = ratingService.getTenantReviews(tenantId, emailId);
-    setReviewsData(data);
+    const data = await ratingService.getTenantReviews(tenantId, emailId);
+    if (data) setReviewsData(data);
   };
 
   useEffect(() => {
