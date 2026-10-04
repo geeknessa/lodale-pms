@@ -31,6 +31,21 @@ const ToggleSwitch = ({ checked, onChange, label }) => (
   </label>
 );
 
+const formatDobForDisplay = (val) => {
+  if (!val) return "";
+  const s = String(val).trim();
+  if (!s || s.toLowerCase() === 'dd-mm-yyyy' || s.toLowerCase() === 'yyyy-mm-dd') return "";
+  const isoMatch = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (isoMatch) {
+    return `${isoMatch[3].padStart(2, '0')}-${isoMatch[2].padStart(2, '0')}-${isoMatch[1]}`;
+  }
+  const ddmmyyyy = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (ddmmyyyy) {
+    return `${ddmmyyyy[1].padStart(2, '0')}-${ddmmyyyy[2].padStart(2, '0')}-${ddmmyyyy[3]}`;
+  }
+  return s;
+};
+
 export default function Settings({ onShowReportModal }) {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
@@ -86,18 +101,32 @@ export default function Settings({ onShowReportModal }) {
   const [bankAccountName, setBankAccountName] = useState("");
 
   const loadStoredProfile = () => {
-    const storedUsername = sessionStorage.getItem("username") || "Landlord User";
-    
-    let fname = "";
-    let lname = "";
-    if (storedUsername) {
-      const parts = storedUsername.trim().split(" ");
-      fname = parts[0] || "";
-      lname = parts.slice(1).join(" ") || "";
+    const rawStored = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("landlordCurrentProfile");
+    if (rawStored) {
+      try {
+        const p = JSON.parse(rawStored);
+        if (p.first_name || p.firstName) setFirstName(p.first_name || p.firstName);
+        if (p.last_name || p.lastName) setLastName(p.last_name || p.lastName);
+        if (p.email) setEmail(p.email);
+        if (p.phone_number || p.phone) setPhone(p.phone_number || p.phone);
+        if (p.address) setAddress(p.address);
+        if (p.location) setLocation(p.location);
+        if (p.postal_code || p.postalCode) setPostalCode(p.postal_code || p.postalCode);
+        if (p.gender) setGender(p.gender);
+        if (p.date_of_birth || p.dob) setDob(formatDobForDisplay(p.date_of_birth || p.dob));
+        if (p.bank_name) setBankName(p.bank_name);
+        if (p.bank_account_number) setBankAccountNumber(p.bank_account_number);
+        if (p.bank_account_name) setBankAccountName(p.bank_account_name);
+        if (p.avatar_url || p.avatar) setAvatarUrl(p.avatar_url || p.avatar);
+      } catch (e) {}
+    } else {
+      const storedUsername = sessionStorage.getItem("username") || "Landlord User";
+      if (storedUsername) {
+        const parts = storedUsername.trim().split(" ");
+        setFirstName(parts[0] || "");
+        setLastName(parts.slice(1).join(" ") || "");
+      }
     }
-
-    setFirstName(fname);
-    setLastName(lname);
   };
 
   useEffect(() => {
@@ -117,40 +146,45 @@ export default function Settings({ onShowReportModal }) {
           if (profile.email) setEmail(profile.email);
           if (profile.phone_number || profile.phone) setPhone(profile.phone_number || profile.phone);
           if (profile.avatar_url) setAvatarUrl(profile.avatar_url);
-          if (profile.address) setAddress(profile.address);
-          if (profile.dob) setDob(profile.dob);
-          if (profile.location) setLocation(profile.location);
-          if (profile.postal_code || profile.postalCode) setPostalCode(profile.postal_code || profile.postalCode);
-          if (profile.gender) setGender(profile.gender);
         }
 
         if (roleProfile) {
           if (roleProfile.address) setAddress(roleProfile.address);
+          if (roleProfile.location) setLocation(roleProfile.location);
+          if (roleProfile.postal_code || roleProfile.postalCode) setPostalCode(roleProfile.postal_code || roleProfile.postalCode);
+          if (roleProfile.gender) setGender(roleProfile.gender);
+          if (roleProfile.date_of_birth || roleProfile.dob) setDob(formatDobForDisplay(roleProfile.date_of_birth || roleProfile.dob));
           if (roleProfile.bank_name) setBankName(roleProfile.bank_name);
           if (roleProfile.bank_account_number) setBankAccountNumber(roleProfile.bank_account_number);
           if (roleProfile.bank_account_name) setBankAccountName(roleProfile.bank_account_name);
         }
 
-        const currentStored = sessionStorage.getItem("currentUserProfile");
-        if (currentStored) {
-          try {
-            const parsed = JSON.parse(currentStored);
-            const merged = {
-              ...parsed,
-              firstName: profile?.first_name || parsed.firstName,
-              lastName: profile?.last_name || parsed.lastName,
-              first_name: profile?.first_name || parsed.first_name,
-              last_name: profile?.last_name || parsed.last_name,
-              phone: profile?.phone_number || parsed.phone,
-              phone_number: profile?.phone_number || parsed.phone_number,
-              address: roleProfile?.address || profile?.address || parsed.address || "",
-              role: "landlord",
-              primary_role: "landlord"
-            };
-            sessionStorage.setItem("currentUserProfile", JSON.stringify(merged));
-            sessionStorage.setItem("landlordCurrentProfile", JSON.stringify(merged));
-          } catch (e) {}
-        }
+        const merged = {
+          ...(profile || {}),
+          ...(roleProfile || {}),
+          firstName: profile?.first_name || firstName,
+          lastName: profile?.last_name || lastName,
+          first_name: profile?.first_name || firstName,
+          last_name: profile?.last_name || lastName,
+          phone: profile?.phone_number || phone,
+          phone_number: profile?.phone_number || phone,
+          address: roleProfile?.address || profile?.address || address || "",
+          location: roleProfile?.location || location || "",
+          postalCode: roleProfile?.postal_code || roleProfile?.postalCode || postalCode || "",
+          postal_code: roleProfile?.postal_code || roleProfile?.postalCode || postalCode || "",
+          gender: roleProfile?.gender || gender || "male",
+          dob: formatDobForDisplay(roleProfile?.date_of_birth || roleProfile?.dob || dob),
+          date_of_birth: roleProfile?.date_of_birth || roleProfile?.dob || dob,
+          bank_name: roleProfile?.bank_name || bankName,
+          bank_account_number: roleProfile?.bank_account_number || bankAccountNumber,
+          bank_account_name: roleProfile?.bank_account_name || bankAccountName,
+          avatar: profile?.avatar_url || avatarUrl,
+          avatar_url: profile?.avatar_url || avatarUrl,
+          role: "landlord",
+          primary_role: "landlord"
+        };
+        sessionStorage.setItem("currentUserProfile", JSON.stringify(merged));
+        sessionStorage.setItem("landlordCurrentProfile", JSON.stringify(merged));
       } catch (err) {
         console.warn("Failed to fetch landlord profile", err);
       }
@@ -253,7 +287,11 @@ export default function Settings({ onShowReportModal }) {
             bank_name: bankName.trim(),
             bank_account_number: bankAccountNumber.trim(),
             bank_account_name: bankAccountName.trim(),
-            address: address.trim()
+            address: address.trim(),
+            gender: gender || null,
+            date_of_birth: dob && dob.trim() !== 'DD-MM-YYYY' ? dob.trim() : null,
+            location: (location || '').trim(),
+            postal_code: (postalCode || '').trim()
           })
         ]);
       } catch (apiErr) {

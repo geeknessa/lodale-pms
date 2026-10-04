@@ -11,6 +11,8 @@ const __dirname = path.dirname(__filename);
 dotenv.config();
 
 const { Pool } = pg;
+// Parse PostgreSQL DATE type (OID 1082) as raw 'YYYY-MM-DD' string to prevent timezone offset shifts
+pg.types.setTypeParser(1082, (str) => str);
 
 if (!process.env.DATABASE_URL) {
   console.error('[FATAL] DATABASE_URL environment variable is required. Set it in backend/.env');
@@ -245,6 +247,25 @@ export async function initDb() {
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS location VARCHAR(255);
       ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS postal_code VARCHAR(50);
       ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS address TEXT;
+      ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS gender VARCHAR(50);
+      ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS date_of_birth DATE;
+      ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS location VARCHAR(255);
+      ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS postal_code VARCHAR(50);
+
+      CREATE TABLE IF NOT EXISTS ratings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        rater_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        ratee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        rating_type VARCHAR(30) NOT NULL CHECK (rating_type IN ('landlord_rates_tenant', 'tenant_rates_landlord')),
+        property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+        lease_id UUID REFERENCES leases(id) ON DELETE SET NULL,
+        rating NUMERIC(2, 1) NOT NULL CHECK (rating >= 1.0 AND rating <= 5.0),
+        comment TEXT,
+        would_recommend BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE(rater_id, ratee_id, rating_type)
+      );
 
       CREATE TABLE IF NOT EXISTS support_messages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

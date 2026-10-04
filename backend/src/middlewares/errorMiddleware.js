@@ -1,4 +1,4 @@
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res, _next) => {
   console.error('[Error Middleware]:', req.method, req.originalUrl, '-', err.message || err);
   if (err.stack) console.error('[Error Middleware Stack]:', err.stack);
   if (req.body && Object.keys(req.body).length > 0) {
@@ -11,7 +11,7 @@ export const errorHandler = (err, req, res, next) => {
         }
       }
       console.error('[Error Middleware Body]:', JSON.stringify(sanitizedBody).substring(0, 500));
-    } catch (e) {
+    } catch (_e) {
       console.error('[Error Middleware Body]: [Unserializable]');
     }
   }

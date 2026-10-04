@@ -76,6 +76,10 @@ CREATE TABLE IF NOT EXISTS landlord_profiles (
     website_url TEXT,
     bio TEXT,
     address TEXT,
+    gender VARCHAR(50),
+    date_of_birth DATE,
+    location VARCHAR(255),
+    postal_code VARCHAR(50),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -236,4 +240,21 @@ CREATE TABLE IF NOT EXISTS property_inspections (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- RATINGS TABLE (Bidirectional reviews: landlord rates tenant OR tenant rates landlord)
+CREATE TABLE IF NOT EXISTS ratings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    rater_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ratee_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    rating_type VARCHAR(30) NOT NULL CHECK (rating_type IN ('landlord_rates_tenant', 'tenant_rates_landlord')),
+    property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+    lease_id UUID REFERENCES leases(id) ON DELETE SET NULL,
+    rating NUMERIC(2, 1) NOT NULL CHECK (rating >= 1.0 AND rating <= 5.0),
+    comment TEXT,
+    would_recommend BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(rater_id, ratee_id, rating_type)
+);
+
 

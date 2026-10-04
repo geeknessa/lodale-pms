@@ -22,12 +22,12 @@ export default function RateTenantModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     setSubmitting(true);
 
     try {
-      const res = ratingService.submitTenantReview({
+      const res = await ratingService.submitTenantReview({
         tenantId,
         tenantName,
         landlordId,

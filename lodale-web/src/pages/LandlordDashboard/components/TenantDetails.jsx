@@ -25,10 +25,10 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
   const emailId = tenant?.email || tenant?.tenant_email || (tenant?.tenant && tenant?.tenant?.email) || "";
   const tenantName = tenant?.name || tenant?.tenantName || `${tenant?.firstName || ''} ${tenant?.lastName || ''}`.trim() || (tenant?.tenant ? `${tenant?.tenant?.first_name || tenant?.tenant?.firstName || ''} ${tenant?.tenant?.last_name || tenant?.tenant?.lastName || ''}`.trim() : '') || "Tenant";
 
-  const refreshReviews = () => {
+  const refreshReviews = async () => {
     if (!tenantId) return;
-    const data = ratingService.getTenantReviews(tenantId, emailId);
-    setReviewsData(data);
+    const data = await ratingService.getTenantReviews(tenantId, emailId);
+    if (data) setReviewsData(data);
   };
 
   useEffect(() => {

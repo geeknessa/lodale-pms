@@ -30,6 +30,23 @@ export function PropertyDetailView() {
   const [selectedUnitForModal, setSelectedUnitForModal] = useState(null);
   const [showUnitSelectorModal, setShowUnitSelectorModal] = useState(false);
 
+  const targetLandlordId = property?.landlord_id || property?.landlord?.id || property?.landlordId;
+  const [landlordRatingData, setLandlordRatingData] = useState({ hasReviews: false, rating: "New", count: 0, reviews: [] });
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLandlordRating = async () => {
+      if (targetLandlordId && targetLandlordId !== "landlord_default") {
+        try {
+          const res = await ratingService.getLandlordReviews(targetLandlordId);
+          if (isMounted && res) setLandlordRatingData(res);
+        } catch (e) {}
+      }
+    };
+    fetchLandlordRating();
+    return () => { isMounted = false; };
+  }, [targetLandlordId]);
+
   const { 
     meetsIncome, 
     meetsGuarantor, 
@@ -150,7 +167,6 @@ export function PropertyDetailView() {
 
   const landlordId = property.landlord_id || property.landlord?.id || property.landlordId || "landlord_default";
   const landlordName = property.landlord_name || property.landlord?.name || property.landlordName || (property.landlord?.first_name ? `${property.landlord.first_name} ${property.landlord.last_name || ''}`.trim() : "Landlord");
-  const landlordRatingData = ratingService.getLandlordReviews(landlordId);
 
   const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
   const currentUserRole = (sessionStorage.getItem("userRole") || "").toLowerCase();

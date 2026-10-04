@@ -248,8 +248,55 @@ export default function TenantDashboard() {
 
   const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
   const currentUserEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
-  const tenantReviewsData = ratingService.getTenantReviews(currentUserId, currentUserEmail);
+  const [tenantReviewsData, setTenantReviewsData] = useState({ hasReviews: false, rating: "New", count: 0, reviews: [] });
   const scoreVal = Number(tenantReviewsData.rating) || 0;
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadRating = async () => {
+      const idOrEmail = currentUserId || currentUserEmail;
+      if (idOrEmail) {
+        try {
+          const res = await ratingService.getTenantReviews(currentUserId, currentUserEmail);
+          if (isMounted && res) setTenantReviewsData(res);
+        } catch (e) {}
+      }
+    };
+    loadRating();
+    window.addEventListener("tenantRatingUpdated", loadRating);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("tenantRatingUpdated", loadRating);
+    };
+  }, [currentUserId, currentUserEmail]);
+
+  // Re-fetch fresh profile from backend on reload instead of trusting stale sessionStorage
+  useEffect(() => {
+    let isMounted = true;
+    const syncFreshProfile = async () => {
+      try {
+        const [profile, roleProfile] = await Promise.all([
+          userService.getProfile().catch(() => null),
+          profileService.getMyProfile().catch(() => null)
+        ]);
+        if (isMounted && profile) {
+          const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
+          if (fullName) {
+            setUsername(fullName);
+            sessionStorage.setItem("username", fullName);
+          }
+          if (profile.avatar_url) {
+            setTenantAvatar(profile.avatar_url);
+            sessionStorage.setItem("tenantAvatarUrl", profile.avatar_url);
+          }
+          const merged = { ...profile, ...(roleProfile || {}) };
+          sessionStorage.setItem("currentUserProfile", JSON.stringify(merged));
+          sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(merged));
+        }
+      } catch (err) {}
+    };
+    syncFreshProfile();
+  }, []);
 
   // Dynamic real-time date formatting
   const currentDateStr = new Date().toLocaleDateString("en-GB", {
@@ -3216,7 +3263,7 @@ export default function TenantDashboard() {
                         <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] dark:text-white/50 block mb-0.5">Reliability Rating</span>
                         <span className="text-base font-bold text-[#1C1917] dark:text-white flex items-center gap-1">
                           <Star className="h-3.5 w-3.5 fill-[#E5C583] text-[#E5C583] shrink-0" />
-                          <span>{tenantReviewsData.hasReviews ? (Math.round(tenantReviewsData.averageScore * 10) / 10).toFixed(1) : "5.0"}</span>
+                          <span>{tenantReviewsData.hasReviews ? (Math.round((Number(tenantReviewsData.averageScore) || Number(tenantReviewsData.rating) || 5) * 10) / 10).toFixed(1) : "5.0"}</span>
                         </span>
                       </div>
                     </div>
