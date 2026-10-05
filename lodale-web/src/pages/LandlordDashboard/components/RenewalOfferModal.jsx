@@ -104,7 +104,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
           </h2>
           <button 
             onClick={onClose}
-            className="p-2 bg-ink-50 hover:bg-ink-100 dark:bg-[#FFFFFF]/5 dark:hover:bg-[#FFFFFF]/10 rounded-full transition-colors"
+            className="p-2 bg-ink-50 hover:bg-ink-100 dark:bg-[#FFFFFF]/5 dark:hover:bg-[#FFFFFF]/10 rounded-full transition-colors cursor-pointer"
           >
             <X className="w-5 h-5 text-ink-600 dark:text-cream-100" />
           </button>
@@ -127,7 +127,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
             <div>
               <label className="block text-xs font-bold text-ink-700 dark:text-cream-100 mb-1">New Start Date</label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 dark:text-cream-100/70" />
                 <input 
                   type="date"
                   required
@@ -140,7 +140,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
             <div>
               <label className="block text-xs font-bold text-ink-700 dark:text-cream-100 mb-1">New End Date</label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400 dark:text-cream-100/70" />
                 <input 
                   type="date"
                   required

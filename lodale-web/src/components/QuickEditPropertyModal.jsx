@@ -241,7 +241,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl bg-ink-100 hover:bg-ink-200 dark:bg-white/5 dark:hover:bg-white/10 text-ink-600 dark:text-cream-100/70 dark:hover:text-white transition-colors cursor-pointer">
+          <button onClick={onClose} className="p-2 rounded-xl bg-ink-100 hover:bg-ink-200 dark:bg-white/5 dark:hover:bg-white/10 text-ink-700 dark:text-cream-100/80 dark:hover:text-white transition-colors cursor-pointer">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -611,7 +611,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
                 <button
                   type="submit"
                   disabled={sendingAdminReq}
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md"
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md transition-colors"
                 >
                   {sendingAdminReq ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                   Submit Request

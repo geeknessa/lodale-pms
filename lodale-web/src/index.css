@@ -237,6 +237,14 @@ body.dark [class*="dark:bg-[#e5c583]"] {
   color: #07130D !important;
 }
 
+body.dark [class*="bg-[#E5C583]"] *,
+body.dark [class*="bg-[#e5c583]"] *,
+body.dark [class*="dark:bg-[#E5C583]"] *,
+body.dark [class*="dark:bg-[#e5c583]"] * {
+  color: inherit;
+  stroke: currentColor;
+}
+
 body.dark [class*="bg-[#E5C583]"]:hover,
 body.dark [class*="bg-[#e5c583]"]:hover,
 body.dark [class*="dark:bg-[#E5C583]"]:hover,
@@ -252,6 +260,47 @@ body.dark .tenants-tab-btn.active:hover,
 body.dark .invite-tenant-btn:hover,
 body.dark .tenant-submit-btn:hover {
   color: #07130D !important;
+}
+
+/* Close buttons & modal dismissals: high contrast across light and dark modes */
+.close-btn,
+button.close-btn,
+.ui-modal-close-btn,
+.db-popup-close-btn,
+.ap-popup-close-btn,
+.lc-profile-close-btn {
+  color: #44403C !important;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover,
+button.close-btn:hover,
+.ui-modal-close-btn:hover,
+.db-popup-close-btn:hover,
+.ap-popup-close-btn:hover,
+.lc-profile-close-btn:hover {
+  color: #1C1917 !important;
+  background-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+body.dark .close-btn,
+body.dark button.close-btn,
+body.dark .ui-modal-close-btn,
+body.dark .db-popup-close-btn,
+body.dark .ap-popup-close-btn,
+body.dark .lc-profile-close-btn {
+  color: rgba(255, 255, 255, 0.75) !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+body.dark .close-btn:hover,
+body.dark button.close-btn:hover,
+body.dark .ui-modal-close-btn:hover,
+body.dark .db-popup-close-btn:hover,
+body.dark .ap-popup-close-btn:hover,
+body.dark .lc-profile-close-btn:hover {
+  color: #FFFFFF !important;
+  background-color: rgba(255, 255, 255, 0.16) !important;
 }
 
 /* Secondary / outline buttons: high contrast on hover */

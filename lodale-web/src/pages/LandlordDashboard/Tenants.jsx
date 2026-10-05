@@ -827,7 +827,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
                   </button>
 
                   <button
-                    className="tenant-action-btn w-full hover:bg-moss-50 hover:text-moss-700 dark:hover:bg-moss-950/30"
+                    className="tenant-action-btn w-full hover:bg-moss-50 hover:text-moss-700 dark:hover:bg-moss-950/40 dark:hover:text-emerald-300"
                     onClick={() => setSelectedTenantForDetails(tenant)}
                     title="View Details"
                   >
@@ -835,7 +835,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
                   </button>
 
                   <button
-                    className="tenant-action-btn w-full hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/30"
+                    className="tenant-action-btn w-full hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/40 dark:hover:text-[#E5C583]"
                     onClick={() => {
                       setSelectedTenantToRate(tenant);
                       setShowRateTenantModal(true);

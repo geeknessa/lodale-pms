@@ -489,13 +489,13 @@ export default function TenantApplications({ setActiveTab }) {
                                 <h4 className="text-sm font-bold text-[#1C1917] dark:text-white">{activeStepTitle}</h4>
                               </div>
                             </div>
-                            <ChevronDown className="h-5 w-5 text-stone-400" />
+                            <ChevronDown className="h-5 w-5 text-stone-400 dark:text-stone-300" />
                           </div>
                         ) : (
                           <div className="bg-[#FAF8F5] dark:bg-[#0C1410] p-5 rounded-[24px] border border-[#E7E5E0] dark:border-white/5 mt-0 mb-2 relative">
                             <button 
                               onClick={() => setExpandedAppIds(prev => prev.filter(id => id !== app.id))}
-                              className="absolute top-5 right-5 text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 p-1 bg-white dark:bg-white/5 rounded-full shadow-sm transition-colors cursor-pointer"
+                              className="absolute top-5 right-5 text-stone-400 dark:text-stone-300 hover:text-stone-600 dark:hover:text-white p-1 bg-white dark:bg-white/5 rounded-full shadow-sm transition-colors cursor-pointer"
                             >
                               <ChevronUp className="h-5 w-5" />
                             </button>

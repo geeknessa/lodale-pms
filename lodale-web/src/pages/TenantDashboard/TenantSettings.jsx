@@ -1060,7 +1060,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                     className="settings-form-input"
                     placeholder="DD-MM-YYYY"
                   />
-                  <Calendar className="input-right-icon text-ink-400" />
+                  <Calendar className="input-right-icon text-ink-400 dark:text-cream-100/70" />
                 </div>
               </div>
 
@@ -1436,7 +1436,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 </div>
               </div>
               <button
-                className="close-btn text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold cursor-pointer"
+                className="close-btn text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white text-xl font-bold cursor-pointer"
                 onClick={() => setSelectedDocToSign(null)}
               >
                 &times;
@@ -1524,7 +1524,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 <span className="px-3 py-1 text-[10.5px] font-extrabold border border-ink-200/80 dark:border-white/20 text-[#07130D] dark:text-[#E5C583] rounded-full uppercase tracking-wider">
                   VERIFIED & EXECUTED
                 </span>
-                <button className="close-btn text-ink-400 hover:text-ink-900 dark:hover:text-white text-2xl font-bold leading-none cursor-pointer" onClick={() => setSelectedDocToView(null)}>&times;</button>
+                <button className="close-btn text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white text-2xl font-bold leading-none cursor-pointer" onClick={() => setSelectedDocToView(null)}>&times;</button>
               </div>
             </div>
 

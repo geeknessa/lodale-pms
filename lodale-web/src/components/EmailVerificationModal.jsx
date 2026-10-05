@@ -75,7 +75,7 @@ export default function EmailVerificationModal({ isOpen, onClose, newEmail, demo
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-ink-400 hover:text-ink-900 dark:text-cream-100/60 dark:hover:text-white rounded-full hover:bg-ink-100 dark:hover:bg-white/10 transition-colors"
+          className="absolute top-4 right-4 p-2 text-ink-600 hover:text-ink-900 dark:text-cream-100/80 dark:hover:text-white rounded-full hover:bg-ink-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
           aria-label="Close modal"
         >
           <X className="w-5 h-5" />

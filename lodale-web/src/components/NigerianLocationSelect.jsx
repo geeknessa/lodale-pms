@@ -90,7 +90,7 @@ export default function NigerianLocationSelect({ value, onChange, className = ""
           <MapPin className="h-4 w-4 shrink-0 text-moss-600 dark:text-[#E5C583]" />
           <span className="truncate">{value || placeholder}</span>
         </div>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 shrink-0 text-neutral-400 dark:text-cream-100/70 transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </div>
 
       {isOpen && (
@@ -98,7 +98,7 @@ export default function NigerianLocationSelect({ value, onChange, className = ""
           {/* Search Header */}
           <div className="p-2 border-b border-neutral-100 dark:border-neutral-800 shrink-0 bg-neutral-50 dark:bg-[#172A22]">
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#1F362C] border border-neutral-200 dark:border-neutral-700">
-              <Search className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+              <Search className="h-3.5 w-3.5 text-neutral-400 dark:text-cream-100/70 shrink-0" />
               <input
                 type="text"
                 value={searchQuery}

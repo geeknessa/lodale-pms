@@ -143,7 +143,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-ink-400 hover:text-ink-800 dark:hover:text-white hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/10 transition-colors"
+              className="p-2 rounded-xl text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/10 transition-colors cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
@@ -425,7 +425,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
             <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-white/10 mb-4">
               <h3 className="font-extrabold text-base text-ink-900 dark:text-cream-100">Reliability Breakdown</h3>
               <button 
-                className="p-1 rounded-lg text-ink-400 hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/10" 
+                className="p-1 rounded-lg text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/10 transition-colors cursor-pointer" 
                 onClick={() => setShowReliabilityDetails(false)}
               >
                 <X className="h-5 w-5" />

@@ -336,6 +336,14 @@
   color: var(--active-pill-bg);
 }
 
+body.dark .ap-see-all-btn {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+body.dark .ap-see-all-btn:hover {
+  color: #E5C583;
+}
+
 .ap-tenants-list {
   display: flex;
   flex-direction: column;

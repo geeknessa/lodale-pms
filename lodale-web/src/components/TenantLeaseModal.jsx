@@ -101,7 +101,7 @@ export default function TenantLeaseModal({ isOpen, onClose, application, onSucce
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl text-ink-400 hover:text-ink-800 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 cursor-pointer">
+          <button onClick={onClose} className="p-2 rounded-xl text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/10 cursor-pointer transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>

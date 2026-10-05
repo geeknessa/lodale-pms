@@ -444,18 +444,18 @@ export default function HowItWorks() {
           <div className="inline-flex rounded-lg bg-cream-50 p-1 border border-ink-200">
             <button
               onClick={() => handleRoleSwitch("tenant")}
-              className={`rounded-md px-6 py-2.5 text-[14px] font-semibold transition-all ${role === "tenant"
+              className={`rounded-md px-6 py-2.5 text-[14px] font-semibold transition-all cursor-pointer ${role === "tenant"
                 ? "bg-moss-700 text-white shadow-xs"
-                : "text-ink-700 hover:text-ink-900"
+                : "text-ink-700 hover:text-ink-900 dark:text-cream-100/70 dark:hover:text-white"
                 }`}
             >
               I am a Tenant
             </button>
             <button
               onClick={() => handleRoleSwitch("landlord")}
-              className={`rounded-md px-6 py-2.5 text-[14px] font-semibold transition-all ${role === "landlord"
+              className={`rounded-md px-6 py-2.5 text-[14px] font-semibold transition-all cursor-pointer ${role === "landlord"
                 ? "bg-moss-700 text-white shadow-xs"
-                : "text-ink-700 hover:text-ink-900"
+                : "text-ink-700 hover:text-ink-900 dark:text-cream-100/70 dark:hover:text-white"
                 }`}
             >
               I am a Landlord

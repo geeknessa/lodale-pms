@@ -517,7 +517,7 @@ export default function Login() {
               </div>
               <button 
                 onClick={() => setRestorationFeeInfo(null)}
-                className="text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold cursor-pointer"
+                className="close-btn text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white text-xl font-bold cursor-pointer bg-transparent border-none p-0 leading-none"
               >
                 &times;
               </button>

@@ -39,7 +39,7 @@ function CustomSelect({ value, onChange, options, placeholder }) {
         className="flex items-center justify-between gap-2 px-4 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-100 dark:border-white/10 text-ink-900 dark:text-white rounded-xl text-[12.5px] font-bold cursor-pointer transition-all duration-200 hover:border-ink-400 dark:hover:border-white/30 hover:bg-ink-50/50 dark:hover:bg-[#FFFFFF]/5 outline-none select-none min-w-[130px]"
       >
         <span>{selectedOption ? selectedOption.label : placeholder}</span>
-        <ChevronDown className={`h-3.5 w-3.5 text-ink-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3.5 w-3.5 text-ink-400 dark:text-cream-100/70 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
       </button>
 
       {isOpen && (

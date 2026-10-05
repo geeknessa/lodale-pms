@@ -1452,7 +1452,7 @@ export default function TenantDashboard() {
                   </button>
                 )}
                 <button 
-                  className="text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold cursor-pointer bg-transparent border-none p-0" 
+                  className="close-btn text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white text-xl font-bold cursor-pointer bg-transparent border-none p-0" 
                   onClick={() => setShowNotificationsModal(false)}
                 >
                   &times;
@@ -1607,7 +1607,7 @@ export default function TenantDashboard() {
                 </div>
               </div>
               <button 
-                className="text-ink-400 hover:text-ink-900 dark:hover:text-white text-2xl font-bold cursor-pointer bg-transparent border-none p-0 leading-none" 
+                className="close-btn text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white text-2xl font-bold cursor-pointer bg-transparent border-none p-0 leading-none" 
                 onClick={() => setShowMaintenanceHistoryModal(false)}
               >
                 &times;
@@ -1727,7 +1727,7 @@ export default function TenantDashboard() {
                     <h3 className="text-lg font-bold text-[#1C1917] dark:text-white">Secure Rent Payment System</h3>
                     <p className="text-xs text-[#71717A] dark:text-white/60">Verified Lodale Property Dues</p>
                   </div>
-                  <button className="close-btn text-2xl font-bold text-[#71717A] hover:text-[#1C1917] dark:hover:text-white" onClick={() => setShowPayModal(false)}>&times;</button>
+                  <button className="close-btn text-2xl font-bold text-ink-600 dark:text-cream-100/80 hover:text-[#1C1917] dark:hover:text-white" onClick={() => setShowPayModal(false)}>&times;</button>
                 </div>
 
                 <div className="modal-body space-y-5">
@@ -2319,7 +2319,7 @@ export default function TenantDashboard() {
                   <p className="text-[11px] text-[#71717A] dark:text-white/60">Reference #{selectedPaymentDetail.ref || selectedPaymentDetail.id?.slice(0, 8) || "INV-001"}</p>
                 </div>
               </div>
-              <button className="close-btn text-2xl font-bold text-[#71717A] hover:text-[#1C1917] dark:hover:text-white cursor-pointer bg-transparent border-none p-0" onClick={() => setShowPaymentDetailModal(false)}>&times;</button>
+              <button className="close-btn text-2xl font-bold text-ink-600 dark:text-cream-100/80 hover:text-[#1C1917] dark:hover:text-white cursor-pointer bg-transparent border-none p-0" onClick={() => setShowPaymentDetailModal(false)}>&times;</button>
             </div>
 
             <div className="space-y-4">
@@ -2412,7 +2412,7 @@ export default function TenantDashboard() {
                   <p className="text-[11px] text-ink-400 dark:text-cream-100/50">Lodale Verified Home Occupancy Ledger</p>
                 </div>
               </div>
-              <button className="close-btn text-ink-400 hover:text-ink-900 dark:hover:text-white text-xl font-bold" onClick={() => setShowStreakModal(false)}>&times;</button>
+              <button className="close-btn text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white text-xl font-bold" onClick={() => setShowStreakModal(false)}>&times;</button>
             </div>
 
             <div className="py-4 space-y-4">

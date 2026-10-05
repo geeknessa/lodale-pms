@@ -67,7 +67,7 @@ export default function AdminSupportChat() {
         <div className="p-4 border-b border-neutral-200 dark:border-white/10">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-3">Support Tickets</h3>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-cream-100/60" />
             <input 
               type="text" 
               placeholder="Search users or messages..." 
@@ -165,7 +165,7 @@ export default function AdminSupportChat() {
                   placeholder="Type a reply to the user..."
                   className="flex-1 p-3 bg-neutral-100 dark:bg-white/5 border-none rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5A40] dark:text-white"
                 />
-                <button type="submit" className="bg-[#3A5A40] hover:bg-[#2C4633] text-white p-3 rounded-xl transition-colors shrink-0">
+                <button type="submit" className="bg-[#3A5A40] hover:bg-[#2C4633] dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#09090b] p-3 rounded-xl transition-colors shrink-0 cursor-pointer">
                   <Send className="h-5 w-5" />
                 </button>
               </form>

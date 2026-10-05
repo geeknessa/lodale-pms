@@ -62,7 +62,7 @@ export default function SearchableDropdown({
         <span className={value ? "font-bold text-ink-900 dark:text-white truncate" : "text-ink-400 dark:text-cream-100/50 truncate"}>
           {value || placeholder}
         </span>
-        <ChevronDown className={`h-4 w-4 shrink-0 text-ink-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 shrink-0 text-ink-400 dark:text-cream-100/70 transition-transform ${isOpen ? "rotate-180" : ""}`} />
       </div>
 
       {isOpen && (
@@ -70,7 +70,7 @@ export default function SearchableDropdown({
           {/* Search Box */}
           <div className="p-2 border-b border-ink-100 dark:border-white/10 bg-cream-50 dark:bg-[#182C24]">
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#1F362C] border border-ink-200 dark:border-white/15">
-              <Search className="h-3.5 w-3.5 text-ink-400 shrink-0" />
+              <Search className="h-3.5 w-3.5 text-ink-400 dark:text-cream-100/70 shrink-0" />
               <input
                 type="text"
                 value={searchQuery}

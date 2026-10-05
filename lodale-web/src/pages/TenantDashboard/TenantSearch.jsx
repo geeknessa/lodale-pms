@@ -1337,7 +1337,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
               <h3 className="font-bold text-base text-neutral-900 dark:text-white flex items-center gap-2">
                 <CheckCircle2 className="h-5 w-5 text-moss-600 dark:text-[#E5C583]" /> Quick Apply to {quickApplyProperty.title}
               </h3>
-              <button className="text-xl font-bold text-neutral-400 hover:text-neutral-600" onClick={() => setShowQuickApplyConfirmModal(false)}>&times;</button>
+              <button className="close-btn text-xl font-bold text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white cursor-pointer bg-transparent border-none p-0 leading-none" onClick={() => setShowQuickApplyConfirmModal(false)}>&times;</button>
             </div>
 
             {(() => {

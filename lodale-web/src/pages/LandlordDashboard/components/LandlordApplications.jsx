@@ -1269,7 +1269,7 @@ export default function LandlordApplications({ setActiveTab }) {
             <div className="flex items-center justify-between pb-3 border-b border-ink-100 dark:border-white/10 mb-4">
               <h3 className="font-extrabold text-base text-ink-900 dark:text-white">Reliability Breakdown</h3>
               <button 
-                className="p-1 rounded-lg text-ink-400 hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/10 cursor-pointer" 
+                className="p-1 rounded-lg text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white hover:bg-ink-100 dark:hover:bg-[#FFFFFF]/10 cursor-pointer transition-colors" 
                 onClick={() => setShowReliabilityDetails(false)}
               >
                 <X className="h-5 w-5" />

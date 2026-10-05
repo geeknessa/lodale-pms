@@ -168,7 +168,7 @@ export default function AutomatedRemindersModal({ isOpen, onClose, activeTenants
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-ink-400 hover:text-ink-900 dark:hover:text-white hover:bg-ink-100 dark:hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl text-ink-600 dark:text-cream-100/80 hover:text-ink-900 dark:hover:text-white hover:bg-ink-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="h-5 w-5" />
           </button>
@@ -449,7 +449,7 @@ export default function AutomatedRemindersModal({ isOpen, onClose, activeTenants
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={handleSaveMessageTemplates}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
                   >
                     Save Template Settings
                   </button>
