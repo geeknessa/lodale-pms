@@ -30,7 +30,13 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
   // Helper function to get property status and verification
   const getPropertyStatusDetails = (p) => {
     const statusTag = (p.status || "").toLowerCase();
-    const hasTenants = (propertyTenantsMap[p.id] && propertyTenantsMap[p.id].length > 0) || statusTag === "occupied" || statusTag === "active_occupied";
+    const pId = String(p.id || "");
+    const pTitle = String(p.title || "").toLowerCase().trim();
+    const hasActiveLease = (leases || []).some(l => 
+      l && (l.status === 'active' || l.status === 'leased' || (l.tenant_signed_at && l.landlord_signed_at)) &&
+      (pId === String(l.property_id || l.propertyId) || (pTitle && String(l.property_title || l.propertyTitle || '').toLowerCase().trim() === pTitle))
+    );
+    const hasTenants = hasActiveLease || (propertyTenantsMap[p.id] && propertyTenantsMap[p.id].length > 0) || statusTag === "occupied" || statusTag === "active_occupied";
     
     if (hasTenants) {
       return {

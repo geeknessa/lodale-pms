@@ -2116,20 +2116,40 @@ export default function LandlordDashboard() {
                       }, 0);
 
                       const occupiedCount = displayProperties.reduce((acc, p) => {
+                        const pId = String(p.id || "");
+                        const pTitle = String(p.title || "").toLowerCase().trim();
+
+                        // Match active leases for this property
+                        const activeLeasesForProp = (leases || []).filter(l => {
+                          if (!l) return false;
+                          const isLeaseActive = l.status === 'active' || l.status === 'leased' || (l.tenant_signed_at && l.landlord_signed_at);
+                          if (!isLeaseActive) return false;
+                          const matchesId = pId && String(l.property_id || l.propertyId) === pId;
+                          const matchesTitle = pTitle && String(l.property_title || l.propertyTitle || "").toLowerCase().trim() === pTitle;
+                          return matchesId || matchesTitle;
+                        });
+
                         const st = (p.status || "").toLowerCase();
-                        if (st === "occupied" || st === "active_occupied") {
-                          if (Array.isArray(p.units) && p.units.length > 0) return acc + p.units.length;
-                          if (p.units_count) return acc + parseInt(p.units_count, 10) || 1;
-                          return acc + 1;
-                        }
+                        const isMarkedOccupied = st === "occupied" || st === "active_occupied";
+
                         if (Array.isArray(p.units) && p.units.length > 0) {
-                          return acc + p.units.filter(u => (u.status || "").toLowerCase() === "occupied").length;
+                          const explicitlyOccupiedUnits = p.units.filter(u => {
+                            const uSt = (u.status || "").toLowerCase();
+                            return uSt === "occupied" || uSt === "active_occupied";
+                          }).length;
+                          const occupiedUnits = Math.min(p.units.length, Math.max(activeLeasesForProp.length, explicitlyOccupiedUnits));
+                          return acc + occupiedUnits;
                         }
-                        return acc;
+
+                        // Single unit property: occupied if active lease exists or explicitly marked occupied
+                        const isOccupied = isMarkedOccupied || activeLeasesForProp.length > 0;
+                        return acc + (isOccupied ? 1 : 0);
                       }, 0);
 
-                      const vacantCount = Math.max(0, totalUnits - occupiedCount);
-                      const occRate = totalUnits > 0 ? Math.round((occupiedCount / totalUnits) * 100) : 0;
+                      // Ensure effective occupied respects activeTenantsCount without exceeding totalUnits
+                      const effectiveOccupied = Math.min(totalUnits, Math.max(occupiedCount, activeTenantsCount));
+                      const vacantCount = Math.max(0, totalUnits - effectiveOccupied);
+                      const occRate = totalUnits > 0 ? Math.round((effectiveOccupied / totalUnits) * 100) : 0;
 
                       const radius = 38;
                       const circumference = 2 * Math.PI * radius;
@@ -2181,7 +2201,7 @@ export default function LandlordDashboard() {
                                 <span className="w-3 h-3 rounded-full bg-[#10B981] shrink-0" />
                                 <span className="text-xs font-bold text-slate-800 dark:text-cream-100">Occupied Units</span>
                               </div>
-                              <span className="text-sm font-black text-emerald-700 dark:text-cream-100">{occupiedCount}</span>
+                              <span className="text-sm font-black text-emerald-700 dark:text-cream-100">{effectiveOccupied}</span>
                             </div>
 
                             <div className="p-3 rounded-2xl bg-[#E5C583]/15 border border-[#E5C583]/30 flex items-center justify-between">

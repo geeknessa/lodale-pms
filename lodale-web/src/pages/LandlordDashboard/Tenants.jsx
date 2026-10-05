@@ -12,6 +12,7 @@ import Avatar from "../../components/Avatar";
 import RenewalOfferModal from "./components/RenewalOfferModal";
 import RateTenantModal from "../../components/RateTenantModal";
 import { profileService } from "../../services/profileService";
+import { ratingService } from "../../services/ratingService";
 import "./Tenants.css";
 
 const TenantsSkeleton = () => (
@@ -437,7 +438,31 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
         }
       });
 
-      setTenantsList(Array.from(uniqueTenantsMap.values()));
+      const rawUniqueList = Array.from(uniqueTenantsMap.values());
+      const tenantsWithRatings = await Promise.all(
+        rawUniqueList.map(async (t) => {
+          const tId = t.id || t.tenant_id;
+          const tEmail = t.email;
+          if (!tId && !tEmail) return t;
+
+          try {
+            const revData = await ratingService.getTenantReviews(tId, tEmail);
+            if (revData && revData.hasReviews) {
+              const score = Number(revData.rating) || Number(revData.averageScore) || 0;
+              return {
+                ...t,
+                reliabilityScore: score > 0 ? score.toFixed(1) : t.reliabilityScore,
+                ratingCount: revData.count || 0
+              };
+            }
+          } catch (_err) {
+            // fallback gracefully
+          }
+          return t;
+        })
+      );
+
+      setTenantsList(tenantsWithRatings);
     } catch (e) {
       console.warn("Could not load tenants list:", e);
       setError("Failed to load tenant directory. Please check your network connection.");
@@ -452,10 +477,12 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
     window.addEventListener("storage", handleSilentRefresh);
     window.addEventListener("focus", handleSilentRefresh);
     window.addEventListener("propertyUpdated", handleSilentRefresh);
+    window.addEventListener("tenantRatingUpdated", handleSilentRefresh);
     return () => {
       window.removeEventListener("storage", handleSilentRefresh);
       window.removeEventListener("focus", handleSilentRefresh);
       window.removeEventListener("propertyUpdated", handleSilentRefresh);
+      window.removeEventListener("tenantRatingUpdated", handleSilentRefresh);
     };
   }, []);
 
@@ -753,7 +780,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
 
                   <div className="tenant-card-score" title="Tenant Reliability Score">
                     <Star className="h-3.5 w-3.5 fill-[#D69E2E] text-[#D69E2E]" />
-                    <span>{tenant.reliabilityScore > 0 ? tenant.reliabilityScore : "No rating"}</span>
+                    <span>{tenant.reliabilityScore && Number(tenant.reliabilityScore) > 0 ? Number(tenant.reliabilityScore).toFixed(1) : "No rating"}</span>
                   </div>
                 </div>
 
@@ -1242,10 +1269,13 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
           isOpen={showRateTenantModal}
           onClose={() => setShowRateTenantModal(false)}
           tenantId={selectedTenantToRate.id || selectedTenantToRate.tenantId || selectedTenantToRate.email}
+          tenantEmail={selectedTenantToRate.email || selectedTenantToRate.tenantEmail || ""}
           tenantName={selectedTenantToRate.name || selectedTenantToRate.tenantName || "Tenant"}
           landlordId={sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "landlord"}
           landlordName="Landlord"
           propertyTitle={selectedTenantToRate.propertyTitle || ""}
+          propertyId={selectedTenantToRate.propertyId || null}
+          leaseId={selectedTenantToRate.leaseId || null}
           onSuccess={() => loadData(true)}
         />
       )}

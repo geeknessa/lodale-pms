@@ -8,10 +8,13 @@ export default function RateTenantModal({
   isOpen,
   onClose,
   tenantId,
+  tenantEmail = "",
   tenantName = "Tenant",
   landlordId,
   landlordName = "Landlord",
   propertyTitle = "",
+  propertyId = null,
+  leaseId = null,
   onSuccess
 }) {
   const [rating, setRating] = useState(5);
@@ -29,13 +32,16 @@ export default function RateTenantModal({
     try {
       const res = await ratingService.submitTenantReview({
         tenantId,
+        tenantEmail,
         tenantName,
         landlordId,
         landlordName,
         rating,
         comment,
         wouldRentAgain,
-        propertyTitle
+        propertyTitle,
+        propertyId,
+        leaseId
       });
 
       if (res.success) {

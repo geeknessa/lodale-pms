@@ -6,6 +6,7 @@ import { leaseService } from "../../services/leaseService";
 import { applicationService } from "../../services/applicationService";
 import { formatCurrency } from "../../utils/formatters";
 import { triggerToast } from "../../context/ToastContext";
+import { ratingService } from "../../services/ratingService";
 import UserInfo from "./components/UserInfo";
 import QuickEditPropertyModal from "../../components/QuickEditPropertyModal";
 import UploadProofModal from "./components/UploadProofModal";
@@ -129,6 +130,7 @@ export default function LandlordProperties() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [allLeases, setAllLeases] = useState([]);
   const [allApplications, setAllApplications] = useState([]);
+  const [tenantRatingsMap, setTenantRatingsMap] = useState({});
 
   useEffect(() => {
     setDisplayLimit(8);
@@ -170,6 +172,26 @@ export default function LandlordProperties() {
 
       if (leasesRes.status === 'fulfilled' && Array.isArray(leasesRes.value)) {
         setAllLeases(leasesRes.value);
+        // Pre-fetch reviews for tenants in these leases
+        leasesRes.value.forEach(async (l) => {
+          const tId = l.tenant_id || l.tenantId;
+          const tEmail = l.tenant_email || l.tenantEmail;
+          if (tId || tEmail) {
+            try {
+              const revData = await ratingService.getTenantReviews(tId, tEmail);
+              if (revData && revData.hasReviews) {
+                const score = Number(revData.rating) || Number(revData.averageScore) || 0;
+                if (score > 0) {
+                  setTenantRatingsMap(prev => ({
+                    ...prev,
+                    [tId]: score.toFixed(1),
+                    [tEmail]: score.toFixed(1)
+                  }));
+                }
+              }
+            } catch (_e) {}
+          }
+        });
       }
       if (appsRes.status === 'fulfilled' && Array.isArray(appsRes.value)) {
         setAllApplications(appsRes.value);
@@ -241,7 +263,7 @@ export default function LandlordProperties() {
           avatar: t.avatar || t.tenantAvatar || t.avatar_url || t.tenant?.avatar || storedAvatar || "",
           email: resolved.email,
           phone: resolved.phone,
-          reliabilityScore: t.reliabilityScore || t.score || t.rating || t.tenant_rating || null,
+          reliabilityScore: (tenantRatingsMap[t.id || t.tenant_id] || (resolved.email && tenantRatingsMap[resolved.email])) || t.reliabilityScore || t.score || t.rating || t.tenant_rating || null,
           occupation: t.occupation || t.tenant?.occupation || "Tenant",
           leaseStatus: t.leaseStatus || (t.status === 'active' ? "Active Tenant" : t.status ? `Tenant (${t.status})` : "Active Tenant"),
           status: t.status || "active"

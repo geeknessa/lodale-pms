@@ -418,10 +418,13 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
           isOpen={showRateModal}
           onClose={() => setShowRateModal(false)}
           tenantId={tenantId}
+          tenantEmail={emailId}
           tenantName={tenantName}
           landlordId={sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "landlord"}
           landlordName="Landlord"
           propertyTitle={tenant.propertyTitle || ""}
+          propertyId={tenant.propertyId || null}
+          leaseId={tenant.leaseId || null}
           onSuccess={() => {
             refreshReviews();
           }}
