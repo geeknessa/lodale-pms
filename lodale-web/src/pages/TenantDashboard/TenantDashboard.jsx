@@ -1696,18 +1696,19 @@ export default function TenantDashboard() {
 
             <div className="mt-5 pt-3 border-t border-ink-100 dark:border-white/10 flex items-center justify-between gap-3">
               <Button
+                variant="outline"
                 onClick={() => {
                   setShowMaintenanceHistoryModal(false);
                   setShowDispatchModal(true);
                 }}
-                className="flex-1 bg-stone-100 hover:bg-stone-200 dark:bg-white/10 dark:hover:bg-white/15 text-[#1C1917] dark:text-white py-2.5 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+                className="flex-1 py-2.5 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5" />
                 New Request
               </Button>
               <Button
                 onClick={() => setShowMaintenanceHistoryModal(false)}
-                className="flex-1 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-2.5 font-bold text-xs rounded-xl hover:opacity-90 transition-opacity"
+                className="flex-1 bg-[#202020] dark:bg-[#E5C583] text-white dark:text-[#09090b] py-2.5 font-bold text-xs rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
               >
                 Close
               </Button>
@@ -1776,7 +1777,7 @@ export default function TenantDashboard() {
 
                   <Button
                     onClick={handlePayRentSubmit}
-                    className="w-full py-3.5 bg-[#1E3324] hover:bg-[#0B1510] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer mt-2"
+                    className="w-full py-3.5 bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer mt-2"
                   >
                     {(() => {
                       const base = activeLease?.rent_amount ? parseFloat(activeLease.rent_amount) : 0;
@@ -2999,10 +3000,14 @@ export default function TenantDashboard() {
 
                         <button
                           onClick={() => setShowAddReminderForm(!showAddReminderForm)}
-                          className="p-1.5 rounded-xl bg-stone-100 dark:bg-[#0B1510] text-[#1E3324] dark:text-[#E5C583] hover:bg-emerald-50 dark:hover:bg-[#E5C583] dark:hover:text-[#09090b] transition-colors border border-black/5 dark:border-white/5 shadow-xs cursor-pointer"
+                          className="h-8 w-8 rounded-xl bg-emerald-50 dark:bg-[#E5C583]/15 text-[#1E3324] dark:text-[#E5C583] hover:bg-emerald-100 dark:hover:bg-[#E5C583]/25 transition-all border border-emerald-200/60 dark:border-[#E5C583]/30 shadow-xs cursor-pointer flex items-center justify-center shrink-0"
                           title={showAddReminderForm ? "Close Form" : "Add Reminder"}
                         >
-                          {showAddReminderForm ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+                          {showAddReminderForm ? (
+                            <X className="h-4 w-4 text-[#1E3324] dark:text-[#E5C583]" />
+                          ) : (
+                            <Plus className="h-4 w-4 text-[#1E3324] dark:text-[#E5C583]" />
+                          )}
                         </button>
                       </div>
                     </div>

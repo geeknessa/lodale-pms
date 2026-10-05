@@ -149,7 +149,7 @@ export default function RateLandlordModal({
           <Button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 bg-moss-600 hover:bg-moss-700 text-white font-bold rounded-xl shadow-md cursor-pointer"
+            className="w-full py-3 bg-moss-600 hover:bg-moss-700 text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold rounded-xl shadow-md cursor-pointer"
           >
             {submitting ? (
               <span className="flex items-center justify-center gap-2">
