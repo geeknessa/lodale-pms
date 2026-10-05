@@ -3577,8 +3577,8 @@ export default function TenantDashboard() {
           </main>
         ) : (
           /* TAB 6+: UNDER DEVELOPMENT VIEWS */
-          <div className="under-development-wrapper flex-1 flex items-center justify-center">
-            <div className="under-dev-card text-center">
+          <div className="under-development-wrapper flex-1 flex items-center justify-center p-6">
+            <div className="under-dev-card text-center bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] p-8 rounded-3xl shadow-xs max-w-md">
               <div className="sparkle-icon flex justify-center"><ListChecks className="h-6 w-6 text-moss-600 dark:text-[#E5C583]" /></div>
               <span className="tag mb-2 inline-block">Under Development</span>
               <h2 className="font-display text-2xl font-bold text-ink-900 dark:text-white mb-2">

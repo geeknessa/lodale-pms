@@ -44,8 +44,13 @@ body {
   width: 100%;
 }
 
+:root {
+  --lodale-page-bg: linear-gradient(165deg, #FAF8F5 0%, #FAF8F5 35%, #E8EFE9 100%);
+}
+
 /* Global Dark Mode overrides */
 body.dark {
+  --lodale-page-bg: #07130D;
   background: #07130d;
   color: var(--color-white);
 }
