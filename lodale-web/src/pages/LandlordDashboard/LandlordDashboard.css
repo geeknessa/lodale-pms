@@ -709,14 +709,14 @@ body.dark .db-sidebar-tooltip {
 .pro-advantages-panel {
   background-color: #2C4633; /* Light mode color */
   border-radius: 32px;
-  padding: 28px;
+  padding: 20px 24px;
   color: #FFFFFF;
   text-align: left;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  height: 240px;
-  min-height: 240px;
+  height: auto;
+  min-height: auto;
   max-width: 100%;
   width: 100%;
   box-sizing: border-box;
