@@ -1,5 +1,6 @@
 import { X, Printer, Download, FileText, CheckCircle2, Building2, ShieldCheck } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
+import { calculatePortfolioMetrics, getPropertyStatus } from "../../../utils/landlordMetrics";
 
 export default function LandlordReportModal({ isOpen, onClose, username, properties = [], leases = [], invoices = [] }) {
   if (!isOpen) return null;
@@ -12,81 +13,26 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
   });
   const reportRef = `REP-${Date.now().toString().slice(-6)}`;
 
-  // Calculate portfolio statistics safely
+  // Calculate portfolio statistics safely from single shared helper
+  const metrics = calculatePortfolioMetrics(properties, leases, invoices);
   const safeProperties = Array.isArray(properties) ? properties : [];
-  const totalProperties = safeProperties.length;
+  const totalProperties = metrics.totalProperties;
+  const occupiedCount = metrics.occupiedProperties;
+  const occupancyRate = metrics.occupancyRate;
   let totalUnits = 0;
-  let occupiedCount = 0;
+  let verifiedCount = 0;
 
-  const propertyTenantsMap = (() => {
-    try {
-      const saved = localStorage.getItem("propertyTenants");
-      return saved ? JSON.parse(saved) : {};
-    } catch (e) {
-      return {};
-    }
-  })();
-
-  // Helper function to get property status and verification
+  // Helper function to get property status and verification from shared helper
   const getPropertyStatusDetails = (p) => {
-    const statusTag = (p.status || "").toLowerCase();
-    const pId = String(p.id || "");
-    const pTitle = String(p.title || "").toLowerCase().trim();
-    const hasActiveLease = (leases || []).some(l => 
-      l && (l.status === 'active' || l.status === 'leased' || (l.tenant_signed_at && l.landlord_signed_at)) &&
-      (pId === String(l.property_id || l.propertyId) || (pTitle && String(l.property_title || l.propertyTitle || '').toLowerCase().trim() === pTitle))
-    );
-    const hasTenants = hasActiveLease || (propertyTenantsMap[p.id] && propertyTenantsMap[p.id].length > 0) || statusTag === "occupied" || statusTag === "active_occupied";
-    
-    if (hasTenants) {
-      return {
-        label: "Occupied",
-        badgeClass: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300",
-        isVerified: true
-      };
-    }
-
-    const isLive = statusTag === 'active_vacant' || statusTag === 'live' || statusTag === 'approved' || statusTag === 'active';
-    if (isLive) {
-      return {
-        label: "Live Vacant",
-        badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-cream-100",
-        isVerified: true
-      };
-    }
-
-    const isInfoReq = statusTag === 'info_requested' || statusTag === 'info requested' || statusTag === 'needs_proof' || statusTag === 'more_proof_requested';
-    if (isInfoReq) {
-      return {
-        label: "Needs Proof",
-        badgeClass: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
-        isVerified: false
-      };
-    }
-
-    const isRejected = statusTag === 'rejected' || statusTag === 'inactive';
-    if (isRejected) {
-      return {
-        label: "Rejected",
-        badgeClass: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-        isVerified: false
-      };
-    }
-
-    // Default to In Review for pending_review, pending approval, pending, etc.
+    const st = getPropertyStatus(p, leases);
     return {
-      label: "In Review",
-      badgeClass: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-      isVerified: false
+      label: st.label,
+      badgeClass: st.badgeClass,
+      isVerified: st.isLive || st.isOccupied
     };
   };
 
-  let verifiedCount = 0;
   safeProperties.forEach(p => {
-    const status = (p.status || "").toLowerCase();
-    const hasTenants = (propertyTenantsMap[p.id] && propertyTenantsMap[p.id].length > 0) || status === "occupied" || status === "active_occupied";
-    if (hasTenants) occupiedCount++;
-
     const details = getPropertyStatusDetails(p);
     if (details.isVerified) verifiedCount++;
 
@@ -97,7 +43,6 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
     }
   });
 
-  const occupancyRate = totalProperties > 0 ? Math.round((occupiedCount / totalProperties) * 100) : 0;
   const verifiedPercentage = totalProperties > 0 ? Math.round((verifiedCount / totalProperties) * 100) : 100;
 
   // Revenue calculation
@@ -126,7 +71,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
         const loc = `"${(p.location || "").replace(/"/g, '""')}"`;
         const price = `"${p.price || ""}"`;
         const details = getPropertyStatusDetails(p);
-        const tenantCount = (propertyTenantsMap[p.id] ? propertyTenantsMap[p.id].length : 0);
+        const tenantCount = (leases || []).filter(l => l && (l.status === 'active' || l.status === 'leased') && String(l.property_id || l.propertyId) === String(p.id)).length;
         csvContent += `${title},${loc},${price},${details.label},${tenantCount}\n`;
       });
 

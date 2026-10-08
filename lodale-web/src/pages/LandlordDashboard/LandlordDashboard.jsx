@@ -2172,11 +2172,9 @@ export default function LandlordDashboard() {
                           </div>
                         ) : (
                           activeDashboardProperties.slice(0, 4).map((property) => {
-                            const isOccupied = isPropertyOccupied(property);
-                            const badgeText = isOccupied ? "Occupied" : "Live";
-                            const badgeClass = isOccupied
-                              ? "bg-indigo-600/90 text-white"
-                              : "bg-emerald-600/90 text-white";
+                            const propStatus = getPropertyStatus(property, leases);
+                            const badgeText = propStatus.label;
+                            const badgeClass = propStatus.dashboardBadgeClass;
 
                             const propImage = property.cover_image || property.images?.[0] || "/src/assets/skyline_apartment.png";
 

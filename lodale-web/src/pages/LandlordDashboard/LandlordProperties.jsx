@@ -11,6 +11,7 @@ import UserInfo from "./components/UserInfo";
 import QuickEditPropertyModal from "../../components/QuickEditPropertyModal";
 import UploadProofModal from "./components/UploadProofModal";
 import Avatar from "../../components/Avatar";
+import { getPropertyStatus, getPropertyVacancyInfo } from "../../utils/landlordMetrics";
 import "./LandlordProperties.css";
 
 
@@ -210,7 +211,13 @@ export default function LandlordProperties() {
     const seenTenantKeys = new Set();
 
     const targetId = String(propertyId || propertyObj?.id || "").toLowerCase().trim();
-    const targetTitle = String(propertyObj?.title || "").toLowerCase().trim();
+    if (!targetId) return [];
+
+    // A rejected property must never have active tenants or show occupied!
+    const propRawStatus = (propertyObj?.status || "").toLowerCase().trim();
+    if (propRawStatus === "rejected" || propRawStatus === "inactive" || propRawStatus.includes("reject")) {
+      return [];
+    }
 
     const resolveTenantInfo = (rawName, rawContact) => {
       let name = (rawName || "").trim();
@@ -271,19 +278,14 @@ export default function LandlordProperties() {
       }
     };
 
-    const matchesProperty = (propIdVal, propTitleVal, mapKey = "") => {
-      const pId = String(propIdVal || (mapKey !== targetId ? mapKey : "") || "").toLowerCase().trim();
-      const pTitle = String(propTitleVal || (mapKey !== targetId ? mapKey : "") || "").toLowerCase().trim();
-
-      if (targetId && (pId === targetId || mapKey.toLowerCase() === targetId)) return true;
-      if (targetTitle && (pTitle === targetTitle || pId === targetTitle || mapKey.toLowerCase() === targetTitle)) return true;
-      if (targetTitle && pTitle && (pTitle.includes(targetTitle) || targetTitle.includes(pTitle))) return true;
-      return false;
+    const matchesProperty = (propIdVal) => {
+      const pId = String(propIdVal || "").toLowerCase().trim();
+      return Boolean(targetId && pId && pId === targetId);
     };
 
     // 1. Check backend Leases
     (allLeases || []).forEach(l => {
-      if (matchesProperty(l.property_id || l.propertyId, l.property_title || l.propertyTitle)) {
+      if (matchesProperty(l.property_id || l.propertyId)) {
         addTenantIfUnique({
           id: l.tenant_id || l.id,
           name: l.tenant_name,
@@ -299,7 +301,7 @@ export default function LandlordProperties() {
     (allApplications || []).forEach(a => {
       const s = (a.status || "").toLowerCase();
       const isApprovedOrActive = ["approved", "accepted", "active", "leased", "occupied", "lease_generated", "pending_tenant", "signed"].includes(s);
-      if (isApprovedOrActive && matchesProperty(a.propertyId || a.property_id, a.propertyTitle || a.property_title)) {
+      if (isApprovedOrActive && matchesProperty(a.propertyId || a.property_id)) {
         addTenantIfUnique({
           id: a.tenantId || a.tenant_id || a.id,
           name: a.tenantName || a.tenant?.name || `${a.tenant?.firstName || ''} ${a.tenant?.lastName || ''}`.trim(),
@@ -364,7 +366,7 @@ export default function LandlordProperties() {
             parsedApps.forEach(app => {
               const status = (app.status || "").toLowerCase();
               const isApproved = status === "approved" || status === "accepted" || status === "active" || status === "leased" || status === "occupied";
-              if (isApproved && matchesProperty(app.propertyId || app.property_id, app.propertyTitle || app.property_title)) {
+              if (isApproved && matchesProperty(app.propertyId || app.property_id)) {
                 addTenantIfUnique({
                   id: app.id || app.tenantId,
                   name: app.tenantName || app.name || app.userName,
@@ -704,7 +706,9 @@ export default function LandlordProperties() {
               const imgUrl = item.image || item.cover_image || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80";
               const propertyTenants = getTenantsForProperty(item.id, item);
               const tenantsCount = propertyTenants.length;
-              const isOccupiedCard = propertyTenants.length > 0 || status === 'occupied' || status === 'active_occupied';
+              const propStatus = getPropertyStatus(item, allLeases);
+              const vacancyInfo = getPropertyVacancyInfo(item, allLeases);
+              const isOccupiedCard = propStatus.isOccupied;
 
               return (
                 <div
@@ -774,7 +778,7 @@ export default function LandlordProperties() {
                     <p className="ap-property-desc text-xs text-ink-600 dark:text-cream-100/70 mt-1">
                       {Array.isArray(item.units) && item.units.length > 0 ? (
                         <span className="font-semibold text-moss-700 dark:text-[#E5C583]">
-                          {item.units.length} Unit{item.units.length !== 1 ? 's' : ''} total ({item.units.filter(u => u.status === 'vacant').length} Vacant) • {item.bedrooms || 1} Bed / {item.bathrooms || 1} Bath
+                          {vacancyInfo.summaryText} • {item.bedrooms || 1} Bed / {item.bathrooms || 1} Bath
                         </span>
                       ) : (
                         <span>{item.bedrooms || 1} Bedrooms • {item.bathrooms || 1} Bathrooms</span>
@@ -790,14 +794,7 @@ export default function LandlordProperties() {
 
                       {/* Property Review Status Tag */}
                       {(() => {
-                        const statusTag = (item.status || "").toLowerCase();
-                        const isInfoReq = statusTag === 'info_requested' || statusTag === 'info requested' || statusTag === 'needs_proof' || statusTag === 'more_proof_requested';
-                        const hasTenants = isOccupiedCard;
-                        const isLive = statusTag === 'active_vacant' || statusTag === 'live' || statusTag === 'approved' || statusTag === 'active';
-                        const isRejected = statusTag === 'rejected' || statusTag === 'inactive';
-                        const isPending = statusTag === 'pending_review' || statusTag === 'pending approval' || statusTag === 'pending' || !item.status;
-
-                        if (isInfoReq) {
+                        if (propStatus.isInfoReq) {
                           return (
                             <button
                               onClick={() => setSelectedProofProperty(item)}
@@ -808,21 +805,7 @@ export default function LandlordProperties() {
                             </button>
                           );
                         }
-                        if (hasTenants) {
-                          return (
-                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-300">
-                              <Users className="h-3 w-3" /> Occupied
-                            </span>
-                          );
-                        }
-                        if (isLive) {
-                          return (
-                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-cream-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
-                              <CheckCircle2 className="h-3 w-3" /> Live
-                            </span>
-                          );
-                        }
-                        if (isRejected) {
+                        if (propStatus.isRejected) {
                           return (
                             <button
                               onClick={() => setSelectedFeedbackProperty(item)}
@@ -832,14 +815,32 @@ export default function LandlordProperties() {
                             </button>
                           );
                         }
-                        if (isPending) {
+                        if (propStatus.isOccupied) {
+                          return (
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2.5 py-0.5 rounded-full border border-indigo-300">
+                              <Users className="h-3 w-3" /> Occupied
+                            </span>
+                          );
+                        }
+                        if (propStatus.isLive) {
+                          return (
+                            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-cream-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                              <CheckCircle2 className="h-3 w-3" /> Live
+                            </span>
+                          );
+                        }
+                        if (propStatus.isPending) {
                           return (
                             <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-300">
                               <Clock className="h-3 w-3" /> Pending Review
                             </span>
                           );
                         }
-                        return null;
+                        return (
+                          <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase bg-slate-100 text-slate-800 border border-slate-300 dark:bg-white/10 dark:text-white px-2.5 py-0.5 rounded-full">
+                            <Clock className="h-3 w-3" /> {propStatus.label}
+                          </span>
+                        );
                       })()}
                     </div>
                   </div>

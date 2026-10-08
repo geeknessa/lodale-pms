@@ -328,6 +328,17 @@ export const propertyController = {
     if (!updated) {
       return res.status(404).json({ error: 'Property not found' });
     }
+
+    if (normalizedStatus === 'rejected') {
+      try {
+        await pool.query(
+          "UPDATE listing_approval_queue SET queue_status = 'rejected', reviewed_at = NOW() WHERE property_id = $1",
+          [updated.id]
+        );
+      } catch (e) {
+        // Safe fallback if listing_approval_queue table row is not present
+      }
+    }
     
     res.json({ message: `Property status updated to ${normalizedStatus}`, property: updated });
   }),

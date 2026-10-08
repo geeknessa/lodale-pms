@@ -93,7 +93,7 @@ export const adminController = {
       newQueueStatus = 'approved';
       manualApprovalType = 'manual';
     } else if (action === 'reject') {
-      newPropertyStatus = 'inactive';
+      newPropertyStatus = 'rejected';
       newQueueStatus = 'rejected';
     } else if (action === 'request_info') {
       newPropertyStatus = 'pending_review';
