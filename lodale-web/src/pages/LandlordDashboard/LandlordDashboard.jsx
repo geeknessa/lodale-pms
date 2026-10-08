@@ -81,7 +81,7 @@ const TOUR_STEPS = [
   {
     target: ".tour-nav-0",
     title: "Sidebar: Overview Dashboard",
-    content: "Welcome to Lodale Landlord! This is your central control dashboard workspace.",
+    content: "Welcome to Lodale Landlord. This is your central control dashboard workspace.",
     placement: "right",
     tab: 0
   },
@@ -138,50 +138,50 @@ const TOUR_STEPS = [
   // Homepage steps (tab: 0)
   {
     target: ".tour-welcome",
-    title: "Onboarding: Overview Header",
-    content: "Greets your active landlord session and presents report templates.",
+    title: "Dashboard Overview",
+    content: "Welcome to your landlord portal overview, with quick access to actions, portfolio summaries, and reports.",
     placement: "bottom",
     tab: 0
   },
   {
     target: ".tour-add-property",
-    title: "Add Property Unit",
-    content: "Click here to register a new property listing with description details, photo references, and monthly rents.",
+    title: "Add New Property",
+    content: "Register a new property listing with unit specifications, photo uploads, pricing, and rental terms.",
     placement: "bottom",
     tab: 0
   },
   {
-    target: ".pro-advantages-panel",
-    title: "Landlord Rating Star Index",
-    content: "Shows your landlord reliability rating based on tenant reviews. New accounts display 'New Account' until tenant reviews are recorded.",
+    target: ".tour-rating",
+    title: "Account Rating",
+    content: "Displays your platform reliability rating based on verified tenant reviews.",
     placement: "bottom",
     tab: 0
   },
   {
     target: ".tour-occupancy",
-    title: "Weekly Activity & Occupancy",
-    content: "Displays your portfolio's active Occupancy Rate alongside daily tenant interactions (maintenance requests, messages, and inquiry logs) for each day of the week (Mon–Sun). When occupancy is 0%, daily activity stays at 0%.",
+    title: "Occupancy Rate",
+    content: "Displays your portfolio occupancy percentage and tracks the balance between occupied and vacant properties.",
     placement: "right",
     tab: 0
   },
   {
     target: ".tour-property-list",
-    title: "My Properties Registry",
-    content: "Quick-scroll through your listings. Click the action icon to view units specs directly.",
+    title: "My Properties",
+    content: "Quickly view your portfolio properties, verified statuses, and navigate directly into property details.",
     placement: "top",
     tab: 0
   },
   {
     target: ".tour-vault",
-    title: "Payout Account Wallet",
-    content: "Tracks accumulated rent ledger balances, security deposits, and settlement status indicators.",
+    title: "Total Collected Revenue",
+    content: "Tracks lifetime collected rent revenue from tenant payments across all your lease agreements.",
     placement: "left",
     tab: 0
   },
   {
     target: ".tour-requests",
-    title: "Tenants Request Box",
-    content: "Inspect active ticket submissions from tenants, ranging from plumbing repairs to structural upgrades.",
+    title: "Tenant Requests",
+    content: "Inspect and manage maintenance requests and repair tickets submitted by your tenants.",
     placement: "top",
     tab: 0
   },
@@ -189,7 +189,7 @@ const TOUR_STEPS = [
   // Properties steps (tab: 1)
   {
     target: ".tour-property-results",
-    title: "Explore Listings",
+    title: "Properties Portfolio",
     content: "Filter properties by location categories, edit specifications, or check associated tenants.",
     placement: "top",
     tab: 1
@@ -199,14 +199,14 @@ const TOUR_STEPS = [
   {
     target: ".tour-tenants-search",
     title: "Tenants Directory Search",
-    content: "Search through verified profile lists by names or leased properties.",
+    content: "Search through verified profile lists by tenant names or leased properties.",
     placement: "bottom",
     tab: 2
   },
   {
     target: ".tour-tenants-list",
-    title: "Tenant Profile Stack",
-    content: "Tracks payment timelines, NIN details, contact cards, and lease termination actions.",
+    title: "Tenant Directory",
+    content: "Tracks tenant profiles, contact details, payment statuses, and lease agreements.",
     placement: "top",
     tab: 2
   }
@@ -657,8 +657,18 @@ export default function LandlordDashboard() {
 
       if (!targetEl) {
         const retryTimer = setTimeout(() => {
-          setRecalcTrigger((prev) => prev + 1);
-        }, 100);
+          const recheckEl = document.querySelector(stepData?.target);
+          if (!recheckEl) {
+            // Target is conditional or missing from screen; advance to next step
+            if (tourStep < TOUR_STEPS.length - 1) {
+              setTourStep(prev => prev + 1);
+            } else {
+              handleTourComplete(false);
+            }
+          } else {
+            setRecalcTrigger((prev) => prev + 1);
+          }
+        }, 200);
         return () => clearTimeout(retryTimer);
       }
 
@@ -2524,7 +2534,7 @@ export default function LandlordDashboard() {
                     </div>
 
                     {/* 4. ACCOUNT RATING COMPACT WIDGET (COMPACT h-auto, NO TALL HEIGHT) */}
-                    <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-3xl p-4 sm:p-5 shadow-xs space-y-2 h-auto">
+                    <div className="tour-rating bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-3xl p-4 sm:p-5 shadow-xs space-y-2 h-auto">
                       <div className="flex items-center justify-between">
                         <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
                           <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
