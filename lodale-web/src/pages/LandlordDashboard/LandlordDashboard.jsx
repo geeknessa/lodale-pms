@@ -913,26 +913,11 @@ export default function LandlordDashboard() {
     return st === "overdue" || st === "outstanding" || st === "unpaid";
   });
 
-  // Strictly completed / paid payments array
-  const paidInvoices = (invoices || []).filter(i => {
-    const st = (i.status || "").toLowerCase().trim();
-    return st === 'paid' || st === 'completed';
-  });
-  
-  const unpaidInvoices = (invoices || []).filter(i => {
-    const st = (i.status || "").toLowerCase().trim();
-    return st === 'unpaid' || st === 'overdue';
-  });
-  const unpaidInvoicesSum = unpaidInvoices.reduce((sum, i) => sum + (parseFloat(i.grandTotal || i.grand_total || i.amount) || 0), 0);
-
-  // All-time completed ledger payments reduced strictly (no mock data or static additions)
-  const collectedAmount = paidInvoices.reduce((acc, curr) => {
-    const amt = parseFloat(curr.grandTotal || curr.grand_total || curr.amount || 0);
-    return acc + (isNaN(amt) ? 0 : amt);
-  }, 0);
-  const paidInvoicesSum = collectedAmount;
-  const outstandingAmount = unpaidInvoicesSum;
-  const availablePayoutBalance = collectedAmount;
+  // Metrics strictly derived from single shared helper:
+  const paidInvoicesSum = portfolioMetrics.totalCollectedRevenue;
+  const collectedAmount = portfolioMetrics.totalCollectedRevenue;
+  const outstandingAmount = portfolioMetrics.outstandingBalance;
+  const availablePayoutBalance = portfolioMetrics.totalCollectedRevenue;
 
   const pendingAppsCount = (applications || []).filter(a => {
     const st = (a.status || "").toLowerCase();
@@ -969,79 +954,9 @@ export default function LandlordDashboard() {
   }).length;
   const totalAppsCount = (applications || []).length;
 
-  // Helper to extract zero-indexed month and year strictly in local/explicit time without UTC timezone boundary shifting
-  const getInvoiceMonthYear = (inv) => {
-    // Prioritize payment date before due date / creation date / issue date
-    const dStr = inv.paid_at || inv.paidAt || inv.payment_date || inv.paymentDate || inv.date || inv.due_date || inv.dueDate || inv.created_at || inv.issue_date || inv.issueDate;
-    if (!dStr) return null;
-
-    if (typeof dStr === 'string') {
-      // Strictly extract YYYY-MM bypassing UTC midnight conversion shifts (e.g. "2026-10-XX" -> year 2026, month 9)
-      const match = dStr.match(/^(\d{4})-(\d{2})/);
-      if (match) {
-        return {
-          year: parseInt(match[1], 10),
-          month: parseInt(match[2], 10) - 1 // 0-indexed (e.g. "10" -> 9 for October)
-        };
-      }
-      const slashMatch = dStr.match(/^(\d{1,2})\/\d{1,2}\/(\d{4})/);
-      if (slashMatch) {
-        return {
-          year: parseInt(slashMatch[2], 10),
-          month: parseInt(slashMatch[1], 10) - 1
-        };
-      }
-    }
-
-    const d = new Date(dStr);
-    if (isNaN(d.getTime())) return null;
-    return {
-      year: d.getFullYear(),
-      month: d.getMonth()
-    };
-  };
-
-  // Current month's completed rent calculation:
-  // Strictly reduces the completed/paid payments array for the current month without mock data or static additions
-  const now = new Date();
-  const curMonthIdx = now.getMonth();
-  const curYearVal = now.getFullYear();
-
-  const thisMonthPaidInvoices = paidInvoices.filter(i => {
-    const ym = getInvoiceMonthYear(i);
-    if (ym) {
-      return ym.month === curMonthIdx && ym.year === curYearVal;
-    }
-    const rawDate = i.paid_at || i.paidAt || i.payment_date || i.paymentDate || i.date || i.due_date || i.dueDate || i.created_at;
-    if (!rawDate) return false;
-    const d = new Date(rawDate);
-    return !isNaN(d.getTime()) && d.getMonth() === curMonthIdx && d.getFullYear() === curYearVal;
-  });
-
-  const thisMonthRentCollected = thisMonthPaidInvoices.reduce((acc, curr) => {
-    const amt = parseFloat(curr.grandTotal || curr.grand_total || curr.amount || 0);
-    return acc + (isNaN(amt) ? 0 : amt);
-  }, 0);
-
-  // 6-Month Rental Income Data (strictly maps October payments to Oct bar bypassing UTC midnight shifts)
-  const recentMonthlyIncome = (() => {
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(curYearVal, curMonthIdx - i, 1);
-      const mIdx = d.getMonth();
-      const yVal = d.getFullYear();
-      const label = d.toLocaleDateString("en-US", { month: "short" });
-
-      const sum = paidInvoices.filter(inv => {
-        const ym = getInvoiceMonthYear(inv);
-        if (!ym) return false;
-        return ym.month === mIdx && ym.year === yVal;
-      }).reduce((acc, inv) => acc + (parseFloat(inv.grandTotal || inv.grand_total || inv.amount) || 0), 0);
-
-      months.push({ label, amount: sum, isCurrent: i === 0 });
-    }
-    return months;
-  })();
+  // Month attribution and 6-month chart strictly derived from shared helper:
+  const thisMonthRentCollected = portfolioMetrics.thisMonthRentCollected;
+  const recentMonthlyIncome = portfolioMetrics.monthlyRevenueChart;
   const maxIncomeVal = Math.max(1000000, ...recentMonthlyIncome.map(m => m.amount));
 
   // Upcoming rent calculation for Expected Rent card
@@ -1794,25 +1709,20 @@ export default function LandlordDashboard() {
                       <div className={`grid grid-cols-1 sm:grid-cols-2 ${expiringLeases.length > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4 mb-8`}>
                         <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/40">
                           <span className="text-xs font-semibold text-emerald-800 dark:text-emerald-300 block mb-1">Collected Rent (This Month)</span>
-                          <span className="text-2xl font-black text-emerald-900 dark:text-emerald-200">₦{collectedAmount.toLocaleString()}</span>
-                          <span className="text-[11px] text-emerald-700 dark:text-emerald-400 block mt-1">From {paidTenants.length} paid lease contract{paidTenants.length === 1 ? '' : 's'}</span>
+                          <span className="text-2xl font-black text-emerald-900 dark:text-emerald-200">₦{portfolioMetrics.thisMonthRentCollected.toLocaleString()}</span>
+                          <span className="text-[11px] text-emerald-700 dark:text-emerald-400 block mt-1">From active tenant payments for the current month</span>
                         </div>
 
                         <div className="p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/40">
                           <span className="text-xs font-semibold text-rose-800 dark:text-rose-300 block mb-1">Outstanding Balance</span>
-                          <span className="text-2xl font-black text-rose-900 dark:text-rose-200">₦{outstandingAmount.toLocaleString()}</span>
-                          <span className="text-[11px] text-rose-700 dark:text-rose-400 block mt-1">{overdueTenants.length} tenant{overdueTenants.length === 1 ? '' : 's'} currently pending payment</span>
+                          <span className="text-2xl font-black text-rose-900 dark:text-rose-200">₦{portfolioMetrics.outstandingBalance.toLocaleString()}</span>
+                          <span className="text-[11px] text-rose-700 dark:text-rose-400 block mt-1">{portfolioMetrics.unpaidInvoicesCount} invoice{portfolioMetrics.unpaidInvoicesCount === 1 ? '' : 's'} currently pending payment</span>
                         </div>
 
                         <div className="p-5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/40">
-                          <span className="text-xs font-semibold text-indigo-800 dark:text-indigo-300 block mb-1">Available Payout Balance</span>
-                          <span className="text-2xl font-black text-indigo-900 dark:text-indigo-200">₦{availablePayoutBalance.toLocaleString()}</span>
-                          <button
-                            onClick={() => setShowWithdrawModal(true)}
-                            className="mt-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:underline flex items-center gap-1 cursor-pointer"
-                          >
-                            Request Payout &rarr;
-                          </button>
+                          <span className="text-xs font-semibold text-indigo-800 dark:text-indigo-300 block mb-1">Total Collected Revenue</span>
+                          <span className="text-2xl font-black text-indigo-900 dark:text-indigo-200">₦{portfolioMetrics.totalCollectedRevenue.toLocaleString()}</span>
+                          <span className="text-[11px] text-indigo-700 dark:text-indigo-400 block mt-1">₦{portfolioMetrics.totalCollectedRevenue.toLocaleString()} total lifetime ledger revenue</span>
                         </div>
 
                         {expiringLeases.length > 0 && (
@@ -1839,7 +1749,7 @@ export default function LandlordDashboard() {
                           }`}
                         onClick={() => setPaymentSubTab("Paid")}
                       >
-                        Collected Payments ({paidTenants.length})
+                        Collected Payments ({portfolioMetrics.collectedPaymentsList.length})
                       </button>
                       <button
                         className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer ${paymentSubTab === "Outstanding"
@@ -1856,30 +1766,29 @@ export default function LandlordDashboard() {
                   {/* PAYMENT RECORDS LIST */}
                   <div className="space-y-3">
                     {paymentSubTab === "Paid" ? (
-                      paidTenants.length === 0 ? (
+                      portfolioMetrics.collectedPaymentsList.length === 0 ? (
                         <div className="p-10 text-center text-ink-400 dark:text-cream-100/60 bg-ink-50 dark:bg-[#FFFFFF]/5 rounded-2xl border border-dashed border-ink-200 dark:border-[#2C4633]">
                           <CreditCard className="h-10 w-10 mx-auto text-ink-300 dark:text-white/20 mb-3" />
                           <p className="text-sm font-semibold">No collected rent payments recorded yet.</p>
                           <p className="text-xs mt-1 opacity-70">When active tenants pay their rent, full payment records will appear here.</p>
                         </div>
                       ) : (
-                        paidTenants.map((t, idx) => {
-                          const amount = parseTenantRent(t);
+                        portfolioMetrics.collectedPaymentsList.map((payment, idx) => {
                           return (
-                            <div key={t.id || idx} className="p-4 rounded-2xl bg-ink-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-[#2C4633] flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-500/30 transition-all">
+                            <div key={payment.id || idx} className="p-4 rounded-2xl bg-ink-50/60 dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-[#2C4633] flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-emerald-500/30 transition-all">
                               <div className="flex items-center gap-3.5">
                                 <div className="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
                                   <CheckCircle2 className="h-5 w-5" />
                                 </div>
                                 <div>
-                                  <h4 className="font-bold text-sm text-ink-900 dark:text-white">{t.name || t.tenantName}</h4>
-                                  <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">{t.propertyTitle || t.leaseStatus || "Leased Property"}</p>
+                                  <h4 className="font-bold text-sm text-ink-900 dark:text-white">{payment.tenantName}</h4>
+                                  <p className="text-xs text-ink-500 dark:text-cream-100/70 mt-0.5">{payment.propertyTitle} • {payment.invoiceNumber}</p>
                                 </div>
                               </div>
                               <div className="flex items-center justify-between sm:justify-end gap-6">
                                 <div className="text-left sm:text-right">
-                                  <span className="font-black text-base text-emerald-600 dark:text-cream-100 block">+₦{amount.toLocaleString()}</span>
-                                  <span className="text-[11px] font-semibold text-ink-400 dark:text-cream-100/60 block">Paid • {t.dueDate || "Monthly Rent"}</span>
+                                  <span className="font-black text-base text-emerald-600 dark:text-cream-100 block">+₦{payment.amount.toLocaleString()}</span>
+                                  <span className="text-[11px] font-semibold text-ink-400 dark:text-cream-100/60 block">Paid • {payment.paymentDateFormatted}</span>
                                 </div>
                                 <span className="px-3 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold text-[11px] rounded-full border border-emerald-300 dark:border-emerald-800">
                                   Completed
