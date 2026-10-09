@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, PenTool } from 'lucide-react';
+import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, PenTool, AlertTriangle } from 'lucide-react';
 import Button from './Button';
 import { leaseService } from '../services/leaseService';
 import { triggerToast } from '../context/ToastContext';
@@ -13,10 +13,12 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
   defaultEnd.setFullYear(defaultEnd.getFullYear() + 1);
   const defaultEndStr = defaultEnd.toISOString().split('T')[0];
 
+  const propertyDefaultPeriod = property?.rent_period || 'annually';
+
   const [startDate, setStartDate] = useState(tenant?.preferred_move_in_date || todayStr);
   const [endDate, setEndDate] = useState(defaultEndStr);
   const [rentAmount, setRentAmount] = useState(initialRent);
-  const [rentPeriod, setRentPeriod] = useState(property?.rent_period || 'annually');
+  const [rentPeriod, setRentPeriod] = useState(propertyDefaultPeriod);
   const [securityDeposit, setSecurityDeposit] = useState(0);
   const [includePets, setIncludePets] = useState(false);
   const [includeSmoking, setIncludeSmoking] = useState(false);
@@ -145,7 +147,10 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
                   className="w-full rounded-xl border border-ink-200 dark:border-white/10 bg-white dark:bg-[#1A2D26] px-3 py-2.5 text-sm text-ink-900 dark:text-white outline-none focus:border-moss-600 dark:focus:border-[#E5C583]"
                 >
                   <option value="annually">Annually (/yr)</option>
+                  <option value="3_months">3 Months / Quarterly (/3 mos)</option>
                   <option value="monthly">Monthly (/mo)</option>
+                  <option value="session">Academic Session</option>
+                  <option value="semester">Semester</option>
                 </select>
               </div>
               <div>
@@ -159,6 +164,15 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
                 />
               </div>
             </div>
+
+            {propertyDefaultPeriod && rentPeriod !== propertyDefaultPeriod && (
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs mt-3">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <span>
+                  <strong>Rent Period Notice:</strong> The property is listed as <strong>{propertyDefaultPeriod === '3_months' ? '3 Months / Quarterly' : propertyDefaultPeriod}</strong>. You have selected <strong>{rentPeriod === '3_months' ? '3 Months / Quarterly' : rentPeriod}</strong>. The lease&apos;s period is what gets billed to the tenant.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* House Rules & Policies */}

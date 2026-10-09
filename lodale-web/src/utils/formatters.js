@@ -136,15 +136,16 @@ export const formatDisplayDate = (val, options = {}) => {
 
 /**
  * Returns number of months corresponding to a rent period string.
+ * Supports: '3_months' (3), 'annually'/'yearly'/'annual' (12), 'monthly'/'month' (1), '6_months' (6).
+ * Any other value returns null.
  */
 export const getMonthsInRentPeriod = (period) => {
-  if (!period) return 12;
+  if (!period) return null;
   const p = String(period).toLowerCase().trim();
   if (p === "monthly" || p === "month" || p === "per month" || p === "/mo") return 1;
   if (p === "3_months" || p === "3 months" || p === "3months" || p === "3-months" || p === "quarterly" || p === "quarter" || p === "/3 mos") return 3;
   if (p === "6_months" || p === "6 months" || p === "bi-annually" || p === "biannually" || p === "/6 mos") return 6;
-  if (p === "annually" || p === "yearly" || p === "year" || p === "per year" || p === "per annum" || p === "/yr") return 12;
-  if (p.includes("month") && !p.includes("3_") && !p.includes("6_")) return 1;
+  if (p === "annually" || p === "yearly" || p === "annual" || p === "year" || p === "per year" || p === "per annum" || p === "/yr") return 12;
   return null;
 };
 
@@ -187,14 +188,99 @@ export const addRentPeriodMonthEndSafe = (startDateStr, period, count = 1) => {
  * e.g. "/month", "per 3 months", "/year"
  */
 export const getRentPeriodLabel = (period) => {
-  if (!period) return "/year";
+  if (!period) return "—";
   const p = String(period).toLowerCase().trim();
-  if (p === "monthly" || p === "month" || p === "per month") return "/month";
-  if (p === "3_months" || p === "3 months" || p === "3months" || p === "3-months") return "per 3 months";
-  if (p === "6_months" || p === "6 months" || p === "bi-annually" || p === "biannually") return "per 6 months";
-  if (p === "weekly" || p === "week" || p === "per week") return "/week";
-  if (p === "annually" || p === "yearly" || p === "year" || p === "per year" || p === "per annum") return "/year";
-  return `/${p}`;
+  if (p === "monthly" || p === "month" || p === "per month" || p === "/mo") return "/month";
+  if (p === "3_months" || p === "3 months" || p === "3months" || p === "3-months" || p === "quarterly" || p === "/3 mos") return "per 3 months";
+  if (p === "6_months" || p === "6 months" || p === "bi-annually" || p === "biannually" || p === "/6 mos") return "per 6 months";
+  if (p === "weekly" || p === "week" || p === "per week" || p === "/wk") return "/week";
+  if (p === "annually" || p === "yearly" || p === "annual" || p === "year" || p === "per year" || p === "/yr") return "/year";
+  return "—";
 };
+
+/**
+ * Computes next rent due date following the rent period.
+ * 
+ * Rules:
+ * - If there is an unpaid or overdue invoice, its due date is the answer (labelled "Overdue" if past).
+ * - Otherwise, the next cycle date after the last paid period, counted from the lease start in steps of the rent period.
+ * - If next due falls after lease end, returns "No further rent due".
+ * - If unknown period value, shows "—" and is reported.
+ * 
+ * @param {object} lease - Active lease object
+ * @param {object} property - Optional property object fallback
+ * @param {Array} invoices - List of invoices
+ * @param {Date|string} today - Reference date (defaults to current date in Africa/Lagos)
+ * @returns {object} { dueDate: string|null, formattedDate: string, isOverdue: boolean, status: string, message?: string }
+ */
+export const getNextRentDue = (lease, property, invoices = [], today = new Date()) => {
+  if (!lease || !lease.start_date) {
+    return { dueDate: null, formattedDate: "—", isOverdue: false, status: "none", message: "No active tenancy" };
+  }
+
+  const todayStr = typeof today === "string"
+    ? today.slice(0, 10)
+    : new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Lagos" }).format(today);
+
+  // 1. If there is an unpaid or overdue invoice, its due date is the answer
+  const unpaidInv = (invoices || []).find((i) => {
+    const s = String(i.status || "").toLowerCase();
+    return s === "unpaid" || s === "overdue" || s === "pending";
+  });
+
+  if (unpaidInv && (unpaidInv.due_date || unpaidInv.dueDate)) {
+    const rawDue = String(unpaidInv.due_date || unpaidInv.dueDate).slice(0, 10);
+    const isOverdue = rawDue < todayStr;
+    return {
+      dueDate: rawDue,
+      formattedDate: formatDateOnly(rawDue),
+      isOverdue,
+      status: isOverdue ? "overdue" : "due",
+      invoice: unpaidInv
+    };
+  }
+
+  // 2. Otherwise next cycle date after the last paid period, counted from lease start
+  const period = lease.rent_period || property?.rent_period;
+  const monthsPerPeriod = getMonthsInRentPeriod(period);
+  if (monthsPerPeriod === null) {
+    console.warn(`[getNextRentDue] Unknown rent period encountered: "${period}". Displaying "—".`);
+    return { dueDate: null, formattedDate: "—", isOverdue: false, status: "unknown_period", period };
+  }
+
+  const paidInvoices = (invoices || []).filter((i) => {
+    const s = String(i.status || "").toLowerCase();
+    const lId = i.lease_id || i.leaseId;
+    return s === "paid" && (!lId || String(lId) === String(lease.id));
+  });
+
+  const periodsPaid = Math.max(1, paidInvoices.length);
+  const rawStart = String(lease.start_date || lease.startDate).slice(0, 10);
+  const nextDueDate = addRentPeriodMonthEndSafe(rawStart, period, periodsPaid);
+
+  if (!nextDueDate) {
+    return { dueDate: null, formattedDate: "—", isOverdue: false, status: "error" };
+  }
+
+  const leaseEnd = lease.end_date || lease.endDate ? String(lease.end_date || lease.endDate).slice(0, 10) : null;
+  if (leaseEnd && nextDueDate > leaseEnd) {
+    return {
+      dueDate: null,
+      formattedDate: "No further rent due",
+      isOverdue: false,
+      status: "completed",
+      message: "No further rent due"
+    };
+  }
+
+  const isOverdue = nextDueDate < todayStr;
+  return {
+    dueDate: nextDueDate,
+    formattedDate: formatDateOnly(nextDueDate),
+    isOverdue,
+    status: isOverdue ? "overdue" : "upcoming"
+  };
+};
+
 
 

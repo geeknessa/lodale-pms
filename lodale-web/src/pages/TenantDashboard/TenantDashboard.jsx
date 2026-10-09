@@ -67,7 +67,8 @@ import {
   formatDisplayDate,
   addRentPeriodMonthEndSafe,
   getRentPeriodLabel,
-  getRentPeriodSuffix
+  getRentPeriodSuffix,
+  getNextRentDue
 } from "../../utils/formatters";
 const TOUR_STEPS = [
   // Overview Tab (tab: 0)
@@ -2481,7 +2482,7 @@ export default function TenantDashboard() {
 
                 // Determine Tier Level (frontend gamification constants)
                 let tierTitle = "Bronze Flame Resident";
-                let targetDays = 30;
+                let targetDays = 90;
                 let prevTarget = 0;
                 if (daysInHouse >= 180) {
                   tierTitle = "Diamond Flame Legend";
@@ -2769,24 +2770,10 @@ export default function TenantDashboard() {
 
               {/* Stat 3: Next Rent Due / Overdue */}
               {(() => {
-                const unpaidInv = invoices.find(i => i.status === 'unpaid');
-                let nextDueDateStr = "--";
-                let isOverdue = false;
-                if (unpaidInv && (unpaidInv.due_date || unpaidInv.dueDate)) {
-                  const dueDateObj = new Date(unpaidInv.due_date || unpaidInv.dueDate);
-                  nextDueDateStr = dueDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                  isOverdue = dueDateObj.getTime() < Date.now();
-                } else if (activeLease && activeLease.start_date) {
-                  const startDate = new Date(activeLease.start_date);
-                  let nextDate = new Date(startDate);
-                  if (activeLease.rent_cycle === 'yearly' || activeLease.rent_period === 'annually' || activeLease.rent_period === 'yearly') {
-                    nextDate.setFullYear(nextDate.getFullYear() + 1);
-                  } else {
-                    nextDate.setMonth(nextDate.getMonth() + 1);
-                  }
-                  nextDueDateStr = nextDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                }
-
+                const nextRentInfo = getNextRentDue(activeLease, null, invoices);
+                const nextDueDateStr = nextRentInfo.formattedDate;
+                const isOverdue = nextRentInfo.isOverdue;
+                const isCompleted = nextRentInfo.status === 'completed';
                 const propertyLabel = activeLease?.property_title || activeLease?.propertyTitle || "GreenView Apartments";
 
                 return (
@@ -2807,13 +2794,13 @@ export default function TenantDashboard() {
                     </div>
                     <div>
                       <span className={`text-xs font-semibold block mb-1 ${isOverdue ? 'text-rose-600 dark:text-rose-400' : 'text-[#71717A] dark:text-white/60'}`}>
-                        {isOverdue ? "Rent Overdue" : "Next Rent Due"}
+                        {isOverdue ? "Rent Overdue" : (isCompleted ? "Tenancy Status" : "Next Rent Due")}
                       </span>
                       <h3 className={`text-2xl font-bold font-serif mb-1 tracking-tight ${isOverdue ? 'text-rose-700 dark:text-rose-300' : 'text-[#1C1917] dark:text-white'}`}>
                         {nextDueDateStr}
                       </h3>
                       <p className="text-[11px] text-[#71717A] dark:text-white/50 font-medium truncate">
-                        {activeLease ? (isOverdue ? `Overdue for ${propertyLabel}` : `Rent for ${propertyLabel}`) : "No active tenancy"}
+                        {activeLease ? (isOverdue ? `Overdue for ${propertyLabel}` : (isCompleted ? "No further payments due" : `Rent for ${propertyLabel}`)) : "No active tenancy"}
                       </p>
                     </div>
                   </div>
@@ -3156,19 +3143,16 @@ export default function TenantDashboard() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {(() => {
                           const events = [];
-                          const unpaidInv = invoices.find(i => i.status === 'unpaid');
-                          if (unpaidInv && unpaidInv.due_date) {
-                            const d = new Date(unpaidInv.due_date);
-                            events.push({ id: 'sys_rent', date: d, title: "Rent Due", subtitle: `₦${parseFloat(unpaidInv.amount).toLocaleString()}`, sys: true });
-                          } else if (activeLease && activeLease.start_date) {
-                            const startDate = new Date(activeLease.start_date);
-                            const nextRentDate = new Date(startDate);
-                            if (activeLease.rent_cycle === 'yearly' || activeLease.rent_period === 'annually' || activeLease.rent_period === 'yearly') {
-                              nextRentDate.setFullYear(nextRentDate.getFullYear() + 1);
-                            } else {
-                              nextRentDate.setMonth(nextRentDate.getMonth() + 1);
-                            }
-                            events.push({ id: 'sys_rent_next', date: nextRentDate, title: "Next Rent Due", subtitle: `₦${parseFloat(activeLease.rent_amount || 0).toLocaleString()}`, sys: true });
+                          const nextRentInfo = getNextRentDue(activeLease, null, invoices);
+                          if (nextRentInfo.dueDate && nextRentInfo.status !== 'completed') {
+                            const d = new Date(nextRentInfo.dueDate + 'T00:00:00');
+                            events.push({
+                              id: 'sys_rent_next',
+                              date: d,
+                              title: nextRentInfo.isOverdue ? "Rent Overdue" : "Next Rent Due",
+                              subtitle: `₦${parseFloat(activeLease?.rent_amount || 0).toLocaleString()}`,
+                              sys: true
+                            });
                           }
                           userReminders.forEach(r => {
                             events.push({ id: r.id, date: new Date(r.date + "T12:00:00"), title: r.title, subtitle: "Personal Reminder", sys: false });

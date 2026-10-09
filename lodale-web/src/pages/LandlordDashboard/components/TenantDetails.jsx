@@ -137,7 +137,7 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
 
   const paymentHistory = fetchedDetails.payments.length > 0
     ? fetchedDetails.payments.map(p => ({
-        date: p.created_at || p.due_date || p.date || new Date().toISOString(),
+        date: p.paid_at || p.payment_date || p.created_at || p.due_date || p.date || new Date().toISOString(),
         amount: typeof p.amount === 'number' ? `₦${p.amount.toLocaleString()}` : (p.amount || "₦0"),
         method: p.payment_method || p.method || "Bank Transfer",
         status: (p.status === "paid" || p.is_paid) ? "Paid" : "Overdue"

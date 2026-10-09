@@ -802,8 +802,8 @@ export default function Step2UnitsSpecs({
                     onChange={(e) => setSingleHostelPricingType(e.target.value)}
                     className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-[#07130D] text-slate-900 dark:text-white outline-none font-medium"
                   >
-                    <option value="per_bedspace">🛏️ Per Bedspace (Student)</option>
-                    <option value="per_room">🚪 Per Room (Private Room)</option>
+                    <option value="per_bedspace">Per Bedspace (Student)</option>
+                    <option value="per_room">Per Room (Private Room)</option>
                   </select>
                 </div>
               )}

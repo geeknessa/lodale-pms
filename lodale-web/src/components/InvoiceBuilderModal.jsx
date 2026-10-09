@@ -3,20 +3,23 @@ import { X, FileText, Loader2, Plus, Info, Building2 } from 'lucide-react';
 import Button from './Button';
 import { invoiceService } from '../services/invoiceService';
 import { triggerToast } from '../context/ToastContext';
+import { getNextRentDue } from '../utils/formatters';
 
 export default function InvoiceBuilderModal({ isOpen, onClose, application, property, tenant, onSuccess }) {
   const initialRent = Number(property?.rent_amount || property?.price || 0);
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Default due date: 7 days from today
+  // Default due date: check getNextRentDue if lease exists, else 7 days from today
   const defaultDue = new Date();
   defaultDue.setDate(defaultDue.getDate() + 7);
-  const defaultDueStr = defaultDue.toISOString().split('T')[0];
+  const fallbackDueStr = defaultDue.toISOString().split('T')[0];
+  const calculatedNextDue = application?.lease ? getNextRentDue(application.lease, property)?.dueDate : null;
+  const initialDueStr = calculatedNextDue || fallbackDueStr;
 
   // Invoice metadata
   const [invoiceNum] = useState(`INV-2026-${Math.floor(1000 + Math.random() * 9000)}`);
   const [issueDate, setIssueDate] = useState(todayStr);
-  const [dueDate, setDueDate] = useState(defaultDueStr);
+  const [dueDate, setDueDate] = useState(initialDueStr);
 
   // Landlord profile prefill
   const currentProfile = (() => {

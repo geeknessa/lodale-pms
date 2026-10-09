@@ -65,7 +65,7 @@ import { reminderService } from "../../services/reminderService";
 import AutomatedRemindersModal from "../../components/AutomatedRemindersModal";
 import { interactionTracker } from "../../utils/interactionTracker";
 import { onBroadcastAction } from "../../utils/actionBroadcaster";
-import { formatCurrency, getRentPeriodSuffix, formatDateOnly, formatTimestamp, formatDisplayDate, getRentPeriodLabel } from "../../utils/formatters";
+import { formatCurrency, getRentPeriodSuffix, formatDateOnly, formatTimestamp, formatDisplayDate, getRentPeriodLabel, getNextRentDue } from "../../utils/formatters";
 import { apiClient } from "../../lib/apiClient";
 import { calculatePortfolioMetrics, getPropertyStatus } from "../../utils/landlordMetrics";
 import "./LandlordDashboard.css";
@@ -969,16 +969,16 @@ export default function LandlordDashboard() {
     });
 
     if (activeLease) {
+      const nextRentInfo = getNextRentDue(activeLease, null, invoices);
       const amt = parseFloat(activeLease.rent_amount || activeLease.rentAmount || activeLease.rent || 0);
-      const rawDate = activeLease.next_payment_date || activeLease.nextPaymentDate || activeLease.end_date || activeLease.start_date;
-      const formattedDate = rawDate ? formatDateOnly(rawDate) : "—";
+      const formattedDate = nextRentInfo.formattedDate || "—";
       const tName = activeLease.tenant_name || activeLease.tenantName || (activeLease.tenant ? `${activeLease.tenant.first_name || ''} ${activeLease.tenant.last_name || ''}`.trim() : null) || (activeTenantsList[0]?.name) || "Active Tenant";
       return {
         tenantName: tName,
         propertyTitle: activeLease.property_title || activeLease.propertyTitle || (activeLease.property?.title) || "Leased Unit",
         amount: amt > 0 ? `₦${amt.toLocaleString()}` : "₦0",
         dueDate: formattedDate,
-        status: "Upcoming",
+        status: nextRentInfo.isOverdue ? "Overdue" : "Upcoming",
         hasPayment: true
       };
     }
