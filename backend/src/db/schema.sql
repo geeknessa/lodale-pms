@@ -174,12 +174,29 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 -- RENT INVOICES TABLE
 CREATE TABLE IF NOT EXISTS rent_invoices (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+    lease_id UUID REFERENCES leases(id) ON DELETE CASCADE,
+    application_id UUID REFERENCES property_applications(id) ON DELETE SET NULL,
+    property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+    tenant_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    landlord_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    invoice_number VARCHAR(100),
     amount NUMERIC(20, 2) NOT NULL,
+    subtotal NUMERIC(20, 2),
+    lodale_fee NUMERIC(20, 2),
+    grand_total NUMERIC(20, 2),
     due_date DATE NOT NULL,
+    issue_date DATE DEFAULT CURRENT_DATE,
     status VARCHAR(50) DEFAULT 'unpaid', -- 'unpaid', 'paid', 'overdue'
     billing_period_start DATE,
     billing_period_end DATE,
+    bank_name VARCHAR(150),
+    bank_account_number VARCHAR(50),
+    bank_account_name VARCHAR(150),
+    items JSONB DEFAULT '[]'::jsonb,
+    notes TEXT,
+    payment_reference VARCHAR(100),
+    payment_proof_url TEXT,
+    paid_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -188,7 +205,10 @@ CREATE TABLE IF NOT EXISTS rent_invoices (
 CREATE TABLE IF NOT EXISTS rent_payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     invoice_id UUID REFERENCES rent_invoices(id) ON DELETE SET NULL,
-    lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+    lease_id UUID REFERENCES leases(id) ON DELETE CASCADE,
+    application_id UUID REFERENCES property_applications(id) ON DELETE SET NULL,
+    property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+    tenant_id UUID REFERENCES users(id) ON DELETE SET NULL,
     amount NUMERIC(20, 2) NOT NULL,
     payment_date DATE NOT NULL DEFAULT CURRENT_DATE,
     payment_method VARCHAR(50) NOT NULL, -- 'cash', 'bank_transfer', 'card'
@@ -202,11 +222,17 @@ CREATE TABLE IF NOT EXISTS maintenance_requests (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    lease_id UUID REFERENCES leases(id) ON DELETE SET NULL,
+    reported_by UUID REFERENCES users(id) ON DELETE SET NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     priority VARCHAR(30) DEFAULT 'medium', -- 'low', 'medium', 'high', 'emergency'
     status VARCHAR(50) DEFAULT 'pending', -- 'pending', 'in_progress', 'resolved', 'cancelled'
     notes TEXT,
+    tenant_handled BOOLEAN DEFAULT FALSE,
+    actual_cost NUMERIC(15, 2),
+    estimated_cost NUMERIC(15, 2),
+    resolved_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

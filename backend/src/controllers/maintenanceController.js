@@ -177,29 +177,17 @@ export const updateRequestStatus = async (req, res) => {
     };
     const dbStatus = statusMap[status?.toLowerCase()] || 'pending';
 
-    const colCheck = await pool.query(
-      "SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_requests' AND column_name = 'resolved_at'"
-    );
-    const hasResolvedAt = colCheck.rowCount > 0;
-
     let updateSql = '';
     const updateParams = [dbStatus, notes || null, cost !== undefined && cost !== null && cost !== '' ? parseFloat(cost) : null, id];
 
-    if (hasResolvedAt) {
-      if (dbStatus === 'resolved') {
-        updateSql = `UPDATE maintenance_requests 
-         SET status = $1, notes = COALESCE($2, notes), actual_cost = COALESCE($3, actual_cost), resolved_at = COALESCE(resolved_at, NOW()), updated_at = NOW()
-         WHERE id = $4
-         RETURNING *`;
-      } else {
-        updateSql = `UPDATE maintenance_requests 
-         SET status = $1, notes = COALESCE($2, notes), actual_cost = COALESCE($3, actual_cost), resolved_at = NULL, updated_at = NOW()
-         WHERE id = $4
-         RETURNING *`;
-      }
+    if (dbStatus === 'resolved') {
+      updateSql = `UPDATE maintenance_requests 
+       SET status = $1, notes = COALESCE($2, notes), actual_cost = COALESCE($3, actual_cost), resolved_at = COALESCE(resolved_at, NOW()), updated_at = NOW()
+       WHERE id = $4
+       RETURNING *`;
     } else {
       updateSql = `UPDATE maintenance_requests 
-       SET status = $1, notes = COALESCE($2, notes), actual_cost = COALESCE($3, actual_cost), updated_at = NOW()
+       SET status = $1, notes = COALESCE($2, notes), actual_cost = COALESCE($3, actual_cost), resolved_at = NULL, updated_at = NOW()
        WHERE id = $4
        RETURNING *`;
     }

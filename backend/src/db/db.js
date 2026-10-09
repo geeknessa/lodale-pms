@@ -121,6 +121,12 @@ export async function initDb() {
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS risk_level VARCHAR(20);
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS verification_results JSONB;
       ALTER TABLE properties ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS lease_id UUID REFERENCES leases(id) ON DELETE SET NULL;
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS reported_by UUID REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS tenant_handled BOOLEAN DEFAULT FALSE;
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS actual_cost NUMERIC(15, 2);
+      ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS estimated_cost NUMERIC(15, 2);
     `);
 
     // Widen numeric columns to prevent overflow with large Nigerian property values
