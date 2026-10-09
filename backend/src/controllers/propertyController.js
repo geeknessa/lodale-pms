@@ -19,7 +19,7 @@ const formatSafeLocation = (addr, city, state) => {
 
 const LIVE_PROPERTY_STATUSES = ['active_vacant', 'approved', 'live', 'active', 'occupied', 'active_occupied'];
 
-const stripPrivatePropertyFields = (prop, req) => {
+const stripPrivatePropertyFields = (prop, req, hasRelationship = false) => {
   const sanitized = { ...prop };
   delete sanitized.ownership_doc;
   delete sanitized.ownership_doc_url;
@@ -34,15 +34,25 @@ const stripPrivatePropertyFields = (prop, req) => {
       delete sanitized[key];
     }
   });
-  if (!req?.user) {
+
+  const isOwnerOrAdmin = req?.user && (req.user.role === 'admin' || req.user.id === prop.landlord_id);
+  const allowContact = isOwnerOrAdmin || hasRelationship;
+
+  if (!allowContact) {
     if (sanitized.landlord && typeof sanitized.landlord === 'object') {
       const landlordCopy = { ...sanitized.landlord };
       delete landlordCopy.address;
+      delete landlordCopy.phone;
+      delete landlordCopy.phone_number;
+      delete landlordCopy.email;
       sanitized.landlord = landlordCopy;
     }
     if (sanitized.landlord_data && typeof sanitized.landlord_data === 'object') {
       const landlordDataCopy = { ...sanitized.landlord_data };
       delete landlordDataCopy.address;
+      delete landlordDataCopy.phone;
+      delete landlordDataCopy.phone_number;
+      delete landlordDataCopy.email;
       sanitized.landlord_data = landlordDataCopy;
     }
   }
@@ -148,7 +158,23 @@ export const propertyController = {
       location: formatSafeLocation(property.address_line1, property.city, property.state),
     };
 
-    res.json(isOwnerOrAdmin ? formatted : stripPrivatePropertyFields(formatted, req));
+    let hasRelationship = false;
+    if (req.user && !isOwnerOrAdmin) {
+      try {
+        const relRes = await pool.query(
+          `SELECT 1 FROM leases WHERE tenant_id = $1 AND property_id = $2
+           UNION
+           SELECT 1 FROM applications WHERE tenant_id = $1 AND property_id = $2
+           LIMIT 1`,
+          [req.user.id, property.id]
+        );
+        hasRelationship = relRes.rows.length > 0;
+      } catch (e) {
+        hasRelationship = false;
+      }
+    }
+
+    res.json(isOwnerOrAdmin ? formatted : stripPrivatePropertyFields(formatted, req, hasRelationship));
   }),
 
   createProperty: asyncHandler(async (req, res) => {
