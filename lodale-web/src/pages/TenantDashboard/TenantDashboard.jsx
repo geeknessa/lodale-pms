@@ -39,7 +39,8 @@ import {
   AlertTriangle,
   Filter,
   ArrowLeft,
-  Download
+  Download,
+  CircleHelp
 } from "lucide-react";
 import gsap from "gsap";
 import { Logo, LogoMark } from "../../components/Logo";
@@ -69,129 +70,82 @@ import {
   getRentPeriodSuffix
 } from "../../utils/formatters";
 const TOUR_STEPS = [
-  // Sidebar tab steps (visible on any tab)
-  {
-    target: ".tour-nav-0",
-    title: "Sidebar: Home Dashboard",
-    content: "This button navigates you back to your primary home workspace.",
-    placement: "right",
-    tab: 0
-  },
-  {
-    target: ".tour-nav-1",
-    title: "Sidebar: Browse Units",
-    content: "Jump to the properties directory to browse rental listings.",
-    placement: "right",
-    tab: 1
-  },
-  {
-    target: ".tour-nav-2",
-    title: "Sidebar: Secure Chats",
-    content: "Open real-time logs with verified landlords.",
-    placement: "right",
-    tab: 2
-  },
-  {
-    target: ".tour-nav-3",
-    title: "Sidebar: Profile Settings",
-    content: "Edit location credentials, verified badges, and security parameters.",
-    placement: "right",
-    tab: 3
-  },
-  {
-    target: ".tour-nav-4",
-    title: "Sidebar: Applications",
-    content: "Track the status of your property applications and view their outcomes.",
-    placement: "right",
-    tab: 4
-  },
-
-  // Homepage steps (tab: 0)
+  // Overview Tab (tab: 0)
   {
     target: ".tour-welcome",
-    title: "Greeting & Breadcrumb Header",
-    content: "Welcome to Lodale! This header greets you with your verified first-name profile session.",
+    title: "Welcome to Lodale",
+    content: "Your central hub for tracking your tenancy, payment schedule, verified receipts, and maintenance tickets.",
     placement: "bottom",
-    tab: 0
-  },
-  {
-    target: ".pro-card",
-    title: "Active Lease & Star Score",
-    content: "Tracks active lease dates, terms, and rating variables compiled from automated rent ledgers.",
-    placement: "bottom",
-    tab: 0
-  },
-  {
-    target: ".tour-dispatch",
-    title: "Quick Repair Dispatch Form",
-    content: "Submit work dispatches directly to landlords. Urgent tickets trigger real-time notifications.",
-    placement: "top",
     tab: 0
   },
   {
     target: ".tour-property",
-    title: "Current Property Overview",
-    content: "Displays Skyline Residency unit numbers, landlord contact details, and monthly costs.",
+    title: "My Tenancy Details",
+    content: "Review your active lease terms, property address, unit specifications, and verified landlord details.",
     placement: "bottom",
     tab: 0
   },
   {
-    target: ".tour-tracker",
-    title: "Repair Ticket Tracker Feed",
-    content: "Follow status updates (Pending, In Progress, Completed) on filed maintenance tickets.",
+    target: ".tour-maintenance",
+    title: "Maintenance Tracker",
+    content: "Monitor work orders, view repair status updates, and verify completion dates directly on your ledger.",
     placement: "top",
     tab: 0
   },
   {
-    target: ".tour-visa",
-    title: "Rent Wallet & Visa Debit Card",
-    content: "Submit monthly rent dues instantly and view ledger payment ratios.",
+    target: ".tour-dispatch",
+    title: "Request Maintenance",
+    content: "Quickly log new maintenance or repair issues with your landlord whenever work is required in your unit.",
+    placement: "top",
+    tab: 0
+  },
+  {
+    target: ".tour-payment-cta",
+    title: "Rent Payment Center",
+    content: "Review rent dues and submit payments safely. Every payment is immediately recorded with a verified receipt.",
     placement: "left",
     tab: 0
   },
   {
-    target: ".tour-breakdown",
-    title: "Monthly Budget Breakdown",
-    content: "Visualizes ratios apportioned to baseline rents, utility splits, and service charges.",
+    target: ".pro-card",
+    title: "Residency Streak & Rating",
+    content: "Track your residency streak days and reliability score built through continuous on-time payments.",
     placement: "top",
     tab: 0
   },
 
-  // Search page steps (tab: 1)
+  // Search Tab (tab: 1)
   {
     target: ".tour-search-header",
-    title: "Directory Breadcrumbs",
-    content: "Welcome to the rentals directory! Let's explore listing filter widgets.",
-    placement: "bottom",
-    tab: 1
-  },
-  {
-    target: ".tour-search-bar",
-    title: "Search Bar Input",
-    content: "Query by property names, landmarks, or specific landlord names.",
+    title: "Search Properties & Landlords",
+    content: "Browse verified rental listings across Nigeria and search for verified landlords with ratings and reviews.",
     placement: "bottom",
     tab: 1
   },
   {
     target: ".tour-search-scope",
-    title: "Search Scope Toggles",
-    content: "Filter matches between listings (Property Details) or profiles (Landlords).",
+    title: "Search Scope",
+    content: "Switch between exploring property listings or searching verified landlord profiles.",
     placement: "bottom",
     tab: 1
   },
+
+  // Chat Tab (tab: 2)
   {
-    target: ".tour-search-filter",
-    title: "Advanced Filters Trigger",
-    content: "Narrow parameters by bed counts, monthly budgets, or rental styles.",
-    placement: "left",
-    tab: 1
+    target: ".tour-nav-2",
+    title: "Direct Landlord Messaging",
+    content: "Open real-time communication channels with your landlord for tenancy inquiries and updates.",
+    placement: "right",
+    tab: 2
   },
+
+  // Settings Tab (tab: 3)
   {
-    target: ".tour-search-results",
-    title: "Explore Listings Directory",
-    content: "Browse recommendations based on proximity, high ratings, or popular listings.",
-    placement: "top",
-    tab: 1
+    target: ".tour-nav-3",
+    title: "Account Settings",
+    content: "Update your profile information, upload your avatar photo, and manage your account preferences.",
+    placement: "right",
+    tab: 3
   }
 ];
 
@@ -2719,6 +2673,17 @@ export default function TenantDashboard() {
               </div>
 
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setTourStep(0);
+                    setRunTour(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] hover:border-[#E5C583]/50 transition-colors shadow-xs text-xs font-semibold text-[#1C1917] dark:text-white cursor-pointer"
+                  title="Take a Tour"
+                >
+                  <CircleHelp className="h-4 w-4 text-[#1E3324] dark:text-[#E5C583]" />
+                  <span className="hidden sm:inline">Take a Tour</span>
+                </button>
                 <div className="flex items-center gap-2 bg-white dark:bg-[#192A1F] px-3.5 py-2 rounded-xl border border-black/5 dark:border-[#2C4633] shadow-xs text-xs font-semibold text-[#1C1917] dark:text-white">
                   <Calendar className="h-4 w-4 text-[#1E3324] dark:text-[#E5C583]" />
                   <span>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
@@ -3001,7 +2966,7 @@ export default function TenantDashboard() {
                   </div>
 
                   {/* 2. Maintenance History Card */}
-                  <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-3xl p-6 shadow-xs">
+                  <div className="tour-maintenance bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-3xl p-6 shadow-xs">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2.5">
                         <div className="h-8 w-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#E5C583] flex items-center justify-center shrink-0">
@@ -3270,7 +3235,7 @@ export default function TenantDashboard() {
                 <div className="lg:col-span-4 flex flex-col gap-6">
 
                   {/* 1. Need to make a payment? CTA Card */}
-                  <div className="tour-visa bg-[#F4F8F5] dark:bg-[#121F1A] border border-[#2C4633]/20 dark:border-[#2C4633] rounded-3xl p-6 shadow-xs flex flex-col justify-between">
+                  <div className="tour-payment-cta bg-[#F4F8F5] dark:bg-[#121F1A] border border-[#2C4633]/20 dark:border-[#2C4633] rounded-3xl p-6 shadow-xs flex flex-col justify-between">
                     <div className="flex items-start gap-3.5 mb-5">
                       <div className="h-11 w-11 rounded-xl bg-white dark:bg-[#192A1F] border border-black/5 dark:border-white/10 flex items-center justify-center shrink-0 shadow-xs text-[#1E3324] dark:text-[#E5C583]">
                         <Building2 className="h-5 w-5" />
