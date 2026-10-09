@@ -2,12 +2,13 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, Heart, MessageSquare, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import Button from "../../components/Button";
+import RateLandlordModal from "../../components/RateLandlordModal";
 import { propertyService } from "../../services/propertyService";
 import { applicationService } from "../../services/applicationService";
 import { profileService } from "../../services/profileService";
 import { chatService } from "../../services/chatService";
 import { triggerToast } from "../../context/ToastContext";
-import { formatCurrency } from "../../utils/formatters";
+import { formatCurrency, getRentPeriodSuffix } from "../../utils/formatters";
 import Avatar from "../../components/Avatar";
 import { doesIncomeMeetRequirement } from "../../utils/incomeRanges";
 import "./TenantSearch.css";
@@ -50,7 +51,7 @@ function PropertyCard({ property, onInspect }) {
 }
 
 // Helper Landlord Card Component
-function LandlordCard({ landlord, onInspect }) {
+function LandlordCard({ landlord, onInspect, onRate }) {
   return (
     <div className="search-landlord-card">
       <div className="landlord-card-header text-center">
@@ -71,10 +72,12 @@ function LandlordCard({ landlord, onInspect }) {
           </span>
         </div>
         <div className="landlord-metric flex justify-between items-center text-[12.5px] mb-3">
-          <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Base Location</span>
+          <span className="text-[#6C6E73] dark:text-[#A3BCA7]">Address</span>
           <span className="font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
             <MapPin className="h-3.5 w-3.5 text-moss-600 dark:text-[#E5C583] shrink-0" />
-            <span>{(landlord.location || "Lagos, Nigeria").split(",")[0]}</span>
+            <span className="truncate max-w-[170px]" title={landlord.address || landlord.location}>
+              {landlord.address || landlord.location || "Lagos, Nigeria"}
+            </span>
           </span>
         </div>
 
@@ -87,12 +90,21 @@ function LandlordCard({ landlord, onInspect }) {
           </div>
         </div>
 
-        <button
-          className="property-card-cta-btn w-full mt-auto"
-          onClick={() => onInspect(landlord)}
-        >
-          Inspect Landlord
-        </button>
+        <div className="flex gap-2 mt-auto w-full">
+          <button
+            className="property-card-cta-btn flex-1"
+            onClick={() => onInspect(landlord)}
+          >
+            Inspect Landlord
+          </button>
+          <button
+            className="px-3 py-2 text-xs font-bold rounded-xl border border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors flex items-center justify-center gap-1 cursor-pointer shrink-0"
+            onClick={() => onRate(landlord)}
+            title="Rate this landlord"
+          >
+            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> Rate
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -151,16 +163,20 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
               name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
               score: l.score || 0,
               reviews: l.reviews || 0,
-              phone_number: l.phone_number || null
+              phone_number: l.phone_number || null,
+              address: l.address || null,
+              location: l.location || l.address || null,
+              avatar_url: l.avatar_url || null
             };
           } else {
-            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 0, reviews: 0, phone_number: null };
+            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 0, reviews: 0, phone_number: null, address: null, location: null, avatar_url: null };
           }
           return {
             id: item.id || key,
             title: item.title || item.address_line1 || "Property",
             location: item.location || item.city || "Lagos, Nigeria",
-            price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
+            price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}${getRentPeriodSuffix(item.rent_period)}` : "₦0/yr"),
+            rent_period: item.rent_period,
             beds: item.beds || item.bedrooms || 1,
             baths: item.baths || item.bathrooms || 1,
             type: item.type || item.property_type || "apartment",
@@ -205,19 +221,20 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
 
   // Derive unique landlords dynamically from loaded listings
   const dynamicLandlords = useMemo(() => {
-    const seen = new Map(); // landlordName -> landlord entry
+    const seen = new Map(); // landlordKey -> landlord entry
     allListings.forEach((p) => {
       const l = p.landlord;
       if (!l || !l.name) return;
-      const key = l.name.toLowerCase().trim();
+      const key = (l.id || l.name).toLowerCase().trim();
       if (!seen.has(key)) {
         seen.set(key, {
           id: l.id || key,
           name: l.name,
           score: l.score || 0,
           reviews: l.reviews || 0,
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(l.name)}&background=2C4633&color=E5C583&size=96`,
-          location: p.location || "Lagos, Nigeria",
+          avatar: l.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(l.name)}&background=2C4633&color=E5C583&size=96`,
+          address: l.address || null,
+          location: l.address || l.location || p.location || "Lagos, Nigeria",
           properties: [p.title],
           category: "Top Rated Landlords",
           joinedStatus: "new"
@@ -225,6 +242,10 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
       } else {
         // Accumulate managed properties
         const existing = seen.get(key);
+        if (l.address && !existing.address) {
+          existing.address = l.address;
+          existing.location = l.address;
+        }
         if (!existing.properties.includes(p.title)) {
           existing.properties.push(p.title);
         }
@@ -267,7 +288,8 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
              id: item.id,
              title: item.title || "Property",
              location: item.location || item.address_line1 || item.city || "Lagos, Nigeria",
-             price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}/yr` : "₦0/yr"),
+             price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}${getRentPeriodSuffix(item.rent_period)}` : "₦0/yr"),
+             rent_period: item.rent_period,
              beds: item.beds || item.bedrooms || 1,
              baths: item.baths || item.bathrooms || 1,
              type: item.type || item.property_type || "apartment",
@@ -312,10 +334,17 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
   // Landlord Details modal states
   const [selectedLandlord, setSelectedLandlord] = useState(null);
   const [showLandlordDetailsModal, setShowLandlordDetailsModal] = useState(false);
+  const [showRateLandlordModal, setShowRateLandlordModal] = useState(false);
+  const [landlordToRate, setLandlordToRate] = useState(null);
 
   const handleInspectLandlord = (landlord) => {
     setSelectedLandlord(landlord);
     setShowLandlordDetailsModal(true);
+  };
+
+  const handleOpenRateLandlord = (landlord) => {
+    setLandlordToRate(landlord);
+    setShowRateLandlordModal(true);
   };
 
   // Landlord Filtering & Search matching logic (against dynamic landlords derived from listings)
@@ -878,7 +907,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 {topRatedLandlords.length > 0 ? (
                   <div className="recommendation-cards-scroller">
                     {topRatedLandlords.map(l => (
-                      <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} />
+                      <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} onRate={handleOpenRateLandlord} />
                     ))}
                   </div>
                 ) : (
@@ -983,7 +1012,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                     ))
                   ) : filteredLandlords.length > 0 ? (
                     filteredLandlords.map(l => (
-                      <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} />
+                      <LandlordCard key={l.id} landlord={l} onInspect={handleInspectLandlord} onRate={handleOpenRateLandlord} />
                     ))
                   ) : (
                     <div className="col-span-full p-8 text-center rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#07130D]">
@@ -1166,7 +1195,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
               <div className="property-banner-overlay" style={{ height: "180px", borderRadius: "18px", overflow: "hidden", position: "relative", marginBottom: "16px" }}>
                 <img src={selectedProperty.image} alt={selectedProperty.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 <span className="property-card-price-tag" style={{ position: "absolute", bottom: "12px", right: "12px" }}>
-                  {formatCurrency(selectedProperty.price, "/mo")}
+                  {selectedProperty.price || formatCurrency(selectedProperty.rent_amount || 0, getRentPeriodSuffix(selectedProperty.rent_period))}
                 </span>
               </div>
 
@@ -1502,8 +1531,10 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 </div>
 
                 <div className="flex justify-between items-center text-[12.5px] mt-1">
-                  <span>Base Location</span>
-                  <span className="font-semibold">{selectedLandlord.location}</span>
+                  <span>Address</span>
+                  <span className="font-semibold text-right max-w-[240px] truncate" title={selectedLandlord.address || selectedLandlord.location}>
+                    {selectedLandlord.address || selectedLandlord.location}
+                  </span>
                 </div>
               </div>
 
@@ -1533,7 +1564,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
 
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-2.5 mt-6">
               <Button
                 onClick={() => {
                   if (onStartChat) {
@@ -1542,9 +1573,19 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                   setShowLandlordDetailsModal(false);
                 }}
                 variant="secondary"
-                className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3.5 text-[13px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white"
+                className="flex-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold py-3 text-[12px] rounded-xl dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-white"
               >
                 Send Message
+              </Button>
+              <Button
+                onClick={() => {
+                  setLandlordToRate(selectedLandlord);
+                  setShowRateLandlordModal(true);
+                  setShowLandlordDetailsModal(false);
+                }}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 text-[12px] rounded-xl flex items-center justify-center gap-1"
+              >
+                <Star className="h-3.5 w-3.5 fill-white" /> Rate Landlord
               </Button>
               <Button
                 onClick={() => {
@@ -1552,13 +1593,32 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                   setSearchQuery(selectedLandlord.name);
                   setShowLandlordDetailsModal(false);
                 }}
-                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3.5 font-bold text-[13px] rounded-xl"
+                className="flex-1 bg-[#2C4633] dark:bg-[#E5C583] text-white dark:text-[#263b33] py-3 font-bold text-[12px] rounded-xl"
               >
                 View Properties
               </Button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* RATE LANDLORD MODAL */}
+      {showRateLandlordModal && landlordToRate && (
+        <RateLandlordModal
+          isOpen={showRateLandlordModal}
+          onClose={() => {
+            setShowRateLandlordModal(false);
+            setLandlordToRate(null);
+          }}
+          landlordId={landlordToRate.id}
+          landlordName={landlordToRate.name}
+          tenantId={sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId")}
+          tenantName={sessionStorage.getItem("tenantUsername") || sessionStorage.getItem("username") || "Tenant"}
+          propertyTitle={landlordToRate.properties?.[0] || ""}
+          onSuccess={() => {
+            triggerToast("Landlord rating submitted successfully!", "success", "Rating Saved");
+          }}
+        />
       )}
     </>
   );

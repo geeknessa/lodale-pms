@@ -1,5 +1,6 @@
 import { RatingModel } from '../models/ratingModel.js';
 import { UserModel } from '../models/userModel.js';
+import { pool } from '../db/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -52,6 +53,17 @@ export const ratingController = {
     let resolvedType = rating_type;
     if (!resolvedType) {
       resolvedType = rater_role === 'landlord' ? 'landlord_rates_tenant' : 'tenant_rates_landlord';
+    }
+
+    // Verify tenant actually has an active or past lease with landlord before allowing rating
+    if (resolvedType === 'tenant_rates_landlord') {
+      const leaseCheck = await pool.query(
+        'SELECT id FROM leases WHERE tenant_id = $1 AND landlord_id = $2 LIMIT 1',
+        [rater_id, targetRateeId]
+      );
+      if (leaseCheck.rowCount === 0) {
+        return res.status(403).json({ error: 'You can only rate landlords you have an active or past lease with' });
+      }
     }
 
     const numRating = Number(rating);
