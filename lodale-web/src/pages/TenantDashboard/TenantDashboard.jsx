@@ -387,6 +387,11 @@ export default function TenantDashboard() {
   const [notifications, setNotifications] = useState([]);
 
   const [activeLease, setActiveLease] = useState(null);
+  const [propertyImageError, setPropertyImageError] = useState(false);
+
+  useEffect(() => {
+    setPropertyImageError(false);
+  }, [activeLease?.id, activeLease?.cover_image, activeLease?.property_images]);
   const [requests, setRequests] = useState([]);
 
   const allMaintenanceHistory = Array.isArray(requests) ? requests : [];
@@ -2911,18 +2916,23 @@ export default function TenantDashboard() {
                     <div className="flex flex-col sm:flex-row gap-5 items-start">
                       {/* Property Image */}
                       <div className="w-full sm:w-52 h-44 rounded-2xl bg-stone-100 dark:bg-[#0B1510] border border-black/5 dark:border-white/5 overflow-hidden shrink-0 relative">
-                        {activeLease?.property_images && activeLease.property_images.length > 0 && typeof activeLease.property_images[0] === 'string' && (activeLease.property_images[0].startsWith('http') || activeLease.property_images[0].startsWith('data:') || activeLease.property_images[0].startsWith('/')) ? (
-                          <img
-                            src={activeLease.property_images[0]}
-                            alt={activeLease.propertyTitle || "Property"}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 bg-gradient-to-br from-stone-100 to-stone-200 dark:from-[#0B1510] dark:to-[#121F1A]">
-                            <Building2 className="h-12 w-12 text-[#1E3324]/30 dark:text-[#E5C583]/30 mb-1" />
-                            <span className="text-[10px] font-bold uppercase tracking-wider">Lodale Living</span>
-                          </div>
-                        )}
+                        {(() => {
+                          const rawImg = activeLease?.cover_image || (activeLease?.property_images && activeLease.property_images.length > 0 ? activeLease.property_images[0] : null);
+                          const hasValidImg = rawImg && typeof rawImg === 'string' && (rawImg.startsWith('http') || rawImg.startsWith('data:') || rawImg.startsWith('/'));
+                          return hasValidImg && !propertyImageError ? (
+                            <img
+                              src={resolveAvatarUrl(rawImg)}
+                              alt={activeLease?.propertyTitle || activeLease?.property_title || "Property"}
+                              onError={() => setPropertyImageError(true)}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 dark:text-stone-600 bg-gradient-to-br from-stone-100 to-stone-200 dark:from-[#0B1510] dark:to-[#121F1A]">
+                              <Building2 className="h-12 w-12 text-[#1E3324]/30 dark:text-[#E5C583]/30 mb-1" />
+                              <span className="text-[10px] font-bold uppercase tracking-wider">Lodale Living</span>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Property Information */}
