@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
 import { doesIncomeMeetRequirement } from "../../../utils/incomeRanges";
+import { formatDateOnly, formatTimestamp } from "../../../utils/formatters";
 
 // Helper to resolve and parse tenant details from backend application or storage
 const getTenantProfile = (app) => {
@@ -359,7 +360,7 @@ export default function LandlordApplications({ setActiveTab }) {
   const requiredIncomeRange = activeApp?.propertyRequirements?.minimumIncome || activeApp?.property_minimum_income || "No Minimum Income";
   const meetsIncome = doesIncomeMeetRequirement(tProf.incomeRange, requiredIncomeRange);
   const hasGuarantor = Boolean(tProf.guarantorName && tProf.guarantorName.trim().length > 0);
-  const appDateFormatted = activeApp ? (activeApp.applicationDate || activeApp.date || (activeApp.createdAt ? new Date(activeApp.createdAt).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }) : "Not Provided")) : "Not Provided";
+  const appDateFormatted = activeApp ? (activeApp.applicationDate ? formatDateOnly(activeApp.applicationDate) : (activeApp.createdAt ? formatTimestamp(activeApp.createdAt) : "—")) : "—";
 
   // Determine current lifecycle stage
   const isInvoicePaid = activeInvoice?.status === "paid";
@@ -654,7 +655,7 @@ export default function LandlordApplications({ setActiveTab }) {
                   {/* BOTTOM ROW: DATE & ACTION LINK */}
                   <div className="pt-4 mt-4 border-t border-ink-100 dark:border-white/5 flex items-center justify-between text-xs">
                     <span className="text-ink-400 dark:text-cream-100/50 font-medium text-[11px]">
-                      Applied: {app.date || (app.createdAt ? new Date(app.createdAt).toLocaleDateString() : 'Recent')}
+                      Applied: {app.date ? formatDateOnly(app.date) : (app.createdAt ? formatTimestamp(app.createdAt) : '—')}
                     </span>
                     <span className="font-extrabold text-moss-700 dark:text-[#E5C583] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                       View Details & Manage <ChevronRight className="h-4 w-4" />

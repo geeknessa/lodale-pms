@@ -23,6 +23,16 @@ export const generateLease = async (req, res) => {
       return res.status(400).json({ error: 'Missing required lease fields' });
     }
 
+    // User-chosen dates validation: real dates, end date after start date
+    const parsedStart = new Date(startDate);
+    const parsedEnd = new Date(endDate);
+    if (isNaN(parsedStart.getTime()) || isNaN(parsedEnd.getTime())) {
+      return res.status(400).json({ error: 'Lease start and end dates must be valid dates' });
+    }
+    if (parsedEnd <= parsedStart) {
+      return res.status(400).json({ error: 'Lease end date must be after lease start date' });
+    }
+
     // Verify landlord owns the property
     const propertyCheck = await pool.query('SELECT id FROM properties WHERE id = $1 AND landlord_id = $2', [propertyId, landlordId]);
     if (propertyCheck.rowCount === 0) {

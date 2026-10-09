@@ -219,6 +219,14 @@ export const createInvoice = async (req, res) => {
     const invoiceSubtotal = Number(subtotal || amount || totalPayable);
     const invoiceLodaleFee = Number(lodaleFee || Math.round(invoiceSubtotal * 0.01));
     const invNotes = notes || note || '';
+
+    if (dueDate) {
+      const parsedDue = new Date(dueDate);
+      if (isNaN(parsedDue.getTime())) {
+        return res.status(400).json({ error: 'Invoice due date must be a valid date' });
+      }
+    }
+
     const invDueDate = dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     const invIssueDate = issueDate || new Date().toISOString().split('T')[0];
 
@@ -555,9 +563,31 @@ export const recordPayment = async (req, res) => {
     }
 
     // Landlord verifying or full payment confirmation
+    let customPaymentDate = null;
+    const reqPaymentDate = req.body.payment_date || req.body.paymentDate;
+
+    if (isVerification && reqPaymentDate) {
+      const parsedPayDate = new Date(reqPaymentDate);
+      if (isNaN(parsedPayDate.getTime())) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Payment date must be a valid date' });
+      }
+
+      const nowLagosStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos' }).format(new Date());
+      const reqDateStr = typeof reqPaymentDate === 'string' && /^\d{4}-\d{1,2}-\d{1,2}$/.test(reqPaymentDate)
+        ? reqPaymentDate
+        : parsedPayDate.toISOString().split('T')[0];
+
+      if (reqDateStr > nowLagosStr) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Payment date cannot be in the future' });
+      }
+      customPaymentDate = reqDateStr;
+    }
+
     const paymentRes = await client.query(
       `INSERT INTO rent_payments (invoice_id, lease_id, application_id, property_id, tenant_id, amount, payment_date, payment_method, reference_number, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, $7, $8, $9)
+       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($10::date, CURRENT_DATE), $7, $8, $9)
        RETURNING *`,
       [
         invoice.id,
@@ -568,7 +598,8 @@ export const recordPayment = async (req, res) => {
         payAmount,
         paymentMethod || 'Bank Transfer',
         effectiveReference || invoice.payment_reference || 'MANUAL_VERIFY',
-        notes || 'Verified by Landlord'
+        notes || 'Verified by Landlord',
+        customPaymentDate
       ]
     );
 

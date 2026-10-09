@@ -7,8 +7,8 @@ import { ratingService } from "../../../services/ratingService";
 import { applicationService } from "../../../services/applicationService";
 import { leaseService } from "../../../services/leaseService";
 import { maintenanceService } from "../../../services/maintenanceService";
-import { rentService } from "../../../services/rentService";
 import RateTenantModal from "../../../components/RateTenantModal";
+import { formatDateOnly, formatDisplayDate } from "../../../utils/formatters";
 
 export default function TenantDetails({ tenant, onClose, onChatClick }) {
   const [showRateModal, setShowRateModal] = useState(false);
@@ -113,8 +113,8 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
   const rawStartDate = tenant.startDate || tenant.start_date || matchedLease?.start_date || matchedLease?.startDate;
   const rawEndDate = tenant.endDate || tenant.end_date || matchedLease?.end_date || matchedLease?.endDate || appMatch?.activeLease?.endDate;
 
-  const startDate = rawStartDate ? new Date(rawStartDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : "Not Provided";
-  const endDate = rawEndDate ? new Date(rawEndDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : "Not Provided";
+  const startDate = rawStartDate ? formatDateOnly(rawStartDate, 'full') : "—";
+  const endDate = rawEndDate ? formatDateOnly(rawEndDate, 'full') : "—";
 
   const documents = Array.isArray(tenant.documents) ? tenant.documents : [];
   let leaseDoc = documents.find(d => d.type?.toLowerCase().includes("lease")) || documents[0];
@@ -297,7 +297,7 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
                           ) : (
                             maintenanceRequests.slice(0,3).map((req, i) => (
                               <tr key={i} className="border-b border-ink-100 dark:border-white/5 last:border-0 hover:bg-ink-50/50 dark:hover:bg-[#FFFFFF]/5">
-                                 <td className="px-5 py-4 whitespace-nowrap">{new Date(req.date).toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: '2-digit'})}</td>
+                                 <td className="px-5 py-4 whitespace-nowrap">{formatDisplayDate(req.date)}</td>
                                  <td className="px-5 py-4">{req.description}</td>
                                  <td className="px-5 py-4 text-center">
                                     <span className={`px-2.5 py-1 rounded-md text-[10px] ${req.status === 'Pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-[#FFFFFF]/5 dark:text-cream-100'}`}>
@@ -346,7 +346,7 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
                           ) : (
                             paymentHistory.slice(0,3).map((pay, i) => (
                               <tr key={i} className="border-b border-ink-100 dark:border-white/5 last:border-0 hover:bg-ink-50/50 dark:hover:bg-[#FFFFFF]/5">
-                                 <td className="px-5 py-4 whitespace-nowrap">{new Date(pay.date).toLocaleDateString('en-GB', {day: '2-digit', month: '2-digit', year: 'numeric'})}</td>
+                                 <td className="px-5 py-4 whitespace-nowrap">{formatDisplayDate(pay.date)}</td>
                                  <td className="px-5 py-4 text-center">{pay.amount}</td>
                                  <td className="px-5 py-4 text-center">{pay.method}</td>
                                  <td className="px-5 py-4 text-center">

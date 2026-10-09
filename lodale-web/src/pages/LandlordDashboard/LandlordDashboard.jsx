@@ -13,10 +13,8 @@ import {
   Bell,
   Mail,
   Plus,
-  SlidersHorizontal,
   HelpCircle,
   LogOut,
-  ArrowUpRight,
   Eye,
   Bookmark,
   Star,
@@ -35,15 +33,11 @@ import {
   Upload,
   CreditCard,
   Loader2,
-  UserPlus,
   Wrench,
-  Briefcase,
-  MoreVertical,
   CalendarDays,
   ChevronRight,
   MapPin,
   TrendingUp,
-  PieChart,
   ShieldCheck,
   Activity
 } from "lucide-react";
@@ -71,9 +65,9 @@ import { reminderService } from "../../services/reminderService";
 import AutomatedRemindersModal from "../../components/AutomatedRemindersModal";
 import { interactionTracker } from "../../utils/interactionTracker";
 import { onBroadcastAction } from "../../utils/actionBroadcaster";
-import { formatCurrency } from "../../utils/formatters";
+import { formatCurrency, getRentPeriodSuffix, formatDateOnly, formatTimestamp, formatDisplayDate, getRentPeriodLabel } from "../../utils/formatters";
 import { apiClient } from "../../lib/apiClient";
-import { calculatePortfolioMetrics, getPropertyStatus, getPropertyVacancyInfo } from "../../utils/landlordMetrics";
+import { calculatePortfolioMetrics, getPropertyStatus } from "../../utils/landlordMetrics";
 import "./LandlordDashboard.css";
 
 const TOUR_STEPS = [
@@ -160,7 +154,7 @@ const TOUR_STEPS = [
   {
     target: ".tour-occupancy",
     title: "Occupancy Rate",
-    content: "Displays your portfolio occupancy percentage and tracks the balance between occupied and vacant properties.",
+    content: "Displays your portfolio occupancy percentage (1 of 3 properties occupied = 33%) and tracks the balance between occupied and vacant properties.",
     placement: "right",
     tab: 0
   },
@@ -848,7 +842,7 @@ export default function LandlordDashboard() {
 
       propMap.set(p.id, {
         ...p,
-        price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
+        price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, getRentPeriodSuffix(p.rent_period)),
         location: computedLoc,
         bedrooms: propBeds,
         bathrooms: propBaths,
@@ -881,11 +875,6 @@ export default function LandlordDashboard() {
   const portfolioMetrics = useMemo(() => {
     return calculatePortfolioMetrics(displayProperties, leases, invoices);
   }, [displayProperties, leases, invoices]);
-
-  // Helper to check if a property is occupied (strictly using shared helper)
-  const isPropertyOccupied = (property) => {
-    return getPropertyStatus(property, leases).isOccupied;
-  };
 
   // Valid properties: every non-deleted property owned by the landlord
   const validProperties = useMemo(() => {
@@ -926,8 +915,6 @@ export default function LandlordDashboard() {
   // Metrics strictly derived from single shared helper:
   const paidInvoicesSum = portfolioMetrics.totalCollectedRevenue;
   const collectedAmount = portfolioMetrics.totalCollectedRevenue;
-  const outstandingAmount = portfolioMetrics.outstandingBalance;
-  const availablePayoutBalance = portfolioMetrics.totalCollectedRevenue;
 
   const pendingAppsCount = (applications || []).filter(a => {
     const st = (a.status || "").toLowerCase();
@@ -941,28 +928,6 @@ export default function LandlordDashboard() {
     return "Good evening";
   };
   const displayName = username ? username.split(" ")[0] : "Landlord";
-
-  const pendingPropsCount = displayProperties.filter(p => {
-    const st = (p.status || "").toLowerCase().trim();
-    return st === "pending" || st === "pending_review";
-  }).length;
-  const reviewPropsCount = displayProperties.filter(p => {
-    const st = (p.status || "").toLowerCase().trim();
-    return st.includes("proof") || st.includes("info") || st === "under_review";
-  }).length;
-
-  // Applications counts
-  const newAppsCount = (applications || []).filter(a => (a.status || "").toLowerCase() === "pending").length;
-  const inReviewAppsCount = (applications || []).filter(a => (a.status || "").toLowerCase() === "under_review").length;
-  const approvedAppsCount = (applications || []).filter(a => {
-    const st = (a.status || "").toLowerCase();
-    return st === "approved" || st === "accepted" || st === "leased";
-  }).length;
-  const rejectedAppsCount = (applications || []).filter(a => {
-    const st = (a.status || "").toLowerCase();
-    return st === "rejected" || st === "declined" || st === "withdrawn";
-  }).length;
-  const totalAppsCount = (applications || []).length;
 
   // Month attribution and 6-month chart strictly derived from shared helper:
   const thisMonthRentCollected = portfolioMetrics.thisMonthRentCollected;
@@ -985,7 +950,7 @@ export default function LandlordDashboard() {
 
     if (pendingInv) {
       const rawDate = pendingInv.due_date || pendingInv.dueDate || pendingInv.issue_date;
-      const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Next billing cycle";
+      const formattedDate = rawDate ? formatDateOnly(rawDate) : "—";
       const amt = parseFloat(pendingInv.grand_total || pendingInv.grandTotal || pendingInv.amount || pendingInv.subtotal || 0);
       return {
         tenantName: pendingInv.tenant_name || pendingInv.tenantName || "Active Tenant",
@@ -1006,12 +971,12 @@ export default function LandlordDashboard() {
     if (activeLease) {
       const amt = parseFloat(activeLease.rent_amount || activeLease.rentAmount || activeLease.rent || 0);
       const rawDate = activeLease.next_payment_date || activeLease.nextPaymentDate || activeLease.end_date || activeLease.start_date;
-      const formattedDate = rawDate ? new Date(rawDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Next scheduled cycle";
+      const formattedDate = rawDate ? formatDateOnly(rawDate) : "—";
       const tName = activeLease.tenant_name || activeLease.tenantName || (activeLease.tenant ? `${activeLease.tenant.first_name || ''} ${activeLease.tenant.last_name || ''}`.trim() : null) || (activeTenantsList[0]?.name) || "Active Tenant";
       return {
         tenantName: tName,
         propertyTitle: activeLease.property_title || activeLease.propertyTitle || (activeLease.property?.title) || "Leased Unit",
-        amount: amt > 0 ? `₦${amt.toLocaleString()}` : "₦250,000",
+        amount: amt > 0 ? `₦${amt.toLocaleString()}` : "₦0",
         dueDate: formattedDate,
         status: "Upcoming",
         hasPayment: true
@@ -2230,7 +2195,7 @@ export default function LandlordDashboard() {
                                 <div className="p-3.5 pt-2 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center justify-between gap-2 min-w-0">
                                   <div className="min-w-0">
                                     <span className="font-extrabold text-xs text-slate-900 dark:text-white block truncate">
-                                      {property.price || formatCurrency(property.rent_amount || 0, "/yr")}
+                                      {property.price || formatCurrency(property.rent_amount || 0, getRentPeriodSuffix(property.rent_period))}
                                     </span>
                                   </div>
                                   <button
@@ -2463,7 +2428,7 @@ export default function LandlordDashboard() {
                             {occupancyRate}%
                           </div>
                           <span className="text-xs font-semibold text-slate-500 dark:text-cream-100/60">
-                            {occupiedPropsCount} out of {validProperties.length} {validProperties.length === 1 ? "property" : "properties"} occupied
+                            {occupiedPropsCount} out of {livePropsCount} {livePropsCount === 1 ? "property" : "properties"} occupied
                           </span>
                         </div>
 
@@ -2477,7 +2442,7 @@ export default function LandlordDashboard() {
 
                         <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-cream-100/50 pt-1">
                           <span>Occupied: <strong className="text-slate-700 dark:text-cream-100 font-bold">{occupiedPropsCount}</strong></span>
-                          <span>Vacant: <strong className="text-slate-700 dark:text-cream-100 font-bold">{Math.max(0, validProperties.length - occupiedPropsCount)}</strong></span>
+                          <span>Vacant: <strong className="text-slate-700 dark:text-cream-100 font-bold">{Math.max(0, livePropsCount - occupiedPropsCount)}</strong></span>
                         </div>
                       </div>
                     </div>

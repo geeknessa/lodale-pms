@@ -13,6 +13,7 @@ import RenewalOfferModal from "./components/RenewalOfferModal";
 import RateTenantModal from "../../components/RateTenantModal";
 import { profileService } from "../../services/profileService";
 import { ratingService } from "../../services/ratingService";
+import { formatDateOnly } from "../../utils/formatters";
 import "./Tenants.css";
 
 const TenantsSkeleton = () => (
@@ -237,7 +238,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
           rentPeriod: l.rent_period,
           startDate: l.start_date || l.startDate,
           endDate: l.end_date || l.endDate,
-          dueDate: l.start_date ? new Date(l.start_date).toLocaleDateString("en-US", { day: 'numeric', month: 'short' }) : "1st of month",
+          dueDate: l.start_date ? formatDateOnly(l.start_date) : "—",
           paymentStatus: isPaid ? "Paid" : "Unpaid"
         });
       });
@@ -805,7 +806,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
 
                   <div className="tenant-detail-row">
                     <span className="tenant-detail-label">Due Date</span>
-                    <span className="tenant-detail-value">{tenant.dueDate || "1st of month"}</span>
+                    <span className="tenant-detail-value">{tenant.dueDate ? formatDateOnly(tenant.dueDate) : "—"}</span>
                   </div>
 
                   <div className="tenant-detail-row">

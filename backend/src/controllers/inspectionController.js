@@ -51,6 +51,10 @@ export const createInspection = async (req, res) => {
   const { propertyId, applicationId, date, time, location, notes, status } = req.body;
   const role = req.user.role || req.user.primary_role;
 
+  if (!date || isNaN(new Date(date).getTime())) {
+    return res.status(400).json({ error: 'Inspection date must be a valid date' });
+  }
+
   try {
     let tenantId, landlordId;
     const { rows: propRows } = await pool.query('SELECT id, title, landlord_id FROM properties WHERE id = $1', [propertyId]);

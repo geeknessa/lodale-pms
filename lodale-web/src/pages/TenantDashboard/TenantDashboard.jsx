@@ -59,6 +59,15 @@ import { userService } from "../../services/userService";
 import { profileService } from "../../services/profileService";
 import { notificationService } from "../../services/notificationService";
 import { applicationService } from "../../services/applicationService";
+import {
+  formatCurrency,
+  formatDateOnly,
+  formatTimestamp,
+  formatDisplayDate,
+  addRentPeriodMonthEndSafe,
+  getRentPeriodLabel,
+  getRentPeriodSuffix
+} from "../../utils/formatters";
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
   {
@@ -704,7 +713,7 @@ export default function TenantDashboard() {
         ${Array.isArray(invoices) && invoices.length > 0 ? invoices.map(inv => `
           <tr>
             <td><strong>${inv.reference_number || inv.id || "INV"}</strong></td>
-            <td>${inv.due_date ? new Date(inv.due_date).toLocaleDateString() : (inv.created_at ? new Date(inv.created_at).toLocaleDateString() : "N/A")}</td>
+            <td>${inv.due_date ? formatDateOnly(inv.due_date) : (inv.created_at ? formatTimestamp(inv.created_at) : "—")}</td>
             <td><strong>${inv.amount ? formatCurrency(inv.amount) : "N/A"}</strong></td>
             <td>${inv.payment_method || "System Transfer"}</td>
             <td><span class="badge">${(inv.status || "Paid").toUpperCase()}</span></td>
@@ -1345,9 +1354,9 @@ export default function TenantDashboard() {
                 { icon: LayoutDashboard, label: "Dashboard home", idx: 0 },
                 { icon: Search, label: "Search properties", idx: 1 },
                 { icon: MessageSquare, label: "Chat Room", idx: 2 },
-                { icon: Settings, label: "Settings & Profile", idx: 3 },
                 { icon: FileText, label: "Applications", idx: 4 },
-                { icon: Receipt, label: "Payment History", idx: 5 }
+                { icon: Receipt, label: "Payment History", idx: 5 },
+                { icon: Settings, label: "Settings & Profile", idx: 3 }
               ].map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.idx;
@@ -1739,7 +1748,7 @@ export default function TenantDashboard() {
                     const unpaidInv = invoices.find(i => i.status === "unpaid");
                     let nextDueStr = "—";
                     if (unpaidInv?.due_date) {
-                      nextDueStr = new Date(unpaidInv.due_date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                      nextDueStr = formatDateOnly(unpaidInv.due_date);
                     } else if (activeLease) {
                       const sd = new Date(activeLease.start_date || activeLease.created_at || Date.now());
                       const now = new Date();
@@ -2570,20 +2579,20 @@ export default function TenantDashboard() {
 
             <div className="tenant-sidebar-nav">
               {[
-                { icon: LayoutDashboard, label: "Dashboard home" },
-                { icon: Search, label: "Search" },
-                { icon: MessageSquare, label: "Chat" },
-                { icon: Settings, label: "Settings" },
-                { icon: FileText, label: "Applications" },
-                { icon: Receipt, label: "Payment History" }
-              ].map((item, index) => {
+                { icon: LayoutDashboard, label: "Dashboard home", tab: 0 },
+                { icon: Search, label: "Search", tab: 1 },
+                { icon: MessageSquare, label: "Chat", tab: 2 },
+                { icon: FileText, label: "Applications", tab: 4 },
+                { icon: Receipt, label: "Payment History", tab: 5 },
+                { icon: Settings, label: "Settings", tab: 3 }
+              ].map((item) => {
                 const Icon = item.icon;
-                const isActive = activeTab === index;
+                const isActive = activeTab === item.tab;
                 return (
                   <button
-                    key={index}
-                    onClick={() => setActiveTab(index)}
-                    className={`tenant-sidebar-btn ${isActive ? "active" : ""} tour-nav-${index}`}
+                    key={item.tab}
+                    onClick={() => setActiveTab(item.tab)}
+                    className={`tenant-sidebar-btn ${isActive ? "active" : ""} tour-nav-${item.tab}`}
                   >
                     <Icon className="h-5 w-5" />
                     <span className="tenant-sidebar-tooltip">{item.label}</span>
@@ -2796,10 +2805,10 @@ export default function TenantDashboard() {
                 {/* LEFT (WIDER) COLUMN */}
                 <div className="lg:col-span-8 flex flex-col gap-6">
 
-                  {/* 1. My Property Card */}
+                  {/* 1. My Tenancy Card */}
                   <div className="tour-property bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-3xl p-6 shadow-xs flex flex-col">
                     <div className="flex items-center justify-between mb-5">
-                      <h2 className="font-bold text-lg text-[#1C1917] dark:text-white tracking-tight">My Property</h2>
+                      <h2 className="font-bold text-lg text-[#1C1917] dark:text-white tracking-tight">My Tenancy</h2>
                       <button
                         onClick={() => setActiveTab(4)}
                         className="text-xs font-bold text-[#1E3324] dark:text-[#E5C583] hover:underline flex items-center gap-1 transition-all cursor-pointer"
@@ -2872,7 +2881,7 @@ export default function TenantDashboard() {
                               <span>Lease Start</span>
                             </div>
                             <p className="text-xs font-bold text-[#1C1917] dark:text-white truncate">
-                              {activeLease?.start_date ? new Date(activeLease.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "Jan 1, 2025"}
+                              {formatDateOnly(activeLease?.start_date)}
                             </p>
                           </div>
 
@@ -2882,7 +2891,7 @@ export default function TenantDashboard() {
                               <span>Lease End</span>
                             </div>
                             <p className="text-xs font-bold text-[#1C1917] dark:text-white truncate">
-                              {activeLease?.end_date ? new Date(activeLease.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "Dec 31, 2025"}
+                              {formatDateOnly(activeLease?.end_date)}
                             </p>
                           </div>
                         </div>
