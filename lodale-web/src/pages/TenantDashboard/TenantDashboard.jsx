@@ -710,15 +710,22 @@ export default function TenantDashboard() {
         </tr>
       </thead>
       <tbody>
-        ${Array.isArray(invoices) && invoices.length > 0 ? invoices.map(inv => `
+        ${Array.isArray(invoices) && invoices.length > 0 ? invoices.map(inv => {
+          const isPaid = (inv.status || '').toLowerCase() === 'paid';
+          const pDate = inv.paid_at || inv.payment_date;
+          const billingDate = isPaid
+            ? (pDate ? formatDisplayDate(pDate) : "—")
+            : (inv.due_date ? formatDateOnly(inv.due_date) : "—");
+          return `
           <tr>
-            <td><strong>${inv.reference_number || inv.id || "INV"}</strong></td>
-            <td>${inv.due_date ? formatDateOnly(inv.due_date) : (inv.created_at ? formatTimestamp(inv.created_at) : "—")}</td>
+            <td><strong>${inv.reference_number || inv.invoice_number || inv.id || "INV"}</strong></td>
+            <td>${billingDate}</td>
             <td><strong>${inv.amount ? formatCurrency(inv.amount) : "N/A"}</strong></td>
             <td>${inv.payment_method || "System Transfer"}</td>
             <td><span class="badge">${(inv.status || "Paid").toUpperCase()}</span></td>
           </tr>
-        `).join('') : `
+        `;
+        }).join('') : `
           <tr>
             <td colspan="5" style="text-align: center; color: #64748B; padding: 16px; font-weight: 500;">No payment invoice records found in system.</td>
           </tr>
@@ -916,15 +923,22 @@ export default function TenantDashboard() {
       setRentPaid(!unpaid);
 
       const formattedPayments = invs
-        .filter(i => i.status === 'paid')
-        .map(i => ({
-          id: i.id,
-          month: new Date(i.billing_period_start || i.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }),
-          amount: `₦${parseFloat(i.amount).toLocaleString()}`,
-          date: new Date(i.updated_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-          status: "Paid",
-          method: "Simulated"
-        }));
+        .filter(i => (i.status || '').toLowerCase() === 'paid')
+        .map(i => {
+          const rawPaid = i.paid_at || i.paidAt || i.payment_date || i.paymentDate;
+          return {
+            id: i.id,
+            month: rawPaid
+              ? formatDisplayDate(rawPaid, { style: "full" })
+              : (i.billing_period_start ? formatDisplayDate(i.billing_period_start, { style: "full" }) : "—"),
+            amount: `₦${parseFloat(i.amount).toLocaleString()}`,
+            date: rawPaid ? formatDisplayDate(rawPaid) : "—",
+            paid_at: rawPaid,
+            payment_date: i.payment_date || (rawPaid ? String(rawPaid).slice(0, 10) : null),
+            status: "Paid",
+            method: i.payment_method || "Direct Transfer"
+          };
+        });
       setPayments(formattedPayments);
 
       const reqs = Array.isArray(reqsRes) ? reqsRes : [];
@@ -2343,8 +2357,12 @@ export default function TenantDashboard() {
                   <span className="font-bold text-[#1C1917] dark:text-white">{selectedPaymentDetail.period || "Current Tenancy"}</span>
                 </div>
                 <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
-                  <span>Date</span>
-                  <span className="font-bold text-[#1C1917] dark:text-white">{selectedPaymentDetail.date || "—"}</span>
+                  <span>{selectedPaymentDetail.status?.toLowerCase() === 'paid' ? 'Payment Date' : 'Billing Date'}</span>
+                  <span className="font-bold text-[#1C1917] dark:text-white">
+                    {selectedPaymentDetail.status?.toLowerCase() === 'paid' && selectedPaymentDetail.paid_at
+                      ? formatDisplayDate(selectedPaymentDetail.paid_at)
+                      : (selectedPaymentDetail.date || "—")}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
                   <span>Due Date</span>
@@ -2767,17 +2785,23 @@ export default function TenantDashboard() {
 
               {/* Stat 4: Recent Payments */}
               {(() => {
-                const paidInvoices = invoices.filter(i => i.status === 'paid');
-                const latestPaid = payments[0] || (paidInvoices.length > 0 ? paidInvoices[0] : null);
+                const paidInvoices = invoices.filter(i => (i.status || '').toLowerCase() === 'paid');
+                const sortedPaid = [...paidInvoices].sort((a, b) => {
+                  const da = a.paid_at || a.payment_date || '';
+                  const db = b.paid_at || b.payment_date || '';
+                  return String(db).localeCompare(String(da));
+                });
+                const latestPaid = sortedPaid[0] || payments[0] || null;
                 const lastAmt = latestPaid
                   ? (typeof latestPaid.amount === 'string' && latestPaid.amount.startsWith('₦')
                       ? latestPaid.amount
                       : `₦ ${parseFloat(latestPaid.amount || latestPaid.grandTotal || 0).toLocaleString()}`)
                   : (activeLease?.rent_amount ? `₦ ${parseFloat(activeLease.rent_amount).toLocaleString()}` : "₦ 0");
 
-                const lastDate = latestPaid?.date || (latestPaid?.updated_at
-                  ? new Date(latestPaid.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                  : "None");
+                const rawPaid = latestPaid?.paid_at || latestPaid?.payment_date;
+                const lastDate = rawPaid
+                  ? formatDisplayDate(rawPaid)
+                  : (latestPaid?.date || "None");
 
                 return (
                   <div className="bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] rounded-2xl p-5 shadow-xs flex flex-col justify-between">
@@ -3460,35 +3484,52 @@ export default function TenantDashboard() {
                   let ledgerItems = [];
                   if (invoices.length > 0) {
                     ledgerItems = invoices.map((inv, idx) => {
-                      const d = inv.billing_period_start || inv.due_date || inv.created_at || inv.updated_at || Date.now();
-                      const dateObj = new Date(d);
-                      const dueObj = (inv.due_date || inv.dueDate) ? new Date(inv.due_date || inv.dueDate) : null;
-                      const isOverdue = inv.status === 'unpaid' && dueObj && dueObj.getTime() < Date.now();
+                      const isPaid = (inv.status || '').toLowerCase() === 'paid';
+                      const rawPaid = inv.paid_at || inv.paidAt || inv.payment_date || inv.paymentDate;
+
+                      const displayDate = isPaid
+                        ? (rawPaid ? formatDisplayDate(rawPaid) : "—")
+                        : (inv.due_date ? formatDisplayDate(inv.due_date) : "—");
+
+                      const rawDateForFilter = isPaid
+                        ? (rawPaid ? new Date(rawPaid) : new Date(0))
+                        : (inv.due_date ? new Date(inv.due_date) : new Date());
+
+                      const dueObj = (inv.due_date || inv.dueDate) ? (inv.due_date || inv.dueDate) : null;
+                      const dueDateFormatted = dueObj ? formatDisplayDate(dueObj) : "—";
+
+                      const isOverdue = !isPaid && dueObj && new Date(dueObj).getTime() < Date.now();
                       const amt = parseFloat(inv.grandTotal || inv.amount || 0);
-                      const monthStr = dateObj.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                      const periodLabel = isPaid && rawPaid
+                        ? formatDisplayDate(rawPaid, { style: "full" })
+                        : (inv.billing_period_start ? formatDisplayDate(inv.billing_period_start, { style: "full" }) : "Current Tenancy");
 
                       return {
                         id: inv.id || `inv_${idx}`,
-                        ref: (inv.id || "").slice(0, 8).toUpperCase(),
-                        date: dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                        rawDate: dateObj,
-                        dueDate: dueObj ? dueObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "—",
-                        description: inv.description || inv.title || `Rent Payment (${monthStr})`,
-                        period: monthStr,
+                        ref: (inv.invoice_number || inv.invoiceNumber || inv.id || "").slice(0, 12).toUpperCase(),
+                        date: displayDate,
+                        rawDate: rawDateForFilter,
+                        paid_at: rawPaid,
+                        payment_date: inv.payment_date || (rawPaid ? String(rawPaid).slice(0, 10) : null),
+                        dueDate: dueDateFormatted,
+                        description: inv.description || inv.title || `Rent Payment (${periodLabel})`,
+                        period: periodLabel,
                         amount: amt,
                         amountFormatted: `₦ ${amt.toLocaleString()}`,
-                        status: isOverdue ? 'Overdue' : (inv.status === 'paid' ? 'Paid' : 'Unpaid'),
+                        status: isOverdue ? 'Overdue' : (isPaid ? 'Paid' : 'Unpaid'),
                         rawStatus: inv.status
                       };
                     });
                   } else if (payments.length > 0) {
                     ledgerItems = payments.map((pmt, idx) => {
                       const amt = typeof pmt.amount === 'string' && pmt.amount.startsWith('₦') ? pmt.amount : `₦ ${parseFloat(pmt.amount || 0).toLocaleString()}`;
+                      const pmtDate = pmt.paid_at || pmt.payment_date || pmt.date;
                       return {
                         id: pmt.id || `pmt_${idx}`,
                         ref: (pmt.id || `PMT-${idx}`).slice(0, 8).toUpperCase(),
-                        date: pmt.date || new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                        rawDate: new Date(),
+                        date: pmtDate ? formatDisplayDate(pmtDate) : "—",
+                        rawDate: pmtDate ? new Date(pmtDate) : new Date(),
+                        paid_at: pmtDate,
                         dueDate: "—",
                         description: `Rent (${pmt.month || 'Current'})`,
                         period: pmt.month || 'Current',

@@ -63,6 +63,10 @@ function formatInvoiceRow(ri) {
     status: ri.status || 'unpaid',
     paidAt: ri.paid_at,
     paid_at: ri.paid_at,
+    paymentDate: ri.payment_date || safeFormatDate(ri.paid_at),
+    payment_date: ri.payment_date || safeFormatDate(ri.paid_at),
+    paymentMethod: ri.payment_method || ri.bank_name || 'Bank Transfer',
+    payment_method: ri.payment_method || ri.bank_name || 'Bank Transfer',
     propertyTitle: ri.property_title || '',
     property_title: ri.property_title || '',
     tenantName: ri.tenant_name || '',
@@ -89,6 +93,8 @@ export const getMyInvoices = async (req, res) => {
     if (role === 'landlord' || role === 'admin') {
       query = `
         SELECT ri.*, 
+               COALESCE(rp.payment_date::text, ri.paid_at::text) as payment_date,
+               COALESCE(rp.payment_method, ri.bank_name, 'Bank Transfer') as payment_method,
                COALESCE(ri.property_id, l.property_id) as property_id,
                COALESCE(ri.tenant_id, l.tenant_id) as tenant_id,
                COALESCE(ri.landlord_id, l.landlord_id) as landlord_id,
@@ -101,6 +107,13 @@ export const getMyInvoices = async (req, res) => {
                lu.email as landlord_email,
                lu.phone_number as landlord_phone
         FROM rent_invoices ri
+        LEFT JOIN LATERAL (
+          SELECT payment_date, payment_method
+          FROM rent_payments
+          WHERE invoice_id = ri.id
+          ORDER BY created_at DESC
+          LIMIT 1
+        ) rp ON true
         LEFT JOIN leases l ON ri.lease_id = l.id
         LEFT JOIN properties p ON (ri.property_id = p.id OR l.property_id = p.id)
         LEFT JOIN users tu ON (ri.tenant_id = tu.id OR l.tenant_id = tu.id)
@@ -111,6 +124,8 @@ export const getMyInvoices = async (req, res) => {
     } else {
       query = `
         SELECT ri.*, 
+               COALESCE(rp.payment_date::text, ri.paid_at::text) as payment_date,
+               COALESCE(rp.payment_method, ri.bank_name, 'Bank Transfer') as payment_method,
                COALESCE(ri.property_id, l.property_id) as property_id,
                COALESCE(ri.tenant_id, l.tenant_id) as tenant_id,
                COALESCE(ri.landlord_id, l.landlord_id) as landlord_id,
@@ -123,6 +138,13 @@ export const getMyInvoices = async (req, res) => {
                tu.email as tenant_email,
                tu.phone_number as tenant_phone
         FROM rent_invoices ri
+        LEFT JOIN LATERAL (
+          SELECT payment_date, payment_method
+          FROM rent_payments
+          WHERE invoice_id = ri.id
+          ORDER BY created_at DESC
+          LIMIT 1
+        ) rp ON true
         LEFT JOIN leases l ON ri.lease_id = l.id
         LEFT JOIN properties p ON (ri.property_id = p.id OR l.property_id = p.id)
         LEFT JOIN users lu ON (ri.landlord_id = lu.id OR l.landlord_id = lu.id)

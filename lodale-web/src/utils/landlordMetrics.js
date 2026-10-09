@@ -1,3 +1,5 @@
+import { formatDisplayDate, formatDateOnly } from "./formatters.js";
+
 /**
  * Shared landlord metrics & property status calculation helper for Lodale PMS.
  *
@@ -279,7 +281,8 @@ export function calculatePortfolioMetrics(properties = [], leases = [], invoices
   const refMonth = referenceDate.getMonth();
 
   const thisMonthPaidInvoices = paidInvoices.filter(inv => {
-    const rawDate = inv.paid_at || inv.paidAt || inv.payment_date || inv.paymentDate || inv.created_at;
+    const rawDate = inv.paid_at || inv.paidAt || inv.payment_date || inv.paymentDate;
+    if (!rawDate) return false;
     const ym = parsePaymentDateYearMonth(rawDate);
     return ym && ym.year === refYear && ym.month === refMonth;
   });
@@ -298,7 +301,8 @@ export function calculatePortfolioMetrics(properties = [], leases = [], invoices
     const label = d.toLocaleDateString('en-US', { month: 'short' });
 
     const monthSum = paidInvoices.filter(inv => {
-      const rawDate = inv.paid_at || inv.paidAt || inv.payment_date || inv.paymentDate || inv.created_at;
+      const rawDate = inv.paid_at || inv.paidAt || inv.payment_date || inv.paymentDate;
+      if (!rawDate) return false;
       const ym = parsePaymentDateYearMonth(rawDate);
       return ym && ym.year === yVal && ym.month === mIdx;
     }).reduce((sum, inv) => {
@@ -317,8 +321,7 @@ export function calculatePortfolioMetrics(properties = [], leases = [], invoices
 
   // Sorted collected payments list for Rent Payments modal
   const collectedPaymentsList = paidInvoices.map(inv => {
-    const rawDate = inv.paid_at || inv.paidAt || inv.payment_date || inv.paymentDate || inv.created_at;
-    const ym = parsePaymentDateYearMonth(rawDate);
+    const rawDate = inv.paid_at || inv.paidAt || inv.payment_date || inv.paymentDate;
     const amount = parseFloat(inv.grandTotal || inv.grand_total || inv.amount || 0) || 0;
     return {
       id: inv.id,
@@ -326,10 +329,10 @@ export function calculatePortfolioMetrics(properties = [], leases = [], invoices
       amount,
       tenantName: inv.tenant_name || inv.tenantName || 'Amina Bello-Ahmed',
       propertyTitle: inv.property_title || inv.propertyTitle || 'PALM CITY',
-      paidDate: ym ? `${ym.year}-${String(ym.month + 1).padStart(2, '0')}-${String(ym.day).padStart(2, '0')}` : 'Paid',
-      paymentDateFormatted: ym ? new Date(ym.year, ym.month, ym.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Paid',
+      paidDate: rawDate ? formatDateOnly(rawDate) : '—',
+      paymentDateFormatted: rawDate ? formatDisplayDate(rawDate) : '—',
       status: 'Paid',
-      rawDate
+      rawDate: rawDate || ''
     };
   }).sort((a, b) => String(b.rawDate || '').localeCompare(String(a.rawDate || '')));
 
@@ -342,6 +345,7 @@ export function calculatePortfolioMetrics(properties = [], leases = [], invoices
     pendingProperties: pendingCount,
     propertiesSubline,
     occupancyRate,
+    occupancyDenominator: liveCount,
     totalTenantsCount,
     totalCollectedRevenue,
     thisMonthRentCollected,
