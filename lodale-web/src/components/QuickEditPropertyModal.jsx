@@ -44,6 +44,8 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
   const [customAmenity, setCustomAmenity] = useState("");
   const [newPhotoUrl, setNewPhotoUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [explicitlyClearedCover, setExplicitlyClearedCover] = useState(false);
+  const [explicitlyClearedImages, setExplicitlyClearedImages] = useState(false);
 
   // Admin Request Modal State for Locked Fields
   const [showAdminRequest, setShowAdminRequest] = useState(false);
@@ -58,6 +60,8 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
       setMinimumIncome(property.minimum_income_required || property.minimumIncome || "No Minimum Income");
       setEmploymentRequirement(property.employment_requirement || property.employmentRequirement || "Any Employment");
       setRequiresGuarantor(property.requires_guarantor ?? property.requiresGuarantor ?? true);
+      setExplicitlyClearedCover(false);
+      setExplicitlyClearedImages(false);
 
       if (Array.isArray(property.house_rules)) {
         setSelectedHouseRules(property.house_rules);
@@ -129,15 +133,32 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
   };
 
   const handleRemovePhoto = (idxToRemove) => {
-    if (images.length <= 1) {
-      triggerToast("Property must have at least one photo.", "warning", "Photo Required");
-      return;
-    }
+    const photoToRemove = images[idxToRemove];
     const updated = images.filter((_, idx) => idx !== idxToRemove);
     setImages(updated);
-    if (coverImage === images[idxToRemove]) {
-      setCoverImage(updated[0] || "");
+    if (coverImage === photoToRemove) {
+      const nextCover = updated[0] || "";
+      setCoverImage(nextCover);
+      if (!nextCover) setExplicitlyClearedCover(true);
     }
+    if (updated.length === 0) {
+      setExplicitlyClearedImages(true);
+      setExplicitlyClearedCover(true);
+    }
+  };
+
+  const handleClearCoverPhoto = () => {
+    setCoverImage("");
+    setExplicitlyClearedCover(true);
+    triggerToast("Cover photo marked for removal.", "info");
+  };
+
+  const handleClearAllPhotos = () => {
+    setImages([]);
+    setCoverImage("");
+    setExplicitlyClearedCover(true);
+    setExplicitlyClearedImages(true);
+    triggerToast("All gallery photos marked for removal. Click Save to apply.", "info");
   };
 
   const handleSave = async (e) => {
@@ -156,6 +177,8 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
         description: description.trim(),
         cover_image: coverImage || images[0] || "",
         images: images,
+        clear_cover_image: explicitlyClearedCover,
+        clear_images: explicitlyClearedImages,
         amenities: selectedAmenities,
         minimum_income_required: minimumIncome,
         minimumIncome: minimumIncome,
@@ -305,9 +328,31 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
 
           {/* Photos & Cover Image */}
           <div className="space-y-3 pt-4 border-t border-ink-100 dark:border-white/10">
-            <label className="block text-xs font-bold text-moss-700 dark:text-[#E5C583] uppercase tracking-wider flex items-center gap-2">
-              <Image className="h-4 w-4" /> Cover & Gallery Pictures
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-moss-700 dark:text-[#E5C583] uppercase tracking-wider flex items-center gap-2">
+                <Image className="h-4 w-4" /> Cover & Gallery Pictures
+              </label>
+              <div className="flex items-center gap-3">
+                {coverImage && (
+                  <button
+                    type="button"
+                    onClick={handleClearCoverPhoto}
+                    className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:underline cursor-pointer bg-transparent border-none p-0"
+                  >
+                    Remove Cover
+                  </button>
+                )}
+                {images.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllPhotos}
+                    className="text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer bg-transparent border-none p-0"
+                  >
+                    Clear All Photos
+                  </button>
+                )}
+              </div>
+            </div>
 
             {/* Photo List */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

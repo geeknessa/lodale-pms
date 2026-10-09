@@ -124,8 +124,22 @@ export default function LandlordProperties() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [showTenantsPopupForProperty, setShowTenantsPopupForProperty] = useState(null);
   const [isLoadingPopupTenants, setIsLoadingPopupTenants] = useState(false);
-  const [selectedTenantForDetails, setSelectedTenantForDetails] = useState(null);
   const [editingProperty, setEditingProperty] = useState(null);
+  const [loadingEditId, setLoadingEditId] = useState(null);
+
+  const handleStartEdit = async (item) => {
+    setLoadingEditId(item.id);
+    try {
+      // Always fetch fresh full property directly from backend API to avoid stripped session cache
+      const fullProp = await propertyService.getPropertyById(item.id);
+      setEditingProperty(fullProp || item);
+    } catch (err) {
+      console.warn("Could not fetch full property by ID, falling back to cached item:", err);
+      setEditingProperty(item);
+    } finally {
+      setLoadingEditId(null);
+    }
+  };
   const [selectedProofProperty, setSelectedProofProperty] = useState(null);
   const [propertyToDelete, setPropertyToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -846,11 +860,17 @@ export default function LandlordProperties() {
                   {/* Action buttons */}
                   <div className="ap-card-actions flex items-center gap-2">
                     <button
-                      onClick={() => setEditingProperty(item)}
+                      onClick={() => handleStartEdit(item)}
+                      disabled={loadingEditId === item.id}
                       className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 font-bold text-xs rounded-xl border border-amber-200 dark:border-amber-900/40 transition-colors flex items-center gap-1 cursor-pointer"
                       title="Edit property details"
                     >
-                      <Edit3 className="h-3.5 w-3.5" /> Edit
+                      {loadingEditId === item.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Edit3 className="h-3.5 w-3.5" />
+                      )}
+                      {" "}Edit
                     </button>
 
                     <button

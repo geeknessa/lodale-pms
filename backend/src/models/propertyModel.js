@@ -287,6 +287,22 @@ export const PropertyModel = {
       finalHouseRules = house_rules;
     }
 
+    const shouldClearCover = Boolean(data.clear_cover_image || data.clear_cover);
+    const shouldClearImages = Boolean(data.clear_images);
+
+    // Cover image protection: only update if explicit clear requested OR valid non-empty string provided
+    const safeCoverImage = (cover_image && typeof cover_image === 'string' && cover_image.trim() !== '')
+      ? cover_image.trim()
+      : null;
+
+    // Images array protection: only update if explicit clear requested OR non-empty array / valid non-[] string provided
+    let safeImages = null;
+    if (Array.isArray(images) && images.length > 0) {
+      safeImages = JSON.stringify(images);
+    } else if (typeof images === 'string' && images.trim() !== '' && images.trim() !== '[]') {
+      safeImages = images.trim();
+    }
+
     const res = await pool.query(`
       UPDATE properties 
       SET 
@@ -299,9 +315,17 @@ export const PropertyModel = {
         city = COALESCE($7, city),
         state = COALESCE($8, state),
         property_type = COALESCE($9, property_type),
-        cover_image = COALESCE($10, cover_image),
+        cover_image = CASE 
+          WHEN $24::boolean = TRUE THEN NULL 
+          WHEN $10::text IS NOT NULL THEN $10::text 
+          ELSE cover_image 
+        END,
         rules = COALESCE($11, rules),
-        images = COALESCE($12, images),
+        images = CASE 
+          WHEN $25::boolean = TRUE THEN '[]'::text 
+          WHEN $12::text IS NOT NULL THEN $12::text 
+          ELSE images 
+        END,
         is_occupied = COALESCE($13, is_occupied),
         tenant_name = $14,
         tenant_contact = $15,
@@ -325,9 +349,9 @@ export const PropertyModel = {
       city || null, 
       state || null, 
       property_type || null, 
-      cover_image || null, 
+      safeCoverImage, 
       rules || null,
-      images ? JSON.stringify(images) : null,
+      safeImages,
       is_occupied !== undefined ? is_occupied : null,
       tenant_name || null,
       tenant_contact || null,
@@ -338,14 +362,18 @@ export const PropertyModel = {
       finalEmpReq,
       finalReqGuarantor,
       finalHouseRules,
-      id
+      id,
+      shouldClearCover,
+      shouldClearImages
     ]);
     
-    // Update Amenities
-    if (amenities && Array.isArray(amenities)) {
+    // Update Amenities safely: only overwrite if non-empty array provided OR explicit clear requested
+    if (data.clear_amenities === true) {
+      await pool.query('DELETE FROM property_amenities WHERE property_id = $1', [id]);
+    } else if (amenities && Array.isArray(amenities) && amenities.length > 0) {
       await pool.query('DELETE FROM property_amenities WHERE property_id = $1', [id]);
       for (const amenity of amenities) {
-        if (amenity && amenity.trim()) {
+        if (amenity && typeof amenity === 'string' && amenity.trim()) {
           await pool.query('INSERT INTO property_amenities (property_id, amenity) VALUES ($1, $2)', [id, amenity.trim()]);
         }
       }
