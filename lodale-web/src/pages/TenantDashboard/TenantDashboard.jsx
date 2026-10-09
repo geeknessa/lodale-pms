@@ -1331,18 +1331,39 @@ export default function TenantDashboard() {
     return "";
   };
 
-  // Residency streak calculations
-  const rawStartDate = activeLease?.start_date || activeLease?.created_at || activeLease?.tenant_signed_at;
+  // Residency streak calculations: whole days from later of (lease.start_date, first completed payment) to today in Lagos
+  const isLeaseActive = activeLease && (activeLease.status === 'active' || activeLease.status === 'leased');
+  const paidInvoicesList = (invoices || []).filter(i => (i.status || '').toLowerCase() === 'paid');
+  const hasCompletedPayment = paidInvoicesList.length > 0 || (payments || []).length > 0;
+
   let daysInHouse = 0;
   let monthsInHouse = 0;
   let remainingDays = 0;
 
-  if (activeLease) {
-    const startDate = rawStartDate ? new Date(rawStartDate) : new Date(Date.now() - 142 * 86400000);
-    const diffMs = Math.max(0, Date.now() - startDate.getTime());
-    daysInHouse = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-    monthsInHouse = Math.floor(daysInHouse / 30);
-    remainingDays = daysInHouse % 30;
+  if (isLeaseActive && hasCompletedPayment) {
+    const rawLeaseStart = activeLease.start_date || activeLease.startDate || '';
+    const leaseStartStr = String(rawLeaseStart).slice(0, 10);
+
+    const paymentDates = paidInvoicesList.map(inv => {
+      const raw = inv.paid_at || inv.paidAt || inv.payment_date || inv.paymentDate;
+      return raw ? String(raw).slice(0, 10) : null;
+    }).filter(Boolean).sort();
+
+    const firstPaymentDateStr = paymentDates[0] || leaseStartStr;
+
+    const effectiveStartStr = (leaseStartStr && firstPaymentDateStr)
+      ? (leaseStartStr > firstPaymentDateStr ? leaseStartStr : firstPaymentDateStr)
+      : (leaseStartStr || firstPaymentDateStr);
+
+    if (effectiveStartStr && /^\d{4}-\d{2}-\d{2}$/.test(effectiveStartStr)) {
+      const todayLagos = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lagos' }).format(new Date());
+      const [yt, mt, dt] = todayLagos.split('-').map(Number);
+      const [ys, ms, ds] = effectiveStartStr.split('-').map(Number);
+      const diffMs = Date.UTC(yt, mt - 1, dt) - Date.UTC(ys, ms - 1, ds);
+      daysInHouse = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+      monthsInHouse = Math.floor(daysInHouse / 30);
+      remainingDays = daysInHouse % 30;
+    }
   }
 
   return (
@@ -2471,9 +2492,9 @@ export default function TenantDashboard() {
                   monthsList.push({ month: mName, status });
                 }
 
-                // Determine Tier Level
+                // Determine Tier Level (frontend gamification constants)
                 let tierTitle = "Bronze Flame Resident";
-                let targetDays = 90;
+                let targetDays = 30;
                 let prevTarget = 0;
                 if (daysInHouse >= 180) {
                   tierTitle = "Diamond Flame Legend";
@@ -2489,7 +2510,7 @@ export default function TenantDashboard() {
                   prevTarget = 30;
                 }
 
-                const progressPercent = Math.min(100, Math.max(15, Math.round(((daysInHouse - prevTarget) / Math.max(1, targetDays - prevTarget)) * 100)));
+                const progressPercent = Math.min(100, Math.max(0, Math.round(((daysInHouse - prevTarget) / Math.max(1, targetDays - prevTarget)) * 100)));
 
                 return (
                   <>
