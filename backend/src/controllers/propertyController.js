@@ -335,7 +335,7 @@ export const propertyController = {
           "UPDATE listing_approval_queue SET queue_status = 'rejected', reviewed_at = NOW() WHERE property_id = $1",
           [updated.id]
         );
-      } catch (e) {
+      } catch (_e) {
         // Safe fallback if listing_approval_queue table row is not present
       }
     }

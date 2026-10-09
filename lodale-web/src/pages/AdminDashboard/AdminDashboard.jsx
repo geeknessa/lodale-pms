@@ -213,7 +213,9 @@ export default function AdminDashboard() {
             const isApprovedLive = sLabel === "Live";
 
             const rawPeriod = String(p.rent_period || p.rentPeriod || '').toLowerCase();
-            const suffix = rawPeriod.includes('month') ? '/mo' : (rawPeriod.includes('week') ? '/wk' : (rawPeriod.includes('night') || rawPeriod.includes('day') ? '/night' : '/yr'));
+            const suffix = (rawPeriod === '3_months' || rawPeriod === '3 months' || rawPeriod === '3months')
+              ? '/3 mos'
+              : (rawPeriod.includes('month') ? '/mo' : (rawPeriod.includes('week') ? '/wk' : (rawPeriod.includes('night') || rawPeriod.includes('day') ? '/night' : '/yr')));
             const numVal = Number(String(p.rent_amount || p.rent || p.price || 0).replace(/[^0-9.]/g, '')) || 0;
             const formattedPrice = numVal > 0 ? `₦${numVal.toLocaleString()}${suffix}` : (p.price || `₦0${suffix}`);
 

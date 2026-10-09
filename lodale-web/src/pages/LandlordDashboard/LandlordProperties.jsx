@@ -4,7 +4,7 @@ import { Search, Building2, ChevronRight, X, Users, Star, Clock, CheckCircle2, A
 import { propertyService } from "../../services/propertyService";
 import { leaseService } from "../../services/leaseService";
 import { applicationService } from "../../services/applicationService";
-import { formatCurrency } from "../../utils/formatters";
+import { formatCurrency, getRentPeriodSuffix } from "../../utils/formatters";
 import { triggerToast } from "../../context/ToastContext";
 import { ratingService } from "../../services/ratingService";
 import UserInfo from "./components/UserInfo";
@@ -476,7 +476,7 @@ export default function LandlordProperties() {
 
           return {
             ...p,
-            price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, "/yr"),
+            price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, getRentPeriodSuffix(p.rent_period)),
             location: computedLoc,
             bedrooms: propBeds,
             bathrooms: propBaths,
@@ -702,10 +702,8 @@ export default function LandlordProperties() {
             </div>
           ) : filteredProperties.length > 0 ? (
             filteredProperties.slice(0, displayLimit).map((item, idx) => {
-              const status = item.status || 'pending_review';
               const imgUrl = item.image || item.cover_image || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=600&q=80";
               const propertyTenants = getTenantsForProperty(item.id, item);
-              const tenantsCount = propertyTenants.length;
               const propStatus = getPropertyStatus(item, allLeases);
               const vacancyInfo = getPropertyVacancyInfo(item, allLeases);
               const isOccupiedCard = propStatus.isOccupied;

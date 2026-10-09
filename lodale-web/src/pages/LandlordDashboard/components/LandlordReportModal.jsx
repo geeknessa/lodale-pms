@@ -1,6 +1,7 @@
 import { X, Printer, Download, FileText, CheckCircle2, Building2, ShieldCheck } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
 import { calculatePortfolioMetrics, getPropertyStatus } from "../../../utils/landlordMetrics";
+import { formatCurrency, getRentPeriodSuffix } from "../../../utils/formatters";
 
 export default function LandlordReportModal({ isOpen, onClose, username, properties = [], leases = [], invoices = [] }) {
   if (!isOpen) return null;
@@ -161,7 +162,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#FFFFFF]/5 border border-slate-200 dark:border-white/10">
               <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">Occupancy Rate</span>
               <span className="text-xl font-black text-emerald-600 dark:text-cream-100">{occupancyRate}%</span>
-              <span className="text-[10px] text-slate-400 block mt-0.5">{occupiedCount} occupied</span>
+              <span className="text-[10px] text-slate-400 block mt-0.5">{occupiedCount} of {metrics.liveProperties} occupied</span>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#FFFFFF]/5 border border-slate-200 dark:border-white/10">
@@ -197,7 +198,7 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
                     <tr>
                       <th className="p-3">Property Title</th>
                       <th className="p-3">Location</th>
-                      <th className="p-3">Rent / Year</th>
+                      <th className="p-3">Rent / Period</th>
                       <th className="p-3">Occupancy Status</th>
                     </tr>
                   </thead>
@@ -209,7 +210,9 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
                         <tr key={p.id || idx} className="hover:bg-slate-50 dark:hover:bg-[#FFFFFF]/5">
                           <td className="p-3 font-bold">{p.title}</td>
                           <td className="p-3 text-slate-500 dark:text-slate-400">{p.location}</td>
-                          <td className="p-3 font-bold text-moss-700 dark:text-[#E5C583]">{p.price}</td>
+                          <td className="p-3 font-bold text-moss-700 dark:text-[#E5C583]">
+                            {formatCurrency(p.rent_amount || p.price, getRentPeriodSuffix(p.rent_period))}
+                          </td>
                           <td className="p-3">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${details.badgeClass}`}>
                               {details.label}

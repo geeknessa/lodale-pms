@@ -235,27 +235,27 @@ body.dark select option,
    ========================================================================== */
 
 /* Buttons with gold / light backgrounds in dark mode: ensure dark high-contrast text before & on hover */
-body.dark [class*="bg-[#E5C583]"],
-body.dark [class*="bg-[#e5c583]"],
-body.dark [class*="dark:bg-[#E5C583]"],
-body.dark [class*="dark:bg-[#e5c583]"] {
+body.dark [class~="bg-[#E5C583]"],
+body.dark [class~="bg-[#e5c583]"],
+body.dark [class~="dark:bg-[#E5C583]"],
+body.dark [class~="dark:bg-[#e5c583]"] {
   color: #07130D !important;
 }
 
-body.dark [class*="bg-[#E5C583]"] *,
-body.dark [class*="bg-[#e5c583]"] *,
-body.dark [class*="dark:bg-[#E5C583]"] *,
-body.dark [class*="dark:bg-[#e5c583]"] * {
+body.dark [class~="bg-[#E5C583]"] *,
+body.dark [class~="bg-[#e5c583]"] *,
+body.dark [class~="dark:bg-[#E5C583]"] *,
+body.dark [class~="dark:bg-[#e5c583]"] * {
   color: inherit;
   stroke: currentColor;
 }
 
-body.dark [class*="bg-[#E5C583]"]:hover,
-body.dark [class*="bg-[#e5c583]"]:hover,
-body.dark [class*="dark:bg-[#E5C583]"]:hover,
-body.dark [class*="dark:bg-[#e5c583]"]:hover,
-body.dark [class*="dark:hover:bg-[#d8b46e]"]:hover,
-body.dark [class*="dark:hover:bg-[#D8B672]"]:hover,
+body.dark [class~="bg-[#E5C583]"]:hover,
+body.dark [class~="bg-[#e5c583]"]:hover,
+body.dark [class~="dark:bg-[#E5C583]"]:hover,
+body.dark [class~="dark:bg-[#e5c583]"]:hover,
+body.dark [class~="dark:hover:bg-[#d8b46e]"]:hover,
+body.dark [class~="dark:hover:bg-[#D8B672]"]:hover,
 body.dark .dap-capsule-nav-btn.next:hover,
 body.dark .tour-btn-yes:hover,
 body.dark .tour-btn-next:hover,
@@ -310,14 +310,14 @@ body.dark .lc-profile-close-btn:hover {
 
 /* Secondary / outline buttons: high contrast on hover */
 body.dark button[class*="border-"]:not([class*="bg-"]):hover,
-body.dark button[class*="bg-transparent"]:hover,
-body.dark [class*="dark:bg-transparent"]:hover {
+body.dark button[class~="bg-transparent"]:hover,
+body.dark [class~="dark:bg-transparent"]:hover {
   color: #FFFFFF !important;
 }
 
 /* Amber subtle buttons & badges: maintain readable contrast on hover */
 body.dark button[class*="amber"]:hover,
-body.dark [class*="dark:bg-amber-950"]:hover {
+body.dark [class~="dark:bg-amber-950"]:hover {
   background-color: rgba(120, 53, 15, 0.7) !important;
   color: #FEF3C7 !important;
   border-color: rgba(245, 158, 11, 0.5) !important;
@@ -325,7 +325,7 @@ body.dark [class*="dark:bg-amber-950"]:hover {
 
 /* Rose subtle buttons & badges: maintain readable contrast on hover */
 body.dark button[class*="rose"]:hover,
-body.dark [class*="dark:bg-rose-950"]:hover {
+body.dark [class~="dark:bg-rose-950"]:hover {
   background-color: rgba(136, 19, 55, 0.7) !important;
   color: #FFE4E6 !important;
   border-color: rgba(244, 63, 94, 0.5) !important;
@@ -333,15 +333,15 @@ body.dark [class*="dark:bg-rose-950"]:hover {
 
 /* Emerald subtle buttons & badges: maintain readable contrast on hover */
 body.dark button[class*="emerald"]:hover,
-body.dark [class*="dark:bg-emerald-950"]:hover {
+body.dark [class~="dark:bg-emerald-950"]:hover {
   background-color: rgba(6, 78, 59, 0.7) !important;
   color: #D1FAE5 !important;
   border-color: rgba(16, 185, 129, 0.5) !important;
 }
 
 /* Light gray / cream hover overrides in dark mode */
-body.dark button[class*="hover:bg-[#DAD7CD]"]:hover,
-body.dark [class*="hover:bg-[#DAD7CD]"]:hover {
+body.dark button[class~="hover:bg-[#DAD7CD]"]:hover,
+body.dark [class~="hover:bg-[#DAD7CD]"]:hover {
   background-color: #233B31 !important;
   color: #FFFFFF !important;
 }
