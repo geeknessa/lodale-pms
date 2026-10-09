@@ -1,7 +1,30 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
 
 export default function Footer() {
+  const location = useLocation();
+
+  const handleLinkClick = (e, hash) => {
+    if (location.pathname === "/explore" || location.pathname === "/") {
+      e.preventDefault();
+      if (hash === "#hero") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      const targetId = hash.replace("#", "");
+      const elem = document.getElementById(targetId);
+      if (elem) {
+        const offset = 80;
+        const bodyRect = document.body.getBoundingClientRect().top;
+        const elementRect = elem.getBoundingClientRect().top;
+        const elementPosition = elementRect - bodyRect;
+        window.scrollTo({
+          top: elementPosition - offset,
+          behavior: "smooth",
+        });
+      }
+    }
+  };
   return (
     <div className="w-full">
       {/* Main Footer Links Block */}
@@ -15,7 +38,7 @@ export default function Footer() {
               with verified trust profiles, digital ledgers, and contract
               automation.
             </p>
-            </div>
+          </div>
 
           {/* Column 2: Quick Links */}
           <div className="md:col-span-2 text-left">
@@ -24,27 +47,47 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2.5 text-[13px]">
               <li>
-                <Link to="/explore" className="text-zinc-400 hover:text-white transition-colors">
+                <Link
+                  to="/explore#hero"
+                  onClick={(e) => handleLinkClick(e, "#hero")}
+                  className="text-zinc-400 hover:text-white transition-colors"
+                >
                   Home
                 </Link>
               </li>
               <li>
-                <Link to="/explore#listings" className="text-zinc-400 hover:text-white transition-colors">
+                <Link
+                  to="/explore#listings"
+                  onClick={(e) => handleLinkClick(e, "#listings")}
+                  className="text-zinc-400 hover:text-white transition-colors"
+                >
                   Properties
                 </Link>
               </li>
               <li>
-                <Link to="/explore#about" className="text-zinc-400 hover:text-white transition-colors">
+                <Link
+                  to="/explore#about"
+                  onClick={(e) => handleLinkClick(e, "#about")}
+                  className="text-zinc-400 hover:text-white transition-colors"
+                >
                   About
                 </Link>
               </li>
               <li>
-                <Link to="/explore#features" className="text-zinc-400 hover:text-white transition-colors">
+                <Link
+                  to="/explore#features"
+                  onClick={(e) => handleLinkClick(e, "#features")}
+                  className="text-zinc-400 hover:text-white transition-colors"
+                >
                   Features
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-zinc-400 hover:text-white transition-colors">
+                <Link
+                  to="/explore#contact"
+                  onClick={(e) => handleLinkClick(e, "#contact")}
+                  className="text-zinc-400 hover:text-white transition-colors"
+                >
                   Contact
                 </Link>
               </li>
@@ -56,17 +99,13 @@ export default function Footer() {
             <h4 className="text-[11px] font-bold text-zinc-300 uppercase tracking-widest mb-4">
               Support
             </h4>
-            <ul className="space-y-2.5 text-[13px]">
-              <li>
-                <a href="mailto:support@lodale.com" className="text-zinc-400 hover:text-white transition-colors">
-                  Help Center
-                </a>
-              </li>
-            </ul>
+            <p className="text-[13px] text-zinc-400 leading-relaxed">
+              You can contact Lodale support team for more information.
+            </p>
           </div>
 
           {/* Column 4: Contact */}
-          <div className="md:col-span-3 text-left">
+          <div id="contact" className="md:col-span-3 text-left scroll-mt-24">
             <h4 className="text-[11px] font-bold text-zinc-300 uppercase tracking-widest mb-4">
               Contact
             </h4>

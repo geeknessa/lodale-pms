@@ -50,7 +50,7 @@ export default function NavBar({ transparentMode = false }) {
       const scrollPos = window.scrollY;
       setIsScrolled(scrollPos > 40);
 
-      const sections = ["about", "features", "listings"];
+      const sections = ["contact", "about", "features", "listings"];
       let active = "";
 
       for (const id of sections) {
@@ -72,6 +72,26 @@ export default function NavBar({ transparentMode = false }) {
 
     return () => window.removeEventListener("scroll", handleScroll);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if ((location.pathname === "/explore" || location.pathname === "/") && location.hash) {
+      const targetId = location.hash.replace("#", "");
+      const timer = setTimeout(() => {
+        const elem = document.getElementById(targetId);
+        if (elem) {
+          const offset = 80;
+          const bodyRect = document.body.getBoundingClientRect().top;
+          const elementRect = elem.getBoundingClientRect().top;
+          const elementPosition = elementRect - bodyRect;
+          window.scrollTo({
+            top: elementPosition - offset,
+            behavior: "smooth",
+          });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [location.pathname, location.hash]);
 
   function handleHomeClick(e) {
     setIsOpen(false);
@@ -239,8 +259,9 @@ export default function NavBar({ transparentMode = false }) {
             Features
           </Link>
           <Link
-            to="/contact"
-            className={desktopLinkClass("/contact")}
+            to="/explore#contact"
+            onClick={(e) => handleSectionClick(e, "#contact")}
+            className={desktopLinkClass("/explore", "#contact")}
           >
             Contact
           </Link>
@@ -369,11 +390,12 @@ export default function NavBar({ transparentMode = false }) {
             )}
           </Link>
           <Link
-            to="/contact"
-            className={mobileLinkClass("/contact")}
+            to="/explore#contact"
+            onClick={(e) => handleSectionClick(e, "#contact")}
+            className={mobileLinkClass("/explore", "#contact")}
           >
             <span>Contact</span>
-            {checkIsActive("/contact") && (
+            {checkIsActive("/explore", "#contact") && (
               <span className="h-1.5 w-1.5 rounded-full bg-moss-700 dark:bg-[#E5C583]" />
             )}
           </Link>
