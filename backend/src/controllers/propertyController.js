@@ -19,7 +19,7 @@ const formatSafeLocation = (addr, city, state) => {
 
 const LIVE_PROPERTY_STATUSES = ['active_vacant', 'approved', 'live', 'active', 'occupied', 'active_occupied'];
 
-const stripPrivatePropertyFields = (prop) => {
+const stripPrivatePropertyFields = (prop, req) => {
   const sanitized = { ...prop };
   delete sanitized.ownership_doc;
   delete sanitized.ownership_doc_url;
@@ -34,6 +34,18 @@ const stripPrivatePropertyFields = (prop) => {
       delete sanitized[key];
     }
   });
+  if (!req?.user) {
+    if (sanitized.landlord && typeof sanitized.landlord === 'object') {
+      const landlordCopy = { ...sanitized.landlord };
+      delete landlordCopy.address;
+      sanitized.landlord = landlordCopy;
+    }
+    if (sanitized.landlord_data && typeof sanitized.landlord_data === 'object') {
+      const landlordDataCopy = { ...sanitized.landlord_data };
+      delete landlordDataCopy.address;
+      sanitized.landlord_data = landlordDataCopy;
+    }
+  }
   return sanitized;
 };
 
@@ -59,7 +71,7 @@ export const propertyController = {
       };
 
       const isOwnerOrAdmin = req.user && (req.user.role === 'admin' || req.user.id === p.landlord_id);
-      return isOwnerOrAdmin ? formattedProp : stripPrivatePropertyFields(formattedProp);
+      return isOwnerOrAdmin ? formattedProp : stripPrivatePropertyFields(formattedProp, req);
     });
 
     res.json(formatted);
@@ -136,7 +148,7 @@ export const propertyController = {
       location: formatSafeLocation(property.address_line1, property.city, property.state),
     };
 
-    res.json(isOwnerOrAdmin ? formatted : stripPrivatePropertyFields(formatted));
+    res.json(isOwnerOrAdmin ? formatted : stripPrivatePropertyFields(formatted, req));
   }),
 
   createProperty: asyncHandler(async (req, res) => {

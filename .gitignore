@@ -24,3 +24,7 @@ lodale-web/dist/
 *.sln
 *.sw?
 .DS_Store
+
+# Uploads
+uploads/
+**/uploads/

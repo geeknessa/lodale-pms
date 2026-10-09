@@ -81,26 +81,44 @@ export const profileController = {
 
     const matches = image.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
     let buffer;
-    let ext = '.jpg';
 
     if (matches) {
-      const mime = matches[1].toLowerCase();
-      if (!mime.startsWith('image/')) {
-        return res.status(400).json({ error: 'Invalid file type. Only image files are allowed.' });
-      }
-      if (mime.includes('png')) ext = '.png';
-      else if (mime.includes('webp')) ext = '.webp';
-      else if (mime.includes('gif')) ext = '.gif';
-      else ext = '.jpg';
-
       buffer = Buffer.from(matches[2], 'base64');
     } else {
       buffer = Buffer.from(image, 'base64');
     }
 
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB limit matching settings UI
+    const MAX_SIZE = 2 * 1024 * 1024; // 2MB strict limit
     if (buffer.length > MAX_SIZE) {
-      return res.status(400).json({ error: 'Image file exceeds the 5MB size limit.' });
+      return res.status(400).json({ error: 'Image file exceeds the 2MB size limit.' });
+    }
+
+    // Magic bytes validation: strictly allow only JPEG, PNG, and WebP (no SVG, GIF, or script payloads)
+    let ext = null;
+    if (buffer.length >= 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
+      ext = '.jpg';
+    } else if (
+      buffer.length >= 8 &&
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4E &&
+      buffer[3] === 0x47 &&
+      buffer[4] === 0x0D &&
+      buffer[5] === 0x0A &&
+      buffer[6] === 0x1A &&
+      buffer[7] === 0x0A
+    ) {
+      ext = '.png';
+    } else if (
+      buffer.length >= 12 &&
+      buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 && // 'RIFF'
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50  // 'WEBP'
+    ) {
+      ext = '.webp';
+    }
+
+    if (!ext) {
+      return res.status(400).json({ error: 'Invalid file format. Only JPEG, PNG, and WebP images are allowed.' });
     }
 
     const uploadsDir = path.join(process.cwd(), 'uploads');
