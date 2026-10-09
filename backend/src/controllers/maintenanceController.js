@@ -33,23 +33,36 @@ export const createRequest = async (req, res) => {
 
     const initialStatus = tenant_handled ? 'resolved' : 'pending';
 
-    const { rows } = await pool.query(
-      `INSERT INTO maintenance_requests (property_id, lease_id, reported_by, tenant_id, title, description, priority, status, tenant_handled, actual_cost)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING *`,
-      [
-        propertyId,
-        leaseId,
-        tenantId,
-        tenantId,
-        title,
-        description,
-        priority || 'medium',
-        initialStatus,
-        tenant_handled || false,
-        cost ? parseFloat(cost) : 0
-      ]
+    const colCheck = await pool.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_requests' AND column_name = 'resolved_at'"
     );
+    const hasResolvedAt = colCheck.rowCount > 0;
+
+    let insertQuery = '';
+    const insertParams = [
+      propertyId,
+      leaseId,
+      tenantId,
+      tenantId,
+      title,
+      description,
+      priority || 'medium',
+      initialStatus,
+      tenant_handled || false,
+      cost ? parseFloat(cost) : 0
+    ];
+
+    if (hasResolvedAt && tenant_handled) {
+      insertQuery = `INSERT INTO maintenance_requests (property_id, lease_id, reported_by, tenant_id, title, description, priority, status, tenant_handled, actual_cost, resolved_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+         RETURNING *`;
+    } else {
+      insertQuery = `INSERT INTO maintenance_requests (property_id, lease_id, reported_by, tenant_id, title, description, priority, status, tenant_handled, actual_cost)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING *`;
+    }
+
+    const { rows } = await pool.query(insertQuery, insertParams);
 
     const createdRequest = rows[0];
 
@@ -164,13 +177,34 @@ export const updateRequestStatus = async (req, res) => {
     };
     const dbStatus = statusMap[status?.toLowerCase()] || 'pending';
 
-    const { rows } = await pool.query(
-      `UPDATE maintenance_requests 
+    const colCheck = await pool.query(
+      "SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_requests' AND column_name = 'resolved_at'"
+    );
+    const hasResolvedAt = colCheck.rowCount > 0;
+
+    let updateSql = '';
+    const updateParams = [dbStatus, notes || null, cost !== undefined && cost !== null && cost !== '' ? parseFloat(cost) : null, id];
+
+    if (hasResolvedAt) {
+      if (dbStatus === 'resolved') {
+        updateSql = `UPDATE maintenance_requests 
+         SET status = $1, notes = COALESCE($2, notes), actual_cost = COALESCE($3, actual_cost), resolved_at = COALESCE(resolved_at, NOW()), updated_at = NOW()
+         WHERE id = $4
+         RETURNING *`;
+      } else {
+        updateSql = `UPDATE maintenance_requests 
+         SET status = $1, notes = COALESCE($2, notes), actual_cost = COALESCE($3, actual_cost), resolved_at = NULL, updated_at = NOW()
+         WHERE id = $4
+         RETURNING *`;
+      }
+    } else {
+      updateSql = `UPDATE maintenance_requests 
        SET status = $1, notes = COALESCE($2, notes), actual_cost = COALESCE($3, actual_cost), updated_at = NOW()
        WHERE id = $4
-       RETURNING *`,
-      [dbStatus, notes || null, cost !== undefined && cost !== null && cost !== '' ? parseFloat(cost) : null, id]
-    );
+       RETURNING *`;
+    }
+
+    const { rows } = await pool.query(updateSql, updateParams);
 
     // Notify the tenant of status update
     try {

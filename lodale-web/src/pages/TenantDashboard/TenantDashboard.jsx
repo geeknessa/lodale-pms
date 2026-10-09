@@ -368,11 +368,7 @@ export default function TenantDashboard() {
   const [activeLease, setActiveLease] = useState(null);
   const [requests, setRequests] = useState([]);
 
-  const allMaintenanceHistory = requests && requests.length > 0
-    ? (requests.length < 3
-        ? [...requests, ...SAMPLE_MAINTENANCE_REQUESTS.filter(s => !requests.some(r => r.id === s.id))].slice(0, Math.max(3, requests.length))
-        : requests)
-    : SAMPLE_MAINTENANCE_REQUESTS;
+  const allMaintenanceHistory = Array.isArray(requests) ? requests : [];
   const [payments, setPayments] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -951,18 +947,29 @@ export default function TenantDashboard() {
         resolved: 'Completed',
         closed: 'Completed'
       };
-      setRequests(reqs.map(r => ({
-        id: r.id,
-        title: r.title,
-        category: r.priority === 'emergency' ? 'Emergency' : (r.category || 'Routine'),
-        urgency: r.priority ? r.priority.charAt(0).toUpperCase() + r.priority.slice(1) : 'Medium',
-        details: r.description && r.description !== "No description provided." ? r.description : r.title,
-        desc: r.description && r.description !== "No description provided." ? r.description : r.title,
-        status: statusMap[r.status?.toLowerCase()] || 'Pending',
-        date: new Date(r.created_at).toLocaleDateString("en-GB", { day: '2-digit', month: 'short' }),
-        tenantName: r.tenant_name,
-        timestamp: new Date(r.created_at).getTime()
-      })));
+      setRequests(reqs.map(r => {
+        const isDone = (r.status || '').toLowerCase() === 'resolved' || (r.status || '').toLowerCase() === 'closed';
+        const displayStatus = statusMap[r.status?.toLowerCase()] || 'Pending';
+        const resolvedDate = r.resolved_at ? formatDisplayDate(r.resolved_at) : (isDone && r.updated_at ? formatDisplayDate(r.updated_at) : null);
+        const createdDate = r.created_at ? formatDisplayDate(r.created_at) : '—';
+        return {
+          id: r.id,
+          title: r.title,
+          category: r.priority === 'emergency' ? 'Emergency' : (r.category || 'Routine'),
+          urgency: r.priority ? r.priority.charAt(0).toUpperCase() + r.priority.slice(1) : 'Medium',
+          details: r.description && r.description !== "No description provided." ? r.description : r.title,
+          desc: r.description && r.description !== "No description provided." ? r.description : r.title,
+          status: displayStatus,
+          rawStatus: r.status,
+          created_at: r.created_at,
+          resolved_at: r.resolved_at,
+          date: isDone ? (resolvedDate ? `Resolved ${resolvedDate}` : `Resolved`) : `Requested ${createdDate}`,
+          dateOnly: isDone ? (resolvedDate || createdDate) : createdDate,
+          isDone,
+          tenantName: r.tenant_name,
+          timestamp: new Date(r.created_at).getTime()
+        };
+      }));
     } catch (err) {
       console.error("Failed to load tenant dashboard data:", err);
     } finally {
@@ -2023,7 +2030,7 @@ export default function TenantDashboard() {
                 {selectedTicket.title || selectedTicket.details || "Repair Request"}
               </h4>
               <p className="text-[11.5px] text-[#6C6E73] dark:text-[#A3BCA7] mb-6">
-                Submitted {selectedTicket.date || "Just now"}
+                {selectedTicket.date || (selectedTicket.isDone ? "Resolved" : "Requested")}
               </p>
 
               {/* Progress Tracker Stepper */}
@@ -2944,55 +2951,63 @@ export default function TenantDashboard() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {allMaintenanceHistory.slice(0, 3).map((item, idx) => {
-                        const statusKey = (item.status || "pending").toLowerCase();
-                        const isDone = statusKey === "completed" || statusKey === "resolved";
-                        const isInProg = statusKey === "in progress" || statusKey === "acknowledged";
+                      {allMaintenanceHistory.length > 0 ? (
+                        allMaintenanceHistory.slice(0, 3).map((item, idx) => {
+                          const statusKey = (item.status || "pending").toLowerCase();
+                          const isDone = statusKey === "completed" || statusKey === "resolved";
+                          const isInProg = statusKey === "in progress" || statusKey === "acknowledged";
 
-                        const statusBadge = isDone
-                          ? "bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
-                          : isInProg
-                            ? "bg-blue-100/80 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
-                            : "bg-amber-100/80 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300";
+                          const statusBadge = isDone
+                            ? "bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                            : isInProg
+                              ? "bg-blue-100/80 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                              : "bg-amber-100/80 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300";
 
-                        const iconBg = isDone
-                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                          : isInProg
-                            ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
-                            : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-[#E5C583]";
+                          const iconBg = isDone
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                            : isInProg
+                              ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
+                              : "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-[#E5C583]";
 
-                        return (
-                          <div
-                            key={item.id || idx}
-                            onClick={() => {
-                              setSelectedTicket(item);
-                              setShowTicketModal(true);
-                            }}
-                            className="flex flex-col justify-between p-3.5 rounded-2xl bg-stone-50 dark:bg-[#0B1510] border border-black/5 dark:border-white/5 hover:border-[#E5C583]/40 cursor-pointer transition-all shadow-xs group"
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <div className={`h-8 w-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
-                                <Wrench className="h-4 w-4" />
+                          return (
+                            <div
+                              key={item.id || idx}
+                              onClick={() => {
+                                setSelectedTicket(item);
+                                setShowTicketModal(true);
+                              }}
+                              className="flex flex-col justify-between p-3.5 rounded-2xl bg-stone-50 dark:bg-[#0B1510] border border-black/5 dark:border-white/5 hover:border-[#E5C583]/40 cursor-pointer transition-all shadow-xs group"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <div className={`h-8 w-8 rounded-xl ${iconBg} flex items-center justify-center shrink-0`}>
+                                  <Wrench className="h-4 w-4" />
+                                </div>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${statusBadge}`}>
+                                  {item.status || "Pending"}
+                                </span>
                               </div>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${statusBadge}`}>
-                                {item.status || "Pending"}
-                              </span>
-                            </div>
-                            <div>
-                              <h4 className="text-xs font-bold text-[#1C1917] dark:text-white truncate mb-1 group-hover:text-[#1E3324] dark:group-hover:text-[#E5C583] transition-colors">
-                                {item.title || "Maintenance Request"}
-                              </h4>
-                              <p className="text-[11px] text-[#71717A] dark:text-white/60 line-clamp-2 leading-relaxed">
-                                {item.details || item.desc || "Maintenance check and service."}
-                              </p>
-                              <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[#71717A]/80 dark:text-white/40">
-                                <span>{item.category || "General"}</span>
-                                <span>{item.date || "Recent"}</span>
+                              <div>
+                                <h4 className="text-xs font-bold text-[#1C1917] dark:text-white truncate mb-1 group-hover:text-[#1E3324] dark:group-hover:text-[#E5C583] transition-colors">
+                                  {item.title || "Maintenance Request"}
+                                </h4>
+                                <p className="text-[11px] text-[#71717A] dark:text-white/60 line-clamp-2 leading-relaxed">
+                                  {item.details || item.desc || "Maintenance check and service."}
+                                </p>
+                                <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-[10px] text-[#71717A]/80 dark:text-white/40">
+                                  <span>{item.category || "General"}</span>
+                                  <span>{item.date || "Recent"}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                      ) : (
+                        <div className="col-span-1 sm:col-span-3 text-center py-6 text-xs text-[#71717A] dark:text-white/50 bg-stone-50/50 dark:bg-[#0B1510]/50 rounded-2xl border border-dashed border-black/5 dark:border-white/5">
+                          <Wrench className="h-6 w-6 mx-auto mb-1.5 opacity-40 text-[#71717A] dark:text-white" />
+                          <p className="font-semibold">No maintenance requests filed</p>
+                          <p className="text-[11px] opacity-70 mt-0.5">Use Quick Repair Dispatch to report any issues.</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
