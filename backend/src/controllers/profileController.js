@@ -132,7 +132,7 @@ export const profileController = {
 
     const avatarUrl = `/uploads/${randomFilename}`;
 
-    await pool.query('UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2', [avatarUrl, userId]);
+    await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2', [avatarUrl, userId]);
 
     res.json({ message: 'Avatar uploaded successfully', avatar_url: avatarUrl });
   }),
