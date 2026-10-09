@@ -127,6 +127,26 @@ export async function initDb() {
       ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS tenant_handled BOOLEAN DEFAULT FALSE;
       ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS actual_cost NUMERIC(15, 2);
       ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS estimated_cost NUMERIC(15, 2);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES applications(id) ON DELETE SET NULL;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS landlord_id UUID REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS subtotal NUMERIC(15, 2);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS lodale_fee NUMERIC(15, 2);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS grand_total NUMERIC(15, 2);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS issue_date DATE;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS bank_name VARCHAR(150);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS bank_account_number VARCHAR(50);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(150);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS notes TEXT;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(150);
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS payment_proof_url TEXT;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES applications(id) ON DELETE SET NULL;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES users(id) ON DELETE SET NULL;
     `);
 
     // Widen numeric columns to prevent overflow with large Nigerian property values
