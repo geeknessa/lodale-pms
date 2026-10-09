@@ -33,6 +33,22 @@ export const profileService = {
     }
   },
 
+  /**
+   * Upload user avatar photo to backend disk /uploads/ and update user avatar_url
+   */
+  async uploadAvatar(base64Data) {
+    try {
+      const data = await apiClient('/profile/avatar', {
+        method: 'POST',
+        body: { image: base64Data }
+      });
+      return data.avatar_url;
+    } catch (err) {
+      console.warn('[profileService.uploadAvatar error]:', err.message);
+      throw err;
+    }
+  },
+
   checkProfileCompleteness(profile) {
     if (!profile) return { isComplete: false, percentage: 0, missingFields: ["Full Profile"] };
     

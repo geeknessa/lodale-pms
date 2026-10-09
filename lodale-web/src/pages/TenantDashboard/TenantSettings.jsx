@@ -100,6 +100,14 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [income, setIncome] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
 
+  const resolveAvatarUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) return url;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const serverBase = apiBase.replace(/\/api\/?$/, '');
+    return `${serverBase}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState(null); // { type: "success" | "error" | "warning", text: string }
@@ -195,7 +203,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         if (merged.gender) setGender(merged.gender);
         const formattedDob = formatDobForDisplay(merged.date_of_birth || merged.dob);
         if (formattedDob) setDob(formattedDob);
-        if (merged.avatar_url && !avatarUrl) setAvatarUrl(merged.avatar_url);
+        if (merged.avatar_url) setAvatarUrl(merged.avatar_url);
 
         const fullSync = {
           ...merged,
@@ -235,23 +243,32 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
       }
 
       const reader = new FileReader();
-      reader.onload = (evt) => {
+      reader.onload = async (evt) => {
         const base64Data = evt.target.result;
         setAvatarUrl(base64Data);
 
-        const updatedProf = { ...userProfile, avatar_url: base64Data };
-        setUserProfile(updatedProf);
+        try {
+          const uploadedUrl = await profileService.uploadAvatar(base64Data);
+          const finalUrl = uploadedUrl || base64Data;
+          setAvatarUrl(finalUrl);
 
-        // Notify parent / sidebar / header
-        onAvatarChange?.(base64Data);
-        onProfileUpdate?.(undefined, base64Data);
+          const updatedProf = { ...userProfile, avatar_url: finalUrl };
+          setUserProfile(updatedProf);
 
-        // Dispatch named event so TenantDashboard updates avatar in real-time
-        window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { avatar: base64Data } }));
-        window.dispatchEvent(new Event("storage"));
+          sessionStorage.setItem("tenantAvatarUrl", finalUrl);
+          onAvatarChange?.(finalUrl);
+          onProfileUpdate?.(undefined, finalUrl);
 
-        setFeedbackMessage({ type: "success", text: "Profile picture updated successfully!" });
-        triggerToast("Profile picture updated successfully!", "success", "Photo Updated");
+          window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { avatar: finalUrl } }));
+          window.dispatchEvent(new Event("storage"));
+
+          setFeedbackMessage({ type: "success", text: "Profile picture uploaded successfully!" });
+          triggerToast("Profile picture uploaded successfully!", "success", "Photo Updated");
+        } catch (uploadErr) {
+          console.error("Failed to upload avatar:", uploadErr);
+          setFeedbackMessage({ type: "error", text: uploadErr.message || "Failed to upload avatar." });
+          triggerToast(uploadErr.message || "Failed to upload avatar.", "error", "Upload Failed");
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -279,12 +296,11 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
         const token = sessionStorage.getItem("lodale_token");
         if (token) {
           try {
-            const isBase64 = avatarUrl && avatarUrl.startsWith("data:");
             const updatedProfile = await userService.updateProfile({
               first_name: firstName.trim(),
               last_name: lastName.trim(),
               phone_number: phone.trim(),
-              avatar_url: isBase64 ? undefined : (avatarUrl || undefined)
+              avatar_url: avatarUrl || undefined
             });
 
             await profileService.updateMyProfile({
@@ -804,7 +820,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           <div className="settings-avatar-container" onClick={handleAvatarClick} title="Click to upload a new photo">
             <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] border-4 border-neutral-200 dark:border-white/10">
               {avatarUrl ? (
-                <img src={avatarUrl} alt="User Profile" className="h-full w-full object-cover" />
+                <img src={resolveAvatarUrl(avatarUrl)} alt="User Profile" className="h-full w-full object-cover" />
               ) : (
                 <User className="h-10 w-10 text-moss-700 dark:text-[#E5C583]" />
               )}

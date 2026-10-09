@@ -48,6 +48,7 @@ const userIdParamSchema = z.object({ userId: z.string().min(1) });
 // ── Authenticated user's own role-specific profile ──
 router.get('/', requireAuth, profileController.getMyProfile);
 router.put('/', requireAuth, validate({ body: updateProfileSchema }), profileController.updateMyProfile);
+router.post('/avatar', requireAuth, profileController.uploadAvatar);
 
 // ── Admin-only: look up any user's role-specific profile ──
 router.get('/landlord/:userId', requireAuth, requireRole('admin'), validate({ params: userIdParamSchema }), profileController.getLandlordProfileById);

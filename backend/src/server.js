@@ -18,6 +18,8 @@ import maintenanceRoutes from './routes/maintenance.js';
 import notificationRoutes from './routes/notifications.js';
 import inspectionRoutes from './routes/inspections.js';
 import ratingRoutes from './routes/ratingRoutes.js';
+import path from 'path';
+import fs from 'fs';
 import { autoApprovalService } from './services/autoApprovalService.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
 
@@ -25,6 +27,13 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Ensure uploads folder exists and serve static uploads
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
 
 // Security Middlewares
 app.disable('x-powered-by');

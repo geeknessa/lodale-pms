@@ -322,6 +322,27 @@ export default function TenantDashboard() {
   const [tenantAvatar, setTenantAvatar] = useState(() => {
     return sessionStorage.getItem("tenantAvatarUrl") || "";
   });
+  const [avatarError, setAvatarError] = useState(false);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [tenantAvatar]);
+
+  const getInitials = (name) => {
+    if (!name) return "T";
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    if (parts.length === 1 && parts[0].length > 0) return parts[0].slice(0, 2).toUpperCase();
+    return "T";
+  };
+
+  const resolveAvatarUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) return url;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const serverBase = apiBase.replace(/\/api\/?$/, '');
+    return `${serverBase}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
 
   useEffect(() => {
     const handleStorageUpdate = (e) => {
@@ -1872,10 +1893,17 @@ export default function TenantDashboard() {
 
             <div className="modal-body-centered py-4">
               <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border-2 border-[#07130D]/20 dark:border-[#E5C583]/30" style={{ width: "64px", height: "64px", marginBottom: "12px" }}>
-                {tenantAvatar ? (
-                  <img src={tenantAvatar} alt="Tenant Avatar" className="h-full w-full object-cover" />
+                {tenantAvatar && !avatarError ? (
+                  <img
+                    src={resolveAvatarUrl(tenantAvatar)}
+                    alt="Tenant Avatar"
+                    onError={() => setAvatarError(true)}
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
-                  <User className="h-7 w-7 text-[#07130D] dark:text-[#E5C583]" />
+                  <span className="text-xl font-bold tracking-wider text-[#07130D] dark:text-[#E5C583]">
+                    {getInitials(username)}
+                  </span>
                 )}
               </div>
               <h4 className="font-bold text-[18px] text-ink-900 dark:text-white">{username}</h4>
@@ -2711,10 +2739,21 @@ export default function TenantDashboard() {
                 </button>
                 <button
                   onClick={() => setShowProfileModal(true)}
-                  className="h-9 w-9 rounded-xl bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] flex items-center justify-center hover:border-[#E5C583]/50 transition-colors shadow-xs text-[#1C1917] dark:text-white shrink-0"
+                  className="h-9 w-9 rounded-xl bg-white dark:bg-[#192A1F] border border-black/5 dark:border-[#2C4633] flex items-center justify-center hover:border-[#E5C583]/50 transition-colors shadow-xs text-[#1C1917] dark:text-white shrink-0 overflow-hidden"
                   title="Profile"
                 >
-                  <User className="h-4 w-4" />
+                  {tenantAvatar && !avatarError ? (
+                    <img
+                      src={resolveAvatarUrl(tenantAvatar)}
+                      alt={username}
+                      onError={() => setAvatarError(true)}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs font-bold tracking-tight text-[#1E3324] dark:text-[#E5C583]">
+                      {getInitials(username)}
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
