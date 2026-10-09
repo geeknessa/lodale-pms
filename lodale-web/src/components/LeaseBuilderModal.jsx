@@ -151,6 +151,7 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
                   <option value="monthly">Monthly (/mo)</option>
                   <option value="session">Academic Session</option>
                   <option value="semester">Semester</option>
+                  <option value="summer">Summer</option>
                 </select>
               </div>
               <div>
