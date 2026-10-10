@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { handlePropertySubmit } from "../../utils/propertyUtils";
 import { propertyService } from "../../services/propertyService";
 import { notificationService } from "../../services/notificationService";
+import { safeSetJSON } from "../../utils/safeStorage";
 
 
 
@@ -406,13 +407,8 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
       occupied
     };
 
-    try {
-      const jsonStr = JSON.stringify(draftObj);
-      localStorage.setItem(DRAFT_KEY, jsonStr);
-      sessionStorage.setItem(DRAFT_KEY, jsonStr);
-    } catch (e) {
-      console.warn("Error saving property form draft:", e);
-    }
+    safeSetJSON("local", DRAFT_KEY, draftObj);
+    safeSetJSON("session", DRAFT_KEY, draftObj);
   }, [
     isEditing,
     isDraftLoaded,

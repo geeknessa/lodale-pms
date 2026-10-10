@@ -10,6 +10,7 @@ import { authService } from "../services/authService";
 
 import { userService } from "../services/userService";
 import { triggerToast } from "../context/ToastContext";
+import { safeSetItem, safeSetJSON, safeGetItem, safeRemoveItem } from "../utils/safeStorage";
 
 export default function Login() {
   useTheme();
@@ -131,18 +132,18 @@ export default function Login() {
         if (res && res.user && res.user.primary_role === "admin") {
           const expiresAt = (Date.now() + 24 * 60 * 60 * 1000).toString();
 
-          sessionStorage.setItem("isAuthenticated", "true");
-          sessionStorage.setItem("userRole", "admin");
-          sessionStorage.setItem("adminAuthenticated", "true");
-          sessionStorage.setItem("lastLoggedInEmail", cleanUsername);
-          sessionStorage.setItem("username", `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "System Admin");
-          sessionStorage.setItem("sessionExpiresAt", expiresAt);
-          sessionStorage.setItem("db_user_id", res.user.id);
+          safeSetItem("session", "isAuthenticated", "true");
+          safeSetItem("session", "userRole", "admin");
+          safeSetItem("session", "adminAuthenticated", "true");
+          safeSetItem("session", "lastLoggedInEmail", cleanUsername);
+          safeSetItem("session", "username", `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "System Admin");
+          safeSetItem("session", "sessionExpiresAt", expiresAt);
+          safeSetItem("session", "db_user_id", res.user.id);
           if (res.token) {
-            sessionStorage.setItem("lodale_token", res.token);
-            localStorage.setItem("lodale_token", res.token);
+            safeSetItem("session", "lodale_token", res.token);
+            safeSetItem("local", "lodale_token", res.token);
           }
-          localStorage.removeItem("explicitAdminSignOut");
+          safeRemoveItem("local", "explicitAdminSignOut");
 
           navigate("/admin/dashboard");
           return;
@@ -169,42 +170,42 @@ export default function Login() {
         const userFullName = `${res.user.first_name || ""} ${res.user.last_name || ""}`.trim() || "User";
         const expiresAt = (Date.now() + 24 * 60 * 60 * 1000).toString();
 
-        sessionStorage.setItem("isAuthenticated", "true");
-        sessionStorage.setItem("userRole", userRole);
-        sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
-        sessionStorage.setItem("username", userFullName);
-        sessionStorage.setItem("db_user_id", res.user.id);
-        sessionStorage.setItem("lodale_user", JSON.stringify(res.user));
-        sessionStorage.setItem("sessionExpiresAt", expiresAt);
+        safeSetItem("session", "isAuthenticated", "true");
+        safeSetItem("session", "userRole", userRole);
+        safeSetItem("session", "lastLoggedInEmail", cleanEmail);
+        safeSetItem("session", "username", userFullName);
+        safeSetItem("session", "db_user_id", res.user.id);
+        safeSetJSON("session", "lodale_user", res.user);
+        safeSetItem("session", "sessionExpiresAt", expiresAt);
         if (res.token) {
-          sessionStorage.setItem("lodale_token", res.token);
-          localStorage.setItem("lodale_token", res.token);
+          safeSetItem("session", "lodale_token", res.token);
+          safeSetItem("local", "lodale_token", res.token);
         }
 
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userRole", userRole);
-        localStorage.setItem("lastLoggedInEmail", cleanEmail);
-        localStorage.setItem("username", userFullName);
-        localStorage.setItem("db_user_id", res.user.id);
-        localStorage.setItem("lodale_user", JSON.stringify(res.user));
-        localStorage.setItem("sessionExpiresAt", expiresAt);
+        safeSetItem("local", "isAuthenticated", "true");
+        safeSetItem("local", "userRole", userRole);
+        safeSetItem("local", "lastLoggedInEmail", cleanEmail);
+        safeSetItem("local", "username", userFullName);
+        safeSetItem("local", "db_user_id", res.user.id);
+        safeSetJSON("local", "lodale_user", res.user);
+        safeSetItem("local", "sessionExpiresAt", expiresAt);
 
-        localStorage.removeItem("failedLoginAttempts");
-        localStorage.removeItem("loginLockoutUntil");
-        localStorage.removeItem("landlordProperties");
-        sessionStorage.removeItem("isNewSignUp");
-        localStorage.removeItem("isNewUserSignUp_" + cleanEmail);
-        sessionStorage.setItem("username_" + cleanEmail, userFullName);
+        safeRemoveItem("local", "failedLoginAttempts");
+        safeRemoveItem("local", "loginLockoutUntil");
+        safeRemoveItem("local", "landlordProperties");
+        safeRemoveItem("session", "isNewSignUp");
+        safeRemoveItem("local", "isNewUserSignUp_" + cleanEmail);
+        safeSetItem("session", "username_" + cleanEmail, userFullName);
 
         if (userRole === "admin") {
-          sessionStorage.setItem("adminAuthenticated", "true");
-          localStorage.setItem("adminAuthenticated", "true");
-          localStorage.removeItem("explicitAdminSignOut");
+          safeSetItem("session", "adminAuthenticated", "true");
+          safeSetItem("local", "adminAuthenticated", "true");
+          safeRemoveItem("local", "explicitAdminSignOut");
         }
 
         let savedProfile = {};
         try {
-          const rawSaved = sessionStorage.getItem("userProfile_" + cleanEmail);
+          const rawSaved = safeGetItem("session", "userProfile_" + cleanEmail);
           if (rawSaved) savedProfile = JSON.parse(rawSaved);
         } catch (e) { }
 
@@ -226,14 +227,15 @@ export default function Login() {
           avatar: res.user.avatar_url || savedProfile.avatar || savedProfile.avatar_url || "",
           avatar_url: res.user.avatar_url || savedProfile.avatar_url || savedProfile.avatar || ""
         };
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-        sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
-        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
+        // safeSetJSON strips inline (base64) avatars; dashboards load them from the API.
+        safeSetJSON("session", "currentUserProfile", profileObj);
+        safeSetItem("session", "sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
+        safeSetJSON("session", "userProfile_" + cleanEmail, profileObj);
 
         // Signal dashboard to show profile completeness guidance banner and open Settings tab
-        sessionStorage.setItem("justSignedInToCompleteProfile", "true");
+        safeSetItem("session", "justSignedInToCompleteProfile", "true");
         if (res.isInvited) {
-          sessionStorage.setItem("promptPasswordChange", "true");
+          safeSetItem("session", "promptPasswordChange", "true");
         }
 
         if (userRole === "tenant") {
@@ -538,7 +540,7 @@ export default function Login() {
                   setIsPayingRestorationFee(true);
                   try {
                     if (restorationFeeInfo.token) {
-                      sessionStorage.setItem("lodale_token", restorationFeeInfo.token);
+                      safeSetItem("session", "lodale_token", restorationFeeInfo.token);
                     }
                     await userService.payRestorationFee(`GATEWAY-REF-${Date.now()}`);
                     triggerToast("Restoration fee paid successfully! Account is active.", "success");
@@ -547,11 +549,11 @@ export default function Login() {
                     const userRole = resUser.primary_role || "tenant";
                     const userFullName = `${resUser.first_name || ""} ${resUser.last_name || ""}`.trim() || "User";
                     
-                    sessionStorage.setItem("isAuthenticated", "true");
-                    sessionStorage.setItem("userRole", userRole);
-                    sessionStorage.setItem("lastLoggedInEmail", resUser.email || email);
-                    sessionStorage.setItem("username", userFullName);
-                    sessionStorage.setItem("db_user_id", resUser.id);
+                    safeSetItem("session", "isAuthenticated", "true");
+                    safeSetItem("session", "userRole", userRole);
+                    safeSetItem("session", "lastLoggedInEmail", resUser.email || email);
+                    safeSetItem("session", "username", userFullName);
+                    safeSetItem("session", "db_user_id", resUser.id);
                     
                     navigate(userRole === "admin" ? "/admin/dashboard" : `/dashboard/${userRole}`);
                   } catch (err) {

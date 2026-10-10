@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { signUpSchema } from "../schemas/authSchemas";
 import { triggerToast } from "../context/ToastContext";
 import { notificationService } from "../services/notificationService";
+import { safeSetItem, safeSetJSON } from "../utils/safeStorage";
 
 const MOCK_NIN_NAMES = [
   "Chukwudi Emmanuel Abubakar",
@@ -180,14 +181,14 @@ export function useSignUpForm(initialState = {}) {
         phone: ""
       });
 
-      sessionStorage.setItem("isAuthenticated", "true");
-      sessionStorage.setItem("lastLoggedInEmail", cleanEmail);
-      sessionStorage.setItem("username", cleanName);
-      sessionStorage.setItem("userRole", role);
-      sessionStorage.setItem("sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
-      sessionStorage.setItem("username_" + cleanEmail, cleanName);
-      sessionStorage.setItem("isNewSignUp", "true");
-      localStorage.setItem("isNewUserSignUp_" + cleanEmail, "true");
+      safeSetItem("session", "isAuthenticated", "true");
+      safeSetItem("session", "lastLoggedInEmail", cleanEmail);
+      safeSetItem("session", "username", cleanName);
+      safeSetItem("session", "userRole", role);
+      safeSetItem("session", "sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
+      safeSetItem("session", "username_" + cleanEmail, cleanName);
+      safeSetItem("session", "isNewSignUp", "true");
+      safeSetItem("local", "isNewUserSignUp_" + cleanEmail, "true");
 
       const profileObj = {
         firstName: firstName.trim(),
@@ -201,11 +202,11 @@ export function useSignUpForm(initialState = {}) {
         postalCode: "",
         nin: nin || ""
       };
-      sessionStorage.setItem("currentUserProfile", JSON.stringify(profileObj));
-      sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(profileObj));
+      safeSetJSON("session", "currentUserProfile", profileObj);
+      safeSetJSON("session", "userProfile_" + cleanEmail, profileObj);
 
       if (res && res.user) {
-        sessionStorage.setItem("db_user_id", res.user.id);
+        safeSetItem("session", "db_user_id", res.user.id);
       }
 
       if (skipWelcome && listingId) {

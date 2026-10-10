@@ -3,6 +3,7 @@ import { X, Upload, ShieldAlert, FileText, Loader2 } from 'lucide-react';
 import { propertyService } from "../../../services/propertyService";
 import { notificationService } from "../../../services/notificationService";
 import { triggerToast } from '../../../context/ToastContext';
+import { safeSetJSON } from '../../../utils/safeStorage';
 
 export default function UploadProofModal({ isOpen, onClose, property, onSuccess }) {
   const [docType, setDocType] = useState('Certificate of Occupancy (C of O)');
@@ -69,7 +70,7 @@ export default function UploadProofModal({ isOpen, onClose, property, onSuccess 
         if (sProps) {
           const arr = JSON.parse(sProps);
           const updated = arr.map(p => String(p.id) === String(property.id) ? { ...p, ...updatePayload } : p);
-          sessionStorage.setItem(userKey, JSON.stringify(updated));
+          safeSetJSON("session", userKey, updated);
         }
       } catch (_e) {}
 

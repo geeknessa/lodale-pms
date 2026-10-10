@@ -5,6 +5,7 @@ import { propertyService } from "../services/propertyService";
 import { triggerToast } from "../context/ToastContext";
 import { COMMON_AMENITIES } from "../utils/propertyUtils";
 import { INCOME_RANGES, PRESET_HOUSE_RULES } from "../utils/incomeRanges";
+import { safeSetJSON } from "../utils/safeStorage";
 
 export default function QuickEditPropertyModal({ isOpen, onClose, property, onSaveSuccess }) {
   const [title, setTitle] = useState(property?.title || "");
@@ -204,7 +205,7 @@ export default function QuickEditPropertyModal({ isOpen, onClose, property, onSa
         const idx = savedLandlord.findIndex(p => String(p.id) === String(property.id));
         if (idx !== -1) {
           savedLandlord[idx] = { ...savedLandlord[idx], ...payload, ...fullUpdated };
-          sessionStorage.setItem(userKey, JSON.stringify(savedLandlord));
+          safeSetJSON("session", userKey, savedLandlord);
         }
 
         window.dispatchEvent(new Event("storage"));

@@ -1,4 +1,5 @@
 import { apiClient } from '../lib/apiClient';
+import { safeSetItem, safeSetJSON, safeGetItem, safeRemoveItem } from '../utils/safeStorage';
 
 /**
  * Auth Service connecting React UI to the local Express backend server
@@ -14,8 +15,8 @@ export const authService = {
     });
 
     if (data.token) {
-      sessionStorage.setItem('lodale_token', data.token);
-      sessionStorage.setItem('lodale_user', JSON.stringify(data.user));
+      safeSetItem('session', 'lodale_token', data.token);
+      safeSetJSON('session', 'lodale_user', data.user);
     }
     return data;
   },
@@ -30,8 +31,9 @@ export const authService = {
     });
 
     if (data.token) {
-      sessionStorage.setItem('lodale_token', data.token);
-      sessionStorage.setItem('lodale_user', JSON.stringify(data.user));
+      safeSetItem('session', 'lodale_token', data.token);
+      // Inline (base64) avatars are stripped before caching to stay under quota.
+      safeSetJSON('session', 'lodale_user', data.user);
     }
     return data;
   },
@@ -40,23 +42,23 @@ export const authService = {
    * Sign out user
    */
   async signOut() {
-    sessionStorage.removeItem('lodale_token');
-    sessionStorage.removeItem('lodale_user');
+    safeRemoveItem('session', 'lodale_token');
+    safeRemoveItem('session', 'lodale_user');
   },
 
   /**
    * Fetch current authenticated user
    */
   async getCurrentUser() {
-    const token = sessionStorage.getItem('lodale_token');
+    const token = safeGetItem('session', 'lodale_token');
     if (!token) return null;
 
     try {
       const data = await apiClient('/auth/me');
       return data.user;
     } catch {
-      sessionStorage.removeItem('lodale_token');
-      sessionStorage.removeItem('lodale_user');
+      safeRemoveItem('session', 'lodale_token');
+      safeRemoveItem('session', 'lodale_user');
       return null;
     }
   },

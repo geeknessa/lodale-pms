@@ -70,6 +70,7 @@ import {
   getRentPeriodSuffix,
   getNextRentDue
 } from "../../utils/formatters";
+import { safeSetItem, safeSetJSON, cacheAvatarUrl } from "../../utils/safeStorage";
 const TOUR_STEPS = [
   // Overview Tab (tab: 0)
   {
@@ -247,15 +248,16 @@ export default function TenantDashboard() {
           const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
           if (fullName) {
             setUsername(fullName);
-            sessionStorage.setItem("username", fullName);
+            safeSetItem("session", "username", fullName);
           }
           if (profile.avatar_url) {
+            // Full value (even base64) lives in React state; only file URLs are cached.
             setTenantAvatar(profile.avatar_url);
-            sessionStorage.setItem("tenantAvatarUrl", profile.avatar_url);
+            cacheAvatarUrl("session", "tenantAvatarUrl", profile.avatar_url);
           }
           const merged = { ...profile, ...(roleProfile || {}) };
-          sessionStorage.setItem("currentUserProfile", JSON.stringify(merged));
-          sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(merged));
+          safeSetJSON("session", "currentUserProfile", merged);
+          safeSetJSON("session", "tenantCurrentProfile", merged);
         }
       } catch (err) {}
     };

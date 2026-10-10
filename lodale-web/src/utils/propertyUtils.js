@@ -1,5 +1,6 @@
 import { formatCurrency } from "./formatters";
 import { propertyService } from "../services/propertyService";
+import { safeSetItem, safeSetJSON } from "./safeStorage";
 
 const PRESET_PHOTOS = [
   { label: "Modern Villa", url: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80" },
@@ -335,9 +336,7 @@ export async function handlePropertySubmit({
     } else {
       existingSession.unshift(newPropertyObj);
     }
-    try {
-      sessionStorage.setItem(userKey, JSON.stringify(existingSession));
-    } catch (e) {}
+    safeSetJSON("session", userKey, existingSession);
 
     // Clear legacy global localStorage cache to prevent cross-account leakage
     try { localStorage.removeItem("properties"); } catch (e) {}
@@ -356,7 +355,7 @@ export async function handlePropertySubmit({
     console.warn("Failed to persist property locally:", localErr);
   }
 
-  sessionStorage.setItem("latestCreatedPropertyId", String(newPropertyObj.id));
+  safeSetItem("session", "latestCreatedPropertyId", String(newPropertyObj.id));
   setIsSubmitted(true);
   return true;
 }

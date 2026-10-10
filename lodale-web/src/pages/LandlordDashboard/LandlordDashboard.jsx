@@ -69,6 +69,7 @@ import { formatCurrency, getRentPeriodSuffix, formatDateOnly, formatTimestamp, f
 import { apiClient } from "../../lib/apiClient";
 import { calculatePortfolioMetrics, getPropertyStatus } from "../../utils/landlordMetrics";
 import "./LandlordDashboard.css";
+import { safeSetItem, safeSetJSON, cacheAvatarUrl } from "../../utils/safeStorage";
 
 const TOUR_STEPS = [
   // Sidebar tab steps (visible on any tab)
@@ -280,15 +281,16 @@ export default function LandlordDashboard() {
           const fullName = `${profile.first_name || ""} ${profile.last_name || ""}`.trim();
           if (fullName) {
             setUsername(fullName);
-            sessionStorage.setItem("username", fullName);
+            safeSetItem("session", "username", fullName);
           }
           if (profile.avatar_url) {
+            // Full value (even base64) lives in React state; only file URLs are cached.
             setLandlordAvatar(profile.avatar_url);
-            sessionStorage.setItem("landlordAvatarUrl", profile.avatar_url);
+            cacheAvatarUrl("session", "landlordAvatarUrl", profile.avatar_url);
           }
           const merged = { ...profile, ...(roleProfile || {}), role: "landlord", primary_role: "landlord" };
-          sessionStorage.setItem("currentUserProfile", JSON.stringify(merged));
-          sessionStorage.setItem("landlordCurrentProfile", JSON.stringify(merged));
+          safeSetJSON("session", "currentUserProfile", merged);
+          safeSetJSON("session", "landlordCurrentProfile", merged);
         }
       } catch (err) {}
     };

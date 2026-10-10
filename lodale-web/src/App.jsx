@@ -9,6 +9,11 @@ import {
   useLocation,
 } from "react-router-dom";
 import PageLoader from "./components/PageLoader";
+import { safeGetItem, safeSetItem } from "./utils/safeStorage";
+
+// Reads an auth flag from sessionStorage, then localStorage, including the
+// in-memory fallback used when a storage write failed (e.g. quota exceeded).
+const readAuth = (key) => safeGetItem("session", key) || safeGetItem("local", key);
 
 const GuestDashboard = lazy(() => import("./pages/GuestDashboard"));
 const Login = lazy(() => import("./pages/Login"));
@@ -103,11 +108,11 @@ function ScrollToTop() {
 
 function ProtectedRoute({ children }) {
   const checkAuth = () => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
-    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
+    const auth = readAuth("isAuthenticated") === "true";
+    const token = readAuth("lodale_token");
     if (!auth && !token) return false;
     const freshExpiry = (Date.now() + 24 * 60 * 60 * 1000).toString();
-    sessionStorage.setItem("sessionExpiresAt", freshExpiry);
+    safeSetItem("session", "sessionExpiresAt", freshExpiry);
     return true;
   };
 
@@ -133,10 +138,10 @@ function ProtectedRoute({ children }) {
 
 function AdminProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true" || localStorage.getItem("adminAuthenticated") === "true";
-    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
+    const auth = readAuth("isAuthenticated") === "true";
+    const role = (readAuth("userRole") || "").toLowerCase();
+    const adminAuth = readAuth("adminAuthenticated") === "true";
+    const token = readAuth("lodale_token");
 
     if (!auth && !adminAuth && !token) {
       return { isValid: false, reason: "expired_or_logged_out" };
@@ -145,8 +150,8 @@ function AdminProtectedRoute({ children }) {
       return { isValid: false, reason: "wrong_role" };
     }
     const freshExpiry = (Date.now() + 24 * 60 * 60 * 1000).toString();
-    sessionStorage.setItem("sessionExpiresAt", freshExpiry);
-    localStorage.setItem("sessionExpiresAt", freshExpiry);
+    safeSetItem("session", "sessionExpiresAt", freshExpiry);
+    safeSetItem("local", "sessionExpiresAt", freshExpiry);
     return { isValid: true };
   };
 
@@ -169,10 +174,10 @@ function AdminProtectedRoute({ children }) {
 
 function LandlordProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true" || localStorage.getItem("adminAuthenticated") === "true";
-    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
+    const auth = readAuth("isAuthenticated") === "true";
+    const role = (readAuth("userRole") || "").toLowerCase();
+    const adminAuth = readAuth("adminAuthenticated") === "true";
+    const token = readAuth("lodale_token");
 
     if (!auth && !adminAuth && !token) {
       return { isValid: false, reason: "expired_or_logged_out" };
@@ -181,8 +186,8 @@ function LandlordProtectedRoute({ children }) {
       return { isValid: false, reason: "wrong_role" };
     }
     const freshExpiry = (Date.now() + 24 * 60 * 60 * 1000).toString();
-    sessionStorage.setItem("sessionExpiresAt", freshExpiry);
-    localStorage.setItem("sessionExpiresAt", freshExpiry);
+    safeSetItem("session", "sessionExpiresAt", freshExpiry);
+    safeSetItem("local", "sessionExpiresAt", freshExpiry);
     return { isValid: true };
   };
 
@@ -214,10 +219,10 @@ function LandlordProtectedRoute({ children }) {
 
 function TenantProtectedRoute({ children }) {
   const checkCurrentTabAuth = () => {
-    const auth = sessionStorage.getItem("isAuthenticated") === "true" || localStorage.getItem("isAuthenticated") === "true";
-    const role = (sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || "").toLowerCase();
-    const adminAuth = sessionStorage.getItem("adminAuthenticated") === "true" || localStorage.getItem("adminAuthenticated") === "true";
-    const token = sessionStorage.getItem("lodale_token") || localStorage.getItem("lodale_token");
+    const auth = readAuth("isAuthenticated") === "true";
+    const role = (readAuth("userRole") || "").toLowerCase();
+    const adminAuth = readAuth("adminAuthenticated") === "true";
+    const token = readAuth("lodale_token");
 
     if (!auth && !adminAuth && !token) {
       return { isValid: false, reason: "expired_or_logged_out" };
@@ -226,8 +231,8 @@ function TenantProtectedRoute({ children }) {
       return { isValid: false, reason: "wrong_role" };
     }
     const freshExpiry = (Date.now() + 24 * 60 * 60 * 1000).toString();
-    sessionStorage.setItem("sessionExpiresAt", freshExpiry);
-    localStorage.setItem("sessionExpiresAt", freshExpiry);
+    safeSetItem("session", "sessionExpiresAt", freshExpiry);
+    safeSetItem("local", "sessionExpiresAt", freshExpiry);
     return { isValid: true };
   };
 

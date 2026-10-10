@@ -27,6 +27,7 @@ import { profileService } from "../../services/profileService";
 import { leaseService } from "../../services/leaseService";
 import { INCOME_RANGES } from "../../utils/incomeRanges";
 import "./TenantSettings.css";
+import { safeSetItem, safeSetJSON, cacheAvatarUrl } from "../../utils/safeStorage";
 
 // One-time cleanup: strip base64 avatar data from bloated tenantProfile_ localStorage entries
 // This runs synchronously on module load to free space before any component renders
@@ -213,8 +214,8 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           dob: formattedDob,
           date_of_birth: formattedDob
         };
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(fullSync));
-        sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(fullSync));
+        safeSetJSON("session", "currentUserProfile", fullSync);
+        safeSetJSON("session", "tenantCurrentProfile", fullSync);
       } catch (err) {
         console.warn("Failed to fetch tenant profile:", err);
       }
@@ -255,7 +256,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
           const updatedProf = { ...userProfile, avatar_url: finalUrl };
           setUserProfile(updatedProf);
 
-          sessionStorage.setItem("tenantAvatarUrl", finalUrl);
+          cacheAvatarUrl("session", "tenantAvatarUrl", finalUrl);
           onAvatarChange?.(finalUrl);
           onProfileUpdate?.(undefined, finalUrl);
 
@@ -317,7 +318,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
             if (updatedProfile) {
               const serverName = `${updatedProfile.first_name || firstName || ""} ${updatedProfile.last_name || lastName || ""}`.trim();
               if (serverName) {
-                sessionStorage.setItem("username", serverName);
+                safeSetItem("session", "username", serverName);
               }
               const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || email || "").toLowerCase();
               const fullMergedProf = {
@@ -344,10 +345,10 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
                 date_of_birth: formatDobForDisplay(dob),
                 dob: formatDobForDisplay(dob)
               };
-              sessionStorage.setItem("currentUserProfile", JSON.stringify(fullMergedProf));
-              sessionStorage.setItem("tenantCurrentProfile", JSON.stringify(fullMergedProf));
+              safeSetJSON("session", "currentUserProfile", fullMergedProf);
+              safeSetJSON("session", "tenantCurrentProfile", fullMergedProf);
               if (emailKey) {
-                localStorage.setItem("tenantProfile_" + emailKey, JSON.stringify(fullMergedProf));
+                safeSetJSON("local", "tenantProfile_" + emailKey, fullMergedProf);
               }
               
               window.dispatchEvent(new CustomEvent("tenantProfileUpdated", { detail: { name: serverName, avatar: avatarUrl } }));

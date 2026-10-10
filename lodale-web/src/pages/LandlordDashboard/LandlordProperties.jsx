@@ -13,6 +13,7 @@ import UploadProofModal from "./components/UploadProofModal";
 import Avatar from "../../components/Avatar";
 import { getPropertyStatus, getPropertyVacancyInfo } from "../../utils/landlordMetrics";
 import "./LandlordProperties.css";
+import { safeSetJSON } from "../../utils/safeStorage";
 
 
 
@@ -439,7 +440,7 @@ export default function LandlordProperties() {
             p.id !== propertyToDelete.id &&
             (p.title || "").trim().toLowerCase() !== (propertyToDelete.title || "").trim().toLowerCase()
           );
-          sessionStorage.setItem(userKey, JSON.stringify(cleanSession));
+          safeSetJSON("session", userKey, cleanSession);
         }
       } catch (e) {}
 
@@ -508,17 +509,9 @@ export default function LandlordProperties() {
               setProperties(finalList);
               const userKey = "landlord_properties_" + (currentUserId || userEmail);
               try {
-                const lightweightList = finalList.map(p => {
-                  if (!p) return p;
-                  const clean = { ...p };
-                  if (typeof clean.cover_image === 'string' && clean.cover_image.length > 2000) delete clean.cover_image;
-                  if (typeof clean.ownership_doc === 'string' && clean.ownership_doc.length > 2000) delete clean.ownership_doc;
-                  if (Array.isArray(clean.images)) clean.images = clean.images.filter(img => typeof img === 'string' && img.length <= 2000);
-                  return clean;
-                });
-                sessionStorage.setItem(userKey, JSON.stringify(lightweightList));
+                safeSetJSON("session", userKey, finalList);
               } catch (storageErr) {
-                console.warn("Storage quota exceeded for landlord_properties session cache:", storageErr);
+                console.warn("Storage quota handling for landlord_properties session cache:", storageErr);
               }
             } else {
               setProperties([]);

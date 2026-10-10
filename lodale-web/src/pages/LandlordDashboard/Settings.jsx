@@ -9,6 +9,7 @@ import { leaseService } from "../../services/leaseService";
 import { reminderService } from "../../services/reminderService";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import "./Settings.css";
+import { safeSetItem, safeSetJSON } from "../../utils/safeStorage";
 
 const ToggleSwitch = ({ checked, onChange, label }) => (
   <label className="inline-flex items-center gap-3 cursor-pointer select-none">
@@ -183,8 +184,8 @@ export default function Settings({ onShowReportModal }) {
           role: "landlord",
           primary_role: "landlord"
         };
-        sessionStorage.setItem("currentUserProfile", JSON.stringify(merged));
-        sessionStorage.setItem("landlordCurrentProfile", JSON.stringify(merged));
+        safeSetJSON("session", "currentUserProfile", merged);
+        safeSetJSON("session", "landlordCurrentProfile", merged);
       } catch (err) {
         console.warn("Failed to fetch landlord profile", err);
       }
@@ -319,13 +320,13 @@ export default function Settings({ onShowReportModal }) {
       };
 
       setUserProfile(updatedProf);
-      sessionStorage.setItem("currentUserProfile", JSON.stringify(updatedProf));
-      sessionStorage.setItem("landlordCurrentProfile", JSON.stringify(updatedProf));
+      safeSetJSON("session", "currentUserProfile", updatedProf);
+      safeSetJSON("session", "landlordCurrentProfile", updatedProf);
       if (cleanEmail) {
-        sessionStorage.setItem("userProfile_" + cleanEmail, JSON.stringify(updatedProf));
+        safeSetJSON("session", "userProfile_" + cleanEmail, updatedProf);
       }
       if (updatedName) {
-        sessionStorage.setItem("username", updatedName);
+        safeSetItem("session", "username", updatedName);
       }
 
       const returnDest = sessionStorage.getItem("returnAfterProfileComplete");
