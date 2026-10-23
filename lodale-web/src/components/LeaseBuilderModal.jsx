@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, FileText, Calendar, DollarSign, Shield, CheckCircle2, Loader2, PenTool, AlertTriangle } from 'lucide-react';
 import Button from './Button';
 import { leaseService } from '../services/leaseService';
 import { triggerToast } from '../context/ToastContext';
 
 export default function LeaseBuilderModal({ isOpen, onClose, application, property, tenant, onSuccess }) {
-  const initialRent = property?.rent_amount || property?.price || 0;
+  const initialRent = Number(property?.rent_amount ?? property?.price ?? application?.propertyRentAmount ?? application?.rent_amount ?? 0);
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Default 1-year end date
@@ -13,7 +13,7 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
   defaultEnd.setFullYear(defaultEnd.getFullYear() + 1);
   const defaultEndStr = defaultEnd.toISOString().split('T')[0];
 
-  const propertyDefaultPeriod = property?.rent_period || 'annually';
+  const propertyDefaultPeriod = property?.rent_period || application?.propertyRentPeriod || 'annually';
 
   const [startDate, setStartDate] = useState(tenant?.preferred_move_in_date || todayStr);
   const [endDate, setEndDate] = useState(defaultEndStr);
@@ -27,7 +27,76 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
   const [signature, setSignature] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Synchronize modal state whenever modal is opened or target context changes
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const resolvedRent = Number(
+      property?.rent_amount ?? 
+      property?.rentAmount ?? 
+      property?.price ?? 
+      application?.propertyRentAmount ?? 
+      application?.property_rent_amount ?? 
+      application?.rent_amount ?? 
+      application?.rentAmount ?? 
+      0
+    );
+    setRentAmount(resolvedRent);
+
+    const resolvedPeriod = 
+      property?.rent_period || 
+      property?.rentPeriod || 
+      application?.propertyRentPeriod || 
+      application?.rent_period || 
+      'annually';
+    setRentPeriod(resolvedPeriod);
+
+    const resolvedStart = 
+      tenant?.preferred_move_in_date || 
+      application?.moveInDate || 
+      application?.move_in_date || 
+      application?.desiredMoveInDate || 
+      todayStr;
+    setStartDate(resolvedStart);
+
+    try {
+      const d = new Date(resolvedStart);
+      if (!isNaN(d.getTime())) {
+        d.setFullYear(d.getFullYear() + 1);
+        setEndDate(d.toISOString().split('T')[0]);
+      } else {
+        setEndDate(defaultEndStr);
+      }
+    } catch {
+      setEndDate(defaultEndStr);
+    }
+
+    const resolvedDeposit = Number(
+      property?.security_deposit ?? 
+      property?.securityDeposit ?? 
+      application?.securityDeposit ?? 
+      0
+    );
+    setSecurityDeposit(resolvedDeposit);
+    setSignature('');
+  }, [isOpen, application, property, tenant]);
+
   if (!isOpen || !application) return null;
+
+  const applicantName = 
+    tenant?.full_name || 
+    tenant?.name || 
+    (application?.tenant ? `${application.tenant.first_name || application.tenant.firstName || ''} ${application.tenant.last_name || application.tenant.lastName || ''}`.trim() : '') ||
+    (application?.tenantFirstName ? `${application.tenantFirstName} ${application.tenantLastName || ''}`.trim() : '') ||
+    application?.tenant_name || 
+    application?.tenantName || 
+    'Tenant Candidate';
+
+  const propertyTitle = 
+    property?.title || 
+    application?.propertyTitle || 
+    application?.property?.title || 
+    'Property';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,17 +105,47 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
       return;
     }
 
+    const resolvedPropertyId = property?.id || application?.propertyId || application?.property_id;
+    const resolvedTenantId = application?.tenantId || application?.tenant_id || tenant?.id || tenant?.userId || application?.tenant?.id;
+    const resolvedApplicationId = application?.id;
+    const finalRentAmount = Number(rentAmount);
+
+    if (!resolvedPropertyId) {
+      triggerToast('Unable to identify property for this application. Please refresh and try again.', 'error', 'Missing Property Context');
+      return;
+    }
+
+    if (!resolvedTenantId) {
+      triggerToast('Unable to identify tenant for this application. Please refresh and try again.', 'error', 'Missing Tenant Context');
+      return;
+    }
+
+    if (!resolvedApplicationId) {
+      triggerToast('Unable to identify active application ID. Please refresh and try again.', 'error', 'Missing Application Context');
+      return;
+    }
+
+    if (!finalRentAmount || finalRentAmount <= 0) {
+      triggerToast('Please specify an agreed rent amount greater than 0.', 'warning', 'Invalid Rent');
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      triggerToast('Please provide valid start and end dates for the tenancy.', 'warning', 'Invalid Dates');
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await leaseService.generateLease({
-        propertyId: property?.id || application?.propertyId || application?.property_id,
-        tenantId: application?.tenantId || application?.tenant_id || tenant?.id || tenant?.userId,
-        applicationId: application?.id,
+        propertyId: resolvedPropertyId,
+        tenantId: resolvedTenantId,
+        applicationId: resolvedApplicationId,
         startDate,
         endDate,
-        rentAmount: Number(rentAmount),
-        rentPeriod,
-        securityDeposit: Number(securityDeposit),
+        rentAmount: finalRentAmount,
+        rentPeriod: rentPeriod || 'annually',
+        securityDeposit: Number(securityDeposit) || 0,
         customClauses,
         includePets,
         includeSmoking,
@@ -80,7 +179,7 @@ export default function LeaseBuilderModal({ isOpen, onClose, application, proper
             <div>
               <h2 className="text-xl font-bold text-ink-900 dark:text-white">Generate Residential Lease</h2>
               <p className="text-xs text-ink-600 dark:text-cream-100/70">
-                Applicant: <span className="font-semibold text-moss-700 dark:text-[#E5C583]">{application.tenant_name || 'Tenant Candidate'}</span> • Property: {property?.title || 'Property'}
+                Applicant: <span className="font-semibold text-moss-700 dark:text-[#E5C583]">{applicantName}</span> • Property: {propertyTitle}
               </p>
             </div>
           </div>

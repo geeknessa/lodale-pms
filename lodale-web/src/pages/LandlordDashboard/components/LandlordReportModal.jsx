@@ -1,6 +1,6 @@
 import { X, Printer, Download, FileText, CheckCircle2, Building2, ShieldCheck } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
-import { calculatePortfolioMetrics, getPropertyStatus } from "../../../utils/landlordMetrics";
+import { calculatePortfolioMetrics, getPropertyStatus, parseRentAmount } from "../../../utils/landlordMetrics";
 import { formatCurrency, getRentPeriodSuffix } from "../../../utils/formatters";
 
 export default function LandlordReportModal({ isOpen, onClose, username, properties = [], leases = [], invoices = [] }) {
@@ -46,11 +46,13 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
 
   const verifiedPercentage = totalProperties > 0 ? Math.round((verifiedCount / totalProperties) * 100) : 100;
 
-  // Revenue calculation
+  // Revenue calculation (exclude missing or unparseable rents from totals)
   let totalAnnualRent = 0;
   safeProperties.forEach(p => {
-    const rawVal = Number(String(p.price || p.rent_amount || "0").replace(/[^0-9]/g, ""));
-    totalAnnualRent += rawVal;
+    const rawVal = parseRentAmount(p.rent_amount ?? p.price);
+    if (rawVal !== null) {
+      totalAnnualRent += rawVal;
+    }
   });
 
   const handlePrint = () => {
@@ -211,7 +213,10 @@ export default function LandlordReportModal({ isOpen, onClose, username, propert
                           <td className="p-3 font-bold">{p.title}</td>
                           <td className="p-3 text-slate-500 dark:text-slate-400">{p.location}</td>
                           <td className="p-3 font-bold text-moss-700 dark:text-[#E5C583]">
-                            {formatCurrency(p.rent_amount || p.price, getRentPeriodSuffix(p.rent_period))}
+                            {(() => {
+                              const parsed = parseRentAmount(p.rent_amount ?? p.price);
+                              return parsed !== null ? formatCurrency(parsed, getRentPeriodSuffix(p.rent_period)) : "—";
+                            })()}
                           </td>
                           <td className="p-3">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${details.badgeClass}`}>

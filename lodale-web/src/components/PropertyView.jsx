@@ -38,13 +38,19 @@ export function PropertyDetailView() {
     const fetchLandlordRating = async () => {
       if (targetLandlordId && targetLandlordId !== "landlord_default") {
         try {
-          const res = await ratingService.getLandlordReviews(targetLandlordId);
+          const res = await ratingService.getLandlordReviews(targetLandlordId, true);
           if (isMounted && res) setLandlordRatingData(res);
         } catch (e) {}
       }
     };
     fetchLandlordRating();
-    return () => { isMounted = false; };
+    window.addEventListener("landlordRatingUpdated", fetchLandlordRating);
+    window.addEventListener("ratingsUpdated", fetchLandlordRating);
+    return () => {
+      isMounted = false;
+      window.removeEventListener("landlordRatingUpdated", fetchLandlordRating);
+      window.removeEventListener("ratingsUpdated", fetchLandlordRating);
+    };
   }, [targetLandlordId]);
 
   const { 
@@ -161,7 +167,7 @@ export function PropertyDetailView() {
 
   const allImages = property.images && property.images.length > 0
     ? property.images
-    : (property.cover_image ? [property.cover_image] : ['/src/assets/skyline_apartment.png']);
+    : (property.cover_image ? [property.cover_image] : ['/skyline_apartment.png']);
 
   const currentImage = allImages[activeImageIndex] || allImages[0];
 
@@ -334,7 +340,7 @@ export function PropertyDetailView() {
               src={currentImage}
               alt={property.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              onError={(e) => { e.target.onerror = null; e.target.src = '/src/assets/skyline_apartment.png'; }}
+              onError={(e) => { e.target.onerror = null; e.target.src = '/skyline_apartment.png'; }}
             />
             <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
               <span className="bg-black/70 text-white backdrop-blur-md text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 shadow-xl border border-white/20">
@@ -702,7 +708,7 @@ export function PropertyDetailView() {
               src={(lightboxImagesOverride || allImages)[lightboxIndex] || (lightboxImagesOverride || allImages)[0]}
               alt={`${property.title} full view`}
               className="max-h-[85vh] max-w-full object-contain rounded-xl shadow-2xl transition-all duration-300"
-              onError={(e) => { e.target.onerror = null; e.target.src = '/src/assets/skyline_apartment.png'; }}
+              onError={(e) => { e.target.onerror = null; e.target.src = '/skyline_apartment.png'; }}
             />
 
             {(lightboxImagesOverride || allImages).length > 1 && (
@@ -828,7 +834,7 @@ function UnitDetailModal({ unit, property, currentUserRole, onClose, onApply, on
   const unitImages = Array.isArray(unit.images) && unit.images.length > 0
     ? unit.images.map(img => (typeof img === 'object' ? img.url : img))
     : [];
-  const mainUnitImage = unitImages[0] || '/src/assets/skyline_apartment.png';
+  const mainUnitImage = unitImages[0] || '/skyline_apartment.png';
   const cleanString = (str) => typeof str === 'string' ? str.replace(/^[{"]+|[}"]+$/g, '').trim() : str; const unitFeatures = Array.isArray(unit.features)
     ? unit.features.map(cleanString)
     : (Array.isArray(unit.amenities)
@@ -853,7 +859,7 @@ function UnitDetailModal({ unit, property, currentUserRole, onClose, onApply, on
             src={mainUnitImage}
             alt={unit.unit_name}
             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={(e) => { e.target.onerror = null; e.target.src = '/src/assets/skyline_apartment.png'; }}
+            onError={(e) => { e.target.onerror = null; e.target.src = '/skyline_apartment.png'; }}
           />
           <button
             onClick={(e) => {

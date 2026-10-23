@@ -26,7 +26,22 @@ export const profileService = {
         method: 'PUT',
         body: profileData
       });
-      return data.profile;
+      const prof = data?.profile || {};
+      const paystackLinked = Boolean(data?.paystackLinked ?? prof?.paystackLinked ?? data?.subaccount_linked);
+      const paystackSubaccountCode = paystackLinked
+        ? (data?.paystackSubaccountCode || prof?.paystackSubaccountCode || prof?.paystack_subaccount_code || null)
+        : null;
+      const paystackError = data?.paystackError || data?.payout_error || prof?.paystackError || prof?.payout_error || null;
+
+      return {
+        ...prof,
+        profile: prof,
+        paystackLinked,
+        paystackSubaccountCode,
+        paystackError,
+        subaccount_linked: paystackLinked,
+        payout_error: paystackError,
+      };
     } catch (err) {
       console.warn('[profileService.updateMyProfile error]:', err.message);
       throw err;

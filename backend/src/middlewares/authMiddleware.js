@@ -6,6 +6,10 @@ if (!JWT_SECRET) {
   console.error('[FATAL] JWT_SECRET environment variable is required.');
   process.exit(1);
 }
+if (process.env.NODE_ENV === 'production' && JWT_SECRET.length < 32) {
+  console.error('[FATAL] In production, JWT_SECRET must be at least 32 characters long.');
+  process.exit(1);
+}
 
 // In-memory cache for user account status (30-60s TTL)
 const userStatusCache = new Map();
@@ -27,15 +31,10 @@ export const requireAuth = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Attach user to request object
+    // Attach initial user info from token
     req.user = decoded;
 
-    // Admin account must never be locked out
-    if (decoded.role === 'admin' || decoded.primary_role === 'admin') {
-      return next();
-    }
-
-    // Check account_status in DB/cache
+    // Check account_status and role in DB/cache
     const userId = decoded.id;
     let userRecord = null;
     const now = Date.now();
@@ -63,9 +62,17 @@ export const requireAuth = async (req, res, next) => {
         userStatusCache.set(userId, userRecord);
       } catch (dbErr) {
         console.error('[authMiddleware] DB error checking user status:', dbErr.message);
-        return next();
+        return res.status(503).json({ error: 'Service temporarily unavailable' });
       }
     }
+
+    // DB role is the source of truth for req.user.role (keep id/email from token)
+    const effectiveRole = userRecord.role || decoded.role;
+    req.user = {
+      ...decoded,
+      role: effectiveRole,
+      primary_role: effectiveRole
+    };
 
     if (userRecord.role === 'admin') {
       return next();

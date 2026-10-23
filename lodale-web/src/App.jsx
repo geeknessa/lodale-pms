@@ -18,6 +18,8 @@ const readAuth = (key) => safeGetItem("session", key) || safeGetItem("local", ke
 const GuestDashboard = lazy(() => import("./pages/GuestDashboard"));
 const Login = lazy(() => import("./pages/Login"));
 const SignUp = lazy(() => import("./pages/SignUp"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Application = lazy(() => import("./pages/Application"));
 const AccessDenied = lazy(() => import("./pages/AccessDenied"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard/AdminDashboard"));
@@ -340,6 +342,8 @@ export default function App() {
                 <Route path="/about" element={<Navigate to="/explore" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<SignUp />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/verify" element={<Navigate to="/signup" replace />} />
                 <Route path="/admin/login" element={<Login />} />
                 <Route path="/access-denied" element={<AccessDenied />} />

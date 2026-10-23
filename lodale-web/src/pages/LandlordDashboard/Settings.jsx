@@ -7,9 +7,11 @@ import { userService } from "../../services/userService";
 import { profileService } from "../../services/profileService";
 import { leaseService } from "../../services/leaseService";
 import { reminderService } from "../../services/reminderService";
+import { rentService } from "../../services/rentService";
 import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import "./Settings.css";
-import { safeSetItem, safeSetJSON } from "../../utils/safeStorage";
+import { safeSetItem, safeSetJSON, cacheAvatarUrl } from "../../utils/safeStorage";
+import { resolveAvatarUrl } from "../../utils/avatarUtils";
 
 const ToggleSwitch = ({ checked, onChange, label }) => (
   <label className="inline-flex items-center gap-3 cursor-pointer select-none">
@@ -95,11 +97,14 @@ export default function Settings({ onShowReportModal }) {
   const [location, setLocation] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
 
   // Bank Account State for Rent Payouts
   const [bankName, setBankName] = useState("");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [bankAccountName, setBankAccountName] = useState("");
+  const [paystackSubaccountCode, setPaystackSubaccountCode] = useState("");
+  const [banksList, setBanksList] = useState([]);
 
   const loadStoredProfile = () => {
     const rawStored = sessionStorage.getItem("currentUserProfile") || sessionStorage.getItem("landlordCurrentProfile");
@@ -118,6 +123,8 @@ export default function Settings({ onShowReportModal }) {
         if (p.bank_name) setBankName(p.bank_name);
         if (p.bank_account_number) setBankAccountNumber(p.bank_account_number);
         if (p.bank_account_name) setBankAccountName(p.bank_account_name);
+        const isStoredLinked = Boolean(p.paystackLinked !== false && p.paystack_subaccount_code);
+        setPaystackSubaccountCode(isStoredLinked ? p.paystack_subaccount_code : "");
         if (p.avatar_url || p.avatar) setAvatarUrl(p.avatar_url || p.avatar);
       } catch (e) {}
     } else {
@@ -132,6 +139,12 @@ export default function Settings({ onShowReportModal }) {
 
   useEffect(() => {
     loadStoredProfile();
+
+    rentService.getBanks().then((banks) => {
+      if (Array.isArray(banks) && banks.length > 0) {
+        setBanksList(banks);
+      }
+    });
 
     async function fetchProfile() {
       try {
@@ -158,6 +171,8 @@ export default function Settings({ onShowReportModal }) {
           if (roleProfile.bank_name) setBankName(roleProfile.bank_name);
           if (roleProfile.bank_account_number) setBankAccountNumber(roleProfile.bank_account_number);
           if (roleProfile.bank_account_name) setBankAccountName(roleProfile.bank_account_name);
+          const isRoleLinked = Boolean(roleProfile.paystackLinked !== false && roleProfile.paystack_subaccount_code);
+          setPaystackSubaccountCode(isRoleLinked ? roleProfile.paystack_subaccount_code : "");
         }
 
         const merged = {
@@ -179,6 +194,9 @@ export default function Settings({ onShowReportModal }) {
           bank_name: roleProfile?.bank_name || bankName,
           bank_account_number: roleProfile?.bank_account_number || bankAccountNumber,
           bank_account_name: roleProfile?.bank_account_name || bankAccountName,
+          paystack_subaccount_code: roleProfile?.paystack_subaccount_code || null,
+          paystackSubaccountCode: roleProfile?.paystack_subaccount_code || null,
+          paystackLinked: Boolean(roleProfile?.paystack_subaccount_code),
           avatar: profile?.avatar_url || avatarUrl,
           avatar_url: profile?.avatar_url || avatarUrl,
           role: "landlord",
@@ -197,8 +215,8 @@ export default function Settings({ onShowReportModal }) {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        triggerToast("Image file is too large (max 5MB).", "error", "Upload Failed");
+      if (file.size > 10 * 1024 * 1024) {
+        triggerToast("Image file is too large (max 10MB).", "error", "Upload Failed");
         return;
       }
       if (!file.type.startsWith('image/')) {
@@ -206,11 +224,35 @@ export default function Settings({ onShowReportModal }) {
         return;
       }
       const reader = new FileReader();
-      reader.onload = (evt) => {
+      reader.onload = async (evt) => {
         const base64Data = evt.target.result;
+        setAvatarLoadError(false);
         setAvatarUrl(base64Data);
-        const updatedProf = { ...userProfile, avatar: base64Data };
-        setUserProfile(updatedProf);
+
+        try {
+          const uploadedUrl = await profileService.uploadAvatar(base64Data);
+          const finalUrl = uploadedUrl || base64Data;
+          setAvatarUrl(finalUrl);
+
+          const updatedProf = { ...userProfile, avatar: finalUrl, avatar_url: finalUrl };
+          setUserProfile(updatedProf);
+
+          cacheAvatarUrl("session", "landlordAvatarUrl", finalUrl);
+          cacheAvatarUrl("local", "landlordAvatarUrl", finalUrl);
+
+          const emailKey = (sessionStorage.getItem("lastLoggedInEmail") || email || "").toLowerCase();
+          if (emailKey) {
+            cacheAvatarUrl("local", "landlordAvatar_" + emailKey, finalUrl);
+          }
+
+          window.dispatchEvent(new CustomEvent("landlordProfileUpdated", { detail: { avatar: finalUrl } }));
+          window.dispatchEvent(new Event("storage"));
+
+          triggerToast("Profile picture uploaded successfully!", "success", "Photo Updated");
+        } catch (uploadErr) {
+          console.error("Failed to upload avatar:", uploadErr);
+          triggerToast(uploadErr.message || "Failed to upload avatar.", "error", "Upload Failed");
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -276,8 +318,9 @@ export default function Settings({ onShowReportModal }) {
       const updatedName = `${firstName.trim()} ${lastName.trim()}`.trim();
       const cleanEmail = (email || sessionStorage.getItem("lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
 
+      let roleRes = null;
       try {
-        await Promise.all([
+        const [, rRes] = await Promise.all([
           userService.updateProfile({
             first_name: firstName.trim(),
             last_name: lastName.trim(),
@@ -295,8 +338,33 @@ export default function Settings({ onShowReportModal }) {
             postal_code: (postalCode || '').trim()
           })
         ]);
+        roleRes = rRes;
       } catch (apiErr) {
         console.warn("Backend updateProfile warning:", apiErr);
+      }
+
+      const isLinked = Boolean(roleRes?.paystackLinked ?? roleRes?.subaccount_linked);
+      const subCode = isLinked ? (roleRes?.paystackSubaccountCode || roleRes?.profile?.paystack_subaccount_code || roleRes?.paystack_subaccount_code) : null;
+      const payErr = roleRes?.paystackError || roleRes?.payout_error || roleRes?.profile?.paystackError;
+
+      if (isLinked && subCode) {
+        setPaystackSubaccountCode(subCode);
+      } else {
+        setPaystackSubaccountCode("");
+      }
+
+      const hasBankInput = Boolean(bankName.trim() || bankAccountNumber.trim());
+
+      if (hasBankInput && !isLinked) {
+        const errorMsg = payErr || "Could not link payout account with Paystack. Please check your bank and 10-digit NUBAN.";
+        triggerToast(`Bank saved but payout account could not be linked: ${errorMsg}`, "error", "Payout Setup Notice");
+        setSaveSuccess(false);
+      } else if (hasBankInput && isLinked) {
+        triggerToast("Profile saved and Paystack payout account linked.", "success", "Payout Account Linked");
+        setSaveSuccess(true);
+      } else {
+        triggerToast("Profile updated successfully.", "success", "Profile Saved");
+        setSaveSuccess(true);
       }
 
       const updatedProf = {
@@ -313,6 +381,12 @@ export default function Settings({ onShowReportModal }) {
         postalCode: postalCode.trim(),
         postal_code: postalCode.trim(),
         gender: gender,
+        bank_name: bankName.trim(),
+        bank_account_number: bankAccountNumber.trim(),
+        bank_account_name: bankAccountName.trim(),
+        paystack_subaccount_code: isLinked && subCode ? subCode : null,
+        paystackSubaccountCode: isLinked && subCode ? subCode : null,
+        paystackLinked: isLinked,
         avatar: avatarUrl,
         avatar_url: avatarUrl,
         role: "landlord",
@@ -324,6 +398,7 @@ export default function Settings({ onShowReportModal }) {
       safeSetJSON("session", "landlordCurrentProfile", updatedProf);
       if (cleanEmail) {
         safeSetJSON("session", "userProfile_" + cleanEmail, updatedProf);
+        safeSetJSON("local", `landlordProfile_${cleanEmail}`, updatedProf);
       }
       if (updatedName) {
         safeSetItem("session", "username", updatedName);
@@ -334,9 +409,13 @@ export default function Settings({ onShowReportModal }) {
         setReturnAction(returnDest);
         setShowCompletionModal(true);
       } else {
-        setSaveSuccess(true);
-        setToastMessage("Landlord profile saved successfully!");
-        triggerToast("Landlord profile saved successfully!", "success", "Profile Saved");
+        if (!hasBankInput || isLinked) {
+          setSaveSuccess(true);
+          setToastMessage("Landlord profile saved successfully!");
+        } else {
+          setSaveSuccess(false);
+          setToastMessage("");
+        }
         if (sessionStorage.getItem("isNewSignUpProfileComplete") === "true") {
           sessionStorage.removeItem("isNewSignUpProfileComplete");
           setTimeout(() => {
@@ -476,9 +555,21 @@ export default function Settings({ onShowReportModal }) {
         <div className="set-ref-left">
           <div className="set-ref-profile-box">
             <div className="set-ref-avatar-wrapper" onClick={() => fileInputRef.current?.click()} title="Click to upload a new photo">
-              <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-[#3A5A40]/10 dark:bg-[#07130D] text-[#2C4633] dark:text-[#E5C583] border-4 border-neutral-200 dark:border-white/10 cursor-pointer">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt="Landlord Profile" className="h-full w-full object-cover" />
+              <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-[#3A5A40]/10 dark:bg-[#07130D] text-[#2C4633] dark:text-[#E5C583] border-4 border-neutral-200 dark:border-white/10 cursor-pointer font-bold text-xl">
+                {avatarUrl && !avatarLoadError ? (
+                  <img 
+                    src={resolveAvatarUrl(avatarUrl)} 
+                    alt="" 
+                    className="h-full w-full object-cover" 
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      setAvatarLoadError(true);
+                    }} 
+                  />
+                ) : (firstName || lastName) ? (
+                  <span className="select-none tracking-wider font-extrabold text-[#2C4633] dark:text-[#E5C583]">
+                    {`${(firstName || "").charAt(0)}${(lastName || "").charAt(0)}`.toUpperCase() || "L"}
+                  </span>
                 ) : (
                   <User className="h-10 w-10 text-[#2C4633] dark:text-[#E5C583]" />
                 )}
@@ -693,35 +784,78 @@ export default function Settings({ onShowReportModal }) {
 
                 {/* Banking & Payout Details (Default Account for Rent Invoices) */}
                 <div className="set-ref-input-group full pt-6 mt-4 border-t border-neutral-200 dark:border-white/10">
-                  <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <h3 className="text-sm font-bold text-ink-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                       <CreditCard className="h-4 w-4 text-moss-700 dark:text-[#E5C583]" />
-                      Banking Details (Default Account for Invoices)
+                      Paystack Payout & Banking Details
                     </h3>
                     <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-cream-100 border border-emerald-500/20">
-                      Auto-prefilled on Digital Invoices
+                      Automated Split Payouts
                     </span>
                   </div>
+
+                  {/* Paystack Subaccount Status State */}
+                  {paystackSubaccountCode ? (
+                    <div className="p-3.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-500/30 flex items-start sm:items-center justify-between gap-3 mb-4">
+                      <div className="flex items-start sm:items-center gap-2.5">
+                        <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-700 dark:text-[#E5C583] shrink-0 mt-0.5 sm:mt-0">
+                          <CheckCircle2 className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-emerald-950 dark:text-emerald-100">Paystack Payout Account Linked</span>
+                            <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-200">
+                              Verified Active
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-emerald-800 dark:text-emerald-300 mt-0.5">
+                            Official tenant rent payments will automatically route 96.5% to this account, with the 3.5% Lodale platform fee split seamlessly.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-500/30 flex items-start sm:items-center justify-between gap-3 mb-4">
+                      <div className="flex items-start sm:items-center gap-2.5">
+                        <div className="p-2 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5 sm:mt-0">
+                          <AlertTriangle className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-amber-950 dark:text-amber-100">Payout Account Setup Required</span>
+                          <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
+                            Enter your Nigerian bank name and 10-digit NUBAN account number below. Saving will automatically link and verify your account on Paystack so tenants can pay rent online.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
                     <div className="set-ref-input-group">
                       <label className="set-ref-lbl">Bank Name</label>
                       <input
                         type="text"
-                        placeholder="e.g. GTBank, Access Bank"
+                        list="paystack-banks-list"
+                        placeholder="e.g. Guaranty Trust Bank, Access Bank"
                         value={bankName}
                         onChange={(e) => setBankName(e.target.value)}
                         className="set-ref-input"
                       />
+                      <datalist id="paystack-banks-list">
+                        {banksList.map((b) => (
+                          <option key={b.code} value={b.name} />
+                        ))}
+                      </datalist>
                     </div>
                     <div className="set-ref-input-group">
-                      <label className="set-ref-lbl">Account Number</label>
+                      <label className="set-ref-lbl">Account Number (10 Digits)</label>
                       <input
                         type="text"
                         maxLength={10}
                         placeholder="e.g. 0123456789"
                         value={bankAccountNumber}
                         onChange={(e) => setBankAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                        className="set-ref-input"
+                        className="set-ref-input font-mono"
                       />
                     </div>
                     <div className="set-ref-input-group">

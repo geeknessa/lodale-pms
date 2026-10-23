@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS landlord_profiles (
     date_of_birth DATE,
     location VARCHAR(255),
     postal_code VARCHAR(50),
+    paystack_subaccount_code VARCHAR(100),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -127,9 +128,14 @@ CREATE TABLE IF NOT EXISTS property_applications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status VARCHAR(50) DEFAULT 'pending',
+    status VARCHAR(50) DEFAULT 'submitted',
     notes TEXT,
     rejection_reason TEXT,
+    landlord_reviewed_at TIMESTAMPTZ,
+    approved_at TIMESTAMPTZ,
+    declined_at TIMESTAMPTZ,
+    invoice_id UUID,
+    lease_id UUID,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(property_id, tenant_id)
@@ -156,6 +162,8 @@ CREATE TABLE IF NOT EXISTS leases (
     landlord_signed_at TIMESTAMPTZ,
     tenant_signature_ip VARCHAR(50),
     landlord_signature_ip VARCHAR(50),
+    move_in_completed_at TIMESTAMPTZ,
+    move_in_checklist JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -197,6 +205,7 @@ CREATE TABLE IF NOT EXISTS rent_invoices (
     payment_reference VARCHAR(100),
     payment_proof_url TEXT,
     paid_at TIMESTAMPTZ,
+    payment_method VARCHAR(50),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -257,11 +266,15 @@ CREATE TABLE IF NOT EXISTS property_inspections (
     property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     landlord_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
-    time VARCHAR(20) NOT NULL,
+    scheduled_date DATE,
+    scheduled_time VARCHAR(50),
+    date DATE,
+    time VARCHAR(20),
     location TEXT,
     notes TEXT,
-    status VARCHAR(50) DEFAULT 'Scheduled',
+    outcome_notes TEXT,
+    completed_at TIMESTAMPTZ,
+    status VARCHAR(50) DEFAULT 'scheduled',
     created_by VARCHAR(50) DEFAULT 'landlord',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

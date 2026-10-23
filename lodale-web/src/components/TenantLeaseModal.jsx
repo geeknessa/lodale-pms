@@ -63,7 +63,7 @@ export default function TenantLeaseModal({ isOpen, onClose, application, onSucce
       // 2. Send notification message to landlord
       const landlordId = application.landlordId || application.landlord_id || leaseData.landlord_id;
       if (landlordId) {
-        const msg = `[LEASE AGREEMENT SIGNED BY TENANT]\nProperty: ${application.propertyTitle || leaseData.property_title}\nDigital Signature: "${signatureName.trim()}"\nSigned Date: ${new Date().toLocaleDateString("en-GB")}\n\nLease agreement successfully signed. Next step: Initial rent payment and Move-in guidelines.`;
+        const msg = `[LEASE AGREEMENT SIGNED BY TENANT]\nProperty: ${application.propertyTitle || leaseData.property_title}\nDigital Signature: "${signatureName.trim()}"\nSigned Date: ${new Date().toLocaleDateString("en-GB")}\n\nLease agreement successfully signed. Next step: Move-in onboarding and guidelines.`;
         await chatService.sendMessage(landlordId, msg, application.propertyId || leaseData.property_id);
       }
 

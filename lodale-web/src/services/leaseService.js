@@ -6,16 +6,11 @@ export const leaseService = {
    * @param {object} payload - propertyId, tenantId, applicationId, startDate, endDate, rentAmount, rentPeriod, securityDeposit, customClauses, includePets, includeSmoking, includeLateFee
    */
   async generateLease(payload) {
-    try {
-      const data = await apiClient('/leases/generate', {
-        method: 'POST',
-        body: payload,
-      });
-      return data?.lease || null;
-    } catch (err) {
-      console.error("Backend generate lease error:", err);
-      return null;
-    }
+    const data = await apiClient('/leases/generate', {
+      method: 'POST',
+      body: payload,
+    });
+    return data?.lease || null;
   },
 
   /**

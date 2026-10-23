@@ -80,7 +80,7 @@ export const RatingModel = {
       raterId: row.rater_id,
       raterName: `${row.rater_first_name || ''} ${row.rater_last_name || ''}`.trim() || 'Anonymous User',
       raterEmail: row.rater_email || '',
-      raterAvatar: row.rater_avatar || '',
+      raterAvatar: (row.rater_avatar && row.rater_avatar.length < 2000 && !row.rater_avatar.startsWith('data:')) ? row.rater_avatar : '',
       rateeId: row.ratee_id,
       ratingType: row.rating_type,
       propertyId: row.property_id,

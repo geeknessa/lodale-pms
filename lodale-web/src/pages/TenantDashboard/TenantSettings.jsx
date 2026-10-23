@@ -23,6 +23,7 @@ import NigerianLocationSelect from "../../components/NigerianLocationSelect";
 import SearchableOccupationSelect from "../../components/SearchableOccupationSelect";
 import { triggerToast } from "../../context/ToastContext";
 import { userService } from "../../services/userService";
+import { resolveAvatarUrl } from "../../utils/avatarUtils";
 import { profileService } from "../../services/profileService";
 import { leaseService } from "../../services/leaseService";
 import { INCOME_RANGES } from "../../utils/incomeRanges";
@@ -100,14 +101,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
   const [occupation, setOccupation] = useState("");
   const [income, setIncome] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
-
-  const resolveAvatarUrl = (url) => {
-    if (!url) return "";
-    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) return url;
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-    const serverBase = apiBase.replace(/\/api\/?$/, '');
-    return `${serverBase}${url.startsWith("/") ? "" : "/"}${url}`;
-  };
+  const [avatarLoadError, setAvatarLoadError] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -246,6 +240,7 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
       const reader = new FileReader();
       reader.onload = async (evt) => {
         const base64Data = evt.target.result;
+        setAvatarLoadError(false);
         setAvatarUrl(base64Data);
 
         try {
@@ -819,9 +814,21 @@ export default function TenantSettings({ onSignOut, currentAvatar, onAvatarChang
       <div className="settings-sidebar-card">
         <div className="settings-profile-section">
           <div className="settings-avatar-container" onClick={handleAvatarClick} title="Click to upload a new photo">
-            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] border-4 border-neutral-200 dark:border-white/10">
-              {avatarUrl ? (
-                <img src={resolveAvatarUrl(avatarUrl)} alt="User Profile" className="h-full w-full object-cover" />
+            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] border-4 border-neutral-200 dark:border-white/10 font-bold text-xl">
+              {avatarUrl && !avatarLoadError ? (
+                <img 
+                  src={resolveAvatarUrl(avatarUrl)} 
+                  alt="" 
+                  className="h-full w-full object-cover" 
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                    setAvatarLoadError(true);
+                  }} 
+                />
+              ) : (firstName || lastName) ? (
+                <span className="select-none tracking-wider font-extrabold text-moss-800 dark:text-[#E5C583]">
+                  {`${(firstName || "").charAt(0)}${(lastName || "").charAt(0)}`.toUpperCase() || "T"}
+                </span>
               ) : (
                 <User className="h-10 w-10 text-moss-700 dark:text-[#E5C583]" />
               )}

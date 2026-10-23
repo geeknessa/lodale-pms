@@ -149,6 +149,17 @@ export async function handlePropertySubmit({
     return false;
   }
 
+  if (isMultiUnit && unitsList && unitsList.length > 0) {
+    const hasInvalidRent = unitsList.some((u) => {
+      const r = Number(String(u.rent_amount || "").replace(/[^0-9.]/g, ""));
+      return isNaN(r) || r <= 0;
+    });
+    if (hasInvalidRent) {
+      setFormError("Please enter a valid rent amount for all units before submitting.");
+      return false;
+    }
+  }
+
   if (!docName || !docName.trim()) {
     setFormError("Please upload your proof of ownership or management legal document (PDF / Image) before submitting.");
     return false;

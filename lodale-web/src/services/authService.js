@@ -32,8 +32,14 @@ export const authService = {
 
     if (data.token) {
       safeSetItem('session', 'lodale_token', data.token);
+      safeSetItem('local', 'lodale_token', data.token);
+      if (data.user?.id) {
+        safeSetItem('session', 'db_user_id', data.user.id);
+        safeSetItem('local', 'db_user_id', data.user.id);
+      }
       // Inline (base64) avatars are stripped before caching to stay under quota.
       safeSetJSON('session', 'lodale_user', data.user);
+      safeSetJSON('local', 'lodale_user', data.user);
     }
     return data;
   },
@@ -61,5 +67,26 @@ export const authService = {
       safeRemoveItem('session', 'lodale_user');
       return null;
     }
+  },
+
+  /**
+   * Request password reset instructions
+   */
+  async forgotPassword({ email }) {
+    return apiClient('/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+    });
+  },
+
+  /**
+   * Reset password with token or code
+   */
+  async resetPassword(payload) {
+    // payload is either { token, newPassword } or { email, code, newPassword }
+    return apiClient('/auth/reset-password', {
+      method: 'POST',
+      body: payload,
+    });
   },
 };

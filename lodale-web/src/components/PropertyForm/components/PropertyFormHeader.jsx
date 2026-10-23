@@ -1,5 +1,6 @@
 import { ArrowLeft, Bell, BellOff, HelpCircle } from "lucide-react";
 import { Logo } from "../../Logo";
+import { resolveAvatarUrl } from "../../../utils/avatarUtils";
 
 export default function PropertyFormHeader({
   isStandalone,
@@ -145,7 +146,14 @@ export default function PropertyFormHeader({
           >
             <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center bg-[#2C4633] dark:bg-[#07130D] text-[#E5C583] font-extrabold text-sm border-2 border-emerald-400/40 shadow-xs shrink-0">
               {landlordAvatar ? (
-                <img src={landlordAvatar} alt="Landlord profile" className="h-full w-full object-cover" />
+                <img
+                  src={resolveAvatarUrl(landlordAvatar)}
+                  alt="Landlord profile"
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
               ) : (
                 <span>{username ? username.charAt(0).toUpperCase() : "L"}</span>
               )}

@@ -83,4 +83,52 @@ export const applicationService = {
       return { success: true, message: "Application removed." };
     }
   },
+
+  /**
+   * Get complete application detail with nested invoice, lease, and inspection.
+   */
+  async getApplicationById(applicationId) {
+    const data = await apiClient(`/applications/${applicationId}`);
+    return data.application;
+  },
+
+  /**
+   * Tenant requests an optional inspection.
+   */
+  async requestInspection(applicationId, { date, time, notes } = {}) {
+    return await apiClient(`/applications/${applicationId}/inspections/request`, {
+      method: 'POST',
+      body: { date, time, notes },
+    });
+  },
+
+  /**
+   * Landlord schedules inspection date, time, location.
+   */
+  async scheduleInspection(applicationId, { date, time, location, notes } = {}) {
+    return await apiClient(`/applications/${applicationId}/inspections/schedule`, {
+      method: 'POST',
+      body: { date, time, location, notes },
+    });
+  },
+
+  /**
+   * Landlord completes inspection outcome (completed_passed, completed_failed, cancelled).
+   */
+  async updateInspectionOutcome(applicationId, inspId, { status, outcomeNotes } = {}) {
+    return await apiClient(`/applications/${applicationId}/inspections/${inspId}`, {
+      method: 'PATCH',
+      body: { status, outcomeNotes },
+    });
+  },
+
+  /**
+   * Landlord marks move-in checklist complete and activates tenancy.
+   */
+  async completeMoveIn(applicationId, { checklist, notes, moveInDate } = {}) {
+    return await apiClient(`/applications/${applicationId}/move-in`, {
+      method: 'POST',
+      body: { checklist, notes, moveInDate },
+    });
+  },
 };

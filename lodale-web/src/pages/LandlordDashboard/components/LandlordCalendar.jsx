@@ -4,6 +4,7 @@ import Button from '../../../components/Button';
 import { reminderService } from '../../../services/reminderService';
 import { inspectionService } from '../../../services/inspectionService';
 import { triggerToast } from '../../../context/ToastContext';
+import { parseRentAmount } from '../../../utils/landlordMetrics';
 
 const ToggleSwitch = ({ checked, onChange, label }) => (
   <label className="inline-flex items-center gap-3 cursor-pointer select-none">
@@ -432,7 +433,12 @@ export default function LandlordCalendar({ activeTenants = [] }) {
                   
                   {event.type === 'rent_due' && (
                     <div className="flex items-center justify-between pt-3 border-t border-ink-200 dark:border-white/10">
-                      <span className="text-[11px] font-bold text-moss-700 dark:text-[#E5C583]">₦{Number(event.tenant.rentAmount || 2500000).toLocaleString()}/yr</span>
+                      <span className="text-[11px] font-bold text-moss-700 dark:text-[#E5C583]">
+                        {(() => {
+                          const parsed = parseRentAmount(event.tenant?.rentAmount ?? event.tenant?.rent_amount ?? event.tenant?.rent);
+                          return parsed !== null ? `₦${parsed.toLocaleString()}/yr` : "—";
+                        })()}
+                      </span>
                       <Button onClick={() => handleSendManualRentReminder(event.tenant)} disabled={manualDispatchingId === event.tenant.id} className="px-3 py-1.5 text-[10px] font-bold flex items-center gap-1">
                         <Send className="w-3 h-3" /> {manualDispatchingId === event.tenant.id ? 'Sending...' : 'Remind'}
                       </Button>

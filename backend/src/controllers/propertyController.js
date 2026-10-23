@@ -66,9 +66,13 @@ export const propertyController = {
     const formatted = properties.map(p => {
       const amenities = Array.isArray(p.fetched_amenities) && p.fetched_amenities.length > 0 && p.fetched_amenities[0] !== null ? p.fetched_amenities : [];
       let parsedImages = [];
-      try { parsedImages = typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []); } catch(e) {}
+      try {
+        parsedImages = typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []);
+      } catch (e) {
+        console.warn(`[propertyController:getProperties] Failed to parse images for property ${p?.id}:`, e.message);
+      }
       
-      const actualCoverImage = p.cover_image || p.fetched_cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
+      const actualCoverImage = p.cover_image || p.fetched_cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || null;
 
       const formattedProp = {
         ...p,
@@ -100,9 +104,13 @@ export const propertyController = {
       const units = Array.isArray(p.fetched_units) && p.fetched_units.length > 0 && p.fetched_units[0] !== null ? p.fetched_units : [];
       
       let parsedImages = [];
-      try { parsedImages = typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []); } catch(e) {}
+      try {
+        parsedImages = typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []);
+      } catch (e) {
+        console.warn(`[propertyController:getPropertiesByLandlord] Failed to parse images for property ${p?.id}:`, e.message);
+      }
       
-      const actualCoverImage = p.cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
+      const actualCoverImage = p.cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || null;
 
       return {
         ...p,
@@ -142,9 +150,13 @@ export const propertyController = {
     const units = Array.isArray(property.fetched_units) && property.fetched_units.length > 0 && property.fetched_units[0] !== null ? property.fetched_units : [];
 
     let parsedImages = [];
-    try { parsedImages = typeof property.images === 'string' ? JSON.parse(property.images) : (property.images || []); } catch(e) {}
+    try {
+      parsedImages = typeof property.images === 'string' ? JSON.parse(property.images) : (property.images || []);
+    } catch (e) {
+      console.warn(`[propertyController:getPropertyById] Failed to parse images for property ${property?.id}:`, e.message);
+    }
     
-    const actualCoverImage = property.cover_image || property.fetched_cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
+    const actualCoverImage = property.cover_image || property.fetched_cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || null;
 
     const formatted = {
       ...property,
@@ -170,6 +182,7 @@ export const propertyController = {
         );
         hasRelationship = relRes.rows.length > 0;
       } catch (e) {
+        console.warn(`[propertyController:getPropertyById] Failed to query user relationship for property ${property?.id}:`, e.message);
         hasRelationship = false;
       }
     }
@@ -252,7 +265,9 @@ export const propertyController = {
           [admin.id, 'New Property Submitted', `A new property "${title || 'Untitled'}" was submitted for review.`, 'info']
         );
       }
-    } catch (_e) {}
+    } catch (_e) {
+      console.warn(`[propertyController:createProperty] Failed to send submission notifications for property ${property?.id}:`, _e.message);
+    }
 
     res.status(201).json({
       ...property,
@@ -300,10 +315,14 @@ export const propertyController = {
     const units = await PropertyModel.getUnits(updated.id);
     
     let parsedImages = [];
-    try { parsedImages = typeof updated.images === 'string' ? JSON.parse(updated.images) : (updated.images || []); } catch(e) {}
+    try {
+      parsedImages = typeof updated.images === 'string' ? JSON.parse(updated.images) : (updated.images || []);
+    } catch (e) {
+      console.warn(`[propertyController:updateProperty] Failed to parse images for property ${updated?.id}:`, e.message);
+    }
     
     const coverImage = await PropertyModel.getCoverImage(updated.id);
-    const actualCoverImage = updated.cover_image || coverImage || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
+    const actualCoverImage = updated.cover_image || coverImage || (parsedImages.length > 0 ? parsedImages[0] : null) || null;
 
     res.json({
       ...updated,
@@ -411,7 +430,9 @@ export const propertyController = {
           [admin.id, 'Property Deletion Requested', `Landlord requested deletion for "${existingProperty.title || 'property'}". Reason: ${reason}`, 'warning']
         );
       }
-    } catch (_e) {}
+    } catch (_e) {
+      console.warn(`[propertyController:requestPropertyDeletion] Failed to send deletion notification for property ${existingProperty?.id}:`, _e.message);
+    }
 
     res.json({ message: 'Property deletion requested. Pending admin approval.', property: updated });
   }),
@@ -446,7 +467,9 @@ export const propertyController = {
           [admin.id, 'Property Suspension Requested', `Landlord requested suspension for "${existingProperty.title || 'property'}". Reason: ${reason}`, 'warning']
         );
       }
-    } catch (_e) {}
+    } catch (_e) {
+      console.warn(`[propertyController:requestPropertySuspension] Failed to send suspension notification for property ${existingProperty?.id}:`, _e.message);
+    }
 
     res.json({ message: 'Property suspension requested. Pending admin approval.', property: updated });
   }),
@@ -462,7 +485,9 @@ export const propertyController = {
            VALUES ($1, $2, $3, $4)`,
           [existing.landlord_id, 'Property Deletion Approved', `Your request to delete "${existing.title || 'listing'}" has been approved.`, 'info']
         );
-      } catch (_e) {}
+      } catch (_e) {
+      console.warn(`[propertyController:approvePropertyDeletion] Failed to send approval notification for property ${existing?.id}:`, _e.message);
+    }
     }
     res.json({ message: 'Property deletion approved and removed successfully.', result });
   }),
@@ -477,7 +502,9 @@ export const propertyController = {
            VALUES ($1, $2, $3, $4)`,
           [updated.landlord_id, 'Property Deletion Request Rejected', `Your request to delete "${updated.title || 'listing'}" was rejected by admin.`, 'warning']
         );
-      } catch (_e) {}
+      } catch (_e) {
+      console.warn(`[propertyController:rejectPropertyDeletion] Failed to send rejection notification for property ${updated?.id}:`, _e.message);
+    }
     }
     res.json({ message: 'Property deletion request rejected.', property: updated });
   }),
@@ -492,7 +519,9 @@ export const propertyController = {
            VALUES ($1, $2, $3, $4)`,
           [updated.landlord_id, 'Property Suspension Approved', `Your request to suspend "${updated.title || 'listing'}" has been approved.`, 'info']
         );
-      } catch (_e) {}
+      } catch (_e) {
+      console.warn(`[propertyController:approvePropertySuspension] Failed to send approval notification for property ${updated?.id}:`, _e.message);
+    }
     }
     res.json({ message: 'Property suspension approved.', property: updated });
   }),
@@ -507,7 +536,9 @@ export const propertyController = {
            VALUES ($1, $2, $3, $4)`,
           [updated.landlord_id, 'Property Suspension Request Rejected', `Your request to suspend "${updated.title || 'listing'}" was rejected by admin.`, 'warning']
         );
-      } catch (_e) {}
+      } catch (_e) {
+      console.warn(`[propertyController:rejectPropertySuspension] Failed to send rejection notification for property ${updated?.id}:`, _e.message);
+    }
     }
     res.json({ message: 'Property suspension request rejected.', property: updated });
   }),
@@ -527,9 +558,13 @@ export const propertyController = {
       const landlord = await UserModel.findById(p.landlord_id);
       
       let parsedImages = [];
-      try { parsedImages = typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []); } catch(e) {}
+      try {
+        parsedImages = typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []);
+      } catch (e) {
+        console.warn(`[propertyController:getSavedProperties] Failed to parse images for property ${p?.id}:`, e.message);
+      }
       
-      const actualCoverImage = p.cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || '/src/assets/skyline_apartment.png';
+      const actualCoverImage = p.cover_image || (parsedImages.length > 0 ? parsedImages[0] : null) || null;
 
       return {
         ...p,

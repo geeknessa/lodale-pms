@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Search, Phone, Video, Send, Paperclip,
   Building2, ArrowLeft, Trash2, Loader2, AlertTriangle, RotateCcw,
-  FileText, Download
+  FileText, Download, MessageSquare
 } from "lucide-react";
 import { triggerToast } from "../../context/ToastContext";
 import { supportService } from "../../services/supportService";
@@ -85,18 +85,23 @@ export default function TenantChat({ setActiveTab }) {
   // Initial Data Fetching
   useEffect(() => {
     fetchChatData();
-    const interval = setInterval(fetchChatData, 12000);
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        fetchChatData();
+      }
+    }, 15000);
     return () => clearInterval(interval);
-  }, [supportMessages]);
+  }, []);
 
   // Fetch support messages separately
   useEffect(() => {
     const fetchSupport = async () => {
-      const msgs = await supportService.getUserMessages();
+      if (document.hidden) return;
+      const msgs = await supportService.getUserMessages().catch(() => []);
       setSupportMessages(msgs || []);
     };
     fetchSupport();
-    const interval = setInterval(fetchSupport, 10000);
+    const interval = setInterval(fetchSupport, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -457,7 +462,7 @@ export default function TenantChat({ setActiveTab }) {
               </div>
             ) : threadMessages.length === 0 ? (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", color: "var(--text-muted)", textAlign: "center" }}>
-                <span style={{ fontSize: "28px" }}>💬</span>
+                <MessageSquare className="w-8 h-8 text-stone-400 dark:text-stone-500 stroke-[1.5]" />
                 <p style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-primary)", margin: "12px 0 4px 0" }}>No Messages Yet</p>
                 <p style={{ fontSize: "11.5px", margin: 0, maxWidth: "200px", lineHeight: "1.4" }}>Send a message to start the conversation.</p>
               </div>

@@ -12,6 +12,8 @@ export default function RateLandlordModal({
   tenantId,
   tenantName = "Tenant",
   propertyTitle = "",
+  propertyId = null,
+  leaseId = null,
   onSuccess
 }) {
   const [rating, setRating] = useState(5);
@@ -35,7 +37,9 @@ export default function RateLandlordModal({
         rating,
         comment,
         wouldRecommend,
-        propertyTitle
+        propertyTitle,
+        propertyId,
+        leaseId
       });
 
       if (res.success) {

@@ -135,7 +135,7 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
   const [bulkBlockName, setBulkBlockName] = useState("");
   const [bulkBeds, setBulkBeds] = useState("2");
   const [bulkBaths, setBulkBaths] = useState("2");
-  const [bulkRent, setBulkRent] = useState("2500000");
+  const [bulkRent, setBulkRent] = useState("");
   const [bulkRentPeriod, setBulkRentPeriod] = useState("annually");
   const [bulkHostelPricingType, setBulkHostelPricingType] = useState("per_bedspace");
   const [bulkDescription, setBulkDescription] = useState("");
@@ -713,6 +713,11 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
       setFormError("Unit name (e.g. Flat 101 or House A1) is required.");
       return;
     }
+    const singleRentVal = Number(String(manualRent).replace(/[^0-9.]/g, "")) || 0;
+    if (!manualRent || !String(manualRent).trim() || isNaN(singleRentVal) || singleRentVal <= 0) {
+      setFormError("Please enter a valid rent amount for this unit.");
+      return;
+    }
     const newUnit = {
       unit_name: manualUnitName.trim().slice(0, 500),
       block_name: manualBlockName,
@@ -784,6 +789,11 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
       return;
     }
 
+    if (!bulkRent || !String(bulkRent).trim() || isNaN(rentVal) || rentVal <= 0) {
+      setFormError("Please enter a valid rent amount before generating units.");
+      return;
+    }
+
     const generated = [];
     for (let i = 0; i < count; i++) {
       const uName = `${prefix}${start + i}`.slice(0, 500);
@@ -831,6 +841,11 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
   const handleSaveEditUnit = (index) => {
     if (!editingUnitForm.unit_name.trim()) {
       setFormError("Unit name cannot be empty.");
+      return;
+    }
+    const editRent = Number(String(editingUnitForm.rent_amount || "").replace(/[^0-9.]/g, ""));
+    if (!editingUnitForm.rent_amount || isNaN(editRent) || editRent <= 0) {
+      setFormError("Please enter a valid rent amount before saving unit.");
       return;
     }
     setUnitsList((prev) =>
@@ -1024,7 +1039,14 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
     }
     if (stepNum === 2) {
       if (isMultiUnit) {
-        return !!(unitsList && unitsList.length > 0);
+        return !!(
+          unitsList &&
+          unitsList.length > 0 &&
+          unitsList.every((u) => {
+            const r = Number(String(u.rent_amount || "").replace(/[^0-9.]/g, ""));
+            return !isNaN(r) && r > 0;
+          })
+        );
       } else {
         const numericRent = Number(String(rent || "").replace(/[^0-9]/g, ""));
         return !!(rent && !isNaN(numericRent) && numericRent > 0);
@@ -1081,6 +1103,14 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
           setFormError("Please add at least 1 unit to your portfolio or generate units to proceed.");
           return;
         }
+        const hasInvalidRent = unitsList.some((u) => {
+          const r = Number(String(u.rent_amount || "").replace(/[^0-9.]/g, ""));
+          return isNaN(r) || r <= 0;
+        });
+        if (hasInvalidRent) {
+          setFormError("Please enter a valid rent amount for all units before continuing.");
+          return;
+        }
       } else {
         const numericRent = Number(String(rent || "").replace(/[^0-9]/g, ""));
         if (!rent || isNaN(numericRent) || numericRent <= 0) {
@@ -1128,6 +1158,15 @@ export default function usePropertyFormState({ isStandalone = false, initialEdit
       if (!unitsList || unitsList.length === 0) {
         setCurrentStep(2);
         setFormError("Step 2: Please add at least one unit to your multi-unit property before submitting.");
+        return;
+      }
+      const hasInvalidRent = unitsList.some((u) => {
+        const r = Number(String(u.rent_amount || "").replace(/[^0-9.]/g, ""));
+        return isNaN(r) || r <= 0;
+      });
+      if (hasInvalidRent) {
+        setCurrentStep(2);
+        setFormError("Step 2: Please enter a valid rent amount for all units before submitting.");
         return;
       }
     } else {

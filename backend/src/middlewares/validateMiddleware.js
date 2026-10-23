@@ -23,12 +23,19 @@ export const validate = (schemaOrSchemas) => (req, res, next) => {
         field: err.path.join('.'),
         message: err.message
       }));
-      return res.status(400).json({ error: 'Validation failed', details: formattedErrors });
+      const firstIssue = formattedErrors.length > 0 
+        ? `${formattedErrors[0].field ? formattedErrors[0].field + ': ' : ''}${formattedErrors[0].message}`
+        : 'Validation failed';
+      return res.status(400).json({ 
+        error: `Validation failed: ${firstIssue}`, 
+        message: `Validation failed: ${firstIssue}`,
+        details: formattedErrors 
+      });
     }
     console.error('Validation Error Details:', error);
     return res.status(400).json({
-      error: 'Invalid input',
-      message: error?.message,
+      error: error?.message || 'Invalid input',
+      message: error?.message || 'Invalid input',
       stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
     });
   }

@@ -3,6 +3,7 @@ import { X, Calendar, DollarSign, CheckCircle2, ShieldCheck, AlertCircle } from 
 import Button from '../../../components/Button';
 import { reminderService } from '../../../services/reminderService';
 import { leaseService } from '../../../services/leaseService';
+import { triggerToast } from '../../../context/ToastContext';
 
 export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }) {
   const [settings, setSettings] = useState(null);
@@ -89,6 +90,7 @@ export default function RenewalOfferModal({ isOpen, onClose, tenant, onConfirm }
       onClose();
     } catch (err) {
       console.error("Failed to generate renewal lease", err);
+      triggerToast(err.message || 'Failed to generate renewal lease.', 'error');
     } finally {
       setIsSubmitting(false);
     }

@@ -44,14 +44,25 @@ export default function LandlordChat() {
   // Initial Data Fetching
   const [chatError, setChatError] = useState(null);
 
+  // Load applications once on mount for categorization
+  useEffect(() => {
+    let isMounted = true;
+    applicationService.getLandlordApplications()
+      .then(apps => {
+        if (isMounted) setApplications(apps || []);
+      })
+      .catch(() => {
+        if (isMounted) setApplications([]);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const fetchChatData = async () => {
     try {
       setChatError(null);
-      const [convos, apps] = await Promise.all([
-        chatService.getConversations(),
-        applicationService.getLandlordApplications()
-      ]);
-      setApplications(apps || []);
+      const convos = await chatService.getConversations();
 
       const seen = new Set();
       const uniqueConvos = [];
@@ -74,18 +85,31 @@ export default function LandlordChat() {
 
   useEffect(() => {
     fetchChatData();
-    const interval = setInterval(fetchChatData, 12000);
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        fetchChatData();
+      }
+    }, 15000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Update support thread in chats when supportMessages change without full refetch
+  useEffect(() => {
+    setChats(prev => {
+      if (!prev || prev.length === 0) return prev;
+      return prev.map(c => (c.partner_id === 'lodale-support' || c.id === 'lodale-support') ? supportThread : c);
+    });
   }, [supportMessages]);
 
   // Fetch support messages separately
   useEffect(() => {
     const fetchSupport = async () => {
-      const msgs = await supportService.getUserMessages();
+      if (document.hidden) return;
+      const msgs = await supportService.getUserMessages().catch(() => []);
       setSupportMessages(msgs || []);
     };
     fetchSupport();
-    const interval = setInterval(fetchSupport, 10000);
+    const interval = setInterval(fetchSupport, 15000);
     return () => clearInterval(interval);
   }, []);
 

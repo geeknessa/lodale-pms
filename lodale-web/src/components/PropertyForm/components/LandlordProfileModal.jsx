@@ -1,4 +1,5 @@
 import { User, Star } from "lucide-react";
+import { resolveAvatarUrl } from "../../../utils/avatarUtils";
 
 export default function LandlordProfileModal({
   showLandlordProfileModal,
@@ -23,7 +24,14 @@ export default function LandlordProfileModal({
         <div className="relative mx-auto w-24 h-24 mb-4">
           <div className="w-full h-full flex items-center justify-center bg-[#2C4633]/10 dark:bg-[#07130D] rounded-full border-4 border-[#E4EAE1] dark:border-white/10 text-[#2C4633] dark:text-[#E5C583] overflow-hidden text-2xl font-bold">
             {landlordAvatar ? (
-              <img src={landlordAvatar} alt="Landlord profile" className="w-full h-full object-cover" />
+              <img
+                src={resolveAvatarUrl(landlordAvatar)}
+                alt="Landlord profile"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
             ) : (
               <span>{username ? username.charAt(0).toUpperCase() : <User className="w-12 h-12" />}</span>
             )}

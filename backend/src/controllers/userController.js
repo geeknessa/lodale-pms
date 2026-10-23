@@ -3,6 +3,7 @@ import { UserModel } from '../models/userModel.js';
 import { pool } from '../db/db.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { invalidateUserStatusCache } from '../middlewares/authMiddleware.js';
+import { isEmailEnabled, sendVerificationCodeEmail } from '../services/emailService.js';
 
 const emailVerificationCodes = new Map();
 
@@ -40,7 +41,7 @@ export const userController = {
     // 1. Fetch leases for landlord properties
     const leasesRes = await pool.query(
       `SELECT l.id as lease_id, l.status as lease_status, l.tenant_signed_at, l.landlord_signed_at,
-              l.rent_amount, l.rent_period, l.start_date, l.end_date,
+              l.rent_amount, l.rent_period, l.start_date, l.end_date, l.application_id,
               p.id as property_id, p.title as property_title, p.address_line1 as property_address,
               u.id as tenant_id, u.first_name, u.last_name, u.email as tenant_email, u.phone_number as tenant_phone, u.avatar_url,
               tp.emergency_contact_name as emergency_contact, tp.guarantor_phone, tp.occupation, tp.employment_status, tp.guarantor_name
@@ -68,14 +69,37 @@ export const userController = {
       [landlordId]
     );
 
-    const tenants = [];
-    const seenTenantKeys = new Set();
+    // 3. Fetch invoices for landlord properties
+    const invsRes = await pool.query(
+      `SELECT i.id, i.invoice_number, i.tenant_id, i.property_id, i.lease_id, i.application_id,
+              i.status, i.amount, i.due_date, i.issue_date, i.items
+       FROM rent_invoices i
+       WHERE i.landlord_id = $1
+       ORDER BY i.created_at DESC`,
+      [landlordId]
+    );
 
-    // Map leases
+    const makeTenancyKey = (tenantId, propertyId) => `${String(tenantId || '').trim().toLowerCase()}::${String(propertyId || '').trim().toLowerCase()}`;
+
+    const getLeasePriority = (status) => {
+      const s = String(status || '').toLowerCase();
+      if (s === 'active') return 100;
+      if (s === 'signed') return 80;
+      if (s === 'partially_signed' || s === 'pending_tenant') return 60;
+      if (s === 'pending' || s === 'draft') return 40;
+      return 20; // past, expired, terminated
+    };
+
+    const tenancyMap = new Map();
+
+    // Map leases first (primary source of truth)
     leasesRes.rows.forEach(l => {
+      if (!l.tenant_id || !l.property_id) return;
+      const key = makeTenancyKey(l.tenant_id, l.property_id);
+
       const isSigned = !!l.tenant_signed_at || l.lease_status === 'signed' || l.lease_status === 'active';
       const isActive = l.lease_status === 'active';
-      const isPending = !isActive;
+      const isPending = !isActive && l.lease_status !== 'past' && l.lease_status !== 'expired' && l.lease_status !== 'terminated';
 
       let status = 'past';
       if (isActive) status = 'active';
@@ -87,80 +111,174 @@ export const userController = {
         else badgeLabel = 'Pending Sign & Pay';
       }
 
-      const key = String(l.tenant_id || l.tenant_email).toLowerCase();
-      seenTenantKeys.add(key);
-
-      tenants.push({
-        id: l.tenant_id || l.lease_id,
-        leaseId: l.lease_id,
-        tenantId: l.tenant_id,
-        name: `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'Tenant',
-        firstName: l.first_name,
-        lastName: l.last_name,
-        email: l.tenant_email || '',
-        phone: l.tenant_phone || '',
-        avatar: l.avatar_url || '',
-        propertyId: l.property_id,
-        propertyTitle: l.property_title || 'Leased Property',
-        currentAddress: l.property_address || l.property_title || '',
-        status: status,
-        leaseStatus: badgeLabel,
-        rentAmount: l.rent_amount,
-        rentPeriod: l.rent_period || 'monthly',
-        startDate: l.start_date,
-        endDate: l.end_date,
-        emergencyContact: l.emergency_contact || l.guarantor_phone || '',
-        occupation: l.occupation || l.employment_status || '',
-        guarantorName: l.guarantor_name || '',
-        guarantorPhone: l.guarantor_phone || '',
-        dueDate: l.start_date ? new Date(l.start_date).toLocaleDateString("en-US", { day: 'numeric', month: 'short' }) : "1st of month",
-        paymentStatus: isActive ? "Paid" : "Unpaid"
-      });
-    });
-
-    // Map applications - ONLY include if a lease agreement has been generated/sent or fully leased!
-    appsRes.rows.forEach(a => {
-      const key = String(a.tenant_id || a.tenant_email).toLowerCase();
-      if (!seenTenantKeys.has(key)) {
-        const s = (a.application_status || '').toLowerCase();
-        const isFullyLeased = s === 'leased' || s === 'active';
-        const isLeaseSent = s === 'approved' || s === 'lease_generated' || s === 'pending_tenant' || s === 'signed';
-
-        // Strictly skip raw applicants who have not been sent a lease agreement yet
-        if (!isFullyLeased && !isLeaseSent) return;
-
-        seenTenantKeys.add(key);
-
-        let status = isFullyLeased ? 'active' : 'pending';
-        let badgeLabel = isFullyLeased ? 'Active Tenant' : 'Pending Sign & Pay';
-
-        tenants.push({
-          id: a.tenant_id || a.application_id,
-          tenantId: a.tenant_id,
-          name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Tenant',
-          firstName: a.first_name,
-          lastName: a.last_name,
-          email: a.tenant_email || '',
-          phone: a.tenant_phone || '',
-          avatar: a.avatar_url || '',
-          propertyId: a.property_id,
-          propertyTitle: a.property_title || 'Leased Property',
-          currentAddress: a.property_address || a.property_title || '',
+      if (tenancyMap.has(key)) {
+        const existing = tenancyMap.get(key);
+        if (l.lease_id && !existing.leaseIds.includes(l.lease_id)) {
+          existing.leaseIds.push(l.lease_id);
+        }
+        if (l.application_id && !existing.applicationIds.includes(l.application_id)) {
+          existing.applicationIds.push(l.application_id);
+        }
+        // Promote to active/higher priority lease if this lease has higher ranking
+        if (getLeasePriority(l.lease_status) > getLeasePriority(existing.rawLeaseStatus)) {
+          existing.leaseId = l.lease_id;
+          existing.rawLeaseStatus = l.lease_status;
+          existing.status = status;
+          existing.leaseStatus = badgeLabel;
+          existing.rentAmount = Number(l.rent_amount || 0);
+          existing.rentPeriod = l.rent_period || existing.rentPeriod;
+          existing.startDate = l.start_date;
+          existing.endDate = l.end_date;
+          if (l.start_date) existing.dueDate = l.start_date;
+          existing.paymentStatus = isActive ? "Paid" : "Unpaid";
+        }
+        if (!existing.phone && l.tenant_phone) existing.phone = l.tenant_phone;
+        if (!existing.avatar && l.avatar_url) existing.avatar = l.avatar_url;
+      } else {
+        tenancyMap.set(key, {
+          tenancyKey: key,
+          id: String(l.tenant_id),
+          tenantId: String(l.tenant_id),
+          propertyId: String(l.property_id),
+          leaseId: l.lease_id,
+          leaseIds: l.lease_id ? [l.lease_id] : [],
+          applicationIds: l.application_id ? [l.application_id] : [],
+          name: `${l.first_name || ''} ${l.last_name || ''}`.trim() || 'Tenant',
+          firstName: l.first_name || '',
+          lastName: l.last_name || '',
+          email: l.tenant_email || '',
+          phone: l.tenant_phone || '',
+          avatar: l.avatar_url || '',
+          propertyTitle: l.property_title || 'Leased Property',
+          currentAddress: l.property_address || l.property_title || '',
           status: status,
           leaseStatus: badgeLabel,
-          rentAmount: a.rent_amount || 0,
-          rentPeriod: a.rent_period || 'monthly',
-          emergencyContact: a.emergency_contact || a.guarantor_phone || '',
-          occupation: a.occupation || a.employment_status || '',
-          guarantorName: a.guarantor_name || '',
-          guarantorPhone: a.guarantor_phone || '',
-          dueDate: "1st of month",
-          paymentStatus: isFullyLeased ? "Paid" : "Unpaid"
+          rawLeaseStatus: l.lease_status,
+          rentAmount: Number(l.rent_amount || 0),
+          rentPeriod: l.rent_period || 'monthly',
+          startDate: l.start_date,
+          endDate: l.end_date,
+          emergencyContact: l.emergency_contact || l.guarantor_phone || '',
+          occupation: l.occupation || l.employment_status || '',
+          guarantorName: l.guarantor_name || '',
+          guarantorPhone: l.guarantor_phone || '',
+          dueDate: l.start_date || "—",
+          paymentStatus: isActive ? "Paid" : "Unpaid",
+          unpaidCount: 0,
+          unpaidInvoicesCount: 0,
+          invoices: []
         });
       }
     });
 
-    res.json({ success: true, tenants });
+    // Map applications: only emit if no lease covers that tenant_id::property_id
+    appsRes.rows.forEach(a => {
+      if (!a.tenant_id || !a.property_id) return;
+      const key = makeTenancyKey(a.tenant_id, a.property_id);
+
+      if (tenancyMap.has(key)) {
+        // Lease already covers this pair -> attach application ID, do not emit duplicate card
+        const existing = tenancyMap.get(key);
+        if (a.application_id && !existing.applicationIds.includes(a.application_id)) {
+          existing.applicationIds.push(a.application_id);
+        }
+        if (!existing.phone && a.tenant_phone) existing.phone = a.tenant_phone;
+        if (!existing.avatar && a.avatar_url) existing.avatar = a.avatar_url;
+        return;
+      }
+
+      const s = (a.application_status || '').toLowerCase();
+      const isApprovedOrSent = s === 'approved' || s === 'lease_generated' || s === 'pending_tenant' || s === 'signed' || s === 'moved_in' || s === 'leased' || s === 'active';
+      if (!isApprovedOrSent) return;
+
+      // Applications without a lease appear as Pending only, never as a second Active card
+      tenancyMap.set(key, {
+        tenancyKey: key,
+        id: String(a.tenant_id),
+        tenantId: String(a.tenant_id),
+        propertyId: String(a.property_id),
+        leaseId: null,
+        leaseIds: [],
+        applicationIds: [a.application_id],
+        name: `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Tenant',
+        firstName: a.first_name || '',
+        lastName: a.last_name || '',
+        email: a.tenant_email || '',
+        phone: a.tenant_phone || '',
+        avatar: a.avatar_url || '',
+        propertyTitle: a.property_title || 'Leased Property',
+        currentAddress: a.property_address || a.property_title || '',
+        status: 'pending',
+        leaseStatus: 'Pending Sign & Pay',
+        rawLeaseStatus: null,
+        rentAmount: Number(a.rent_amount || 0),
+        rentPeriod: a.rent_period || 'monthly',
+        startDate: null,
+        endDate: null,
+        emergencyContact: a.emergency_contact || a.guarantor_phone || '',
+        occupation: a.occupation || a.employment_status || '',
+        guarantorName: a.guarantor_name || '',
+        guarantorPhone: a.guarantor_phone || '',
+        dueDate: "—",
+        paymentStatus: "Unpaid",
+        unpaidCount: 0,
+        unpaidInvoicesCount: 0,
+        invoices: []
+      });
+    });
+
+    // Attach invoices to existing tenancies (never create a card from an invoice)
+    const tenancies = Array.from(tenancyMap.values());
+    invsRes.rows.forEach(inv => {
+      let target = null;
+      if (inv.lease_id) {
+        target = tenancies.find(t => t.leaseIds.includes(inv.lease_id));
+      }
+      if (!target && inv.application_id) {
+        target = tenancies.find(t => t.applicationIds.includes(inv.application_id));
+      }
+      if (!target && inv.tenant_id && inv.property_id) {
+        target = tenancyMap.get(makeTenancyKey(inv.tenant_id, inv.property_id));
+      }
+
+      if (target) {
+        target.invoices.push({
+          id: inv.id,
+          invoiceNumber: inv.invoice_number,
+          amount: Number(inv.amount || 0),
+          status: inv.status,
+          dueDate: inv.due_date,
+          issueDate: inv.issue_date
+        });
+
+        const invStatus = String(inv.status || '').toLowerCase();
+        const isUnpaid = invStatus === 'unpaid' || invStatus === 'overdue' || invStatus === 'pending_verification' || invStatus === 'pending';
+        if (isUnpaid) {
+          target.unpaidCount += 1;
+          target.unpaidInvoicesCount += 1;
+          target.paymentStatus = (invStatus === 'overdue') ? 'Overdue' : 'Unpaid';
+          if (inv.due_date) {
+            target.dueDate = inv.due_date;
+          }
+        }
+      }
+    });
+
+    console.log(`[getLandlordTenants] landlord ${landlordId}: ${leasesRes.rows.length} leases, ${appsRes.rows.length} apps, ${invsRes.rows.length} invoices -> ${tenancyMap.size} unique tenancies`);
+    for (const [k, t] of tenancyMap.entries()) {
+      console.log(`[getLandlordTenants] Tenancy [${k}]: ${t.leaseIds.length} leases, ${t.applicationIds.length} apps, ${t.invoices.length} invoices (${t.unpaidCount} unpaid)`);
+    }
+
+    res.json({
+      success: true,
+      tenants: Array.from(tenancyMap.values()),
+      counts: {
+        leaseRows: leasesRes.rows.length,
+        appRows: appsRes.rows.length,
+        invoiceRows: invsRes.rows.length,
+        uniqueTenancies: tenancyMap.size
+      }
+    });
   }),
 
   deactivateMyAccount: asyncHandler(async (req, res) => {
@@ -261,13 +379,25 @@ export const userController = {
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    emailVerificationCodes.set(userId, { newEmail: newEmail.toLowerCase(), code, expiresAt: Date.now() + 10 * 60 * 1000 });
+    const cleanEmail = newEmail.trim().toLowerCase();
+    emailVerificationCodes.set(userId, { newEmail: cleanEmail, code, expiresAt: Date.now() + 10 * 60 * 1000 });
 
-    res.json({
-      success: true,
-      message: `Verification code sent to ${newEmail}`,
-      demoCode: code
+    await sendVerificationCodeEmail({
+      to: cleanEmail,
+      code,
+      purpose: 'email_change'
     });
+
+    const responsePayload = {
+      success: true,
+      message: `Verification code sent to ${newEmail}`
+    };
+
+    if (!isEmailEnabled() && process.env.NODE_ENV !== 'production') {
+      responsePayload.demoCode = code;
+    }
+
+    res.json(responsePayload);
   }),
 
   verifyEmailChange: asyncHandler(async (req, res) => {

@@ -70,7 +70,8 @@ import {
   getRentPeriodSuffix,
   getNextRentDue
 } from "../../utils/formatters";
-import { safeSetItem, safeSetJSON, cacheAvatarUrl } from "../../utils/safeStorage";
+import { safeSetItem, safeGetItem, safeSetJSON, cacheAvatarUrl } from "../../utils/safeStorage";
+import { resolveAvatarUrl } from "../../utils/avatarUtils";
 const TOUR_STEPS = [
   // Overview Tab (tab: 0)
   {
@@ -211,8 +212,8 @@ export default function TenantDashboard() {
   });
   const firstName = username.split(" ")[0];
 
-  const currentUserId = sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId");
-  const currentUserEmail = (sessionStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
+  const currentUserId = safeGetItem("session", "db_user_id") || safeGetItem("local", "db_user_id") || sessionStorage.getItem("db_user_id") || localStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || localStorage.getItem("userId");
+  const currentUserEmail = (safeGetItem("session", "lastLoggedInEmail") || safeGetItem("local", "lastLoggedInEmail") || sessionStorage.getItem("lastLoggedInEmail") || localStorage.getItem("lastLoggedInEmail") || "").toLowerCase();
   const [tenantReviewsData, setTenantReviewsData] = useState({ hasReviews: false, rating: "New", count: 0, reviews: [] });
   const scoreVal = Number(tenantReviewsData.rating) || 0;
 
@@ -281,24 +282,12 @@ export default function TenantDashboard() {
   });
   const [avatarError, setAvatarError] = useState(false);
 
-  useEffect(() => {
-    setAvatarError(false);
-  }, [tenantAvatar]);
-
   const getInitials = (name) => {
     if (!name) return "T";
     const parts = name.trim().split(/\s+/).filter(Boolean);
     if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     if (parts.length === 1 && parts[0].length > 0) return parts[0].slice(0, 2).toUpperCase();
     return "T";
-  };
-
-  const resolveAvatarUrl = (url) => {
-    if (!url) return "";
-    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:")) return url;
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-    const serverBase = apiBase.replace(/\/api\/?$/, '');
-    return `${serverBase}${url.startsWith("/") ? "" : "/"}${url}`;
   };
 
   useEffect(() => {
@@ -310,6 +299,7 @@ export default function TenantDashboard() {
       const updatedAvatar = sessionStorage.getItem("tenantAvatarUrl");
       if (updatedAvatar) {
         setTenantAvatar(updatedAvatar);
+        setAvatarError(false);
       }
     };
     window.addEventListener("storage", handleStorageUpdate);
@@ -321,7 +311,10 @@ export default function TenantDashboard() {
     const handleTenantProfileUpdated = (e) => {
       const { name, avatar } = e.detail || {};
       if (name) setUsername(name);
-      if (avatar) setTenantAvatar(avatar);
+      if (avatar) {
+        setTenantAvatar(avatar);
+        setAvatarError(false);
+      }
     };
     window.addEventListener("tenantProfileUpdated", handleTenantProfileUpdated);
     return () => window.removeEventListener("tenantProfileUpdated", handleTenantProfileUpdated);
@@ -813,7 +806,10 @@ export default function TenantDashboard() {
     };
   }, []);
 
-  const fetchAllData = async () => {
+  const isFetchingDataRef = useRef(false);
+  const fetchAllData = async (force = false) => {
+    if (isFetchingDataRef.current && !force) return;
+    isFetchingDataRef.current = true;
     try {
       setLoadingData(true);
       const [leasesRes, invsRes, reqsRes, notifsRes, appsRes] = await Promise.all([
@@ -848,18 +844,25 @@ export default function TenantDashboard() {
           parsedImages = [active.cover_image];
         }
 
+        const unitVal = active.unit && active.unit !== "Unit 1" && active.unit !== "A3"
+          ? active.unit
+          : (active.property_type === 'single_house' ? "Main Residence" : (active.unit || "Main Residence"));
+
         setActiveLease({
           ...active,
           property_images: parsedImages,
           propertyTitle: active.property_title,
-          unit: active.unit || "Unit 1",
+          unit: unitVal,
           landlord: active.landlord_name,
           price: `₦${parseFloat(active.rent_amount).toLocaleString()}`
         });
         setRentCycle(active.rent_period === "annually" || active.rent_period === "yearly" ? "yearly" : "monthly");
       } else {
         const apps = Array.isArray(appsRes) ? appsRes : (appsRes?.applications || []);
-        const approvedApp = apps.find(a => (a.status || '').toLowerCase() === 'approved' || (a.status || '').toLowerCase() === 'leased');
+        const approvedApp = apps.find(a => {
+          const s = (a.status || '').toLowerCase();
+          return s === 'approved' || s === 'invoice_issued' || s === 'payment_pending' || s === 'rent_paid' || s === 'lease_sent' || s === 'lease_signed' || s === 'moved_in' || s === 'leased';
+        });
         if (approvedApp) {
           let appImages = [];
           if (Array.isArray(approvedApp.property_images)) {
@@ -957,14 +960,16 @@ export default function TenantDashboard() {
       console.error("Failed to load tenant dashboard data:", err);
     } finally {
       setLoadingData(false);
+      isFetchingDataRef.current = false;
     }
   };
 
   useEffect(() => {
     fetchAllData();
 
-    // Regular polling for real-time notification & interaction updates (every 6 seconds)
+    // Background polling for real-time notification updates (every 30 seconds when tab is active)
     const interval = setInterval(async () => {
+      if (document.hidden) return;
       try {
         const notifsRes = await notificationService.getMyNotifications();
         const freshNotifs = Array.isArray(notifsRes) ? notifsRes : (notifsRes?.notifications || []);
@@ -983,9 +988,14 @@ export default function TenantDashboard() {
       } catch (e) {
         // Silent background poll error
       }
-    }, 6000);
+    }, 30000);
 
+    let lastFocusFetch = 0;
     const handleFocus = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      if (now - lastFocusFetch < 15000) return; // Limit to once every 15s
+      lastFocusFetch = now;
       fetchAllData();
     };
 
@@ -1259,33 +1269,93 @@ export default function TenantDashboard() {
     }
   };
 
-  // Pay rent simulation
+  // Resolve payable unpaid invoice
+  const getPayableInvoice = () => {
+    const list = Array.isArray(invoices) ? invoices : [];
+    if (selectedPaymentDetail?.id) {
+      const match = list.find(inv => String(inv.id) === String(selectedPaymentDetail.id));
+      if (match && (match.status || '').trim().toLowerCase() !== 'paid') {
+        return match;
+      }
+    }
+    return (
+      list.find(inv => (inv?.status || '').trim().toLowerCase() === 'unpaid') ||
+      list.find(inv => !inv?.status || (inv?.status || '').trim() === '') ||
+      null
+    );
+  };
+
+  // Pay rent with Paystack
   const handlePayRentSubmit = async () => {
-    const unpaidInvoice = invoices.find(inv => inv.status === 'unpaid');
+    const unpaidInvoice = getPayableInvoice();
     if (!unpaidInvoice) {
-      triggerToast("No unpaid invoices found.", "error");
+      triggerToast("No unpaid invoice found. Your landlord must issue an invoice before you can pay through Lodale.", "error");
       return;
     }
 
     setPayingState("processing");
     try {
-      await rentService.recordPayment(unpaidInvoice.id, {
-        paymentMethod: 'card',
-        amount: unpaidInvoice.amount
-      });
-
-      setPayingState("success");
-      setTimeout(async () => {
-        await fetchAllData();
-        setShowPayModal(false);
-        setPayingState("idle");
-      }, 1500);
+      const res = await rentService.initializePaystackPayment(unpaidInvoice.id);
+      if (res?.authorization_url) {
+        window.location.href = res.authorization_url;
+      } else {
+        throw new Error(res?.error || "Failed to initialize payment gateway");
+      }
     } catch (err) {
-      console.error(err);
-      triggerToast("Payment failed", "error");
+      console.error("Paystack payment initialization error:", err);
+      const msg = err?.data?.error || err?.response?.data?.error || err?.message || "Payment initialization failed";
+      triggerToast(msg, "error");
       setPayingState("idle");
     }
   };
+
+  // Detect Paystack redirect return and verify transaction
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const reference = params.get("reference") || params.get("trxref");
+    if (!reference) return;
+
+    let isSubscribed = true;
+
+    const completePaystackPayment = async () => {
+      setShowPayModal(true);
+      setPayingState("processing");
+
+      try {
+        const verifyRes = await rentService.verifyPaystackPayment(reference);
+        if (!isSubscribed) return;
+
+        await fetchAllData(true);
+        window.dispatchEvent(new CustomEvent("lodalePaymentConfirmed", { detail: { reference, invoice: verifyRes?.invoice } }));
+        setPayingState("success");
+        triggerToast(verifyRes?.message || "Payment confirmed successfully!", "success", "Payment Verified");
+
+        // Clean up URL query parameters without full page reload
+        navigate(location.pathname, { replace: true });
+
+        setTimeout(() => {
+          if (isSubscribed) {
+            setShowPayModal(false);
+            setPayingState("idle");
+          }
+        }, 2500);
+      } catch (err) {
+        console.error("Paystack verification error:", err);
+        if (!isSubscribed) return;
+        const msg = err?.response?.data?.error || err?.message || "Payment verification failed";
+        triggerToast(msg, "error", "Payment Notice");
+        setPayingState("idle");
+        setShowPayModal(false);
+        navigate(location.pathname, { replace: true });
+      }
+    };
+
+    completePaystackPayment();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [location.search]);
 
   const handleSignOut = () => {
     sessionStorage.removeItem("isAuthenticated");
@@ -1768,57 +1838,102 @@ export default function TenantDashboard() {
                 <div className="modal-body space-y-5">
                   {/* Live Payment Breakdown */}
                   {(() => {
-                    const baseRent = activeLease?.rent_amount ? parseFloat(activeLease.rent_amount) : 0;
-                    const payableAmt = rentCycle === "yearly" ? baseRent * 12 : baseRent;
-                    const unpaidInv = invoices.find(i => i.status === "unpaid");
-                    let nextDueStr = "—";
-                    if (unpaidInv?.due_date) {
-                      nextDueStr = formatDateOnly(unpaidInv.due_date);
+                    const payableInvoice = getPayableInvoice();
+                    let payableAmt = 0;
+                    if (payableInvoice) {
+                      payableAmt = Number(payableInvoice.grandTotal || payableInvoice.grand_total || payableInvoice.amount || 0);
                     } else if (activeLease) {
-                      const sd = new Date(activeLease.start_date || activeLease.created_at || Date.now());
-                      const now = new Date();
-                      let nd;
-                      if (rentCycle === "yearly") {
-                        nd = new Date(now.getFullYear(), sd.getMonth(), sd.getDate());
-                        if (nd <= now) nd.setFullYear(nd.getFullYear() + 1);
-                      } else {
-                        nd = new Date(now.getFullYear(), now.getMonth(), sd.getDate());
-                        if (nd <= now) nd.setMonth(nd.getMonth() + 1);
-                      }
-                      nextDueStr = nd.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                      payableAmt = Number(activeLease.rent_amount || activeLease.rent || 0);
+                    } else {
+                      payableAmt = 0;
                     }
+
+                    let nextDueStr = "—";
+                    if (payableInvoice?.due_date || payableInvoice?.dueDate) {
+                      nextDueStr = formatDateOnly(payableInvoice.due_date || payableInvoice.dueDate);
+                    } else if (activeLease) {
+                      const nextRent = getNextRentDue(activeLease, null, invoices);
+                      if (nextRent?.formattedDate && nextRent.formattedDate !== "—") {
+                        nextDueStr = nextRent.formattedDate;
+                      } else {
+                        const sd = new Date(activeLease.start_date || activeLease.created_at || Date.now());
+                        const now = new Date();
+                        let nd;
+                        const isYearly = rentCycle === "yearly" || (activeLease.rent_period || '').toLowerCase().includes("year") || (activeLease.rent_period || '').toLowerCase().includes("annual");
+                        if (isYearly) {
+                          nd = new Date(now.getFullYear(), sd.getMonth(), sd.getDate());
+                          if (nd <= now) nd.setFullYear(nd.getFullYear() + 1);
+                        } else {
+                          nd = new Date(now.getFullYear(), now.getMonth(), sd.getDate());
+                          if (nd <= now) nd.setMonth(nd.getMonth() + 1);
+                        }
+                        nextDueStr = nd.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                      }
+                    }
+
+                    const rawPeriod = (
+                      payableInvoice?.rent_period ||
+                      payableInvoice?.period ||
+                      activeLease?.rent_period ||
+                      activeLease?.rent_cycle ||
+                      (rentCycle === "yearly" ? "yearly" : "monthly") ||
+                      "monthly"
+                    ).toString().toLowerCase().trim();
+
+                    let periodLabel = "Monthly";
+                    if (rawPeriod.includes("year") || rawPeriod.includes("annual")) {
+                      periodLabel = "Annual";
+                    } else if (rawPeriod.includes("quarter") || rawPeriod.includes("3_month") || rawPeriod.includes("3 month")) {
+                      periodLabel = "Quarterly";
+                    } else if (rawPeriod.includes("6_month") || rawPeriod.includes("6 month") || rawPeriod.includes("bi-annual") || rawPeriod.includes("biannual")) {
+                      periodLabel = "Semi-Annual";
+                    } else if (rawPeriod.includes("month")) {
+                      periodLabel = "Monthly";
+                    } else if (rawPeriod.includes("week")) {
+                      periodLabel = "Weekly";
+                    } else if (rawPeriod.includes("day") || rawPeriod.includes("night")) {
+                      periodLabel = "Daily";
+                    } else if (rawPeriod) {
+                      periodLabel = rawPeriod.charAt(0).toUpperCase() + rawPeriod.slice(1);
+                    }
+
                     return (
-                      <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#0C1410] border border-[#E1EAE5] dark:border-white/10 space-y-2.5 text-xs">
-                        <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
-                          <span>Due Date</span>
-                          <span className="font-bold text-[#1C1917] dark:text-white">{nextDueStr}</span>
+                      <>
+                        <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#0C1410] border border-[#E1EAE5] dark:border-white/10 space-y-2.5 text-xs">
+                          <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
+                            <span>Due Date</span>
+                            <span className="font-bold text-[#1C1917] dark:text-white">{nextDueStr}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
+                            <span>Rent ({periodLabel})</span>
+                            <span className="font-bold text-[#1C1917] dark:text-white">
+                              ₦{payableAmt > 0 ? payableAmt.toLocaleString() : "0"}
+                            </span>
+                          </div>
+                          <div className="pt-2 border-t border-[#E1EAE5] dark:border-white/10 flex justify-between items-center text-sm font-bold text-[#1C1917] dark:text-white">
+                            <span>Total Payable</span>
+                            <span className="text-[#1E3324] dark:text-[#E5C583] text-base">
+                              ₦{payableAmt > 0 ? payableAmt.toLocaleString() : "0"}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex justify-between items-center text-[#71717A] dark:text-white/60">
-                          <span>Rent ({rentCycle === "yearly" ? "Annual" : "Monthly"})</span>
-                          <span className="font-bold text-[#1C1917] dark:text-white">
-                            ₦{payableAmt > 0 ? payableAmt.toLocaleString() : "0"}
-                          </span>
-                        </div>
-                        <div className="pt-2 border-t border-[#E1EAE5] dark:border-white/10 flex justify-between items-center text-sm font-bold text-[#1C1917] dark:text-white">
-                          <span>Total Payable</span>
-                          <span className="text-[#1E3324] dark:text-[#E5C583] text-base">
-                            ₦{payableAmt > 0 ? payableAmt.toLocaleString() : "0"}
-                          </span>
-                        </div>
-                      </div>
+
+                        <Button
+                          onClick={handlePayRentSubmit}
+                          disabled={!payableInvoice || payableAmt <= 0}
+                          className="w-full py-3.5 bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Authorize Payment{payableAmt > 0 ? ` (₦${payableAmt.toLocaleString()})` : ""}
+                        </Button>
+
+                        {!payableInvoice && (
+                          <p className="text-[11px] text-amber-700 dark:text-amber-400 text-center mt-2 font-medium">
+                            No unpaid invoice found. Your landlord must issue an invoice before you can pay through Lodale.
+                          </p>
+                        )}
+                      </>
                     );
                   })()}
-
-                  <Button
-                    onClick={handlePayRentSubmit}
-                    className="w-full py-3.5 bg-[#1E3324] hover:bg-[#0B1510] text-white dark:bg-[#E5C583] dark:hover:bg-[#D4B575] dark:text-[#09090b] font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer mt-2"
-                  >
-                    {(() => {
-                      const base = activeLease?.rent_amount ? parseFloat(activeLease.rent_amount) : 0;
-                      const amt = rentCycle === "yearly" ? base * 12 : base;
-                      return `Authorize Payment${amt > 0 ? ` (₦${amt.toLocaleString()})` : ""}`;
-                    })()}
-                  </Button>
                 </div>
               </>
             )}
@@ -1858,8 +1973,11 @@ export default function TenantDashboard() {
                 {tenantAvatar && !avatarError ? (
                   <img
                     src={resolveAvatarUrl(tenantAvatar)}
-                    alt="Tenant Avatar"
-                    onError={() => setAvatarError(true)}
+                    alt=""
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      setAvatarError(true);
+                    }}
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -1948,7 +2066,7 @@ export default function TenantDashboard() {
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-neutral-100 dark:border-neutral-800/60 last:border-b-0 last:pb-0">
                 <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Reliability Score</span>
-                <span className="text-[13px] font-bold text-amber-500">★ New Tenant</span>
+                <span className="text-[13px] font-bold text-amber-500 flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-amber-500" /> New Tenant</span>
               </div>
             </div>
 
@@ -2160,7 +2278,7 @@ export default function TenantDashboard() {
                   <div className="flex gap-1 mb-2 justify-center">
                     {tenantReviewsData.hasReviews ? (
                       [1, 2, 3, 4, 5].map((s) => (
-                        <span key={s} className={s <= Math.round(scoreVal) ? "text-amber-500 text-lg" : "text-neutral-300 dark:text-neutral-700 text-lg"}>★</span>
+                        <Star key={s} className={`h-5 w-5 ${s <= Math.round(scoreVal) ? "text-amber-500 fill-amber-500" : "text-neutral-300 dark:text-neutral-700"}`} />
                       ))
                     ) : (
                       <span className="text-emerald-600 dark:text-emerald-400 text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/40">
@@ -2182,7 +2300,7 @@ export default function TenantDashboard() {
                       <div className="flex flex-col gap-1.5">
                         <div className="flex justify-between items-center text-[12.5px]">
                           <span>Landlord Reliability Rating</span>
-                          <span className="font-bold text-amber-500">★ {tenantReviewsData.rating} / 5.0</span>
+                          <span className="font-bold text-amber-500 flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-amber-500" /> {tenantReviewsData.rating} / 5.0</span>
                         </div>
                         <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
                           <div className="h-full bg-amber-500" style={{ width: `${(scoreVal / 5) * 100}%` }} />
@@ -2205,7 +2323,7 @@ export default function TenantDashboard() {
                           <div key={rev.id} className="p-3 bg-neutral-50 dark:bg-[#07130D]/40 border border-neutral-100 dark:border-neutral-800/40 rounded-xl space-y-1">
                             <div className="flex justify-between items-center">
                               <span className="text-[12px] font-bold text-ink-900 dark:text-white">Verified Landlord</span>
-                              <span className="text-[11px] text-amber-500 font-bold">★ {rev.rating}.0</span>
+                              <span className="text-[11px] text-amber-500 font-bold flex items-center gap-1"><Star className="h-3 w-3 fill-amber-500" /> {rev.rating}.0</span>
                             </div>
                             {rev.comment && (
                               <p className="text-[11.5px] text-[#6C6E73] dark:text-[#A3BCA7] italic leading-relaxed">
@@ -2718,8 +2836,11 @@ export default function TenantDashboard() {
                   {tenantAvatar && !avatarError ? (
                     <img
                       src={resolveAvatarUrl(tenantAvatar)}
-                      alt={username}
-                      onError={() => setAvatarError(true)}
+                      alt=""
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                        setAvatarError(true);
+                      }}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -2871,7 +2992,7 @@ export default function TenantDashboard() {
                       {/* Property Image */}
                       <div className="w-full sm:w-52 h-44 rounded-2xl bg-stone-100 dark:bg-[#0B1510] border border-black/5 dark:border-white/5 overflow-hidden shrink-0 relative">
                         {(() => {
-                          const rawImg = activeLease?.cover_image || (activeLease?.property_images && activeLease.property_images.length > 0 ? activeLease.property_images[0] : null);
+                          const rawImg = activeLease?.cover_image || (activeLease?.property_images && activeLease.property_images.length > 0 ? activeLease.property_images[0] : null) || "/src/assets/modern_villa.png";
                           const hasValidImg = rawImg && typeof rawImg === 'string' && (rawImg.startsWith('http') || rawImg.startsWith('data:') || rawImg.startsWith('/'));
                           return hasValidImg && !propertyImageError ? (
                             <img
@@ -2904,7 +3025,13 @@ export default function TenantDashboard() {
 
                           <p className="text-xs text-[#71717A] dark:text-white/60 flex items-center gap-1.5 mb-5 font-medium truncate">
                             <MapPin className="h-3.5 w-3.5 text-[#1E3324] dark:text-[#E5C583] shrink-0" />
-                            <span>{activeLease?.address || activeLease?.property_address || activeLease?.location || "12 Lekki Road, Victoria Island, Lagos"}</span>
+                            <span>
+                              {activeLease?.property_full_address || [
+                                activeLease?.property_address || activeLease?.address_line1 || activeLease?.address,
+                                activeLease?.property_city || activeLease?.city,
+                                activeLease?.property_state || activeLease?.state || activeLease?.property_location
+                              ].filter(Boolean).join(", ") || "12 Lekki Road, Victoria Island, Lagos"}
+                            </span>
                           </p>
                         </div>
 
@@ -2916,7 +3043,9 @@ export default function TenantDashboard() {
                               <span>Unit</span>
                             </div>
                             <p className="text-xs font-bold text-[#1C1917] dark:text-white truncate">
-                              {activeLease?.unit || "A3"}
+                              {(activeLease?.unit && activeLease.unit !== "Unit 1" && activeLease.unit !== "A3")
+                                ? activeLease.unit
+                                : (activeLease?.property_type === 'single_house' ? "Main Residence" : (activeLease?.unit || "Main Residence"))}
                             </p>
                           </div>
 
@@ -2926,7 +3055,18 @@ export default function TenantDashboard() {
                               <span>Type</span>
                             </div>
                             <p className="text-xs font-bold text-[#1C1917] dark:text-white truncate">
-                              {activeLease?.property_type || activeLease?.type || "2 Bedroom Flat"}
+                              {(() => {
+                                if (!activeLease) return "2 Bedroom Flat";
+                                const rawType = (activeLease.property_type || activeLease.type || "").toLowerCase().replace(/_/g, " ").trim();
+                                const beds = activeLease.bedrooms ? `${activeLease.bedrooms} Bedroom ` : "";
+                                if (rawType.includes("single house")) return `${beds}Single House`.trim();
+                                if (rawType.includes("apartment")) return `${beds}Apartment`.trim();
+                                if (rawType.includes("flat")) return `${beds}Flat`.trim();
+                                if (rawType.includes("duplex")) return `${beds}Duplex`.trim();
+                                if (rawType.includes("villa")) return `${beds}Villa`.trim();
+                                if (rawType) return `${beds}${rawType.charAt(0).toUpperCase() + rawType.slice(1)}`.trim();
+                                return activeLease.bedrooms ? `${activeLease.bedrooms} Bedroom Property` : "Residential Property";
+                              })()}
                             </p>
                           </div>
 

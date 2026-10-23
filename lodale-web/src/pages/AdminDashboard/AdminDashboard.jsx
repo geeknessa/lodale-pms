@@ -2119,7 +2119,7 @@ export default function AdminDashboard() {
                         )}
                       </div>
                       <p className="text-[11px] text-[#262626]/60 dark:text-[#DAD7CD]/75">
-                        Supported formats: JPG, PNG, GIF. Maximum size 2MB.
+                        Supported formats: JPG, PNG, GIF. Maximum size 10MB.
                       </p>
                     </div>
                   </div>

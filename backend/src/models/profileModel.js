@@ -68,7 +68,8 @@ export const ProfileModel = {
       bank_name, bank_account_number, bank_account_name,
       total_properties_managed, years_in_business,
       professional_license, website_url, bio, address,
-      gender, date_of_birth, dob, location, postal_code, postalCode
+      gender, date_of_birth, dob, location, postal_code, postalCode,
+      paystack_subaccount_code
     } = data;
 
     const numProperties = parseSafeNumber(total_properties_managed);
@@ -82,8 +83,9 @@ export const ProfileModel = {
         bank_name, bank_account_number, bank_account_name,
         total_properties_managed, years_in_business,
         professional_license, website_url, bio, address,
-        gender, date_of_birth, location, postal_code, updated_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, NOW())
+        gender, date_of_birth, location, postal_code,
+        paystack_subaccount_code, updated_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18, NOW())
       ON CONFLICT (user_id) DO UPDATE SET
         business_name         = COALESCE(EXCLUDED.business_name, landlord_profiles.business_name),
         business_type         = COALESCE(EXCLUDED.business_type, landlord_profiles.business_type),
@@ -101,6 +103,7 @@ export const ProfileModel = {
         date_of_birth         = COALESCE(EXCLUDED.date_of_birth, landlord_profiles.date_of_birth),
         location              = COALESCE(EXCLUDED.location, landlord_profiles.location),
         postal_code           = COALESCE(EXCLUDED.postal_code, landlord_profiles.postal_code),
+        paystack_subaccount_code = COALESCE(EXCLUDED.paystack_subaccount_code, landlord_profiles.paystack_subaccount_code),
         updated_at            = NOW()
       RETURNING *
     `, [
@@ -120,9 +123,20 @@ export const ProfileModel = {
       toNullableStr(gender),
       safeDob,
       toNullableStr(location),
-      safePostalCode
+      safePostalCode,
+      toNullableStr(paystack_subaccount_code)
     ]);
     return res.rows[0];
+  },
+
+  async updateLandlordSubaccountCode(userId, subaccountCode) {
+    const res = await pool.query(`
+      UPDATE landlord_profiles
+      SET paystack_subaccount_code = $1, updated_at = NOW()
+      WHERE user_id = $2
+      RETURNING *
+    `, [subaccountCode, userId]);
+    return res.rows[0] || null;
   },
 
   /** Called automatically when a landlord registers */

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search as SearchIcon, User, MapPin, Home, Check, Star, CheckCircle2, Heart, MessageSquare, AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import Button from "../../components/Button";
@@ -11,6 +11,7 @@ import { triggerToast } from "../../context/ToastContext";
 import { formatCurrency, getRentPeriodSuffix } from "../../utils/formatters";
 import Avatar from "../../components/Avatar";
 import { doesIncomeMeetRequirement } from "../../utils/incomeRanges";
+import { resolveAvatarUrl } from "../../utils/avatarUtils";
 import "./TenantSearch.css";
 
 // formatCurrency imported from formatters.js - HMR refreshed
@@ -112,6 +113,12 @@ function LandlordCard({ landlord, onInspect, onRate }) {
 
 export default function TenantSearch({ setActiveTab, setShowProfileModal, onStartChat, tenantAvatar }) {
   const navigate = useNavigate();
+  const [searchAvatarError, setSearchAvatarError] = useState(false);
+
+  useEffect(() => {
+    setSearchAvatarError(false);
+  }, [tenantAvatar]);
+
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState("");
   const [searchType, setSearchType] = useState("property"); // "property" | "landlord"
@@ -138,86 +145,90 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
   const [isLoadingListings, setIsLoadingListings] = useState(true);
   const [listingsError, setListingsError] = useState(null);
 
-  useEffect(() => {
-    async function loadTenantProperties() {
-      setIsLoadingListings(true);
-      setListingsError(null);
-      try {
-        let apiProps = [];
-        const apiRes = await propertyService.getProperties();
-        if (Array.isArray(apiRes)) {
-          apiProps = apiRes;
-        } else if (apiRes && Array.isArray(apiRes.properties)) {
-          apiProps = apiRes.properties;
-        }
-
-        const formatted = apiProps.map((item) => {
-          if (!item) return null;
-          const key = String(item.id || item.title);
-          // Normalise landlord object from either API shape
-          let landlordObj;
-          if (item.landlord && typeof item.landlord === "object" && (item.landlord.first_name || item.landlord.name)) {
-            const l = item.landlord;
-            landlordObj = {
-              id: l.id || null,
-              name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
-              score: l.score || 0,
-              reviews: l.reviews || 0,
-              phone_number: l.phone_number || null,
-              address: l.address || null,
-              location: l.location || l.address || null,
-              avatar_url: l.avatar_url || null
-            };
-          } else {
-            landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 0, reviews: 0, phone_number: null, address: null, location: null, avatar_url: null };
-          }
-          return {
-            id: item.id || key,
-            title: item.title || item.address_line1 || "Property",
-            location: item.location || item.city || "Lagos, Nigeria",
-            price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}${getRentPeriodSuffix(item.rent_period)}` : "₦0/yr"),
-            rent_period: item.rent_period,
-            beds: item.beds || item.bedrooms || 1,
-            baths: item.baths || item.bathrooms || 1,
-            type: item.type || item.property_type || "apartment",
-            image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
-            amenities: item.amenities || [],
-            landlord: landlordObj,
-            status: item.status,
-            isPending: item.isPending,
-            recommendationCategory: item.recommendationCategory || "Featured properties"
-          };
-        }).filter(Boolean);
-
-        // STRICT FILTER: Only approved/live properties go to tenant search
-        const approvedOnly = formatted.filter((p) => {
-          if (!p) return false;
-          const status = (p.status || "").toLowerCase();
-          if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
-            return false;
-          }
-          return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
-        });
-
-        setAllListings(approvedOnly);
-      } catch (err) {
-        console.warn("Failed to load tenant search listings:", err);
-        setListingsError(err.message || "Could not load properties from backend.");
-      } finally {
-        setIsLoadingListings(false);
+  const loadTenantProperties = useCallback(async () => {
+    setIsLoadingListings(true);
+    setListingsError(null);
+    try {
+      let apiProps = [];
+      const apiRes = await propertyService.getProperties();
+      if (Array.isArray(apiRes)) {
+        apiProps = apiRes;
+      } else if (apiRes && Array.isArray(apiRes.properties)) {
+        apiProps = apiRes.properties;
       }
-    }
 
+      const formatted = apiProps.map((item) => {
+        if (!item) return null;
+        const key = String(item.id || item.title);
+        // Normalise landlord object from either API shape
+        let landlordObj;
+        if (item.landlord && typeof item.landlord === "object" && (item.landlord.first_name || item.landlord.name)) {
+          const l = item.landlord;
+          landlordObj = {
+            id: l.id || null,
+            name: l.name || `${l.first_name || ""} ${l.last_name || ""}`.trim() || "Verified Landlord",
+            score: Number(l.score) || 0,
+            reviews: Number(l.reviews) || 0,
+            phone_number: l.phone_number || null,
+            address: l.address || null,
+            location: l.location || l.address || null,
+            avatar_url: l.avatar_url || null
+          };
+        } else {
+          landlordObj = { id: null, name: typeof item.landlord === "string" ? item.landlord : "Verified Landlord", score: 0, reviews: 0, phone_number: null, address: null, location: null, avatar_url: null };
+        }
+        return {
+          id: item.id || key,
+          title: item.title || item.address_line1 || "Property",
+          location: item.location || item.city || "Lagos, Nigeria",
+          price: item.price || (item.rent_amount ? `₦${Number(item.rent_amount).toLocaleString()}${getRentPeriodSuffix(item.rent_period)}` : "₦0/yr"),
+          rent_period: item.rent_period,
+          beds: item.beds || item.bedrooms || 1,
+          baths: item.baths || item.bathrooms || 1,
+          type: item.type || item.property_type || "apartment",
+          image: item.image || item.cover_image || item.cover_photo || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=400&h=250&q=80",
+          amenities: item.amenities || [],
+          landlord: landlordObj,
+          status: item.status,
+          isPending: item.isPending,
+          recommendationCategory: item.recommendationCategory || "Featured properties"
+        };
+      }).filter(Boolean);
+
+      // STRICT FILTER: Only approved/live properties go to tenant search
+      const approvedOnly = formatted.filter((p) => {
+        if (!p) return false;
+        const status = (p.status || "").toLowerCase();
+        if (status === "pending_review" || status === "pending approval" || status === "pending" || status === "rejected" || status === "info_requested" || status === "info requested") {
+          return false;
+        }
+        return status === "active_vacant" || status === "approved" || status === "live" || status === "active" || (!p.status && !p.isPending);
+      });
+
+      setAllListings(approvedOnly);
+    } catch (err) {
+      console.warn("Failed to load tenant search listings:", err);
+      setListingsError(err.message || "Could not load properties from backend.");
+    } finally {
+      setIsLoadingListings(false);
+    }
+  }, []);
+
+  useEffect(() => {
     loadTenantProperties();
 
     const handlePropertyChange = () => loadTenantProperties();
     window.addEventListener("storage", handlePropertyChange);
     window.addEventListener("propertyUpdated", handlePropertyChange);
+    window.addEventListener("landlordRatingUpdated", handlePropertyChange);
+    window.addEventListener("ratingsUpdated", handlePropertyChange);
     return () => {
       window.removeEventListener("storage", handlePropertyChange);
       window.removeEventListener("propertyUpdated", handlePropertyChange);
+      window.removeEventListener("landlordRatingUpdated", handlePropertyChange);
+      window.removeEventListener("ratingsUpdated", handlePropertyChange);
     };
-  }, []);
+  }, [loadTenantProperties]);
 
   // Derive unique landlords dynamically from loaded listings
   const dynamicLandlords = useMemo(() => {
@@ -230,12 +241,13 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
         seen.set(key, {
           id: l.id || key,
           name: l.name,
-          score: l.score || 0,
-          reviews: l.reviews || 0,
+          score: Number(l.score) || 0,
+          reviews: Number(l.reviews) || 0,
           avatar: l.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(l.name)}&background=2C4633&color=E5C583&size=96`,
           address: l.address || null,
           location: l.address || l.location || p.location || "Lagos, Nigeria",
           properties: [p.title],
+          propertyIds: p.id ? [p.id] : [],
           category: "Top Rated Landlords",
           joinedStatus: "new"
         });
@@ -248,6 +260,14 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
         }
         if (!existing.properties.includes(p.title)) {
           existing.properties.push(p.title);
+        }
+        if (p.id && (!existing.propertyIds || !existing.propertyIds.includes(p.id))) {
+          existing.propertyIds = existing.propertyIds || [];
+          existing.propertyIds.push(p.id);
+        }
+        if (Number(l.score) > 0 && (!existing.score || existing.score === 0)) {
+          existing.score = Number(l.score);
+          existing.reviews = Number(l.reviews);
         }
       }
     });
@@ -534,7 +554,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
           suggestions.push({
             icon: <User className="h-4 w-4 text-moss-600 dark:text-[#E5C583]" />,
             text: l.name,
-            subtitle: `Verified Partner (${l.score}★)`,
+            subtitle: `Verified Partner (${l.score}/5.0)`,
             category: "Landlord",
             filterVal: l.name
           });
@@ -617,8 +637,16 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
           <div className="db-controls-group">
             <div className="db-profile-avatar-wrapper" onClick={() => setShowProfileModal(true)} title="Profile settings">
               <div className="db-avatar flex items-center justify-center bg-moss-100/70 dark:bg-[#07130D] text-moss-700 dark:text-[#E5C583] overflow-hidden rounded-full border border-[#07130D]/20 dark:border-[#E5C583]/30">
-                {tenantAvatar ? (
-                  <img src={tenantAvatar} alt="Tenant Avatar" className="h-full w-full object-cover" />
+                {tenantAvatar && !searchAvatarError ? (
+                  <img
+                    src={resolveAvatarUrl(tenantAvatar)}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      setSearchAvatarError(true);
+                    }}
+                  />
                 ) : (
                   <User className="h-4 w-4 text-[#07130D] dark:text-[#E5C583]" />
                 )}
@@ -1249,7 +1277,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 <div className="flex justify-between items-center">
                   <span className="text-[12.5px] text-[#6C6E73] dark:text-[#A3BCA7]">Landlord Rating Score</span>
                   <span className="text-[13px] font-bold text-amber-500">
-                    {selectedProperty.landlord.score > 0 ? `★ ${selectedProperty.landlord.score} (${selectedProperty.landlord.reviews} reviews)` : "No rating yet"}
+                    {selectedProperty.landlord.score > 0 ? `${selectedProperty.landlord.score} (${selectedProperty.landlord.reviews} reviews)` : "No rating yet"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -1467,7 +1495,13 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                             guarantorName: prof.guarantorName || prof.guarantor_name || null,
                             guarantorPhone: prof.guarantorPhone || prof.guarantor_phone || null,
                             guarantorRelationship: prof.guarantorRelationship || prof.guarantor_relationship || null,
-                            guarantorEmail: prof.guarantorEmail || prof.guarantor_email || null
+                            guarantorEmail: prof.guarantorEmail || prof.guarantor_email || null,
+                            address: prof.address || prof.currentAddress || prof.location || null,
+                            location: prof.location || null,
+                            gender: prof.gender || null,
+                            emergencyContactName: prof.emergencyContactName || prof.emergency_contact_name || null,
+                            emergencyContactPhone: prof.emergencyContactPhone || prof.emergency_contact_phone || null,
+                            emergencyContactRelationship: prof.emergencyContactRelationship || prof.emergency_contact_relationship || null
                           });
                           triggerToast("Application submitted successfully! Shared with landlord.", "success", "Application Sent");
                           setShowQuickApplyConfirmModal(false);
@@ -1526,7 +1560,7 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
                 <div className="flex justify-between items-center text-[12.5px]">
                   <span className="text-xs text-[#6C6E73] dark:text-[#A3BCA7]">Total Rating</span>
                   <span className="font-bold text-amber-500">
-                    {selectedLandlord.score > 0 ? `★ ${selectedLandlord.score} / 5.0 (${selectedLandlord.reviews} Reviews)` : "No rating yet"}
+                    {selectedLandlord.score > 0 ? `${selectedLandlord.score} / 5.0 (${selectedLandlord.reviews} Reviews)` : "No rating yet"}
                   </span>
                 </div>
 
@@ -1615,7 +1649,9 @@ export default function TenantSearch({ setActiveTab, setShowProfileModal, onStar
           tenantId={sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId")}
           tenantName={sessionStorage.getItem("tenantUsername") || sessionStorage.getItem("username") || "Tenant"}
           propertyTitle={landlordToRate.properties?.[0] || ""}
+          propertyId={landlordToRate.propertyIds?.[0] || landlordToRate.propertyId || null}
           onSuccess={() => {
+            loadTenantProperties();
             triggerToast("Landlord rating submitted successfully!", "success", "Rating Saved");
           }}
         />

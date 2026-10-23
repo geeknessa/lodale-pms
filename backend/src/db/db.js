@@ -127,7 +127,7 @@ export async function initDb() {
       ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS tenant_handled BOOLEAN DEFAULT FALSE;
       ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS actual_cost NUMERIC(15, 2);
       ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS estimated_cost NUMERIC(15, 2);
-      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES applications(id) ON DELETE SET NULL;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES property_applications(id) ON DELETE SET NULL;
       ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL;
       ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES users(id) ON DELETE SET NULL;
       ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS landlord_id UUID REFERENCES users(id) ON DELETE SET NULL;
@@ -144,9 +144,14 @@ export async function initDb() {
       ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(150);
       ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS payment_proof_url TEXT;
       ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
-      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES applications(id) ON DELETE SET NULL;
+      ALTER TABLE rent_invoices ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50);
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES property_applications(id) ON DELETE SET NULL;
       ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL;
       ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES users(id) ON DELETE SET NULL;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS signed_by VARCHAR(255);
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS signed_at TIMESTAMPTZ;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
+      ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS receipt_number VARCHAR(100);
     `);
 
     // Widen numeric columns to prevent overflow with large Nigerian property values
@@ -277,6 +282,7 @@ export async function initDb() {
       ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS date_of_birth DATE;
       ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS location VARCHAR(255);
       ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS postal_code VARCHAR(50);
+      ALTER TABLE landlord_profiles ADD COLUMN IF NOT EXISTS paystack_subaccount_code VARCHAR(100);
 
       CREATE TABLE IF NOT EXISTS ratings (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -460,6 +466,42 @@ export async function initDb() {
       ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS tenant_handled BOOLEAN DEFAULT FALSE;
       ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS actual_cost NUMERIC(10, 2);
       ALTER TABLE maintenance_requests ADD COLUMN IF NOT EXISTS estimated_cost NUMERIC(10, 2);
+
+      -- Pipeline Architecture Migration: property_applications, inspections, rent_invoices, leases
+      ALTER TABLE property_applications ALTER COLUMN status SET DEFAULT 'submitted';
+      ALTER TABLE property_applications ADD COLUMN IF NOT EXISTS notes TEXT;
+      ALTER TABLE property_applications ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+      ALTER TABLE property_applications ADD COLUMN IF NOT EXISTS landlord_reviewed_at TIMESTAMPTZ;
+      ALTER TABLE property_applications ADD COLUMN IF NOT EXISTS approved_at TIMESTAMPTZ;
+      ALTER TABLE property_applications ADD COLUMN IF NOT EXISTS declined_at TIMESTAMPTZ;
+      ALTER TABLE property_applications ADD COLUMN IF NOT EXISTS invoice_id UUID REFERENCES rent_invoices(id) ON DELETE SET NULL;
+      ALTER TABLE property_applications ADD COLUMN IF NOT EXISTS lease_id UUID REFERENCES leases(id) ON DELETE SET NULL;
+
+      -- Fix any legacy FK constraints on rent_invoices and rent_payments
+      ALTER TABLE rent_invoices DROP CONSTRAINT IF EXISTS rent_invoices_application_id_fkey;
+      ALTER TABLE rent_invoices ADD CONSTRAINT rent_invoices_application_id_fkey FOREIGN KEY (application_id) REFERENCES property_applications(id) ON DELETE SET NULL;
+
+      ALTER TABLE rent_payments DROP CONSTRAINT IF EXISTS rent_payments_application_id_fkey;
+      ALTER TABLE rent_payments ADD CONSTRAINT rent_payments_application_id_fkey FOREIGN KEY (application_id) REFERENCES property_applications(id) ON DELETE SET NULL;
+
+      -- Inspections table columns
+      ALTER TABLE property_inspections ADD COLUMN IF NOT EXISTS scheduled_date DATE;
+      ALTER TABLE property_inspections ADD COLUMN IF NOT EXISTS scheduled_time VARCHAR(50);
+      ALTER TABLE property_inspections ADD COLUMN IF NOT EXISTS outcome_notes TEXT;
+      ALTER TABLE property_inspections ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+      UPDATE property_inspections SET scheduled_date = date WHERE scheduled_date IS NULL AND date IS NOT NULL;
+      UPDATE property_inspections SET scheduled_time = time WHERE scheduled_time IS NULL AND time IS NOT NULL;
+
+      -- Leases move-in columns
+      ALTER TABLE leases ADD COLUMN IF NOT EXISTS move_in_completed_at TIMESTAMPTZ;
+      ALTER TABLE leases ADD COLUMN IF NOT EXISTS move_in_checklist JSONB DEFAULT '{}'::jsonb;
+
+      -- Normalize legacy application statuses to canonical statuses
+      UPDATE property_applications SET status = 'submitted' WHERE status IN ('pending', 'Pending');
+      UPDATE property_applications SET status = 'declined' WHERE status IN ('rejected', 'Rejected');
+      UPDATE property_applications SET status = 'invoice_issued' WHERE status IN ('invoice_sent', 'Invoice Sent');
+      UPDATE property_applications SET status = 'payment_pending' WHERE status IN ('payment_submitted', 'Payment Submitted');
+      UPDATE property_applications SET status = 'moved_in' WHERE status IN ('leased', 'move_in_ready', 'Leased');
     `);
 
     client.release();

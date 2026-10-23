@@ -20,52 +20,61 @@ import inspectionRoutes from './routes/inspections.js';
 import ratingRoutes from './routes/ratingRoutes.js';
 import path from 'path';
 import fs from 'fs';
+import { getUploadsDir } from './services/uploadService.js';
 import { autoApprovalService } from './services/autoApprovalService.js';
 import { errorHandler } from './middlewares/errorMiddleware.js';
+import { handlePaystackWebhook } from './controllers/rentController.js';
 
 dotenv.config();
+
+// Hard production guard
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    console.error('[FATAL] In production, JWT_SECRET must be set and at least 32 characters long.');
+    process.exit(1);
+  }
+  if (!process.env.DATABASE_URL) {
+    console.error('[FATAL] In production, DATABASE_URL environment variable is required.');
+    process.exit(1);
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Ensure uploads folder exists and serve static uploads
-const uploadsDir = path.join(process.cwd(), 'uploads');
+// Configurable uploads directory (temporary local default; move to cloud storage next)
+const isDefaultUploadsDir = !process.env.UPLOADS_DIR;
+const uploadsDir = getUploadsDir();
+
+if (process.env.NODE_ENV === 'production' && isDefaultUploadsDir) {
+  console.warn('[STORAGE WARNING] UPLOADS_DIR is using the local default path in production. Configure a dedicated persistent volume or cloud storage to avoid data loss across deployments.');
+}
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-app.use('/uploads', express.static(uploadsDir, {
-  setHeaders: (res) => {
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-  }
-}));
-
-// Security Middlewares
-app.disable('x-powered-by');
-app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
-}));
-
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 2000, // Limit each IP to 2000 requests per window
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
-});
-app.use('/api/', apiLimiter);
-
-// Allowed origins for CORS (supports localhost/127.0.0.1 on any port in dev, plus explicit origins)
-const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000')
-  .split(',')
-  .map(o => o.trim().replace(/\/$/, ''));
-
+// Allowed origins for CORS
 const isAllowedOrigin = (origin) => {
   if (!origin) return true; // Allow non-browser, server-to-server, or same-origin requests
   const cleanOrigin = origin.replace(/\/$/, '');
-  if (process.env.NODE_ENV !== 'production') return true;
-  if (allowedOrigins.includes('*') || allowedOrigins.includes(cleanOrigin)) return true;
-  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0|(10|172\.(1[6-9]|2[0-9]|3[0-1])|192\.168)\.\d+\.\d+)(:\d+)?$/i.test(cleanOrigin);
+
+  // Keep development-friendly behavior when NODE_ENV !== 'production'
+  if (process.env.NODE_ENV !== 'production') {
+    const devAllowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000')
+      .split(',')
+      .map(o => o.trim().replace(/\/$/, ''));
+    if (devAllowedOrigins.includes('*') || devAllowedOrigins.includes(cleanOrigin)) return true;
+    return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0|(10|172\.(1[6-9]|2[0-9]|3[0-1])|192\.168)\.\d+\.\d+)(:\d+)?$/i.test(cleanOrigin);
+  }
+
+  // In production: strictly allow only explicitly listed origins in process.env.CORS_ORIGIN
+  // NEVER allow '*' or private IP ranges by default
+  const productionAllowedOrigins = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map(o => o.trim().replace(/\/$/, ''))
+    .filter(o => o.length > 0 && o !== '*');
+
+  return productionAllowedOrigins.includes(cleanOrigin);
 };
 
 const corsOptions = {
@@ -83,8 +92,49 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Security Middlewares
+app.disable('x-powered-by');
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
+
+// Static uploads serving with safe cross-origin resource sharing headers
+app.use('/uploads', express.static(uploadsDir, {
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+}));
+
+const isDev = process.env.NODE_ENV !== 'production';
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: isDev ? 100000 : 2000, // Raised substantially in development to prevent dashboard lockouts
+  skip: () => isDev, // Disable global rate limiting in development only
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 429,
+    error: 'Too many requests from this IP, please try again after 15 minutes.'
+  }
+});
+app.use('/api/', apiLimiter);
+
+// Paystack webhook endpoint: mounted before express.json to receive raw body for HMAC SHA512 signature verification
+app.post(
+  ['/api/rent/paystack/webhook', '/api/paystack/webhook'],
+  express.raw({ type: '*/*' }),
+  handlePaystackWebhook
+);
+
+// Body parser limits reduced from 50mb to 10mb to mitigate Denial-of-Service (DoS) and excessive memory overhead from oversized payloads while still accommodating reasonable uploads
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Global process exception handlers
 process.on('uncaughtException', (err) => {

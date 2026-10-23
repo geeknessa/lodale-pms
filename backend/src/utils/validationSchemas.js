@@ -41,22 +41,29 @@ export const applyPropertySchema = z.object({
   guarantorPhone: z.string().optional().nullable(),
   guarantorRelationship: z.string().optional().nullable(),
   guarantorEmail: z.string().email().optional().or(z.literal('')).nullable(),
-  unitName: z.string().optional().nullable()
+  unitName: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
+  currentAddress: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  gender: z.string().optional().nullable(),
+  emergencyContactName: z.string().optional().nullable(),
+  emergencyContactPhone: z.string().optional().nullable(),
+  emergencyContactRelationship: z.string().optional().nullable()
 }).passthrough();
 
 export const generateLeaseSchema = z.object({
-  propertyId: z.string().min(1, "Property ID is required"),
-  tenantId: z.string().min(1, "Tenant ID is required"),
-  applicationId: z.string().optional().nullable(),
+  propertyId: z.union([z.string(), z.number().transform(String)]).pipe(z.string().min(1, "Property ID is required")),
+  tenantId: z.union([z.string(), z.number().transform(String)]).pipe(z.string().min(1, "Tenant ID is required")),
+  applicationId: z.union([z.string(), z.number().transform(String)]).optional().nullable(),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
-  rentAmount: z.number().positive("Rent amount must be positive").or(z.string().transform(Number)),
+  rentAmount: z.union([z.number(), z.string().transform(Number)]).refine(n => !isNaN(n) && n > 0, "Rent amount must be a positive number"),
   rentPeriod: z.string().min(1, "Rent period is required"),
-  securityDeposit: z.number().nonnegative().optional().or(z.string().transform(Number).optional()),
-  customClauses: z.string().optional(),
-  includePets: z.boolean().optional(),
-  includeSmoking: z.boolean().optional(),
-  includeLateFee: z.boolean().optional()
+  securityDeposit: z.union([z.number(), z.string().transform(Number)]).optional().default(0),
+  customClauses: z.string().optional().nullable(),
+  includePets: z.boolean().optional().default(false),
+  includeSmoking: z.boolean().optional().default(false),
+  includeLateFee: z.boolean().optional().default(false)
 });
 
 export const createPropertySchema = z.object({
@@ -154,7 +161,7 @@ export const createInvoiceSchema = z.object({
   grandTotal: z.number().positive("Amount must be positive").or(z.string().transform(Number)).optional(),
   subtotal: z.number().optional().nullable().or(z.string().transform(Number)),
   lodaleFee: z.number().optional().nullable().or(z.string().transform(Number)),
-  dueDate: z.string().min(1, "Due date is required"),
+  dueDate: z.string().optional().nullable(),
   issueDate: z.string().optional().nullable(),
   invoiceNumber: z.string().optional().nullable(),
   bankName: z.string().optional().nullable(),
@@ -163,8 +170,17 @@ export const createInvoiceSchema = z.object({
   items: z.any().optional(),
   description: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
-  note: z.string().optional().nullable()
-}).passthrough();
+  note: z.string().optional().nullable(),
+  periodStart: z.string().optional().nullable(),
+  periodEnd: z.string().optional().nullable(),
+  billingPeriodStart: z.string().optional().nullable(),
+  billingPeriodEnd: z.string().optional().nullable(),
+  extendLeaseByMonths: z.number().or(z.string().transform(Number)).optional().nullable(),
+  metadata: z.any().optional()
+}).passthrough().refine(data => Boolean(data.applicationId || data.leaseId), {
+  message: "Either applicationId or leaseId is required to create an invoice",
+  path: ["applicationId"]
+});
 
 export const recordPaymentSchema = z.object({
   amount: z.number().positive("Amount must be positive").or(z.string().transform(Number)).optional(),
@@ -225,4 +241,18 @@ export const verifyEmailChangeSchema = z.object({
 
 export const deactivateAccountSchema = z.object({
   reason: z.string().optional()
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email format")
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email("Invalid email format").optional(),
+  code: z.string().optional(),
+  token: z.string().optional(),
+  newPassword: z.string().min(6, "Password must be at least 6 characters")
+}).refine(data => Boolean(data.token || (data.email && data.code)), {
+  message: "Either a reset token or both email and verification code must be provided",
+  path: ["code"]
 });

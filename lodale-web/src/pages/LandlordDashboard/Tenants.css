@@ -162,7 +162,10 @@ body.dark .invite-tenant-btn {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
+  min-height: 410px;
+  box-sizing: border-box;
+  overflow: hidden;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -177,12 +180,15 @@ body.dark .invite-tenant-btn {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
 }
 
 .tenant-card-profile {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  flex: 1;
 }
 
 .tenant-card-avatar {
@@ -191,24 +197,33 @@ body.dark .invite-tenant-btn {
   border-radius: 50%;
   object-fit: cover;
   border: 1.5px solid var(--border-light);
+  flex-shrink: 0;
 }
 
 .tenant-card-meta {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 
 .tenant-card-name {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tenant-card-lease-status {
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tenant-card-score {
@@ -221,6 +236,7 @@ body.dark .invite-tenant-btn {
   font-size: 11.5px;
   font-weight: 700;
   color: var(--text-secondary);
+  flex-shrink: 0;
 }
 
 body.dark .tenant-card-score {
@@ -234,18 +250,23 @@ body.dark .tenant-card-score {
   gap: 10px;
   padding-bottom: 12px;
   border-bottom: 1.5px dashed var(--border-light);
+  box-sizing: border-box;
 }
 
 .tenant-detail-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   font-size: 12.5px;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .tenant-detail-label {
   color: var(--text-muted);
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .tenant-detail-value {
@@ -271,6 +292,15 @@ body.dark .tenant-detail-value.property-link {
   color: #E5C583;
 }
 
+.tenant-status-badges-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: 190px;
+}
+
 /* Payment Badges */
 .payment-badge {
   padding: 4px 10px;
@@ -278,6 +308,11 @@ body.dark .tenant-detail-value.property-link {
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .payment-badge.paid {
@@ -288,6 +323,16 @@ body.dark .tenant-detail-value.property-link {
 body.dark .payment-badge.paid {
   background-color: rgba(34, 197, 94, 0.15);
   color: #4ade80;
+}
+
+.payment-badge.unpaid {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+}
+
+body.dark .payment-badge.unpaid {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
 }
 
 .payment-badge.overdue {
@@ -310,27 +355,62 @@ body.dark .payment-badge.grace-period {
   color: #fbbf24;
 }
 
+.payment-badge.unknown {
+  background-color: rgba(148, 163, 184, 0.15);
+  color: #64748b;
+}
+
+body.dark .payment-badge.unknown {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+.payment-badge.unpaid-count {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  font-size: 10px;
+  padding: 2.5px 7px;
+  text-transform: none;
+  font-weight: 700;
+}
+
+body.dark .payment-badge.unpaid-count {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
 /* Card Actions */
 .tenant-card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: auto;
 }
 
 .tenant-action-btn {
-  flex: 1;
+  flex: 1 1 calc(50% - 4px);
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border-radius: 10px;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
   transition: all 0.2s ease;
   border: 1.5px solid var(--border-light);
   background-color: transparent;
   color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tenant-action-btn:hover {
@@ -348,24 +428,67 @@ body.dark .tenant-action-btn:hover {
 .tenant-action-btn.chat-btn {
   background-color: rgba(44, 70, 51, 0.05);
   color: var(--active-pill-bg);
-  border-color: transparent;
-}
-
-body.dark .tenant-action-btn.chat-btn {
-  background-color: rgba(229, 197, 131, 0.12);
-  color: #E5C583;
-  border-color: rgba(229, 197, 131, 0.2);
+  border-color: rgba(44, 70, 51, 0.15);
 }
 
 .tenant-action-btn.chat-btn:hover {
   background-color: var(--active-pill-bg);
-  color: var(--card-bg);
+  color: #ffffff;
+}
+
+body.dark .tenant-action-btn.chat-btn {
+  background-color: rgba(229, 197, 131, 0.1);
+  color: #E5C583;
+  border-color: rgba(229, 197, 131, 0.25);
 }
 
 body.dark .tenant-action-btn.chat-btn:hover {
   background-color: #E5C583;
-  color: #1C2D22;
+  color: #1E3324;
   border-color: #E5C583;
+}
+
+.tenant-action-btn.details-btn:hover {
+  background-color: rgba(44, 70, 51, 0.06);
+  color: var(--active-pill-bg);
+}
+
+body.dark .tenant-action-btn.details-btn:hover {
+  background-color: rgba(229, 197, 131, 0.1);
+  color: #E5C583;
+}
+
+.tenant-action-btn.invoice-btn:hover {
+  background-color: rgba(16, 185, 129, 0.08);
+  color: #059669;
+}
+
+body.dark .tenant-action-btn.invoice-btn:hover {
+  background-color: rgba(229, 197, 131, 0.1);
+  color: #E5C583;
+}
+
+.tenant-action-btn.rate-btn:hover {
+  background-color: rgba(245, 158, 11, 0.08);
+  color: #d97706;
+}
+
+body.dark .tenant-action-btn.rate-btn:hover {
+  background-color: rgba(229, 197, 131, 0.1);
+  color: #E5C583;
+}
+
+.tenant-action-btn.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #94a3b8;
+  border-color: var(--border-light);
+}
+
+.tenant-action-btn.disabled:hover {
+  background-color: transparent;
+  color: #94a3b8;
+  border-color: var(--border-light);
 }
 
 /* Empty State */

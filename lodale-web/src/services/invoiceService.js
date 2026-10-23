@@ -37,7 +37,13 @@ export const invoiceService = {
       bankAccountNumber: payload.bankAccountNumber,
       bankAccountName: payload.bankAccountName,
       items: payload.items,
-      notes: payload.notes || payload.note
+      notes: payload.notes || payload.note,
+      periodStart: payload.periodStart || payload.billingPeriodStart,
+      periodEnd: payload.periodEnd || payload.billingPeriodEnd,
+      billingPeriodStart: payload.billingPeriodStart || payload.periodStart,
+      billingPeriodEnd: payload.billingPeriodEnd || payload.periodEnd,
+      extendLeaseByMonths: payload.extendLeaseByMonths,
+      metadata: payload.metadata
     };
 
     const data = await apiClient('/rent/invoice', {
@@ -45,6 +51,25 @@ export const invoiceService = {
       body
     });
     return data;
+  },
+
+  /**
+   * Fetch digital invoices linked to a lease ID.
+   */
+  async getInvoicesByLeaseId(leaseId) {
+    if (!leaseId) return [];
+    try {
+      const data = await apiClient(`/rent/invoices/lease/${leaseId}`);
+      return Array.isArray(data) ? data : [];
+    } catch (err) {
+      console.warn('Direct lease invoices fetch failed, falling back to list:', err?.message);
+      try {
+        const invoices = await this.getMyInvoices();
+        return invoices.filter(i => String(i.leaseId || i.lease_id) === String(leaseId));
+      } catch (e) {
+        return [];
+      }
+    }
   },
 
   /**
@@ -101,5 +126,26 @@ export const invoiceService = {
       }
     });
     return data?.invoice || data?.payment || data;
+  },
+
+  /**
+   * Initialize Paystack payment for an invoice.
+   */
+  async initializePaystackPayment(invoiceId) {
+    const data = await apiClient(`/rent/paystack/initialize/${invoiceId}`, {
+      method: 'POST',
+    });
+    return data;
+  },
+
+  /**
+   * Verify Paystack payment by reference.
+   */
+  async verifyPaystackPayment(reference) {
+    const data = await apiClient('/rent/paystack/verify', {
+      method: 'POST',
+      body: { reference },
+    });
+    return data;
   }
 };

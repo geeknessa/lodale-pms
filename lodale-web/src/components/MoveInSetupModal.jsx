@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Key, CheckCircle2, X } from "lucide-react";
+import { applicationService } from "../services/applicationService";
 import { chatService } from "../services/chatService";
 import { triggerToast } from "../context/ToastContext";
 
 export default function MoveInSetupModal({ isOpen, onClose, application, onSuccess }) {
   const [moveInDate, setMoveInDate] = useState(
-    application?.moveInDate || new Date().toISOString().split("T")[0]
+    application?.moveInDate || application?.move_in_date || new Date().toISOString().split("T")[0]
   );
   const [keyPickupLocation, setKeyPickupLocation] = useState(
     application?.propertyAddress || application?.propertyTitle || ""
@@ -17,6 +18,16 @@ export default function MoveInSetupModal({ isOpen, onClose, application, onSucce
   const [additionalNotes, setAdditionalNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen || !application) return;
+    setMoveInDate(
+      application?.moveInDate || application?.move_in_date || application?.desiredMoveInDate || new Date().toISOString().split("T")[0]
+    );
+    setKeyPickupLocation(
+      application?.propertyAddress || application?.propertyTitle || ""
+    );
+  }, [isOpen, application]);
+
   if (!isOpen || !application) return null;
 
   const handleSubmit = async (e) => {
@@ -24,6 +35,9 @@ export default function MoveInSetupModal({ isOpen, onClose, application, onSucce
     setIsSubmitting(true);
     try {
       const appId = application.id;
+      if (!appId) {
+        throw new Error("Missing active application reference.");
+      }
       const tenantId = application.tenantId || application.tenant_id || application.tenant?.id;
       
       const moveInSetupObj = {
@@ -35,22 +49,40 @@ export default function MoveInSetupModal({ isOpen, onClose, application, onSucce
         additionalNotes,
         issuedAt: new Date().toISOString()
       };
-      // Removed localStorage spoofing. 
-      // The application status will be updated to "leased" separately by the landlord approving/generating a lease.
-      // The tenant will receive the move-in guidelines via the real-time chat service below.
+
+      // Call backend move-in completion endpoint
+      const result = await applicationService.completeMoveIn(appId, {
+        checklist: moveInSetupObj,
+        notes: additionalNotes,
+        moveInDate
+      });
+
+      // Save to localStorage for instant local retrieval
+      try {
+        localStorage.setItem(`moveInRules_${appId}`, JSON.stringify(moveInSetupObj));
+      } catch (storageErr) {
+        console.warn("Could not save move-in rules locally:", storageErr);
+      }
 
       // Send chat notification to tenant
       if (tenantId) {
-        const msg = `[MOVE-IN GUIDELINES & HOUSE RULES UNLOCKED]\nProperty: ${application.propertyTitle}\nKey Pickup Date: ${moveInDate} at ${keyPickupTime}\nPickup Location: ${keyPickupLocation}\n\nHouse Rules:\n${houseRules}${additionalNotes ? `\n\nAdditional Instructions:\n${additionalNotes}` : ''}\n\nWelcome to your new home!`;
-        await chatService.sendMessage(tenantId, msg, application.propertyId);
+        try {
+          const msg = `[MOVE-IN GUIDELINES & HOUSE RULES UNLOCKED]\nProperty: ${application.propertyTitle || 'Property'}\nKey Pickup Date: ${moveInDate} at ${keyPickupTime}\nPickup Location: ${keyPickupLocation}\n\nHouse Rules:\n${houseRules}${additionalNotes ? `\n\nAdditional Instructions:\n${additionalNotes}` : ''}\n\nWelcome to your new home!`;
+          await chatService.sendMessage(tenantId, msg, application.propertyId);
+        } catch (chatErr) {
+          console.warn("Failed to dispatch move-in chat message:", chatErr);
+        }
       }
 
-      triggerToast("Move-in guidelines and house rules issued to tenant!", "success");
-      if (onSuccess) onSuccess(moveInSetupObj);
+      triggerToast("Move-in completed! Property is now occupied and tenancy is active.", "success");
+      const updatedApp = result?.application 
+        ? { ...result.application, status: 'moved_in' } 
+        : { id: appId, status: 'moved_in' };
+      if (onSuccess) onSuccess(updatedApp);
       onClose();
     } catch (err) {
-      console.error(err);
-      triggerToast("Failed to issue move-in instructions", "error");
+      console.error("Complete move-in failed:", err);
+      triggerToast(err.message || "Failed to complete move-in", "error", "Move-in Error");
     } finally {
       setIsSubmitting(false);
     }

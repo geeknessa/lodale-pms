@@ -6,7 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
  * Custom REST API Client for communicating with the local Express Backend
  */
 export async function apiClient(endpoint, options = {}) {
-  const token = safeGetItem('session', 'lodale_token');
+  const token = safeGetItem('session', 'lodale_token') || safeGetItem('local', 'lodale_token') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('lodale_token') : null) || (typeof localStorage !== 'undefined' ? localStorage.getItem('lodale_token') : null);
 
   const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
 
@@ -27,29 +27,45 @@ export async function apiClient(endpoint, options = {}) {
     config.body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  // Safety timeout (default 15s) to prevent requests from hanging indefinitely
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 15000);
+  const signal = options.signal || controller.signal;
+
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...config,
+      signal
+    });
+  } catch (fetchErr) {
+    if (fetchErr.name === 'AbortError') {
+      throw new Error("Request timed out. Please check your internet connection or server status.");
+    }
+    throw fetchErr;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     let errorMessage = errorData.error || errorData.message;
 
-    // Convert technical or missing errors into user-friendly messages
-    const isTechnical = !errorMessage || 
-      errorMessage.toLowerCase().includes('http error') || 
-      errorMessage.toLowerCase().includes('server error') || 
-      errorMessage.toLowerCase().includes('database') ||
-      errorMessage.toLowerCase().includes('failed to fetch');
+    if (response.status === 429) {
+      errorMessage = errorMessage || "Too many requests. Please wait a moment and try again.";
+    }
 
-    if (response.status >= 500 || isTechnical) {
-        if (response.status === 404) {
-            errorMessage = "The requested information could not be found. Please check and try again.";
-        } else if (response.status === 401 || response.status === 403) {
-            errorMessage = "You don't have permission to perform this action. Please log in and try again.";
-        } else if (response.status >= 500) {
-            errorMessage = "We're experiencing a temporary issue on our end. Please try again in a few moments.";
-        } else {
-            errorMessage = "Something went wrong. Please try again.";
-        }
+    // Fall back to friendly status messages only when backend did not provide a message
+    if (!errorMessage || typeof errorMessage !== 'string' || !errorMessage.trim()) {
+      if (response.status === 404) {
+        errorMessage = "The requested information could not be found. Please check and try again.";
+      } else if (response.status === 401 || response.status === 403) {
+        errorMessage = "You don't have permission to perform this action. Please log in and try again.";
+      } else if (response.status >= 500) {
+        errorMessage = "We're experiencing a temporary issue on our end. Please try again in a few moments.";
+      } else {
+        errorMessage = "Something went wrong. Please try again.";
+      }
     }
 
     throw new Error(errorMessage);

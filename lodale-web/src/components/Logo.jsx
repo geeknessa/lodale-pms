@@ -2,10 +2,11 @@ import { CheckCircle2 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 
 export function LogoMark({ size = 32, variant = "moss" }) {
+  const isLightOrWhite = variant === "white" || variant === "light";
   const forestGreenFill =
-    variant === "white" ? "white" : variant === "black" ? "black" : "#344E41";
+    isLightOrWhite ? "white" : variant === "black" ? "black" : "#344E41";
   const creamFill =
-    variant === "white" ? "black" : variant === "black" ? "white" : "#DAD7CD";
+    isLightOrWhite ? "#1E3B2C" : variant === "black" ? "white" : "#DAD7CD";
 
   return (
     <svg
@@ -90,8 +91,9 @@ export function LogoMark({ size = 32, variant = "moss" }) {
 export function Logo({ className = "", variant }) {
   const { isDark } = useTheme();
   const logoVariant = variant || (isDark ? "white" : "moss");
+  const isLightOrWhite = logoVariant === "white" || logoVariant === "light";
   const textClass =
-    logoVariant === "white"
+    isLightOrWhite
       ? "text-white"
       : logoVariant === "black"
         ? "text-black"

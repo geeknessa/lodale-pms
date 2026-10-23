@@ -10,7 +10,7 @@ import { authService } from "../services/authService";
 
 import { userService } from "../services/userService";
 import { triggerToast } from "../context/ToastContext";
-import { safeSetItem, safeSetJSON, safeGetItem, safeRemoveItem } from "../utils/safeStorage";
+import { safeSetItem, safeSetJSON, safeGetItem, safeRemoveItem, cacheAvatarUrl } from "../utils/safeStorage";
 
 export default function Login() {
   useTheme();
@@ -65,7 +65,9 @@ export default function Login() {
     }
     return "";
   });
-  const [resetMessage, setResetMessage] = useState("");
+  const [resetMessage, setResetMessage] = useState(() => {
+    return location.state?.resetSuccessMessage || "";
+  });
 
   // Clear any stale lockout attempts from localStorage on mount
   useEffect(() => {
@@ -210,6 +212,7 @@ export default function Login() {
         } catch (e) { }
 
         const profileObj = {
+          id: res.user.id,
           firstName: res.user.first_name || savedProfile.firstName || savedProfile.first_name || "",
           lastName: res.user.last_name || savedProfile.lastName || savedProfile.last_name || "",
           first_name: res.user.first_name || savedProfile.first_name || savedProfile.firstName || "",
@@ -231,6 +234,18 @@ export default function Login() {
         safeSetJSON("session", "currentUserProfile", profileObj);
         safeSetItem("session", "sessionExpiresAt", (Date.now() + 24 * 60 * 60 * 1000).toString());
         safeSetJSON("session", "userProfile_" + cleanEmail, profileObj);
+        if (profileObj.avatar_url) {
+          if (userRole === "landlord") {
+            cacheAvatarUrl("session", "landlordAvatarUrl", profileObj.avatar_url);
+            cacheAvatarUrl("local", "landlordAvatarUrl", profileObj.avatar_url);
+            cacheAvatarUrl("local", "landlordAvatar_" + cleanEmail, profileObj.avatar_url);
+          } else if (userRole === "tenant") {
+            cacheAvatarUrl("session", "tenantAvatarUrl", profileObj.avatar_url);
+            cacheAvatarUrl("local", "tenantAvatarUrl", profileObj.avatar_url);
+            cacheAvatarUrl("local", "tenantAvatar_" + cleanEmail, profileObj.avatar_url);
+            cacheAvatarUrl("local", "userAvatar_" + cleanEmail, profileObj.avatar_url);
+          }
+        }
 
         // Signal dashboard to show profile completeness guidance banner and open Settings tab
         safeSetItem("session", "justSignedInToCompleteProfile", "true");
@@ -284,25 +299,7 @@ export default function Login() {
   }
 
   function handleForgotPassword() {
-    setInlineError("");
-    setSessionWarning("");
-    setResetMessage("");
-
-    // Check if account is currently locked out due to rate limiting
-    if (lockoutTime && Date.now() < lockoutTime) {
-      const minutesRemaining = Math.ceil((lockoutTime - Date.now()) / 60000);
-      setInlineError(
-        `Account temporarily locked due to too many failed login attempts. Please wait ${minutesRemaining} minute(s) before requesting a password reset.`
-      );
-      return;
-    }
-
-    if (!email) {
-      setInlineError("Please enter your email address to reset your password.");
-      return;
-    }
-
-    setResetMessage(`Password reset link has been sent to ${email}.`);
+    navigate("/forgot-password", { state: { email } });
   }
 
   return (

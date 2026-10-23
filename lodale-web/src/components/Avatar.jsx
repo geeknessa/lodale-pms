@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { resolveAvatarUrl } from '../utils/avatarUtils';
 
 /**
  * Avatar component that renders a profile image if available,
@@ -13,8 +14,9 @@ import React, { useState } from 'react';
 export default function Avatar({ src, name, className = "", style = {} }) {
   const [imgFailed, setImgFailed] = useState(false);
 
-  // Check if src is provided and is not empty or a default placeholder that we want to override
-  const isValidSrc = src && src.trim() !== "" && src !== "/default-avatar.png";
+  const resolvedSrc = resolveAvatarUrl(src);
+  // Check if resolvedSrc is provided and is not empty or a default placeholder that we want to override
+  const isValidSrc = resolvedSrc && resolvedSrc.trim() !== "" && resolvedSrc !== "/default-avatar.png";
   const showImage = isValidSrc && !imgFailed;
 
   const getInitial = () => {
@@ -34,11 +36,14 @@ export default function Avatar({ src, name, className = "", style = {} }) {
     >
       {showImage ? (
         <img 
-          src={src} 
-          alt={name || "User Avatar"} 
+          src={resolvedSrc} 
+          alt="" 
           loading="lazy"
           className="h-full w-full object-cover" 
-          onError={() => setImgFailed(true)}
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+            setImgFailed(true);
+          }}
         />
       ) : (
         <span style={{ fontSize: 'inherit' }}>{getInitial()}</span>

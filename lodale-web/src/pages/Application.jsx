@@ -224,9 +224,31 @@ export default function Application() {
     setSubmitting(true);
     try {
       // Build structured application payload
+      const resolvedIncome = tenantStats?.income && tenantStats.income !== 'Not Provided' 
+        ? tenantStats.income 
+        : (tenantProfile?.monthly_income || tenantProfile?.monthlyIncome || tenantProfile?.income || null);
+
+      const resolvedEmployment = tenantStats?.employment && tenantStats.employment !== 'Not Provided'
+        ? tenantStats.employment
+        : (tenantProfile?.employment_status || tenantProfile?.employmentStatus || (isEmployed ? "Employed" : null));
+
+      const resolvedAddress = tenantProfile?.address || tenantProfile?.currentAddress || tenantProfile?.location || null;
+
       const payload = {
         unitName: formData.unitName,
-        maritalStatus: formData.maritalStatus,
+        maritalStatus: formData.maritalStatus || tenantProfile?.maritalStatus || tenantProfile?.marital_status || "Single",
+        monthlyIncome: resolvedIncome,
+        employmentStatus: resolvedEmployment,
+        employerName: (isEmployed && formData.employerName) ? formData.employerName.trim() : (tenantProfile?.employerName || tenantProfile?.employer_name || null),
+        employerContact: (isEmployed && formData.employerContact) ? formData.employerContact.trim() : null,
+        occupation: tenantProfile?.occupation || null,
+        dependants: occupants.length > 0 ? occupants.length : (tenantProfile?.number_of_dependants ?? tenantProfile?.dependants ?? 0),
+        address: resolvedAddress,
+        location: tenantProfile?.location || null,
+        gender: tenantProfile?.gender || null,
+        emergencyContactName: tenantProfile?.emergencyContactName || tenantProfile?.emergency_contact_name || null,
+        emergencyContactPhone: tenantProfile?.emergencyContactPhone || tenantProfile?.emergency_contact_phone || null,
+        emergencyContactRelationship: tenantProfile?.emergencyContactRelationship || tenantProfile?.emergency_contact_relationship || null,
         occupants: occupants.map(occ => ({
           name: occ.name.trim(),
           relationship: occ.relationship,
@@ -234,8 +256,6 @@ export default function Application() {
           ageGroup: occ.isAdult ? "Adult (18+)" : "Child (Under 18)",
           age: occ.age ? occ.age.trim() : null
         })),
-        employerName: isEmployed ? formData.employerName.trim() : null,
-        employerContact: isEmployed ? formData.employerContact.trim() : null,
         rentalHistory: isFirstTimeRenting ? null : {
           previousAddress: formData.previousAddress.trim(),
           previousLandlordName: formData.previousLandlordName.trim(),
@@ -243,10 +263,10 @@ export default function Application() {
           durationOfStay: formData.durationOfStay.trim(),
           reasonForMoving: formData.reasonForMoving.trim()
         },
-        guarantorName: requiresGuarantor ? formData.guarantorName.trim() : null,
-        guarantorPhone: requiresGuarantor ? formData.guarantorPhone.trim() : null,
-        guarantorRelationship: requiresGuarantor ? formData.guarantorRelationship.trim() : null,
-        guarantorEmail: requiresGuarantor && formData.guarantorEmail ? formData.guarantorEmail.trim() : null,
+        guarantorName: requiresGuarantor ? formData.guarantorName.trim() : (formData.guarantorName ? formData.guarantorName.trim() : (tenantProfile?.guarantorName || null)),
+        guarantorPhone: requiresGuarantor ? formData.guarantorPhone.trim() : (formData.guarantorPhone ? formData.guarantorPhone.trim() : (tenantProfile?.guarantorPhone || null)),
+        guarantorRelationship: requiresGuarantor ? formData.guarantorRelationship.trim() : (formData.guarantorRelationship ? formData.guarantorRelationship.trim() : (tenantProfile?.guarantorRelationship || null)),
+        guarantorEmail: requiresGuarantor && formData.guarantorEmail ? formData.guarantorEmail.trim() : (formData.guarantorEmail ? formData.guarantorEmail.trim() : (tenantProfile?.guarantorEmail || null)),
         notes: formData.notes
       };
 

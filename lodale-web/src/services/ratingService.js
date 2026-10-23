@@ -41,9 +41,19 @@ export const ratingService = {
         body: payload
       });
 
-      // Invalidate cache for this landlord
+      // Invalidate cache for this landlord across keys
       ratingsCache.delete(`landlord_${landlordId}`);
+      ratingsCache.delete(`landlord_${String(landlordId).toLowerCase()}`);
+      ratingsCache.clear();
+
+      // Proactively fetch updated ratings to warm cache with fresh average
+      try {
+        await ratingService.getLandlordReviews(landlordId, true);
+      } catch (_) {}
+
       window.dispatchEvent(new CustomEvent('landlordRatingUpdated', { detail: { landlordId } }));
+      window.dispatchEvent(new CustomEvent('ratingsUpdated', { detail: { landlordId } }));
+      try { localStorage.setItem('lodale_ratings_updated_at', String(Date.now())); } catch (_) {}
 
       return {
         success: true,
@@ -61,20 +71,28 @@ export const ratingService = {
   /**
    * Get all reviews and computed average score for a Landlord.
    */
-  async getLandlordReviews(landlordId) {
-    if (!landlordId) return { hasReviews: false, rating: "New", count: 0, reviews: [] };
+  async getLandlordReviews(landlordId, forceFresh = false) {
+    const targetId = landlordId || 'me';
+    const cacheKey = `landlord_${String(targetId).toLowerCase()}`;
+    if (!forceFresh && ratingsCache.has(cacheKey)) {
+      return ratingsCache.get(cacheKey);
+    }
 
     try {
-      const data = await apiClient(`/ratings/user/${encodeURIComponent(landlordId)}?type=tenant_rates_landlord`);
+      const data = await apiClient(`/ratings/user/${encodeURIComponent(targetId)}?type=tenant_rates_landlord`);
       if (data && typeof data === 'object') {
-        ratingsCache.set(`landlord_${landlordId}`, data);
+        ratingsCache.set(cacheKey, data);
+        ratingsCache.set(`landlord_${targetId}`, data);
+        if (targetId !== 'me') {
+          ratingsCache.set(`landlord_me`, data);
+        }
         return data;
       }
     } catch (err) {
       console.warn('[ratingService.getLandlordReviews error]:', err.message);
     }
 
-    return ratingsCache.get(`landlord_${landlordId}`) || { hasReviews: false, rating: "New", count: 0, reviews: [] };
+    return ratingsCache.get(cacheKey) || ratingsCache.get(`landlord_${targetId}`) || { hasReviews: false, rating: "New", count: 0, reviews: [] };
   },
 
   /**
@@ -116,7 +134,15 @@ export const ratingService = {
       // Invalidate cache for this tenant
       ratingsCache.delete(`tenant_${tenantId}`);
       if (tenantEmail) ratingsCache.delete(`tenant_${tenantEmail.toLowerCase()}`);
+      ratingsCache.clear();
+
+      try {
+        await ratingService.getTenantReviews(tenantId, tenantEmail, true);
+      } catch (_) {}
+
       window.dispatchEvent(new CustomEvent('tenantRatingUpdated', { detail: { tenantId, tenantEmail } }));
+      window.dispatchEvent(new CustomEvent('ratingsUpdated', { detail: { tenantId, tenantEmail } }));
+      try { localStorage.setItem('lodale_ratings_updated_at', String(Date.now())); } catch (_) {}
 
       return {
         success: true,
@@ -134,11 +160,14 @@ export const ratingService = {
   /**
    * Get all reviews and reliability score for a Tenant.
    */
-  async getTenantReviews(tenantId, tenantEmail) {
+  async getTenantReviews(tenantId, tenantEmail, forceFresh = false) {
     const idOrEmail = tenantId || tenantEmail;
     if (!idOrEmail) return { hasReviews: false, rating: "New", count: 0, reviews: [] };
 
     const cacheKey = `tenant_${String(idOrEmail).toLowerCase()}`;
+    if (!forceFresh && ratingsCache.has(cacheKey)) {
+      return ratingsCache.get(cacheKey);
+    }
 
     try {
       const data = await apiClient(`/ratings/user/${encodeURIComponent(idOrEmail)}?type=landlord_rates_tenant`);

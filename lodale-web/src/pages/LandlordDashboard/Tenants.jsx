@@ -1,20 +1,44 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, MessageSquare, Star, X, Info, UserCheck, ShieldAlert, AlertTriangle, RotateCcw, Copy, Send, CheckCircle2 } from "lucide-react";
+import { Search, Plus, MessageSquare, Star, X, Info, UserCheck, ShieldAlert, AlertTriangle, RotateCcw, Copy, Send, CheckCircle2, FileText } from "lucide-react";
 import { triggerToast } from "../../context/ToastContext";
 import { propertyService } from "../../services/propertyService";
 import { leaseService } from "../../services/leaseService";
 import { applicationService } from "../../services/applicationService";
+import { rentService } from "../../services/rentService";
 import { chatService } from "../../services/chatService";
 import { reminderService } from "../../services/reminderService";
 import { apiClient } from "../../lib/apiClient";
 import Avatar from "../../components/Avatar";
 import RenewalOfferModal from "./components/RenewalOfferModal";
 import RateTenantModal from "../../components/RateTenantModal";
+import InvoiceBuilderModal from "../../components/InvoiceBuilderModal";
 import { profileService } from "../../services/profileService";
 import { ratingService } from "../../services/ratingService";
 import { formatDateOnly } from "../../utils/formatters";
+import { parseRentAmount } from "../../utils/landlordMetrics";
 import "./Tenants.css";
+export const makeTenancyKey = (tenantId, propertyId) => {
+  const tId = String(tenantId || "").trim().toLowerCase();
+  const pId = String(propertyId || "").trim().toLowerCase();
+  return `${tId}::${pId}`;
+};
+
+const formatTenantDueDate = (dateVal) => {
+  if (!dateVal || dateVal === "—") return "—";
+  if (typeof dateVal === "string") {
+    const trimmed = dateVal.trim();
+    if (trimmed === "—" || trimmed.toLowerCase() === "null" || trimmed.toLowerCase() === "undefined") {
+      return "—";
+    }
+    if (/^\d{4}-\d{1,2}-\d{1,2}/.test(trimmed) || trimmed.includes("T")) {
+      const formatted = formatDateOnly(trimmed);
+      return formatted !== "—" ? formatted : trimmed;
+    }
+    return trimmed;
+  }
+  return formatDateOnly(dateVal);
+};
 
 const TenantsSkeleton = () => (
   <div className="tenants-grid">
@@ -104,6 +128,8 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
   const [rentAgain, setRentAgain] = useState("yes");
   
   const [renewalTenant, setRenewalTenant] = useState(null);
+  const [invoiceTenant, setInvoiceTenant] = useState(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [settings, setSettings] = useState(null);
 
   useEffect(() => {
@@ -127,8 +153,12 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
 
   const [error, setError] = useState(null);
 
+  const isFetchingDataRef = useRef(false);
+
   // Load properties and tenants
   const loadData = async (isSilent = false) => {
+    if (isFetchingDataRef.current) return;
+    isFetchingDataRef.current = true;
     if (!isSilent && tenantsList.length === 0) {
       setIsLoading(true);
     }
@@ -156,17 +186,14 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
       }
     } catch (e) {}
 
-    let tenantData = null;
-    let leases = [];
-    let apps = [];
-
     try {
       // 2. Perform API calls in parallel
-      const [propsRes, tenantRes, leasesRes, appsRes] = await Promise.allSettled([
+      const [propsRes, leasesRes, appsRes, invoicesRes, tenantsRes] = await Promise.allSettled([
         currentUserId ? propertyService.getLandlordProperties(currentUserId).catch(() => []) : propertyService.getProperties().catch(() => []),
-        apiClient('/users/tenants').catch(() => null),
         leaseService.getMyLeases().catch(() => []),
-        applicationService.getLandlordApplications().catch(() => [])
+        applicationService.getLandlordApplications().catch(() => []),
+        rentService.getMyInvoices().catch(() => []),
+        apiClient('/users/tenants').catch(() => null)
       ]);
 
       const rawProps = propsRes.status === 'fulfilled' ? propsRes.value : [];
@@ -180,34 +207,143 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
       }
       setProperties(propertyList);
 
-      tenantData = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
-      leases = leasesRes.status === 'fulfilled' ? (Array.isArray(leasesRes.value) ? leasesRes.value : (leasesRes.value?.leases || [])) : [];
-      apps = appsRes.status === 'fulfilled' ? (Array.isArray(appsRes.value) ? appsRes.value : (appsRes.value?.applications || [])) : [];
-
-      const allTenants = [];
-      const seenKeys = new Set();
-
-      // 0. Primary Backend Tenants Endpoint
-      const fetchedTenants = Array.isArray(tenantData) ? tenantData : (tenantData && Array.isArray(tenantData.tenants) ? tenantData.tenants : []);
-      fetchedTenants.forEach(t => {
-        if (!t) return;
-        const key = String(t.id || t.email || t.name).toLowerCase();
-        if (key && !seenKeys.has(key)) {
-          seenKeys.add(key);
-          allTenants.push(t);
+      // Gather all property lookups (including session storage)
+      const allPropertiesForLookup = [...propertyList];
+      try {
+        const userKey = "landlord_properties_" + (currentUserId || userEmail);
+        const savedSession = sessionStorage.getItem(userKey);
+        if (savedSession) {
+          const parsed = JSON.parse(savedSession);
+          if (Array.isArray(parsed)) {
+            parsed.forEach(p => {
+              if (p && (!currentUserId || String(p.landlord_id || p.landlordId) === String(currentUserId))) {
+                allPropertiesForLookup.push(p);
+              }
+            });
+          }
         }
+      } catch (e) {}
+
+      const propertyById = new Map();
+      const propertyByTitle = new Map();
+      allPropertiesForLookup.forEach(p => {
+        if (!p) return;
+        if (p.id) propertyById.set(String(p.id).toLowerCase().trim(), p);
+        if (p.title) propertyByTitle.set(String(p.title).toLowerCase().trim(), p);
       });
 
-      // 1. Process Leases from Backend API
-      (leases || []).forEach(l => {
+      const leases = leasesRes.status === 'fulfilled' ? (Array.isArray(leasesRes.value) ? leasesRes.value : (leasesRes.value?.leases || [])) : [];
+      const apps = appsRes.status === 'fulfilled' ? (Array.isArray(appsRes.value) ? appsRes.value : (appsRes.value?.applications || [])) : [];
+      const rawInvoices = invoicesRes.status === 'fulfilled' ? invoicesRes.value : [];
+      const invoices = Array.isArray(rawInvoices) ? rawInvoices : (rawInvoices && Array.isArray(rawInvoices.invoices) ? rawInvoices.invoices : []);
+      const tenantData = tenantsRes.status === 'fulfilled' ? tenantsRes.value : null;
+      const fetchedTenants = Array.isArray(tenantData) ? tenantData : (tenantData && Array.isArray(tenantData.tenants) ? tenantData.tenants : []);
+
+      // Identity cross-reference maps (email <-> tenantId)
+      const emailToTenantIdMap = new Map();
+      const tenantIdToEmailMap = new Map();
+
+      const registerIdentity = (tId, email) => {
+        const cleanTId = tId ? String(tId).trim().toLowerCase() : "";
+        const cleanEmail = email ? String(email).trim().toLowerCase() : "";
+        if (cleanTId && cleanEmail) {
+          emailToTenantIdMap.set(cleanEmail, cleanTId);
+          tenantIdToEmailMap.set(cleanTId, cleanEmail);
+        }
+      };
+
+      fetchedTenants.forEach(t => {
+        if (!t) return;
+        registerIdentity(t.tenantId || t.id, t.email || t.tenant_email);
+      });
+      leases.forEach(l => {
+        if (!l) return;
+        registerIdentity(l.tenant_id || l.tenantId, l.tenant_email);
+      });
+      apps.forEach(a => {
+        if (!a) return;
+        registerIdentity(a.tenantId || a.tenant_id || a.tenant?.id, a.tenant?.email || a.email);
+      });
+      invoices.forEach(inv => {
+        if (!inv) return;
+        registerIdentity(inv.tenantId || inv.tenant_id, inv.tenantEmail || inv.tenant_email);
+      });
+
+      // Canonical Tenancy Key: String(tenant_id) + "::" + String(property_id) (with fallback to email/name + title)
+      const getTenancyKey = (tenantId, tenantEmail, tenantName, propertyId, propertyTitle) => {
+        let cleanTId = (tenantId && String(tenantId).trim().toLowerCase()) || "";
+        let cleanEmail = (tenantEmail && String(tenantEmail).trim().toLowerCase()) || "";
+        let cleanPropId = (propertyId && String(propertyId).trim().toLowerCase()) || "";
+        const cleanPropTitle = (propertyTitle && String(propertyTitle).trim().toLowerCase()) || "";
+
+        if (!cleanTId && cleanEmail && emailToTenantIdMap.has(cleanEmail)) {
+          cleanTId = emailToTenantIdMap.get(cleanEmail);
+        }
+        if (!cleanEmail && cleanTId && tenantIdToEmailMap.has(cleanTId)) {
+          cleanEmail = tenantIdToEmailMap.get(cleanTId);
+        }
+        if (!cleanPropId && cleanPropTitle && propertyByTitle.has(cleanPropTitle)) {
+          cleanPropId = String(propertyByTitle.get(cleanPropTitle).id || "").toLowerCase().trim();
+        }
+
+        if (cleanTId && cleanPropId) {
+          return `${cleanTId}::${cleanPropId}`;
+        }
+        if (cleanEmail && cleanPropId) {
+          return `${cleanEmail}::${cleanPropId}`;
+        }
+        if (cleanTId && cleanPropTitle) {
+          return `${cleanTId}::${cleanPropTitle}`;
+        }
+        if (cleanEmail && cleanPropTitle) {
+          return `${cleanEmail}::${cleanPropTitle}`;
+        }
+        const fallbackTenant = cleanTId || cleanEmail || (tenantName && String(tenantName).trim().toLowerCase()) || "tenant";
+        const fallbackProp = cleanPropId || cleanPropTitle || "prop";
+        return `${fallbackTenant}::${fallbackProp}`;
+      };
+
+      const getLeasePriority = (status) => {
+        const s = (status || '').toLowerCase();
+        if (s === 'active') return 100;
+        if (s === 'signed') return 80;
+        if (s === 'partially_signed' || s === 'pending_tenant') return 60;
+        if (s === 'pending' || s === 'draft') return 40;
+        return 20; // past, expired, terminated
+      };
+
+      const tenancyMap = new Map();
+
+      // 1. Process Backend Tenants Endpoint (Primary source of truth - already grouped by tenant_id::property_id)
+      fetchedTenants.forEach(t => {
+        if (!t) return;
+        const tId = t.tenantId || t.id;
+        const key = t.tenancyKey || getTenancyKey(tId, t.email, t.name, t.propertyId, t.propertyTitle);
+        tenancyMap.set(key, {
+          ...t,
+          tenancyKey: key,
+          id: String(tId),
+          tenantId: String(tId),
+          propertyId: String(t.propertyId),
+          leaseId: t.leaseId || null,
+          leaseIds: new Set(t.leaseIds || (t.leaseId ? [t.leaseId] : [])),
+          applicationIds: new Set(t.applicationIds || []),
+          unpaidInvoicesCount: t.unpaidInvoicesCount || t.unpaidCount || 0,
+          invoices: Array.isArray(t.invoices) ? [...t.invoices] : []
+        });
+      });
+
+      // 2. Process Leases: Merge into existing tenancies or register new ones
+      leases.forEach(l => {
+        if (!l) return;
         const isSigned = !!l.tenant_signed_at || l.status === 'signed' || l.status === 'active';
         const isPaid = l.payment_status === 'paid' || l.is_paid || l.status === 'active';
         const isActive = (l.status === 'active' || isSigned) && isPaid;
-        const isPending = !isActive;
+        const isPending = !isActive && l.status !== 'past' && l.status !== 'expired' && l.status !== 'terminated';
 
-        let status = 'past';
-        if (isActive) status = 'active';
-        else if (isPending) status = 'pending';
+        let tenancyStatus = 'past';
+        if (isActive) tenancyStatus = 'active';
+        else if (isPending) tenancyStatus = 'pending';
 
         let badgeLabel = 'Active Tenant';
         if (!isActive) {
@@ -217,232 +353,251 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
           else badgeLabel = 'Pending';
         }
 
-        const tenantIdentifier = String(l.tenant_email || l.tenant_name || l.tenant_id).toLowerCase();
-        const propIdentifier = String(l.property_title || l.property_id).toLowerCase();
-        const compositeKey = `${tenantIdentifier}-${propIdentifier}`;
+        let propId = l.property_id || l.propertyId;
+        let propTitle = l.property_title || l.propertyTitle;
+        if (propId && propertyById.has(String(propId).toLowerCase().trim())) {
+          propTitle = propertyById.get(String(propId).toLowerCase().trim()).title || propTitle;
+        }
+        if (!propTitle) propTitle = "Leased Property";
 
-        if (compositeKey && seenKeys.has(compositeKey)) return;
-        seenKeys.add(compositeKey);
+        const tenantId = l.tenant_id || l.tenantId;
+        const tenantEmail = l.tenant_email || "";
+        const tenantName = l.tenant_name || "Unknown Tenant";
+        const tenantPhone = l.tenant_contact || l.phone || "";
+        const tenantAvatar = l.tenant_avatar || l.avatar || "";
 
-        allTenants.push({
-          id: l.tenant_id || l.tenantId, // keep tenant's user ID as main ID
-          leaseId: l.id, // the actual lease ID for API calls
-          name: l.tenant_name || "Unknown Tenant",
-          email: l.tenant_email || "",
-          phone: l.tenant_contact || l.phone || "",
-          propertyId: l.property_id,
-          propertyTitle: l.property_title || "Leased Property",
-          status: status,
-          leaseStatus: badgeLabel,
-          rentAmount: l.rent_amount,
-          rentPeriod: l.rent_period,
-          startDate: l.start_date || l.startDate,
-          endDate: l.end_date || l.endDate,
-          dueDate: l.start_date ? formatDateOnly(l.start_date) : "—",
-          paymentStatus: isPaid ? "Paid" : "Unpaid"
-        });
-      });
+        const key = getTenancyKey(tenantId, tenantEmail, tenantName, propId, propTitle);
 
-      // 2. Process Applications (ONLY include if a lease agreement has been generated/sent or fully leased)
-      (apps || []).forEach(a => {
-        const tenantId = String(a.tenantId || a.tenant_id || a.tenant?.id || a.id || '');
-        const tenantEmail = a.tenant?.email || a.email || "";
-        const tenantName = `${a.tenant?.firstName || a.first_name || ''} ${a.tenant?.lastName || a.last_name || ''}`.trim() || a.tenantName || a.tenant?.name || "Tenant";
-        const tenantKey = String(tenantId || tenantEmail || tenantName).toLowerCase();
-        const propKey = String(a.propertyTitle || a.property_title || a.propertyId || a.property_id).toLowerCase();
-        const compositeKey = `${tenantKey}-${propKey}`;
+        if (tenancyMap.has(key)) {
+          const existing = tenancyMap.get(key);
+          if (l.id) existing.leaseIds.add(l.id);
+          if (l.application_id) existing.applicationIds.add(l.application_id);
 
-        if (compositeKey && !seenKeys.has(compositeKey)) {
-          const s = (a.status || '').toLowerCase();
-          const isFullyLeased = s === 'leased' || s === 'active';
-          const isLeaseSent = s === 'approved' || s === 'lease_generated' || s === 'pending_tenant' || s === 'signed';
-
-          // Strictly skip raw applicants who have not been sent a lease agreement
-          if (!isFullyLeased && !isLeaseSent) return;
-
-          seenKeys.add(compositeKey);
-
-          let status = isFullyLeased ? 'active' : 'pending';
-          let badgeLabel = isFullyLeased ? 'Active Tenant' : 'Pending Sign & Pay';
-
-          allTenants.push({
-            id: tenantId || `tenant-app-${a.id}`,
+          // If new lease has higher priority (e.g. active vs pending/past), promote it
+          if (getLeasePriority(l.status) > getLeasePriority(existing.lease?.status || existing.rawLeaseStatus)) {
+            existing.leaseId = l.id;
+            existing.lease = l;
+            existing.status = tenancyStatus;
+            existing.leaseStatus = badgeLabel;
+            existing.rentAmount = l.rent_amount;
+            existing.rentPeriod = l.rent_period || existing.rentPeriod;
+            existing.startDate = l.start_date || l.startDate;
+            existing.endDate = l.end_date || l.endDate;
+            if (l.start_date) existing.dueDate = l.start_date;
+            existing.paymentStatus = isPaid ? "Paid" : "Unpaid";
+          }
+          if (!existing.phone && tenantPhone) existing.phone = tenantPhone;
+          if (!existing.avatar && tenantAvatar) existing.avatar = tenantAvatar;
+          if (!existing.email && tenantEmail) existing.email = tenantEmail;
+        } else {
+          tenancyMap.set(key, {
+            tenancyKey: key,
+            id: String(tenantId || `tenant-lease-${l.id}`),
+            tenantId: String(tenantId || `tenant-lease-${l.id}`),
+            leaseId: l.id,
+            leaseIds: new Set(l.id ? [l.id] : []),
+            applicationIds: new Set(l.application_id ? [l.application_id] : []),
+            lease: l,
             name: tenantName,
+            avatar: tenantAvatar,
             email: tenantEmail,
-            phone: a.tenant?.phone || a.tenantPhone || a.phone || "",
-            propertyId: a.propertyId || a.property_id,
-            propertyTitle: a.propertyTitle || a.property_title || "Leased Property",
-            status: status,
+            phone: tenantPhone,
+            propertyId: propId,
+            propertyTitle: propTitle,
+            status: tenancyStatus,
             leaseStatus: badgeLabel,
-            rentAmount: a.propertyRentAmount || a.property_rent_amount || 0,
-            dueDate: "1st of month",
-            paymentStatus: isFullyLeased ? "Paid" : "Unpaid"
+            rentAmount: l.rent_amount || 0,
+            rentPeriod: l.rent_period || 'monthly',
+            startDate: l.start_date || l.startDate,
+            endDate: l.end_date || l.endDate,
+            dueDate: l.start_date || "—",
+            paymentStatus: isPaid ? "Paid" : "Unpaid",
+            unpaidInvoicesCount: 0,
+            invoices: []
           });
         }
       });
 
-      // 3. (localStorage propertyTenants logic removed in favor of pure API data)
+      // 3. Process Applications (ONLY include if a lease agreement has been generated/sent or fully leased)
+      apps.forEach(a => {
+        if (!a) return;
+        const s = (a.status || '').toLowerCase();
+        const isFullyLeased = s === 'leased' || s === 'active';
+        const isLeaseSent = s === 'approved' || s === 'lease_generated' || s === 'pending_tenant' || s === 'signed';
 
-      // 4. Process Embedded Tenants directly from Property Listings (ONLY if explicit tenant contact info exists)
-      const combinedProperties = [...(propertyList || [])];
-      try {
-        const userKey = "landlord_properties_" + (currentUserId || userEmail);
-        const savedSession = sessionStorage.getItem(userKey);
-        if (savedSession) {
-          const parsed = JSON.parse(savedSession);
-          if (Array.isArray(parsed)) {
-            parsed.forEach(p => {
-              if (p && (!currentUserId || String(p.landlord_id || p.landlordId) === String(currentUserId))) {
-                combinedProperties.push(p);
-              }
-            });
-          }
+        // Strictly skip raw applicants who have not been sent a lease agreement
+        if (!isFullyLeased && !isLeaseSent) return;
+
+        const tenantId = a.tenantId || a.tenant_id || a.tenant?.id || '';
+        const tenantEmail = a.tenant?.email || a.email || "";
+        const tenantName = `${a.tenant?.firstName || a.first_name || ''} ${a.tenant?.lastName || a.last_name || ''}`.trim() || a.tenantName || a.tenant?.name || "Tenant";
+        const propId = a.propertyId || a.property_id;
+        let propTitle = a.propertyTitle || a.property_title;
+        if (propId && propertyById.has(String(propId).toLowerCase().trim())) {
+          propTitle = propertyById.get(String(propId).toLowerCase().trim()).title || propTitle;
         }
-      } catch (e) {}
+        if (!propTitle) propTitle = "Leased Property";
 
-      combinedProperties.forEach(p => {
-        if (!p) return;
+        const key = getTenancyKey(tenantId, tenantEmail, tenantName, propId, propTitle);
+
+        if (tenancyMap.has(key)) {
+          const existing = tenancyMap.get(key);
+          if (a.id) existing.applicationIds.add(a.id);
+          if (!existing.phone && (a.tenant?.phone || a.tenantPhone || a.phone)) {
+            existing.phone = a.tenant?.phone || a.tenantPhone || a.phone;
+          }
+          if (!existing.avatar && (a.tenant?.avatar || a.avatar)) {
+            existing.avatar = a.tenant?.avatar || a.avatar;
+          }
+        } else {
+          tenancyMap.set(key, {
+            tenancyKey: key,
+            id: String(tenantId || `tenant-app-${a.id}`),
+            tenantId: String(tenantId || `tenant-app-${a.id}`),
+            leaseId: null,
+            leaseIds: new Set(),
+            applicationIds: new Set(a.id ? [a.id] : []),
+            lease: null,
+            name: tenantName,
+            avatar: a.tenant?.avatar || a.avatar || "",
+            email: tenantEmail,
+            phone: a.tenant?.phone || a.tenantPhone || a.phone || "",
+            propertyId: propId,
+            propertyTitle: propTitle,
+            status: isFullyLeased ? 'active' : 'pending',
+            leaseStatus: isFullyLeased ? 'Active Tenant' : 'Pending Sign & Pay',
+            rentAmount: a.propertyRentAmount || a.property_rent_amount || 0,
+            rentPeriod: a.propertyRentPeriod || a.rent_period || 'monthly',
+            startDate: a.lease_start_date || a.startDate || null,
+            endDate: a.lease_end_date || a.endDate || null,
+            dueDate: "—",
+            paymentStatus: isFullyLeased ? "Paid" : "Unpaid",
+            unpaidInvoicesCount: 0,
+            invoices: []
+          });
+        }
+      });
+
+      // 4. Process Embedded Tenants from Property Listings ONLY if property is not already covered by a tenancy
+      const coveredPropertyIds = new Set(
+        Array.from(tenancyMap.values()).map(t => String(t.propertyId || '').trim().toLowerCase())
+      );
+      allPropertiesForLookup.forEach(p => {
+        if (!p || !p.id) return;
+        const cleanPropId = String(p.id).trim().toLowerCase();
+        if (coveredPropertyIds.has(cleanPropId)) {
+          return; // Strictly skip: property is already covered by a real active tenancy!
+        }
+
         const embeddedName = (p.tenant_name || p.tenantName || "").trim();
         const embeddedContact = (p.tenant_contact || p.tenantContact || p.tenant_email || p.tenantEmail || "").trim();
 
-        // ONLY process if explicit tenant name or email/phone contact exists!
-        // DO NOT generate synthetic fake placeholder tenants if name and contact are empty.
         if (embeddedName || embeddedContact) {
-          let email = embeddedContact.includes("@") ? embeddedContact : "";
-          let phone = !embeddedContact.includes("@") ? embeddedContact : "";
-          let name = embeddedName;
+          const email = embeddedContact.includes("@") ? embeddedContact : "";
+          const phone = !embeddedContact.includes("@") ? embeddedContact : "";
+          const name = embeddedName || (email ? email.split("@")[0] : phone) || "Tenant";
 
-          if (email) {
-            try {
-              const reg = localStorage.getItem("registeredUser_" + email.toLowerCase());
-              if (reg) {
-                const u = JSON.parse(reg);
-                if (u.name) name = u.name;
-                if (u.phone && !phone) phone = u.phone;
-              }
-            } catch (e) {}
+          const key = getTenancyKey(null, email, name, p.id, p.title);
+          if (!tenancyMap.has(key)) {
+            tenancyMap.set(key, {
+              tenancyKey: key,
+              id: `tenant-prop-${p.id}`,
+              tenantId: `tenant-prop-${p.id}`,
+              name: name,
+              email: email,
+              phone: phone,
+              propertyId: p.id,
+              propertyTitle: p.title || p.name || "Leased Property",
+              status: "active",
+              leaseStatus: "Active Tenant",
+              rentAmount: parseRentAmount(p.rent_amount ?? p.rent ?? p.price),
+              rentPeriod: p.rent_period || "monthly",
+              dueDate: "—",
+              paymentStatus: "Unknown",
+              unpaidInvoicesCount: 0,
+              leaseIds: new Set(),
+              applicationIds: new Set(),
+              invoices: []
+            });
           }
-
-          if (!name && email) {
-            const part = email.split("@")[0];
-            name = part.charAt(0).toUpperCase() + part.slice(1);
-          } else if (!name && phone) {
-            name = phone;
-          }
-
-          if (name || email || phone) {
-            const tenantKey = String(email || phone || name).toLowerCase();
-
-            // Check if this property already has a real tenant in allTenants
-            const alreadyHasTenant = allTenants.some(t => 
-              (t.propertyId && p.id && String(t.propertyId).toLowerCase() === String(p.id).toLowerCase()) ||
-              (p.title && t.propertyTitle && String(t.propertyTitle).toLowerCase() === String(p.title).toLowerCase())
-            );
-
-            if (!seenKeys.has(tenantKey) && (!alreadyHasTenant || embeddedName)) {
-              seenKeys.add(tenantKey);
-              if (name) seenKeys.add(String(name).toLowerCase());
-              if (email) seenKeys.add(String(email).toLowerCase());
-
-              allTenants.push({
-                id: `tenant-prop-${p.id || Date.now()}`,
-                name: name || email || "Tenant",
-                tenantName: name || email || "Tenant",
-                email: email,
-                phone: phone,
-                propertyId: p.id,
-                propertyTitle: p.title || p.name || "Leased Property",
-                status: "active",
-                leaseStatus: "Active Tenant",
-                rentAmount: p.rent_amount || p.rent || p.price || 0,
-                dueDate: "1st of month",
-                paymentStatus: "Paid"
-              });
-            }
-          }
-        }
-
-        // Multi-unit tenants embedded in property.units
-        if (Array.isArray(p.units)) {
-          p.units.forEach((u, uIdx) => {
-            const rawUName = (u.tenant_name || u.tenantName || "").trim();
-            const uContact = (u.tenant_contact || u.tenantContact || "").trim();
-            if (rawUName || uContact) {
-              let uEmail = uContact.includes("@") ? uContact : "";
-              let uPhone = !uContact.includes("@") ? uContact : "";
-              let uName = rawUName;
-
-              if (uEmail) {
-                try {
-                  const reg = localStorage.getItem("registeredUser_" + uEmail.toLowerCase());
-                  if (reg) {
-                    const regUser = JSON.parse(reg);
-                    if (regUser.name) uName = regUser.name;
-                    if (regUser.phone && !uPhone) uPhone = regUser.phone;
-                  }
-                } catch (e) {}
-              }
-
-              if (!uName && uEmail) {
-                const part = uEmail.split("@")[0];
-                uName = part.charAt(0).toUpperCase() + part.slice(1);
-              } else if (!uName && uPhone) {
-                uName = uPhone;
-              }
-
-              if (uName || uEmail || uPhone) {
-                const uTenantKey = String(uEmail || uPhone || uName).toLowerCase();
-
-                if (!seenKeys.has(uTenantKey)) {
-                  seenKeys.add(uTenantKey);
-                  if (uName) seenKeys.add(String(uName).toLowerCase());
-                  if (uEmail) seenKeys.add(String(uEmail).toLowerCase());
-
-                  allTenants.push({
-                    id: `tenant-unit-${p.id || Date.now()}-${uIdx}`,
-                    name: uName || uEmail || "Tenant",
-                    tenantName: uName || uEmail || "Tenant",
-                    email: uEmail,
-                    phone: uPhone,
-                    propertyId: p.id,
-                    propertyTitle: p.title || p.name || "Leased Property",
-                    status: "active",
-                    leaseStatus: `Active Tenant (${u.unit_name || `Unit ${uIdx + 1}`})`,
-                    rentAmount: u.rent_amount || p.rent_amount || 0,
-                    dueDate: "1st of month",
-                    paymentStatus: "Paid"
-                  });
-                }
-              }
-            }
-          });
         }
       });
 
+      // 5. Nest Invoices under Tenancies (Never create one card per invoice!)
+      const tenancies = Array.from(tenancyMap.values());
 
+      invoices.forEach(inv => {
+        if (!inv) return;
 
-      // Final Deduplication by Email+Property to prevent duplicates
-      const uniqueTenantsMap = new Map();
-      allTenants.forEach(t => {
-        const tenantKey = String(t.email || t.phone || t.name || "").toLowerCase();
-        const propKey = String(t.propertyTitle || t.propertyId || "none").toLowerCase();
-        const finalKey = `${tenantKey}-${propKey}`;
-        
-        // If we already have this tenant for this property, overwrite only if the new one is 'active'
-        if (uniqueTenantsMap.has(finalKey)) {
-           const existing = uniqueTenantsMap.get(finalKey);
-           if (t.status === 'active' && existing.status !== 'active') {
-             uniqueTenantsMap.set(finalKey, t);
-           }
-        } else {
-           uniqueTenantsMap.set(finalKey, t);
+        const invLeaseId = inv.leaseId || inv.lease_id;
+        const invAppId = inv.applicationId || inv.application_id;
+        const invTenantId = inv.tenantId || inv.tenant_id;
+        const invTenantEmail = inv.tenantEmail || inv.tenant_email;
+        const invPropId = inv.propertyId || inv.property_id;
+
+        let targetTenancy = null;
+
+        // A. Match by leaseId
+        if (invLeaseId) {
+          targetTenancy = tenancies.find(t => t.leaseId === invLeaseId || (t.leaseIds && t.leaseIds.has(invLeaseId)));
+        }
+
+        // B. Match by applicationId
+        if (!targetTenancy && invAppId) {
+          targetTenancy = tenancies.find(t => t.applicationIds && t.applicationIds.has(invAppId));
+        }
+
+        // C. Match by canonical tenancy key
+        if (!targetTenancy && invTenantId && invPropId) {
+          targetTenancy = tenancyMap.get(makeTenancyKey(invTenantId, invPropId));
+        }
+
+        if (!targetTenancy) {
+          const invKey = getTenancyKey(invTenantId, invTenantEmail, null, invPropId, null);
+          if (tenancyMap.has(invKey)) {
+            targetTenancy = tenancyMap.get(invKey);
+          }
+        }
+
+        // D. Fallback match by tenantId or email + propertyId
+        if (!targetTenancy && invPropId && (invTenantId || invTenantEmail)) {
+          targetTenancy = tenancies.find(t => 
+            String(t.propertyId).toLowerCase() === String(invPropId).toLowerCase() &&
+            ((invTenantId && (String(t.id).toLowerCase() === String(invTenantId).toLowerCase() || String(t.tenantId).toLowerCase() === String(invTenantId).toLowerCase())) ||
+             (invTenantEmail && String(t.email).toLowerCase() === String(invTenantEmail).toLowerCase()))
+          );
+        }
+
+        if (targetTenancy) {
+          const invId = inv.id;
+          const invNum = inv.invoiceNumber || inv.invoice_number;
+          const alreadyExists = targetTenancy.invoices.some(existingInv => 
+            (invId && existingInv.id === invId) || (invNum && (existingInv.invoiceNumber || existingInv.invoice_number) === invNum)
+          );
+
+          if (!alreadyExists) {
+            targetTenancy.invoices.push(inv);
+
+            const invStatus = (inv.status || inv.payment_status || '').toLowerCase();
+            const isUnpaid = invStatus === 'unpaid' || invStatus === 'pending_verification' || invStatus === 'overdue' || invStatus === 'pending';
+
+            if (isUnpaid) {
+              targetTenancy.unpaidInvoicesCount = (targetTenancy.unpaidInvoicesCount || 0) + 1;
+              targetTenancy.hasUnpaidInvoices = true;
+              targetTenancy.paymentStatus = (invStatus === 'overdue') ? 'Overdue' : 'Unpaid';
+              
+              if (inv.dueDate || inv.due_date) {
+                targetTenancy.dueDate = inv.dueDate || inv.due_date;
+              }
+            }
+          }
         }
       });
 
-      const rawUniqueList = Array.from(uniqueTenantsMap.values());
+      // 6. Fetch Ratings & Finalize
       const tenantsWithRatings = await Promise.all(
-        rawUniqueList.map(async (t) => {
-          const tId = t.id || t.tenant_id;
+        tenancies.map(async (t) => {
+          const tId = t.id || t.tenantId;
           const tEmail = t.email;
           if (!tId && !tEmail) return t;
 
@@ -469,21 +624,30 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
       setError("Failed to load tenant directory. Please check your network connection.");
     } finally {
       setIsLoading(false);
+      isFetchingDataRef.current = false;
     }
   };
 
   useEffect(() => {
     loadData();
-    const handleSilentRefresh = () => loadData(true);
-    window.addEventListener("storage", handleSilentRefresh);
-    window.addEventListener("focus", handleSilentRefresh);
-    window.addEventListener("propertyUpdated", handleSilentRefresh);
-    window.addEventListener("tenantRatingUpdated", handleSilentRefresh);
+
+    let lastFocus = 0;
+    const handleFocus = () => {
+      const now = Date.now();
+      if (now - lastFocus < 10000) return; // 10s throttle
+      lastFocus = now;
+      loadData(true);
+    };
+    const handlePropertyUpdated = () => loadData(true);
+    const handleTenantRatingUpdated = () => loadData(true);
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("propertyUpdated", handlePropertyUpdated);
+    window.addEventListener("tenantRatingUpdated", handleTenantRatingUpdated);
     return () => {
-      window.removeEventListener("storage", handleSilentRefresh);
-      window.removeEventListener("focus", handleSilentRefresh);
-      window.removeEventListener("propertyUpdated", handleSilentRefresh);
-      window.removeEventListener("tenantRatingUpdated", handleSilentRefresh);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("propertyUpdated", handlePropertyUpdated);
+      window.removeEventListener("tenantRatingUpdated", handleTenantRatingUpdated);
     };
   }, []);
 
@@ -511,6 +675,32 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
 
     return true;
   });
+
+  // Strict pre-render deduplication ensuring exactly ONE card per active tenancy key: String(tenant_id) + "::" + String(property_id)
+  const uniqueTenanciesMap = new Map();
+  filteredTenants.forEach((tenant) => {
+    const tId = tenant.tenantId || tenant.id || tenant.email || "unknown";
+    const pId = tenant.propertyId || tenant.propertyTitle || "unknown";
+    const key = tenant.tenancyKey || makeTenancyKey(tId, pId);
+
+    if (uniqueTenanciesMap.has(key)) {
+      const existing = uniqueTenanciesMap.get(key);
+      // If one is active and the other is pending/past, prefer active
+      if (tenant.status === "active" && existing.status !== "active") {
+        uniqueTenanciesMap.set(key, { ...existing, ...tenant, tenancyKey: key });
+      } else {
+        // Merge invoices / unpaid count if needed
+        if (tenant.unpaidInvoicesCount > 0 && !existing.unpaidInvoicesCount) {
+          existing.unpaidInvoicesCount = tenant.unpaidInvoicesCount;
+          existing.paymentStatus = tenant.paymentStatus;
+          if (tenant.dueDate && tenant.dueDate !== "—") existing.dueDate = tenant.dueDate;
+        }
+      }
+    } else {
+      uniqueTenanciesMap.set(key, { ...tenant, tenancyKey: key });
+    }
+  });
+  const dedupedFilteredTenants = Array.from(uniqueTenanciesMap.values());
 
   // Handle Form Input Changes
   const handleInputChange = (e) => {
@@ -740,7 +930,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
             <RotateCcw className="h-4 w-4" /> Try Again
           </button>
         </div>
-      ) : filteredTenants.length === 0 ? (
+      ) : dedupedFilteredTenants.length === 0 ? (
         <div className="tenants-empty-state">
           <div className="tenants-empty-icon-wrapper">
             <X className="h-8 w-8" />
@@ -753,34 +943,37 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
       ) : (
         <>
           <div className="tenants-grid tour-tenants-list">
-            {filteredTenants.slice(0, displayLimit).map((tenant) => (
-              <div key={tenant.id} className="tenant-card">
+            {dedupedFilteredTenants.slice(0, displayLimit).map((tenant) => (
+              <div key={tenant.tenancyKey || makeTenancyKey(tenant.tenantId || tenant.id, tenant.propertyId)} className="tenant-card">
 
                 {/* Card Header */}
                 <div className="tenant-card-header">
-                  <div className="tenant-card-profile">
-                    <div onClick={() => setSelectedTenantForDetails(tenant)} className="cursor-pointer">
+                  <div className="tenant-card-profile min-w-0">
+                    <div onClick={() => setSelectedTenantForDetails(tenant)} className="cursor-pointer shrink-0">
                       <Avatar 
                         src={tenant.avatar} 
                         name={tenant.name} 
                         className="tenant-card-avatar rounded-full" 
                       />
                     </div>
-                    <div className="tenant-card-meta">
-                      <div className="flex items-center gap-2">
-                        <h4 className="tenant-card-name">{tenant.name}</h4>
+                    <div className="tenant-card-meta min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <h4 className="tenant-card-name" title={tenant.name}>{tenant.name}</h4>
                         {settings?.loyaltyRewardsEnabled && tenant.paymentStatus === "Paid" && (
-                          <Star className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" title="Perfect Payment History" />
+                          <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 shrink-0" title="Perfect Payment History" />
                         )}
                       </div>
-                      <span className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}>
+                      <span 
+                        className={`tenant-card-lease-status ${tenant.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300'} px-2 py-0.5 rounded-md text-[11px] font-bold inline-block mt-0.5`}
+                        title={tenant.leaseStatus || (tenant.status === 'active' ? "Active Tenant" : "Pending Sign & Pay")}
+                      >
                         {tenant.leaseStatus || (tenant.status === 'active' ? "Active Tenant" : "Pending Sign & Pay")}
                       </span>
                     </div>
                   </div>
 
-                  <div className="tenant-card-score" title="Tenant Reliability Score">
-                    <Star className="h-3.5 w-3.5 fill-[#D69E2E] text-[#D69E2E]" />
+                  <div className="tenant-card-score shrink-0" title="Tenant Reliability Score">
+                    <Star className="h-3.5 w-3.5 fill-[#D69E2E] text-[#D69E2E] shrink-0" />
                     <span>{tenant.reliabilityScore && Number(tenant.reliabilityScore) > 0 ? Number(tenant.reliabilityScore).toFixed(1) : "No rating"}</span>
                   </div>
                 </div>
@@ -789,61 +982,108 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
                 <div className="tenant-card-body">
                   <div className="tenant-detail-row">
                     <span className="tenant-detail-label">Property</span>
-                    <span className="tenant-detail-value property-link" onClick={() => setSelectedTenantForDetails(tenant)}>
+                    <span 
+                      className="tenant-detail-value property-link" 
+                      onClick={() => setSelectedTenantForDetails(tenant)}
+                      title={tenant.propertyTitle}
+                    >
                       {tenant.propertyTitle}
                     </span>
                   </div>
 
                   <div className="tenant-detail-row">
                     <span className="tenant-detail-label">Email</span>
-                    <span className="tenant-detail-value" title={tenant.email}>{tenant.email}</span>
+                    <span className="tenant-detail-value" title={tenant.email || "—"}>
+                      {tenant.email || "—"}
+                    </span>
                   </div>
 
                   <div className="tenant-detail-row">
                     <span className="tenant-detail-label">Phone</span>
-                    <span className="tenant-detail-value">{tenant.phone}</span>
+                    <span className="tenant-detail-value" title={tenant.phone || "—"}>
+                      {tenant.phone || "—"}
+                    </span>
                   </div>
 
                   <div className="tenant-detail-row">
                     <span className="tenant-detail-label">Due Date</span>
-                    <span className="tenant-detail-value">{tenant.dueDate ? formatDateOnly(tenant.dueDate) : "—"}</span>
+                    <span className="tenant-detail-value" title={formatTenantDueDate(tenant.dueDate)}>
+                      {formatTenantDueDate(tenant.dueDate)}
+                    </span>
                   </div>
 
                   <div className="tenant-detail-row">
                     <span className="tenant-detail-label">Rent Status</span>
-                    <span className={`payment-badge ${(tenant.paymentStatus || "Paid").toLowerCase().replace(" ", "-")}`}>
-                      {tenant.paymentStatus || "Paid"}
-                    </span>
+                    <div className="tenant-status-badges-wrapper">
+                      {tenant.unpaidInvoicesCount > 0 && (
+                        <span 
+                          className="payment-badge unpaid-count" 
+                          title={`${tenant.unpaidInvoicesCount} unpaid invoice${tenant.unpaidInvoicesCount > 1 ? 's' : ''}`}
+                        >
+                          {tenant.unpaidInvoicesCount} Unpaid
+                        </span>
+                      )}
+                      <span className={`payment-badge ${(tenant.paymentStatus || "Unknown").toLowerCase().replace(/\s+/g, "-")}`}>
+                        {tenant.paymentStatus || "Unknown"}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
                 {/* Card Footer Actions */}
                 <div className="tenant-card-actions">
                   <button
-                    className="tenant-action-btn chat-btn w-full"
+                    type="button"
+                    className="tenant-action-btn chat-btn"
                     onClick={() => handleMessageTenant(tenant.name, tenant.avatar, tenant)}
                     title="Open Chat"
                   >
-                    <MessageSquare className="h-4 w-4" /> Chat
+                    <MessageSquare className="h-4 w-4 shrink-0" />
+                    <span>Chat</span>
                   </button>
 
                   <button
-                    className="tenant-action-btn w-full hover:bg-moss-50 hover:text-moss-700 dark:hover:bg-moss-950/40 dark:hover:text-emerald-300"
+                    type="button"
+                    className="tenant-action-btn details-btn"
                     onClick={() => setSelectedTenantForDetails(tenant)}
                     title="View Details"
                   >
-                    <Info className="h-4 w-4" /> View Details
+                    <Info className="h-4 w-4 shrink-0" />
+                    <span>View Details</span>
                   </button>
 
                   <button
-                    className="tenant-action-btn w-full hover:bg-amber-50 hover:text-amber-700 dark:hover:bg-amber-950/40 dark:hover:text-[#E5C583]"
+                    type="button"
+                    className={`tenant-action-btn invoice-btn ${
+                      tenant.leaseId || tenant.status === 'active'
+                        ? ''
+                        : 'disabled'
+                    }`}
+                    onClick={() => {
+                      if (!tenant.leaseId && tenant.status !== 'active') {
+                        triggerToast('No active lease found for this tenant. An active lease is required to issue a renewal invoice.', 'warning', 'No Active Lease');
+                        return;
+                      }
+                      setInvoiceTenant(tenant);
+                      setShowInvoiceModal(true);
+                    }}
+                    title={tenant.leaseId || tenant.status === 'active' ? "Issue Rent or Renewal Invoice" : "Active lease required to issue invoice"}
+                  >
+                    <FileText className="h-4 w-4 shrink-0" />
+                    <span>Invoice</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="tenant-action-btn rate-btn"
                     onClick={() => {
                       setSelectedTenantToRate(tenant);
                       setShowRateTenantModal(true);
                     }}
                     title="Rate Tenant"
                   >
-                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> Rate
+                    <Star className="h-4 w-4 fill-amber-400 text-amber-400 shrink-0" />
+                    <span>Rate</span>
                   </button>
                 </div>
 
@@ -852,16 +1092,16 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
           </div>
 
           {/* Load More Button for Pagination / Prevent DOM Flooding */}
-          {filteredTenants.length > displayLimit && (
+          {dedupedFilteredTenants.length > displayLimit && (
             <div className="flex flex-col items-center justify-center pt-8 pb-4">
               <button
                 onClick={() => setDisplayLimit((prev) => prev + 8)}
                 className="px-6 py-2.5 rounded-xl bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] font-bold text-xs tracking-wide shadow-md transition-all flex items-center gap-2 cursor-pointer"
               >
-                Load More Tenants ({filteredTenants.length - displayLimit} remaining)
+                Load More Tenants ({dedupedFilteredTenants.length - displayLimit} remaining)
               </button>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-medium">
-                Showing {Math.min(displayLimit, filteredTenants.length)} of {filteredTenants.length} tenants
+                Showing {Math.min(displayLimit, dedupedFilteredTenants.length)} of {dedupedFilteredTenants.length} tenants
               </span>
             </div>
           )}
@@ -1269,7 +1509,7 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
         <RateTenantModal
           isOpen={showRateTenantModal}
           onClose={() => setShowRateTenantModal(false)}
-          tenantId={selectedTenantToRate.id || selectedTenantToRate.tenantId || selectedTenantToRate.email}
+          tenantId={selectedTenantToRate.tenantId || selectedTenantToRate.id || selectedTenantToRate.email}
           tenantEmail={selectedTenantToRate.email || selectedTenantToRate.tenantEmail || ""}
           tenantName={selectedTenantToRate.name || selectedTenantToRate.tenantName || "Tenant"}
           landlordId={sessionStorage.getItem("db_user_id") || sessionStorage.getItem("userId") || "landlord"}
@@ -1278,6 +1518,38 @@ export default function Tenants({ setSelectedTenantForDetails, setActiveTab, ini
           propertyId={selectedTenantToRate.propertyId || null}
           leaseId={selectedTenantToRate.leaseId || null}
           onSuccess={() => loadData(true)}
+        />
+      )}
+
+      {/* INVOICE BUILDER MODAL */}
+      {showInvoiceModal && invoiceTenant && (
+        <InvoiceBuilderModal
+          isOpen={showInvoiceModal}
+          onClose={() => {
+            setShowInvoiceModal(false);
+            setInvoiceTenant(null);
+          }}
+          mode="lease"
+          lease={invoiceTenant.lease || {
+            id: invoiceTenant.leaseId,
+            rent_amount: invoiceTenant.rentAmount,
+            rent_period: invoiceTenant.rentPeriod,
+            start_date: invoiceTenant.startDate,
+            end_date: invoiceTenant.endDate,
+            property_id: invoiceTenant.propertyId,
+            tenant_id: invoiceTenant.tenantId || invoiceTenant.id,
+            property_title: invoiceTenant.propertyTitle,
+            tenant_name: invoiceTenant.name
+          }}
+          tenant={invoiceTenant}
+          property={properties.find(p => String(p.id) === String(invoiceTenant.propertyId)) || {
+            id: invoiceTenant.propertyId,
+            title: invoiceTenant.propertyTitle,
+            rent_amount: invoiceTenant.rentAmount
+          }}
+          onSuccess={() => {
+            loadData(true);
+          }}
         />
       )}
     </div>

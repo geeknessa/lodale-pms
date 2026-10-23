@@ -7,11 +7,16 @@ import { ratingService } from "../../../services/ratingService";
 import { applicationService } from "../../../services/applicationService";
 import { leaseService } from "../../../services/leaseService";
 import { maintenanceService } from "../../../services/maintenanceService";
+import { invoiceService } from "../../../services/invoiceService";
+import { triggerToast } from "../../../context/ToastContext";
 import RateTenantModal from "../../../components/RateTenantModal";
+import InvoiceBuilderModal from "../../../components/InvoiceBuilderModal";
 import { formatDateOnly, formatDisplayDate } from "../../../utils/formatters";
+import { parseRentAmount } from "../../../utils/landlordMetrics";
 
 export default function TenantDetails({ tenant, onClose, onChatClick }) {
   const [showRateModal, setShowRateModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [reviewsData, setReviewsData] = useState({ hasReviews: false, rating: "New", count: 0, reviews: [] });
   const [fetchedDetails, setFetchedDetails] = useState({
     profile: null,
@@ -21,7 +26,7 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
     payments: []
   });
 
-  const tenantId = tenant?.id || tenant?.tenantId || tenant?.userId || tenant?.email;
+  const tenantId = tenant?.tenantId || (tenant?.id && !String(tenant.id).includes('::') ? tenant.id : null) || tenant?.userId || tenant?.email;
   const emailId = tenant?.email || tenant?.tenant_email || (tenant?.tenant && tenant?.tenant?.email) || "";
   const tenantName = tenant?.name || tenant?.tenantName || `${tenant?.firstName || ''} ${tenant?.lastName || ''}`.trim() || (tenant?.tenant ? `${tenant?.tenant?.first_name || tenant?.tenant?.firstName || ''} ${tenant?.tenant?.last_name || tenant?.tenant?.lastName || ''}`.trim() : '') || "Tenant";
 
@@ -41,7 +46,7 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
           applicationService.getLandlordApplications().catch(() => []),
           leaseService.getMyLeases().catch(() => []),
           maintenanceService.getMyRequests().catch(() => []),
-          rentService.getMyInvoices().catch(() => [])
+          invoiceService.getMyInvoices().catch(() => [])
         ]);
 
         if (!isMounted) return;
@@ -102,13 +107,14 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
 
   const contactNo = tenant.phone || tenant.contactNo || tenant.tenant_phone || (tenant.tenant && tenant.tenant.phone) || appTenant?.phone || "Not Provided";
   const emergencyNo = tenant.emergencyContact || tenant.emergencyNo || tenant.guarantorPhone || tenant.guarantor_phone || (tenant.tenant && tenant.tenant.guarantor_phone) || appTenant?.guarantorPhone || appTenant?.guarantor_phone || appTenant?.guarantorPhone || "Not Provided";
-  const currentAddress = tenant.currentAddress || tenant.address || tenant.propertyTitle || tenant.property_title || matchedLease?.property_title || appMatch?.propertyTitle || "Not Provided";
+  const currentAddress = tenant.currentAddress || tenant.address || tenant.tenantAddress || tenant.tenant_address || appTenant?.currentAddress || appTenant?.address || appTenant?.location || tenant.location || "Not Provided";
   const occupation = tenant.occupation || tenant.employmentStatus || tenant.employment_status || (tenant.tenant && (tenant.tenant.occupation || tenant.tenant.employmentStatus)) || appTenant?.occupation || appTenant?.employmentStatus || "Not Provided";
 
-  const rentAmount = tenant.rentAmount || tenant.rent_amount || tenant.propertyRentAmount || matchedLease?.rent_amount || appMatch?.propertyRentAmount || 0;
-  const formattedRent = rentAmount > 0 ? `₦${parseFloat(rentAmount).toLocaleString()}` : "Not Specified";
+  const parsedRent = parseRentAmount(tenant.rentAmount ?? tenant.rent_amount ?? tenant.propertyRentAmount ?? matchedLease?.rent_amount ?? appMatch?.propertyRentAmount);
+  const formattedRent = parsedRent !== null ? `₦${parsedRent.toLocaleString()}` : "Not Specified";
   const rentPeriod = tenant.rentPeriod || tenant.rent_period || matchedLease?.rent_period || appMatch?.propertyRentPeriod || "monthly";
-  const paymentStatus = (tenant.paymentStatus || matchedLease?.payment_status || "unpaid").toLowerCase();
+  const rawStatus = (tenant.paymentStatus || matchedLease?.payment_status || "").toLowerCase().trim();
+  const paymentStatus = rawStatus === "paid" ? "paid" : (rawStatus === "overdue" || rawStatus === "unpaid" || rawStatus === "outstanding" ? "overdue" : "unknown");
 
   const rawStartDate = tenant.startDate || tenant.start_date || matchedLease?.start_date || matchedLease?.startDate;
   const rawEndDate = tenant.endDate || tenant.end_date || matchedLease?.end_date || matchedLease?.endDate || appMatch?.activeLease?.endDate;
@@ -186,8 +192,10 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
                  <span className="text-2xl font-black text-ink-900 dark:text-white">{formattedRent}/{rentPeriod.replace(/ly$/, '')}</span>
                  {paymentStatus === "paid" ? (
                    <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-[#FFFFFF]/5 dark:text-cream-100 rounded">Paid</span>
+                 ) : paymentStatus === "overdue" ? (
+                   <span className="px-2 py-0.5 text-[10px] font-bold bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 rounded capitalize">Overdue</span>
                  ) : (
-                   <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 rounded capitalize">{paymentStatus}</span>
+                   <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300 rounded capitalize">Unknown</span>
                  )}
               </div>
            </div>
@@ -228,7 +236,21 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
 
               {/* Lease Agreement */}
               <section>
-                 <h4 className="text-[15px] font-bold text-ink-900 dark:text-white mb-4">Lease Agreement</h4>
+                 <div className="flex items-center justify-between mb-4">
+                   <h4 className="text-[15px] font-bold text-ink-900 dark:text-white">Lease Agreement</h4>
+                   <button
+                     onClick={() => {
+                       if (!matchedLease && !tenant.leaseId) {
+                         triggerToast('No active lease agreement found for this tenant.', 'warning', 'No Active Lease');
+                         return;
+                       }
+                       setShowInvoiceModal(true);
+                     }}
+                     className="px-3.5 py-1.5 bg-moss-700 hover:bg-moss-800 dark:bg-[#E5C583] dark:hover:bg-[#d8b46e] text-white dark:text-[#07130D] rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer border-none"
+                   >
+                     <FileText className="h-3.5 w-3.5" /> Issue Renewal Invoice
+                   </button>
+                 </div>
                  <div className="bg-[#FFFFFF] dark:bg-[#FFFFFF]/5 border border-ink-100 dark:border-white/10 rounded-2xl p-6 flex flex-col md:flex-row gap-6">
                     <div className="flex-1 space-y-6">
                        <div className="flex gap-4">
@@ -427,6 +449,50 @@ export default function TenantDetails({ tenant, onClose, onChatClick }) {
           leaseId={tenant.leaseId || null}
           onSuccess={() => {
             refreshReviews();
+          }}
+        />
+      )}
+
+      {/* INVOICE BUILDER MODAL */}
+      {showInvoiceModal && (
+        <InvoiceBuilderModal
+          isOpen={showInvoiceModal}
+          onClose={() => setShowInvoiceModal(false)}
+          mode="lease"
+          lease={matchedLease || {
+            id: tenant.leaseId,
+            rent_amount: rentAmount,
+            rent_period: rentPeriod,
+            start_date: rawStartDate,
+            end_date: rawEndDate,
+            property_id: tenant.propertyId,
+            tenant_id: tenantId,
+            property_title: tenant.propertyTitle || "Property",
+            tenant_name: tenantName
+          }}
+          tenant={{
+            ...tenant,
+            id: tenantId,
+            name: tenantName,
+            email: emailId,
+            phone: contactNo
+          }}
+          property={{
+            id: tenant.propertyId || matchedLease?.property_id,
+            title: tenant.propertyTitle || matchedLease?.property_title || "Rental Property",
+            rent_amount: rentAmount
+          }}
+          onSuccess={() => {
+            triggerToast('Rent/renewal invoice created successfully.', 'success', 'Invoice Sent');
+            invoiceService.getMyInvoices().then(invoices => {
+              const filteredInvoices = (invoices || []).filter(inv => 
+                String(inv.tenant_id || inv.tenantId) === String(tenantId) ||
+                (inv.lease_id && String(inv.lease_id) === String(tenant.leaseId)) ||
+                inv.tenant_email === emailId ||
+                (tenant.propertyId && String(inv.property_id) === String(tenant.propertyId))
+              );
+              setFetchedDetails(prev => ({ ...prev, payments: filteredInvoices }));
+            }).catch(() => {});
           }}
         />
       )}

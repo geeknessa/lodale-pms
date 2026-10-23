@@ -11,7 +11,7 @@ import UserInfo from "./components/UserInfo";
 import QuickEditPropertyModal from "../../components/QuickEditPropertyModal";
 import UploadProofModal from "./components/UploadProofModal";
 import Avatar from "../../components/Avatar";
-import { getPropertyStatus, getPropertyVacancyInfo } from "../../utils/landlordMetrics";
+import { getPropertyStatus, getPropertyVacancyInfo, parseRentAmount } from "../../utils/landlordMetrics";
 import "./LandlordProperties.css";
 import { safeSetJSON } from "../../utils/safeStorage";
 
@@ -127,6 +127,7 @@ export default function LandlordProperties() {
   const [isLoadingPopupTenants, setIsLoadingPopupTenants] = useState(false);
   const [editingProperty, setEditingProperty] = useState(null);
   const [loadingEditId, setLoadingEditId] = useState(null);
+  const [selectedTenantForDetails, setSelectedTenantForDetails] = useState(null);
 
   const handleStartEdit = async (item) => {
     setLoadingEditId(item.id);
@@ -223,7 +224,6 @@ export default function LandlordProperties() {
 
   const getTenantsForProperty = (propertyId, propertyObj = null) => {
     const list = [];
-    const seenTenantKeys = new Set();
 
     const targetId = String(propertyId || propertyObj?.id || "").toLowerCase().trim();
     if (!targetId) return [];
@@ -261,51 +261,111 @@ export default function LandlordProperties() {
       return { name, email, phone };
     };
 
+    // Tracking sets for tenant identity across different tables/sources
+    const seenTenantIds = new Set();
+    const seenEmails = new Set();
+    const seenNames = new Set();
+    const seenPhones = new Set();
+
     const addTenantIfUnique = (t) => {
       if (!t) return;
-      const rawName = t.name || t.tenantName || t.tenant_name || t.tenant?.name || "";
-      const rawContact = t.email || t.tenantEmail || t.tenant_email || t.phone || t.contact || t.tenantContact || t.tenant_contact || t.tenant?.email || t.tenant?.phone || "";
+      const rawName = t.name || t.tenantName || t.tenant_name || (t.tenant && (t.tenant.name || `${t.tenant.firstName || ''} ${t.tenant.lastName || ''}`.trim())) || (t.first_name ? `${t.first_name} ${t.last_name || ''}`.trim() : "") || (t.tenantFirstName ? `${t.tenantFirstName} ${t.tenantLastName || ''}`.trim() : "") || "";
+      const rawContact = t.email || t.tenantEmail || t.tenant_email || t.phone || t.contact || t.tenantContact || t.tenant_contact || t.tenant?.email || t.tenant?.phone || t.phone_number || "";
       const resolved = resolveTenantInfo(rawName, rawContact);
 
       if (!resolved.name && !resolved.email && !resolved.phone) return;
 
-      const key = String(t.id || t.tenant_id || resolved.email || resolved.name || resolved.phone).toLowerCase().trim();
+      // Extract real user ID (ignore synthetic prefixes like 'embedded-', 'unit-', 't-')
+      const rawId = String(t.tenant_id || t.tenantId || t.userId || t.user_id || t.id || "").trim();
+      const isSyntheticId = rawId.startsWith("embedded-") || rawId.startsWith("unit-") || rawId.startsWith("t-");
+      const cleanTenantId = (!isSyntheticId && rawId && rawId !== "undefined" && rawId !== "null") ? rawId.toLowerCase() : "";
 
-      if (key && key !== "undefined" && !seenTenantKeys.has(key)) {
-        seenTenantKeys.add(key);
-        const tenantEmail = resolved.email ? resolved.email.toLowerCase() : "";
-        const storedAvatar = tenantEmail
-          ? (localStorage.getItem("tenantAvatar_" + tenantEmail) || localStorage.getItem("userAvatar_" + tenantEmail))
-          : "";
+      const cleanEmail = resolved.email ? resolved.email.toLowerCase().trim() : "";
+      const cleanName = resolved.name ? resolved.name.toLowerCase().replace(/\s+/g, " ").trim() : "";
+      const cleanPhone = resolved.phone ? resolved.phone.replace(/\D/g, "") : "";
 
-        list.push({
-          id: t.id || t.tenant_id || `t-${Date.now()}-${Math.random()}`,
-          name: resolved.name || resolved.email || "Tenant",
-          tenantName: resolved.name || resolved.email || "Tenant",
-          avatar: t.avatar || t.tenantAvatar || t.avatar_url || t.tenant?.avatar || storedAvatar || "",
-          email: resolved.email,
-          phone: resolved.phone,
-          reliabilityScore: (tenantRatingsMap[t.id || t.tenant_id] || (resolved.email && tenantRatingsMap[resolved.email])) || t.reliabilityScore || t.score || t.rating || t.tenant_rating || null,
-          occupation: t.occupation || t.tenant?.occupation || "Tenant",
-          leaseStatus: t.leaseStatus || (t.status === 'active' ? "Active Tenant" : t.status ? `Tenant (${t.status})` : "Active Tenant"),
-          status: t.status || "active"
+      // Check if this tenant is already recognized in our list
+      let existingIndex = -1;
+      if (cleanTenantId && seenTenantIds.has(cleanTenantId)) {
+        existingIndex = list.findIndex(item => item.tenant_id && item.tenant_id.toLowerCase() === cleanTenantId);
+      }
+      if (existingIndex === -1 && cleanEmail && seenEmails.has(cleanEmail)) {
+        existingIndex = list.findIndex(item => item.email && item.email.toLowerCase().trim() === cleanEmail);
+      }
+      if (existingIndex === -1 && cleanPhone && cleanPhone.length >= 7 && seenPhones.has(cleanPhone)) {
+        existingIndex = list.findIndex(item => item.phone && item.phone.replace(/\D/g, "") === cleanPhone);
+      }
+      if (existingIndex === -1 && cleanName && cleanName.length >= 3 && seenNames.has(cleanName)) {
+        existingIndex = list.findIndex(item => {
+          const exName = (item.name || "").toLowerCase().replace(/\s+/g, " ").trim();
+          return exName && (exName === cleanName || exName.startsWith(cleanName) || cleanName.startsWith(exName));
         });
       }
+
+      // If already present, merge any richer details (e.g. avatar, score, phone) rather than duplicating
+      if (existingIndex !== -1) {
+        const existing = list[existingIndex];
+        if (!existing.email && cleanEmail) existing.email = resolved.email;
+        if (!existing.phone && resolved.phone) existing.phone = resolved.phone;
+        if (!existing.avatar && (t.avatar || t.tenantAvatar || t.avatar_url)) {
+          existing.avatar = t.avatar || t.tenantAvatar || t.avatar_url;
+        }
+        if (!existing.reliabilityScore && (t.reliabilityScore || t.score || t.rating)) {
+          existing.reliabilityScore = t.reliabilityScore || t.score || t.rating;
+        }
+        if (cleanTenantId && !existing.tenant_id) existing.tenant_id = cleanTenantId;
+
+        // Register any newly discovered identifiers for this tenant
+        if (cleanTenantId) seenTenantIds.add(cleanTenantId);
+        if (cleanEmail) seenEmails.add(cleanEmail);
+        if (cleanName) seenNames.add(cleanName);
+        if (cleanPhone && cleanPhone.length >= 7) seenPhones.add(cleanPhone);
+        return;
+      }
+
+      // Register all valid identifiers for this new tenant
+      if (cleanTenantId) seenTenantIds.add(cleanTenantId);
+      if (cleanEmail) seenEmails.add(cleanEmail);
+      if (cleanName) seenNames.add(cleanName);
+      if (cleanPhone && cleanPhone.length >= 7) seenPhones.add(cleanPhone);
+
+      const tenantEmail = cleanEmail;
+      const storedAvatar = tenantEmail
+        ? (localStorage.getItem("tenantAvatar_" + tenantEmail) || localStorage.getItem("userAvatar_" + tenantEmail))
+        : "";
+
+      list.push({
+        id: cleanTenantId || t.id || `t-${Date.now()}-${Math.random()}`,
+        tenant_id: cleanTenantId || t.tenant_id || t.tenantId || null,
+        name: resolved.name || resolved.email || "Tenant",
+        tenantName: resolved.name || resolved.email || "Tenant",
+        avatar: t.avatar || t.tenantAvatar || t.avatar_url || t.tenant?.avatar || storedAvatar || "",
+        email: resolved.email,
+        phone: resolved.phone,
+        reliabilityScore: (tenantRatingsMap[cleanTenantId] || (resolved.email && tenantRatingsMap[resolved.email])) || t.reliabilityScore || t.score || t.rating || t.tenant_rating || null,
+        occupation: t.occupation || t.tenant?.occupation || "Tenant",
+        leaseStatus: t.leaseStatus || (t.status === 'active' ? "Active Tenant" : t.status ? `Tenant (${t.status})` : "Active Tenant"),
+        status: t.status || "active"
+      });
     };
 
     const matchesProperty = (propIdVal) => {
       const pId = String(propIdVal || "").toLowerCase().trim();
-      return Boolean(targetId && pId && pId === targetId);
+      return Boolean(targetId && pId && (pId === targetId || (propertyObj?.title && String(propIdVal).toLowerCase().trim() === String(propertyObj.title).toLowerCase().trim())));
     };
 
     // 1. Check backend Leases
     (allLeases || []).forEach(l => {
-      if (matchesProperty(l.property_id || l.propertyId)) {
+      const leaseStatus = (l.status || "").toLowerCase().trim();
+      const isTerminated = leaseStatus === 'past' || leaseStatus === 'terminated' || leaseStatus === 'expired' || leaseStatus === 'cancelled';
+      if (!isTerminated && matchesProperty(l.property_id || l.propertyId)) {
         addTenantIfUnique({
           id: l.tenant_id || l.id,
-          name: l.tenant_name,
-          email: l.tenant_email,
+          tenant_id: l.tenant_id,
+          name: l.tenant_name || (l.first_name ? `${l.first_name} ${l.last_name || ''}`.trim() : ""),
+          email: l.tenant_email || l.email,
           phone: l.tenant_contact || l.phone,
+          avatar: l.tenant_avatar || l.avatar_url,
           status: l.status || "active",
           leaseStatus: l.status === "active" ? "Active Tenant" : `Lease: ${l.status}`
         });
@@ -315,25 +375,24 @@ export default function LandlordProperties() {
     // 2. Check backend Applications
     (allApplications || []).forEach(a => {
       const s = (a.status || "").toLowerCase();
-      const isApprovedOrActive = ["approved", "accepted", "active", "leased", "occupied", "lease_generated", "pending_tenant", "signed"].includes(s);
+      const isApprovedOrActive = ["approved", "accepted", "active", "leased", "occupied", "lease_generated", "pending_tenant", "signed", "moved_in"].includes(s);
       if (isApprovedOrActive && matchesProperty(a.propertyId || a.property_id)) {
         addTenantIfUnique({
-          id: a.tenantId || a.tenant_id || a.id,
-          name: a.tenantName || a.tenant?.name || `${a.tenant?.firstName || ''} ${a.tenant?.lastName || ''}`.trim(),
+          id: a.tenant_id || a.tenantId || a.id,
+          tenant_id: a.tenant_id || a.tenantId,
+          name: a.tenantName || (a.first_name ? `${a.first_name} ${a.last_name || ''}`.trim() : "") || (a.tenantFirstName ? `${a.tenantFirstName} ${a.tenantLastName || ''}`.trim() : "") || a.tenant?.name || `${a.tenant?.firstName || ''} ${a.tenant?.lastName || ''}`.trim(),
           email: a.email || a.tenantEmail || a.tenant?.email,
-          phone: a.phone || a.tenantPhone || a.tenant?.phone,
-          avatar: a.avatar || a.tenantAvatar || a.tenant?.avatar,
+          phone: a.phone || a.tenantPhone || a.tenant_contact || a.phone_number || a.tenant?.phone,
+          avatar: a.avatar || a.tenantAvatar || a.tenant?.avatar || a.avatar_url,
           reliabilityScore: a.reliabilityScore,
           occupation: a.occupation,
-          leaseStatus: s === 'leased' || s === 'active' ? "Active Tenant" : "Lease Approved",
+          leaseStatus: s === 'leased' || s === 'active' || s === 'moved_in' ? "Active Tenant" : "Lease Approved",
           status: "active"
         });
       }
     });
 
-    // (localStorage propertyTenants logic removed in favor of pure API data)
-
-    // 5. Embedded tenant details directly on property object
+    // 3. Embedded tenant details directly on property object
     if (propertyObj) {
       const embeddedName = (propertyObj.tenant_name || propertyObj.tenantName || "").trim();
       const embeddedContact = (propertyObj.tenant_contact || propertyObj.tenantContact || propertyObj.tenant_email || propertyObj.tenantEmail || "").trim();
@@ -370,7 +429,7 @@ export default function LandlordProperties() {
       }
     }
 
-    // 6. Check applications stored in localStorage ("applications" or "tenantApplications")
+    // 4. Check applications stored in localStorage ("applications" or "tenantApplications")
     const appSources = ["applications", "tenantApplications"];
     appSources.forEach(sKey => {
       try {
@@ -380,10 +439,11 @@ export default function LandlordProperties() {
           if (Array.isArray(parsedApps)) {
             parsedApps.forEach(app => {
               const status = (app.status || "").toLowerCase();
-              const isApproved = status === "approved" || status === "accepted" || status === "active" || status === "leased" || status === "occupied";
+              const isApproved = status === "approved" || status === "accepted" || status === "active" || status === "leased" || status === "occupied" || status === "moved_in";
               if (isApproved && matchesProperty(app.propertyId || app.property_id)) {
                 addTenantIfUnique({
-                  id: app.id || app.tenantId,
+                  id: app.tenantId || app.tenant_id || app.id,
+                  tenant_id: app.tenantId || app.tenant_id,
                   name: app.tenantName || app.name || app.userName,
                   email: app.email || app.tenantEmail,
                   phone: app.phone || app.tenantPhone,
@@ -399,6 +459,22 @@ export default function LandlordProperties() {
         }
       } catch (e) {}
     });
+
+    // 5. Safety guard for single-unit properties:
+    // If a property is a single house, single unit, or has only 1 total unit,
+    // it can have at most 1 primary active tenancy.
+    const isSingleUnit = propertyObj && (
+      propertyObj.property_type === 'single_house' ||
+      propertyObj.property_type === 'house' ||
+      Number(propertyObj.total_units) === 1 ||
+      Number(propertyObj.units_count) === 1 ||
+      (!propertyObj.units || propertyObj.units.length <= 1)
+    );
+
+    if (isSingleUnit && list.length > 1) {
+      const primaryLeaseTenant = list.find(t => t.tenant_id && !String(t.id).startsWith('embedded-')) || list[0];
+      return [primaryLeaseTenant];
+    }
 
     return list;
   };
@@ -489,9 +565,14 @@ export default function LandlordProperties() {
           const propBeds = Number(p.bedrooms) || (Array.isArray(p.units) && p.units[0]?.bedrooms ? Number(p.units[0].bedrooms) : 1);
           const propBaths = Number(p.bathrooms) || (Array.isArray(p.units) && p.units[0]?.bathrooms ? Number(p.units[0].bathrooms) : 1);
 
+          const parsedRent = parseRentAmount(p.rent_amount ?? p.rent);
+          const formattedPrice = parsedRent !== null 
+            ? formatCurrency(parsedRent, getRentPeriodSuffix(p.rent_period)) 
+            : "—";
+
           return {
             ...p,
-            price: p.price || formatCurrency(p.rent_amount || p.rent || 2500000, getRentPeriodSuffix(p.rent_period)),
+            price: p.price || formattedPrice,
             location: computedLoc,
             bedrooms: propBeds,
             bathrooms: propBaths,
@@ -722,7 +803,11 @@ export default function LandlordProperties() {
                   className="ap-property-card bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200 dark:border-white/10 p-4 rounded-2xl shadow-xs hover:shadow-md transition-all flex flex-col sm:flex-row items-center gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-backwards"
                 >
                   {/* Real Property Photo */}
-                  <div className="ap-card-visual flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-ink-100 dark:bg-[#FFFFFF]/10 relative">
+                  <div
+                    className="ap-card-visual flex-shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden bg-ink-100 dark:bg-[#FFFFFF]/10 relative cursor-pointer"
+                    onClick={() => navigate(`/dashboard/landlord/properties/${item.id}`)}
+                    title="View property details"
+                  >
                     <img
                       src={imgUrl}
                       alt={item.title}
@@ -772,7 +857,13 @@ export default function LandlordProperties() {
                     </div>
 
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="ap-property-title text-base font-bold text-ink-900 dark:text-white truncate">{item.title}</h3>
+                      <h3
+                        className="ap-property-title text-base font-bold text-ink-900 dark:text-white truncate cursor-pointer hover:underline"
+                        onClick={() => navigate(`/dashboard/landlord/properties/${item.id}`)}
+                        title="View property details"
+                      >
+                        {item.title}
+                      </h3>
                       {item.property_type && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-moss-100 dark:bg-[#FFFFFF]/10 text-moss-800 dark:text-[#E5C583] uppercase tracking-wider">
                           {item.property_type.replace(/_/g, ' ')}
@@ -794,7 +885,7 @@ export default function LandlordProperties() {
 
                     <div className="ap-card-footer-info flex flex-wrap items-center justify-between gap-2 mt-3 pt-2 border-t border-ink-100 dark:border-white/10">
                       <span className="ap-price-badge font-bold text-moss-700 dark:text-[#E5C583] text-sm">
-                        {Array.isArray(item.units) && item.units.length > 1 ? `From ${item.price}` : item.price}
+                        {Array.isArray(item.units) && item.units.length > 1 ? (item.price && item.price !== "—" ? `From ${item.price}` : "—") : (item.price || "—")}
                       </span>
 
                       {/* Property Review Status Tag */}

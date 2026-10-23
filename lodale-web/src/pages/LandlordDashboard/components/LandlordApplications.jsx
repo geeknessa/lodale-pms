@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { applicationService } from "../../../services/applicationService";
 import { chatService } from "../../../services/chatService";
 import { leaseService } from "../../../services/leaseService";
@@ -12,52 +12,130 @@ import InspectionCalendarModal from "../../../components/InspectionCalendarModal
 import { 
   CheckCircle2, XCircle, FileText, 
   Wallet, ShieldCheck, Mail, Phone, Calendar, 
-  MessageSquare, AlertTriangle, Star, Trash2, X, Search, ArrowLeft, ChevronRight, Key, Loader2, RotateCcw
+  MessageSquare, AlertTriangle, Star, Trash2, X, Search, ArrowLeft, ChevronRight, Key, Loader2, RotateCcw, Clock
 } from "lucide-react";
 import { triggerToast } from "../../../context/ToastContext";
 import { doesIncomeMeetRequirement } from "../../../utils/incomeRanges";
 import { formatDateOnly, formatTimestamp } from "../../../utils/formatters";
+import { APPLICATION_STATUS, APPLICATION_STATUS_LABELS, INSPECTION_STATUS } from "../../../utils/statusConstants";
 
 // Helper to resolve and parse tenant details from backend application or storage
 const getTenantProfile = (app) => {
   if (!app) return {};
   const t = app.tenant || {};
-  const emailKey = (t.email || app.email || '').toLowerCase();
+  const emailKey = (t.email || app.tenant_email || app.email || '').toLowerCase();
   
-  const saved = emailKey ? (sessionStorage.getItem("userProfile_" + emailKey) || localStorage.getItem("userProfile_" + emailKey)) : null;
+  const saved = emailKey ? (sessionStorage.getItem("userProfile_" + emailKey) || localStorage.getItem("userProfile_" + emailKey) || localStorage.getItem("tenantProfile_" + emailKey)) : null;
   const fallback = saved ? JSON.parse(saved) : {};
 
-  const rawIncome = t.incomeRange || t.monthlyIncome || t.monthly_income || app.income || fallback.income || fallback.monthlyIncome || fallback.monthly_income || "Not Provided";
-  
-  const fName = t.firstName || t.first_name || app.tenant_first_name || fallback.firstName || fallback.first_name || 'Applicant';
-  const lName = t.lastName || t.last_name || app.tenant_last_name || fallback.lastName || fallback.last_name || '';
+  // First Name and Last Name
+  const fName = t.firstName || t.first_name || app.tenant_first_name || app.first_name || fallback.firstName || fallback.first_name || '';
+  const lName = t.lastName || t.last_name || app.tenant_last_name || app.last_name || fallback.lastName || fallback.last_name || '';
+  const resolvedFullName = `${fName} ${lName}`.trim() || t.name || app.tenant_name || fallback.fullName || 'Applicant';
 
-  const occupantsVal = app.occupants ?? app.dependants ?? t.dependants ?? t.number_of_dependants ?? fallback.dependants ?? fallback.number_of_dependants ?? null;
+  // Email & Phone
+  const rawEmail = t.email || app.tenant_email || app.email || fallback.email || '';
+  const email = rawEmail.trim() ? rawEmail.trim() : 'Not Provided';
+
+  const rawPhone = t.phone || t.phone_number || t.phoneNumber || app.tenant_phone || app.phone_number || app.phone || fallback.phone || fallback.phone_number || '';
+  const phone = rawPhone.trim() ? rawPhone.trim() : 'Not Provided';
+
+  // Occupation, Employer, Employment Status, Marital Status
+  const rawOccupation = t.occupation || app.occupation || app.tenant_occupation || fallback.occupation || '';
+  const occupation = rawOccupation.trim() ? rawOccupation.trim() : 'Not Provided';
+
+  const rawEmployer = t.employerName || t.employer_name || app.employer_name || app.employerName || fallback.employerName || fallback.employer_name || '';
+  const employerName = rawEmployer.trim() ? rawEmployer.trim() : 'Not Provided';
+
+  const rawEmploymentStatus = t.employmentStatus || t.employment_status || app.employment_status || app.employmentStatus || fallback.employmentStatus || fallback.employment_status || '';
+  const employmentStatus = rawEmploymentStatus.trim() ? rawEmploymentStatus.trim() : 'Not Provided';
+
+  const rawMaritalStatus = t.maritalStatus || t.marital_status || app.marital_status || app.maritalStatus || fallback.maritalStatus || fallback.marital_status || '';
+  const maritalStatus = rawMaritalStatus.trim() ? rawMaritalStatus.trim() : 'Not Provided';
+
+  // Income - read API profile fields first, format real numbers, only "Not Provided" if truly null/empty
+  const rawIncome = t.incomeRange || t.monthlyIncome || t.monthly_income || app.monthly_income || app.monthlyIncome || app.income || fallback.income || fallback.monthlyIncome || fallback.monthly_income || null;
+
+  let formattedIncome = 'Not Provided';
+  let numericIncome = 0;
+
+  if (rawIncome !== null && rawIncome !== undefined && String(rawIncome).trim() !== '' && String(rawIncome).trim().toLowerCase() !== 'not provided') {
+    const strIncome = String(rawIncome).trim();
+    const parsedNum = parseFloat(strIncome.replace(/[^0-9.]/g, ''));
+    numericIncome = !isNaN(parsedNum) ? parsedNum : 0;
+
+    if (strIncome.includes('/ yr') || strIncome.includes('/ mo') || strIncome.includes('-') || strIncome.toLowerCase().includes('above') || strIncome.toLowerCase().includes('less than')) {
+      formattedIncome = strIncome;
+    } else if (!isNaN(Number(strIncome)) && Number(strIncome) > 0) {
+      formattedIncome = `₦${Number(strIncome).toLocaleString()} / yr`;
+    } else if (numericIncome > 0) {
+      formattedIncome = `₦${numericIncome.toLocaleString()} / yr`;
+    } else {
+      formattedIncome = strIncome;
+    }
+  }
+
+  // Address - MUST NEVER fall back to propertyTitle or propertyAddress
+  const tenantAddr = t.currentAddress || t.address || t.tenantAddress || t.tenant_address || app.tenantAddress || app.tenant_address || fallback.currentAddress || fallback.address || null;
+  const tenantLoc = t.location || t.tenantLocation || t.tenant_location || app.tenantLocation || app.tenant_location || fallback.location || null;
+  let currentAddress = 'Not Provided';
+  if (tenantAddr && typeof tenantAddr === 'string' && tenantAddr.trim()) {
+    currentAddress = tenantAddr.trim();
+  } else if (tenantLoc && typeof tenantLoc === 'string' && tenantLoc.trim()) {
+    currentAddress = tenantLoc.trim();
+  }
+
+  // Occupants / Dependants
+  const occupantsVal = app.occupants ?? app.dependants ?? app.number_of_dependants ?? t.dependants ?? t.number_of_dependants ?? fallback.dependants ?? fallback.number_of_dependants ?? null;
+  const dependants = (occupantsVal !== null && occupantsVal !== undefined && String(occupantsVal).trim() !== '') ? String(occupantsVal) : 'Not Provided';
+
   const petsVal = app.pets ?? app.has_pets ?? t.pets ?? t.has_pets ?? fallback.pets ?? null;
   const carsVal = app.vehicles ?? app.cars ?? app.number_of_cars ?? t.vehicles ?? t.cars ?? fallback.cars ?? null;
 
+  // Emergency Contact
+  const emergencyPhone = t.emergencyContactPhone || t.emergency_contact_phone || t.emergencyContact || t.emergency_contact || app.emergency_contact_phone || app.emergencyContactPhone || app.emergencyContact || fallback.emergencyContactPhone || fallback.emergencyContact || '';
+  const emergencyName = t.emergencyContactName || t.emergency_contact_name || app.emergency_contact_name || app.emergencyContactName || fallback.emergencyContactName || '';
+  const emergencyRel = t.emergencyContactRelationship || t.emergency_contact_relationship || app.emergency_contact_relationship || '';
+
+  let emergencyContact = 'Not Provided';
+  if (emergencyPhone && String(emergencyPhone).trim()) {
+    emergencyContact = String(emergencyPhone).trim();
+    if (emergencyName && String(emergencyName).trim()) {
+      emergencyContact += ` (${String(emergencyName).trim()}${emergencyRel && String(emergencyRel).trim() ? ` - ${String(emergencyRel).trim()}` : ''})`;
+    }
+  } else if (t.guarantorPhone || t.guarantor_phone || fallback.guarantorPhone) {
+    emergencyContact = t.guarantorPhone || t.guarantor_phone || fallback.guarantorPhone;
+  }
+
+  // Guarantor details
+  const guarantorName = t.guarantorName || t.guarantor_name || app.guarantor_name || app.guarantorName || fallback.guarantorName || fallback.guarantor_name || '';
+  const guarantorPhone = t.guarantorPhone || t.guarantor_phone || app.guarantor_phone || app.guarantorPhone || fallback.guarantorPhone || fallback.guarantor_phone || '';
+  const guarantorRelationship = t.guarantorRelationship || t.guarantor_relationship || app.guarantor_relationship || app.guarantorRelationship || fallback.guarantorRelationship || fallback.guarantor_relationship || '';
+  const guarantorEmail = t.guarantorEmail || t.guarantor_email || app.guarantor_email || app.guarantorEmail || fallback.guarantorEmail || fallback.guarantor_email || '';
+
   return {
-    firstName: fName,
+    id: t.id || t.user_id || t.userId || app?.tenant_id || app?.tenantId || null,
+    firstName: fName || 'Applicant',
     lastName: lName,
-    fullName: `${fName} ${lName}`.trim() || 'Applicant',
-    email: t.email || app.email || fallback.email || 'Not Provided',
-    phone: t.phone || app.phone || fallback.phone || 'Not Provided',
-    avatar: t.avatar || t.avatar_url || fallback.avatar || '',
-    incomeRange: typeof rawIncome === 'string' ? rawIncome : (parseFloat(rawIncome) > 0 ? `₦${parseFloat(rawIncome).toLocaleString()} / yr` : 'Not Provided'),
-    monthlyIncome: typeof rawIncome === 'number' ? rawIncome : (parseFloat(rawIncome) || 0),
-    employmentStatus: t.employmentStatus || t.employment_status || fallback.employmentStatus || fallback.employment_status || 'Not Provided',
-    employerName: t.employerName || t.employer_name || fallback.employerName || fallback.employer_name || 'Not Provided',
-    occupation: t.occupation || fallback.occupation || 'Not Provided',
-    maritalStatus: t.maritalStatus || t.marital_status || fallback.maritalStatus || fallback.marital_status || 'Not Provided',
-    dependants: occupantsVal !== null && occupantsVal !== undefined ? String(occupantsVal) : 'Not Provided',
+    fullName: resolvedFullName,
+    email,
+    phone,
+    avatar: t.avatar || t.avatar_url || t.avatarUrl || app.tenant_avatar || fallback.avatar || '',
+    incomeRange: formattedIncome,
+    monthlyIncome: numericIncome,
+    employmentStatus,
+    employerName,
+    occupation,
+    maritalStatus,
+    dependants,
     pets: petsVal !== null && petsVal !== undefined ? (petsVal === true || petsVal === "yes" ? "Yes" : (petsVal === false || petsVal === "no" ? "None" : String(petsVal))) : 'Not Provided',
     cars: carsVal !== null && carsVal !== undefined ? String(carsVal) : 'Not Provided',
-    emergencyContact: t.emergencyContact || t.emergency_contact || t.guarantorPhone || app.emergencyContact || fallback.emergencyContact || 'Not Provided',
-    currentAddress: t.currentAddress || t.address || app.address || app.propertyTitle || fallback.currentAddress || fallback.address || 'Not Provided',
-    guarantorName: t.guarantorName || t.guarantor_name || fallback.guarantorName || fallback.guarantor_name || '',
-    guarantorPhone: t.guarantorPhone || t.guarantor_phone || fallback.guarantorPhone || fallback.guarantor_phone || '',
-    guarantorRelationship: t.guarantorRelationship || t.guarantor_relationship || fallback.guarantorRelationship || fallback.guarantorRelationship || '',
-    guarantorEmail: t.guarantorEmail || t.guarantor_email || fallback.guarantorEmail || fallback.guarantorEmail || '',
+    emergencyContact,
+    currentAddress,
+    guarantorName,
+    guarantorPhone,
+    guarantorRelationship,
+    guarantorEmail,
     reliabilityScore: parseFloat(t.reliabilityScore || app.reliabilityScore || fallback.reliabilityScore || 0),
     nin_verified: Boolean(t.nin_verified || t.ninVerified || app.nin_verified || app.ninVerified || fallback.nin_verified || fallback.ninVerified),
     moveInDate: app.moveInDate || app.desiredMoveInDate || app.move_in_date || fallback.moveInDate || "Not Provided",
@@ -70,11 +148,44 @@ const getTenantProfile = (app) => {
       amount: app.propertyRentAmount ? `₦${parseFloat(app.propertyRentAmount).toLocaleString()}/mo` : null
     }] : []),
     documents: Array.isArray(app.documents || t.documents) ? (app.documents || t.documents) : [
-      ...((t.nin_verified || t.ninVerified || app.nin_verified || app.ninVerified) ? [{ name: "National Identity Number (NIN)", status: "Verified Match ✓", type: "NIN" }] : []),
-      ...((t.guarantorName || app.guarantorName) ? [{ name: `Guarantor Verification (${t.guarantorName || app.guarantorName})`, status: "Submitted ✓", type: "Guarantor" }] : [])
+      ...((t.nin_verified || t.ninVerified || app.nin_verified || app.ninVerified) ? [{ name: "National Identity Number (NIN)", status: "Verified Match", type: "NIN" }] : []),
+      ...((guarantorName) ? [{ name: `Guarantor Verification (${guarantorName})`, status: "Submitted", type: "Guarantor" }] : [])
     ]
   };
 };
+
+const getStatusBadgeClass = (status) => {
+  switch (status) {
+    case APPLICATION_STATUS.DECLINED:
+      return "bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30";
+    case APPLICATION_STATUS.APPROVED:
+    case APPLICATION_STATUS.RENT_PAID:
+    case APPLICATION_STATUS.LEASE_SIGNED:
+    case APPLICATION_STATUS.MOVED_IN:
+      return "bg-emerald-500/15 text-emerald-800 dark:text-cream-100 border border-emerald-500/30";
+    case APPLICATION_STATUS.INVOICE_ISSUED:
+    case APPLICATION_STATUS.PAYMENT_PENDING:
+    case APPLICATION_STATUS.LEASE_SENT:
+      return "bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-500/30";
+    case APPLICATION_STATUS.INSPECTION_PENDING:
+      return "bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30";
+    default:
+      return "bg-stone-500/15 text-stone-800 dark:text-stone-300 border border-stone-500/30";
+  }
+};
+
+const STATUS_FILTER_KEYS = [
+  { key: "all", label: "All" },
+  { key: APPLICATION_STATUS.SUBMITTED, label: "Submitted" },
+  { key: APPLICATION_STATUS.UNDER_REVIEW, label: "Under Review" },
+  { key: APPLICATION_STATUS.INSPECTION_PENDING, label: "Inspection" },
+  { key: APPLICATION_STATUS.APPROVED, label: "Approved" },
+  { key: APPLICATION_STATUS.INVOICE_ISSUED, label: "Invoice Issued" },
+  { key: APPLICATION_STATUS.RENT_PAID, label: "Rent Paid" },
+  { key: APPLICATION_STATUS.LEASE_SIGNED, label: "Lease Signed" },
+  { key: APPLICATION_STATUS.MOVED_IN, label: "Moved In" },
+  { key: APPLICATION_STATUS.DECLINED, label: "Declined" }
+];
 
 export default function LandlordApplications({ setActiveTab }) {
   const [applications, setApplications] = useState([]);
@@ -89,6 +200,7 @@ export default function LandlordApplications({ setActiveTab }) {
 
   // Modal states for actions
   const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [showVerifyPaymentModal, setShowVerifyPaymentModal] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
@@ -119,51 +231,98 @@ export default function LandlordApplications({ setActiveTab }) {
   const [showLeaseSetupModal, setShowLeaseSetupModal] = useState(false);
 
   const [inspections, setInspections] = useState([]);
+  const activeApplicantIdRef = useRef(activeApplicantId);
+  const isFetchingAppsRef = useRef(false);
+
+  useEffect(() => {
+    activeApplicantIdRef.current = activeApplicantId;
+  }, [activeApplicantId]);
 
   useEffect(() => {
     fetchApplications();
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
     async function loadInspections() {
       if (typeof inspectionService.getAllInspections === 'function') {
-        const data = await inspectionService.getAllInspections();
-        setInspections(data || []);
+        try {
+          const data = await inspectionService.getAllInspections();
+          if (isMounted) setInspections(data || []);
+        } catch {
+          if (isMounted) setInspections([]);
+        }
       }
     }
     loadInspections();
-  }, [applications]);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const activeApp = applications.find(a => a.id === activeApplicantId);
 
   useEffect(() => {
-    if (activeApp) {
-      loadStageData(activeApp.id);
+    let isCancelled = false;
+    if (activeApplicantId) {
+      const selected = applications.find(a => a.id === activeApplicantId);
+      setActiveInvoice(selected?.invoice || null);
+      setActiveLease(selected?.lease || null);
+      setActiveMoveInRules(null);
+      loadStageData(activeApplicantId, () => isCancelled);
+    } else {
+      setActiveInvoice(null);
+      setActiveLease(null);
+      setActiveMoveInRules(null);
     }
-  }, [activeApplicantId, applications]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeApplicantId]);
 
-  const loadStageData = async (appId) => {
+  const loadStageData = async (appId, isCancelledFn) => {
+    if (!appId) return;
     try {
-      // 1. Load Invoice
-      let inv = await invoiceService.getInvoiceByApplicationId(appId);
-      if (!inv) {
-        const localInv = localStorage.getItem(`appInvoice_${appId}`);
-        if (localInv) inv = JSON.parse(localInv);
+      const appDetail = await applicationService.getApplicationById(appId);
+      if (isCancelledFn && isCancelledFn()) return;
+      if (activeApplicantIdRef.current !== appId) return;
+
+      if (appDetail) {
+        if (appDetail.invoice) setActiveInvoice(appDetail.invoice);
+        if (appDetail.lease) setActiveLease(appDetail.lease);
+        setApplications(prev => prev.map(a => String(a.id) === String(appId) ? { ...a, ...appDetail } : a));
       }
-      setActiveInvoice(inv);
 
-      // 2. Load Lease
-      let lse = await leaseService.getLeaseByApplicationId(appId);
-      if (!lse) {
-        const localLeases = JSON.parse(localStorage.getItem("tenantLeases") || "[]");
-        lse = localLeases.find(l => String(l.applicationId || l.application_id) === String(appId)) || null;
+      if (!appDetail?.invoice) {
+        let inv = await invoiceService.getInvoiceByApplicationId(appId).catch(() => null);
+        if (isCancelledFn && isCancelledFn()) return;
+        if (activeApplicantIdRef.current !== appId) return;
+        if (!inv) {
+          const localInv = localStorage.getItem(`appInvoice_${appId}`);
+          if (localInv) inv = JSON.parse(localInv);
+        }
+        setActiveInvoice(inv);
       }
-      setActiveLease(lse);
 
-      // 3. Load Move-in Rules
-      const localRules = localStorage.getItem(`moveInRules_${appId}`);
-      setActiveMoveInRules(localRules ? JSON.parse(localRules) : null);
+      if (!appDetail?.lease) {
+        let lse = await leaseService.getLeaseByApplicationId(appId).catch(() => null);
+        if (isCancelledFn && isCancelledFn()) return;
+        if (activeApplicantIdRef.current !== appId) return;
+        if (!lse) {
+          const localLeases = JSON.parse(localStorage.getItem("tenantLeases") || "[]");
+          lse = localLeases.find(l => String(l.applicationId || l.application_id) === String(appId)) || null;
+        }
+        setActiveLease(lse);
+      }
 
+      if (isCancelledFn && isCancelledFn()) return;
+      if (activeApplicantIdRef.current !== appId) return;
+      const localRules = localStorage.getItem(`moveInRules_${appId}`) || (appDetail?.lease?.moveInChecklist ? JSON.stringify(appDetail.lease.moveInChecklist) : null);
+      try {
+        setActiveMoveInRules(localRules ? (typeof localRules === 'object' ? localRules : JSON.parse(localRules)) : null);
+      } catch {
+        setActiveMoveInRules(null);
+      }
     } catch (err) {
       console.error("Error loading stage data:", err);
     }
@@ -172,6 +331,8 @@ export default function LandlordApplications({ setActiveTab }) {
   const [error, setError] = useState(null);
 
   const fetchApplications = async () => {
+    if (isFetchingAppsRef.current) return;
+    isFetchingAppsRef.current = true;
     setIsLoading(true);
     setError(null);
     try {
@@ -183,8 +344,10 @@ export default function LandlordApplications({ setActiveTab }) {
       const uniqueApps = Array.from(new Map(validApps.map(app => [app.id, app])).values());
       
       setApplications(uniqueApps);
-      if (uniqueApps.length > 0 && !activeApplicantId) {
-        setActiveApplicantId(uniqueApps[0].id);
+      if (uniqueApps.length > 0) {
+        setActiveApplicantId(prev => (prev && uniqueApps.some(a => a.id === prev) ? prev : uniqueApps[0].id));
+      } else {
+        setActiveApplicantId(null);
       }
     } catch (err) {
       console.error(err);
@@ -192,6 +355,7 @@ export default function LandlordApplications({ setActiveTab }) {
       triggerToast("Failed to load applications", "error");
     } finally {
       setIsLoading(false);
+      isFetchingAppsRef.current = false;
     }
   };
 
@@ -200,35 +364,61 @@ export default function LandlordApplications({ setActiveTab }) {
     setIsSubmitting(true);
     try {
       await applicationService.updateStatus(activeApplicantId, status, reason);
-      triggerToast(`Application ${status}`, "success");
+      triggerToast(`Application updated to ${APPLICATION_STATUS_LABELS[status] || status}`, "success");
       setShowDeclineModal(false);
       setDeclineReason("");
-      fetchApplications();
+      await fetchApplications();
+      await loadStageData(activeApplicantId);
     } catch (err) {
       console.error(err);
-      triggerToast("Failed to update application", "error");
+      triggerToast(err.message || "Failed to update application", "error");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleVerifyPayment = async () => {
-    if (!activeApp || !activeInvoice) return;
+    if (!activeApp) return;
+    const invId = activeInvoice?.id || activeApp.invoiceId || activeApp.invoice?.id;
+    if (!invId) {
+      triggerToast("No invoice found to verify.", "error");
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await invoiceService.markInvoiceAsPaid(activeInvoice.id);
+      await invoiceService.markInvoiceAsPaid(invId);
       triggerToast("Tenant payment verified and confirmed!", "success", "Payment Verified");
+
+      // Clear any outdated local cache
+      try {
+        localStorage.removeItem(`appInvoice_${activeApp.id}`);
+      } catch (e) {
+        // ignore
+      }
+
+      // Optimistically update active state immediately
+      setActiveInvoice(prev => prev ? { ...prev, status: 'paid', paidAt: new Date().toISOString() } : null);
+      setApplications(prev => prev.map(a => String(a.id) === String(activeApp.id) ? {
+        ...a,
+        status: APPLICATION_STATUS.RENT_PAID,
+        invoice: a.invoice ? { ...a.invoice, status: 'paid', paidAt: new Date().toISOString() } : a.invoice
+      } : a));
       
       const recipientId = activeApp.tenantId || activeApp.tenant_id || activeApp.tenant?.id;
       if (recipientId) {
-        await chatService.sendMessage(recipientId, `[RENT PAYMENT VERIFIED & CONFIRMED]\nInvoice #${activeInvoice.invoiceNumber} has been verified by the landlord. Next step: Drafting & signing your lease agreement.`, activeApp.propertyId);
+        try {
+          await chatService.sendMessage(recipientId, `[RENT PAYMENT VERIFIED & CONFIRMED]\nInvoice #${activeInvoice?.invoiceNumber || 'Rent'} has been verified by the landlord. Next step: Drafting & signing your lease agreement.`, activeApp.propertyId);
+        } catch (chatErr) {
+          console.warn("Failed to dispatch chat message:", chatErr);
+        }
       }
 
-      fetchApplications();
-      if (activeApp.id) loadStageData(activeApp.id);
+      await fetchApplications();
+      await loadStageData(activeApp.id);
+      setShowVerifyPaymentModal(false);
     } catch (err) {
       console.error(err);
-      triggerToast("Failed to verify payment", "error");
+      triggerToast(err.message || "Failed to verify payment", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -311,40 +501,51 @@ export default function LandlordApplications({ setActiveTab }) {
     if (!activeApp) return;
     setIsSubmitting(true);
     try {
-      const tProf = getTenantProfile(activeApp);
-      await inspectionService.saveInspection(activeApp.id, {
-        propertyId: activeApp.propertyId,
-        propertyTitle: activeApp.propertyTitle,
-        landlordId: activeApp.landlordId || "landlord",
-        landlordName: "Landlord",
-        tenantId: activeApp.tenantId || activeApp.tenant_id,
-        tenantName: tProf.fullName,
+      await applicationService.scheduleInspection(activeApp.id, {
         date: inspectionForm.date,
         time: inspectionForm.time,
         location: inspectionForm.location || activeApp.propertyAddress || activeApp.propertyTitle,
-        notes: inspectionForm.notes,
-        status: "Scheduled",
-        createdBy: "landlord"
+        notes: inspectionForm.notes
       });
 
-      // Refresh inspections
-      const data = await inspectionService.getAllInspections();
-      setInspections(data || []);
-
-      const recipientId = activeApp.tenantId || activeApp.tenant_id || activeApp.tenant?.id;
-      if (recipientId) {
-        const msg = `[INSPECTION SCHEDULED FOR ${activeApp.propertyTitle}]\nDate: ${inspectionForm.date}\nTime: ${inspectionForm.time}\nLocation: ${inspectionForm.location || activeApp.propertyAddress || activeApp.propertyTitle}${inspectionForm.notes ? `\nNotes: ${inspectionForm.notes}` : ''}\n\nPlease review and confirm this inspection appointment in your dashboard.`;
-        await chatService.sendMessage(recipientId, msg, activeApp.propertyId, {
-          partner_name: tProf.fullName,
-          partner_avatar: tProf.avatar || ""
-        });
-      }
-
-      triggerToast(`Inspection scheduled for ${inspectionForm.date} at ${inspectionForm.time}!`, "success");
+      triggerToast(`Inspection scheduled for ${inspectionForm.date} at ${inspectionForm.time}`, "success");
       setShowScheduleInspectionModal(false);
+      await fetchApplications();
+      await loadStageData(activeApp.id);
     } catch (err) {
       console.error(err);
-      triggerToast("Failed to schedule inspection", "error");
+      triggerToast(err.message || "Failed to schedule inspection", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleInspectionOutcome = async (outcomeStatus, notes = "") => {
+    if (!activeApp) return;
+    const inspId = activeApp.inspection?.id || activeApp.inspectionId || inspections.find(i => String(i.applicationId || i.application_id) === String(activeApp.id))?.id;
+    if (!inspId) {
+      triggerToast("No inspection appointment found.", "error");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await applicationService.updateInspectionOutcome(activeApp.id, inspId, {
+        status: outcomeStatus,
+        outcomeNotes: notes
+      });
+
+      const label = outcomeStatus === INSPECTION_STATUS.COMPLETED_PASSED
+        ? "Inspection marked as Passed"
+        : outcomeStatus === INSPECTION_STATUS.COMPLETED_FAILED
+          ? "Inspection marked as Failed"
+          : "Inspection Cancelled";
+
+      triggerToast(label, "success");
+      await fetchApplications();
+      await loadStageData(activeApp.id);
+    } catch (err) {
+      console.error(err);
+      triggerToast(err.message || "Failed to update inspection outcome", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -363,7 +564,7 @@ export default function LandlordApplications({ setActiveTab }) {
   const appDateFormatted = activeApp ? (activeApp.applicationDate ? formatDateOnly(activeApp.applicationDate) : (activeApp.createdAt ? formatTimestamp(activeApp.createdAt) : "—")) : "—";
 
   // Determine current lifecycle stage
-  const isInvoicePaid = activeInvoice?.status === "paid";
+  const isInvoicePaid = activeInvoice?.status === "paid" || activeApp?.status === APPLICATION_STATUS.RENT_PAID || activeApp?.status === APPLICATION_STATUS.LEASE_SENT || activeApp?.status === APPLICATION_STATUS.LEASE_SIGNED || activeApp?.status === APPLICATION_STATUS.MOVED_IN;
   const isPaymentProofUploaded = Boolean(activeInvoice && (activeInvoice.paymentReference || activeInvoice.paymentProofUrl) && !isInvoicePaid);
   const isLeaseSigned = activeLease?.signedByTenant || activeLease?.status === "signed";
   const isMoveInSet = Boolean(activeMoveInRules);
@@ -415,114 +616,186 @@ export default function LandlordApplications({ setActiveTab }) {
     );
   }
 
-  // Dynamic Action Bar with Lifecycle Progressive Primary Button
-  const renderActionBar = () => (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-[#FFFFFF] dark:bg-[#07130D] rounded-2xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
-      <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-        <button 
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-[#FFFFFF]/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
-          onClick={() => initiateChat(activeApp)}
-        >
-          <MessageSquare className="h-4 w-4" /> Message
-        </button>
+  // Canonical Status Driven Action Bar
+  const renderActionBar = () => {
+    if (!activeApp) return null;
+    const status = activeApp.status || APPLICATION_STATUS.SUBMITTED;
 
-        <button
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-[#FFFFFF]/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
-          onClick={() => setShowRequestModal(true)}
-        >
-          <FileText className="h-4 w-4" /> Request Docs
-        </button>
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-[#FFFFFF] dark:bg-[#07130D] rounded-2xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          <button 
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-[#FFFFFF]/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
+            onClick={() => initiateChat(activeApp)}
+          >
+            <MessageSquare className="h-4 w-4" /> Message
+          </button>
 
-        <button
-          className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-[#FFFFFF]/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
-          onClick={() => {
-            setInspectionForm({
-              date: new Date().toISOString().split("T")[0],
-              time: "10:00 AM",
-              location: activeApp?.propertyAddress || activeApp?.propertyTitle || "",
-              notes: ""
-            });
-            setShowScheduleInspectionModal(true);
-          }}
-        >
-          <Calendar className="h-4 w-4" /> Schedule
-        </button>
+          {(status === APPLICATION_STATUS.SUBMITTED || status === APPLICATION_STATUS.UNDER_REVIEW) && (
+            <>
+              <button
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-[#FFFFFF]/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
+                onClick={() => setShowRequestModal(true)}
+              >
+                <FileText className="h-4 w-4" /> Request Docs
+              </button>
+
+              <button
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#FFFFFF] dark:bg-[#07130D] hover:bg-neutral-50 dark:hover:bg-[#FFFFFF]/5 text-ink-900 dark:text-white font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 transition-all cursor-pointer shadow-sm"
+                onClick={() => {
+                  setInspectionForm({
+                    date: new Date().toISOString().split("T")[0],
+                    time: "10:00 AM",
+                    location: activeApp?.propertyAddress || activeApp?.propertyTitle || "",
+                    notes: ""
+                  });
+                  setShowScheduleInspectionModal(true);
+                }}
+              >
+                <Calendar className="h-4 w-4" /> Schedule Inspection
+              </button>
+            </>
+          )}
+
+          {status === APPLICATION_STATUS.INSPECTION_PENDING && (
+            <>
+              <button
+                onClick={() => handleInspectionOutcome(INSPECTION_STATUS.COMPLETED_PASSED, "Inspection passed requirements")}
+                disabled={isSubmitting}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-semibold text-sm rounded-xl border border-emerald-200 dark:border-emerald-800 cursor-pointer shadow-sm"
+              >
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Pass Inspection
+              </button>
+              <button
+                onClick={() => handleInspectionOutcome(INSPECTION_STATUS.COMPLETED_FAILED, "Inspection failed requirements")}
+                disabled={isSubmitting}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 font-semibold text-sm rounded-xl border border-amber-200 dark:border-amber-800 cursor-pointer shadow-sm"
+              >
+                <AlertTriangle className="h-4 w-4 text-amber-600" /> Fail Inspection
+              </button>
+              <button
+                onClick={() => handleInspectionOutcome(INSPECTION_STATUS.CANCELLED, "Cancelled by landlord")}
+                disabled={isSubmitting}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-neutral-100 hover:bg-neutral-200 dark:bg-white/10 text-ink-700 dark:text-cream-100 font-semibold text-sm rounded-xl border border-ink-200 dark:border-white/10 cursor-pointer shadow-sm"
+              >
+                Cancel Inspection
+              </button>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-end">
+          {status === APPLICATION_STATUS.DECLINED ? (
+            <button 
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 font-semibold text-sm rounded-xl border border-red-200 dark:border-red-900/40 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+              onClick={() => handleDeleteApplication(activeApp.id)}
+              disabled={isSubmitting}
+            >
+              <Trash2 className="h-4 w-4" /> Delete Application
+            </button>
+          ) : (
+            status !== APPLICATION_STATUS.MOVED_IN && (
+              <button 
+                className="flex-1 sm:flex-none flex items-center justify-center px-5 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 font-semibold text-sm rounded-xl border border-red-200 dark:border-red-900/40 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                onClick={() => setShowDeclineModal(true)}
+                disabled={isSubmitting}
+              >
+                Decline
+              </button>
+            )
+          )}
+
+          {/* Canonical Status Action Buttons */}
+          {(status === APPLICATION_STATUS.SUBMITTED || status === APPLICATION_STATUS.UNDER_REVIEW || status === APPLICATION_STATUS.INSPECTION_PENDING) && (
+            <button 
+              className="flex-1 sm:flex-none px-6 py-2.5 bg-moss-700 hover:bg-moss-800 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+              onClick={() => handleStatusUpdate(APPLICATION_STATUS.APPROVED)}
+              disabled={isSubmitting}
+            >
+              <CheckCircle2 className="h-4 w-4" /> Approve Application
+            </button>
+          )}
+
+          {status === APPLICATION_STATUS.APPROVED && (
+            <button 
+              className="flex-1 sm:flex-none px-6 py-2.5 bg-moss-700 hover:bg-moss-800 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+              onClick={() => setShowInvoiceModal(true)}
+              disabled={isSubmitting}
+            >
+              <FileText className="h-4 w-4" /> Issue Rent Invoice
+            </button>
+          )}
+
+          {status === APPLICATION_STATUS.INVOICE_ISSUED && (
+            <div className="flex items-center gap-2">
+              <span className="px-5 py-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 font-semibold text-sm rounded-xl border border-amber-200 dark:border-amber-800/40 flex items-center gap-2">
+                <Clock className="h-4 w-4" /> Awaiting Tenant Payment
+              </span>
+              {activeInvoice?.paymentProofUrl && (
+                <button 
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center gap-2"
+                  onClick={() => setShowVerifyPaymentModal(true)}
+                  disabled={isSubmitting}
+                >
+                  <CheckCircle2 className="h-4 w-4" /> Verify Payment Proof
+                </button>
+              )}
+            </div>
+          )}
+
+          {status === APPLICATION_STATUS.PAYMENT_PENDING && (
+            <button 
+              className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+              onClick={() => setShowVerifyPaymentModal(true)}
+              disabled={isSubmitting}
+            >
+              <CheckCircle2 className="h-4 w-4" /> Verify & Confirm Payment
+            </button>
+          )}
+
+          {status === APPLICATION_STATUS.RENT_PAID && (
+            <button 
+              className="flex-1 sm:flex-none px-6 py-2.5 bg-moss-700 hover:bg-moss-800 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+              onClick={openLeaseSetup}
+              disabled={isSubmitting}
+            >
+              <FileText className="h-4 w-4" /> Send Lease Agreement
+            </button>
+          )}
+
+          {status === APPLICATION_STATUS.LEASE_SENT && (
+            <div className="flex items-center gap-2">
+              <span className="px-5 py-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-300 font-semibold text-sm rounded-xl border border-indigo-200 dark:border-indigo-800/40 flex items-center gap-2">
+                <Clock className="h-4 w-4" /> Awaiting Lease Signatures
+              </span>
+              <button 
+                className="px-4 py-2.5 bg-white dark:bg-white/5 border border-ink-200 dark:border-white/10 hover:bg-neutral-50 text-ink-900 dark:text-white font-semibold text-sm rounded-xl cursor-pointer"
+                onClick={openLeaseSetup}
+              >
+                View Lease
+              </button>
+            </div>
+          )}
+
+          {status === APPLICATION_STATUS.LEASE_SIGNED && (
+            <button 
+              className="flex-1 sm:flex-none px-6 py-2.5 bg-moss-700 hover:bg-moss-800 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+              onClick={() => setShowMoveInModal(true)}
+              disabled={isSubmitting}
+            >
+              <Key className="h-4 w-4" /> Complete Move-in Onboarding
+            </button>
+          )}
+
+          {status === APPLICATION_STATUS.MOVED_IN && (
+            <span className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-cream-100 font-semibold text-sm rounded-xl border border-emerald-200 dark:border-white/10 flex items-center justify-center gap-2 shadow-sm">
+              <CheckCircle2 className="h-4 w-4" /> Tenancy Active & Occupied
+            </span>
+          )}
+        </div>
       </div>
-
-      <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-end">
-        {(activeApp.status === 'declined' || activeApp.status === 'Rejected') ? (
-          <button 
-            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 font-semibold text-sm rounded-xl border border-red-200 dark:border-red-900/40 transition-all cursor-pointer shadow-sm disabled:opacity-50"
-            onClick={() => handleDeleteApplication(activeApp.id)}
-            disabled={isSubmitting}
-          >
-            <Trash2 className="h-4 w-4" /> Delete
-          </button>
-        ) : (
-          <button 
-            className="flex-1 sm:flex-none flex items-center justify-center px-5 py-2.5 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 font-semibold text-sm rounded-xl border border-red-200 dark:border-red-900/40 transition-all cursor-pointer shadow-sm disabled:opacity-50"
-            onClick={() => setShowDeclineModal(true)}
-            disabled={isSubmitting}
-          >
-            Decline
-          </button>
-        )}
-        
-        {/* DYNAMIC PROGRESSIVE PRIMARY ACTION BUTTON */}
-        {!activeInvoice ? (
-          <button 
-            className="flex-1 sm:flex-none px-6 py-2.5 bg-moss-700 hover:bg-moss-800 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
-            onClick={() => setShowInvoiceModal(true)}
-            disabled={activeApp.status === 'declined' || isSubmitting}
-          >
-            <FileText className="h-4 w-4" /> Create Invoice
-          </button>
-        ) : isPaymentProofUploaded ? (
-          <button 
-            className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
-            onClick={handleVerifyPayment}
-            disabled={isSubmitting}
-          >
-            <CheckCircle2 className="h-4 w-4" /> Verify Payment
-          </button>
-        ) : !isInvoicePaid ? (
-          <button 
-            className="flex-1 sm:flex-none px-6 py-2.5 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 font-semibold text-sm rounded-xl border border-amber-200 dark:border-amber-800/40 transition-all cursor-pointer shadow-sm flex items-center gap-2"
-            onClick={() => setShowInvoiceModal(true)}
-          >
-            <FileText className="h-4 w-4" /> Awaiting Payment
-          </button>
-        ) : !activeLease ? (
-          <button 
-            className="flex-1 sm:flex-none px-6 py-2.5 bg-moss-700 hover:bg-moss-800 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
-            onClick={openLeaseSetup}
-            disabled={isSubmitting}
-          >
-            <FileText className="h-4 w-4" /> Draft Lease
-          </button>
-        ) : !isLeaseSigned ? (
-          <button 
-            className="flex-1 sm:flex-none px-6 py-2.5 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300 font-semibold text-sm rounded-xl border border-indigo-200 dark:border-indigo-800/40 transition-all cursor-pointer shadow-sm flex items-center gap-2"
-            onClick={openLeaseSetup}
-          >
-            <FileText className="h-4 w-4" /> Awaiting Signature
-          </button>
-        ) : !isMoveInSet ? (
-          <button 
-            className="flex-1 sm:flex-none px-6 py-2.5 bg-moss-700 hover:bg-moss-800 text-white font-semibold text-sm rounded-xl transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
-            onClick={() => setShowMoveInModal(true)}
-            disabled={isSubmitting}
-          >
-            <Key className="h-4 w-4" /> Finalize Move-in
-          </button>
-        ) : (
-          <span className="flex-1 sm:flex-none px-6 py-2.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-cream-100 font-semibold text-sm rounded-xl border border-emerald-200 dark:border-white/10 flex items-center justify-center gap-2 shadow-sm">
-            <CheckCircle2 className="h-4 w-4" /> Completed
-          </span>
-        )}
-      </div>
-    </div>
-  );
+    );
+  };
 
   // VIEW 1: CLEAN APPLICATIONS LIST/GRID PAGE
   if (viewMode === "list") {
@@ -565,17 +838,17 @@ export default function LandlordApplications({ setActiveTab }) {
 
           {/* STATUS PILLS */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            {["all", "pending", "approved", "declined"].map(statusKey => (
+            {STATUS_FILTER_KEYS.map(({ key, label }) => (
               <button
-                key={statusKey}
-                onClick={() => setStatusFilter(statusKey)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${
-                  statusFilter === statusKey
+                key={key}
+                onClick={() => setStatusFilter(key)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  statusFilter === key
                     ? "bg-moss-700 text-white dark:bg-[#E5C583] dark:text-[#263b33] shadow-xs"
                     : "bg-[#FFFFFF] dark:bg-[#07130D] text-ink-600 dark:text-cream-100/70 border border-ink-200/80 dark:border-white/10 hover:bg-neutral-50"
                 }`}
               >
-                {statusKey}
+                {label}
               </button>
             ))}
           </div>
@@ -620,13 +893,8 @@ export default function LandlordApplications({ setActiveTab }) {
                           <p className="text-xs text-ink-500 dark:text-cream-100/60 truncate max-w-[170px]">{prof.email}</p>
                         </div>
                       </div>
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold tracking-wider ${
-                        app.status === 'pending' ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30' :
-                        app.status === 'approved' ? 'bg-emerald-500/15 text-emerald-800 dark:text-cream-100 border border-emerald-500/30' :
-                        app.status === 'declined' ? 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30' :
-                        'bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-500/30'
-                      }`}>
-                        {app.status.replace('_', ' ')}
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full uppercase font-extrabold tracking-wider ${getStatusBadgeClass(app.status)}`}>
+                        {APPLICATION_STATUS_LABELS[app.status] || app.status?.replace(/_/g, ' ')}
                       </span>
                     </div>
 
@@ -634,9 +902,9 @@ export default function LandlordApplications({ setActiveTab }) {
                     <div className="p-3 bg-cream-50/70 dark:bg-[#FFFFFF]/5 rounded-2xl border border-ink-100 dark:border-white/5 space-y-1">
                       <span className="text-[10px] text-ink-400 dark:text-cream-100/50 uppercase font-extrabold tracking-wider block">Property Listing</span>
                       <p className="font-bold text-xs text-ink-900 dark:text-white line-clamp-1">{app.propertyTitle}</p>
-                      {prof.monthlyIncome > 0 && (
+                      {prof.incomeRange && prof.incomeRange !== 'Not Provided' && (
                         <p className="text-[11px] font-semibold text-emerald-600 dark:text-cream-100 pt-0.5">
-                          Income: ₦{prof.monthlyIncome.toLocaleString()} / yr
+                          Income: {prof.incomeRange}
                         </p>
                       )}
                     </div>
@@ -706,51 +974,104 @@ export default function LandlordApplications({ setActiveTab }) {
         </button>
       </div>
 
-      {/* STAGE PROGRESS TRACKER BAR */}
-      <div className="p-4 sm:p-5 rounded-3xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-extrabold text-ink-400 dark:text-cream-100/60 uppercase tracking-wider">
-            Application Onboarding Progress Tracker
-          </h3>
-          <span className="text-xs font-extrabold text-moss-700 dark:text-[#E5C583]">
-            {isMoveInSet ? "Completed" : isLeaseSigned ? "Step 4 of 4: Move-in Rules" : isInvoicePaid ? "Step 3 of 4: Lease Agreement" : activeInvoice ? "Step 2 of 4: Invoice Payment" : "Step 1 of 4: Initial Review"}
-          </span>
-        </div>
+      {/* CANONICAL APPLICATION PIPELINE STEPPER */}
+      {(() => {
+        const status = activeApp.status || APPLICATION_STATUS.SUBMITTED;
+        const hasInspection = status === APPLICATION_STATUS.INSPECTION_PENDING || Boolean(activeApp.inspection);
 
-        <div className="grid grid-cols-4 gap-2 text-center text-xs">
-          {/* Step 1 */}
-          <div className={`p-2.5 rounded-xl border transition-all ${
-            activeInvoice ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 font-bold" : "bg-moss-50 dark:bg-[#FFFFFF]/5 border-moss-300 dark:border-white/10 text-moss-800 font-bold"
-          }`}>
-            <span className="text-[10px] block uppercase font-extrabold opacity-70">1. Invoice</span>
-            <span className="truncate block mt-0.5">{activeInvoice ? (isInvoicePaid ? "Paid" : "Issued") : "Review"}</span>
-          </div>
+        const steps = [
+          { key: 'review', label: 'Review', minIndex: 0 },
+          ...(hasInspection ? [{ key: 'inspection', label: 'Inspection', minIndex: 1 }] : []),
+          { key: 'approval', label: 'Approval', minIndex: 2 },
+          { key: 'invoice', label: 'Invoice', minIndex: 3 },
+          { key: 'payment', label: 'Payment', minIndex: 4 },
+          { key: 'lease', label: 'Lease', minIndex: 5 },
+          { key: 'move_in', label: 'Move-in', minIndex: 6 }
+        ];
 
-          {/* Step 2 */}
-          <div className={`p-2.5 rounded-xl border transition-all ${
-            isInvoicePaid ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 font-bold" : isPaymentProofUploaded ? "bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-amber-900 font-bold" : "bg-neutral-50 dark:bg-[#FFFFFF]/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
-          }`}>
-            <span className="text-[10px] block uppercase font-extrabold opacity-70">2. Payment</span>
-            <span className="truncate block mt-0.5">{isInvoicePaid ? "Verified" : isPaymentProofUploaded ? "Receipt Uploaded" : "Pending"}</span>
-          </div>
+        const STATUS_INDEX_MAP = {
+          [APPLICATION_STATUS.SUBMITTED]: 0,
+          [APPLICATION_STATUS.UNDER_REVIEW]: 0,
+          [APPLICATION_STATUS.INSPECTION_PENDING]: 1,
+          [APPLICATION_STATUS.APPROVED]: 2,
+          [APPLICATION_STATUS.INVOICE_ISSUED]: 3,
+          [APPLICATION_STATUS.PAYMENT_PENDING]: 4,
+          [APPLICATION_STATUS.RENT_PAID]: 5,
+          [APPLICATION_STATUS.LEASE_SENT]: 5,
+          [APPLICATION_STATUS.LEASE_SIGNED]: 6,
+          [APPLICATION_STATUS.MOVED_IN]: 7,
+          [APPLICATION_STATUS.DECLINED]: -1
+        };
 
-          {/* Step 3 */}
-          <div className={`p-2.5 rounded-xl border transition-all ${
-            isLeaseSigned ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 font-bold" : activeLease ? "bg-indigo-50 dark:bg-indigo-950/40 border-indigo-300 text-indigo-900 font-bold" : "bg-neutral-50 dark:bg-[#FFFFFF]/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
-          }`}>
-            <span className="text-[10px] block uppercase font-extrabold opacity-70">3. Lease</span>
-            <span className="truncate block mt-0.5">{isLeaseSigned ? "Signed" : activeLease ? "Awaiting Signature" : "Pending"}</span>
-          </div>
+        const currentIndex = STATUS_INDEX_MAP[status] ?? 0;
+        const isDeclined = status === APPLICATION_STATUS.DECLINED;
 
-          {/* Step 4 */}
-          <div className={`p-2.5 rounded-xl border transition-all ${
-            isMoveInSet ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 font-bold" : "bg-neutral-50 dark:bg-[#FFFFFF]/5 border-neutral-200 dark:border-white/10 text-ink-400 opacity-60"
-          }`}>
-            <span className="text-[10px] block uppercase font-extrabold opacity-70">4. Move-in</span>
-            <span className="truncate block mt-0.5">{isMoveInSet ? "Rules Issued" : "Pending"}</span>
+        return (
+          <div className="p-4 sm:p-5 rounded-3xl bg-[#FFFFFF] dark:bg-[#07130D] border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-xs space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h3 className="text-xs font-extrabold text-ink-400 dark:text-cream-100/60 uppercase tracking-wider">
+                Application Pipeline Progress
+              </h3>
+              <span className={`text-xs font-extrabold ${isDeclined ? "text-rose-600 dark:text-rose-400" : "text-moss-700 dark:text-[#E5C583]"}`}>
+                Status: {APPLICATION_STATUS_LABELS[status] || status.replace(/_/g, ' ')}
+              </span>
+            </div>
+
+            <div 
+              className="grid gap-1.5 sm:gap-2 text-center text-xs overflow-x-auto" 
+              style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}
+            >
+              {steps.map((st, idx) => {
+                const isComplete = !isDeclined && (
+                  currentIndex > st.minIndex ||
+                  (st.key === 'payment' && (status === APPLICATION_STATUS.RENT_PAID || status === APPLICATION_STATUS.LEASE_SENT || status === APPLICATION_STATUS.LEASE_SIGNED || status === APPLICATION_STATUS.MOVED_IN)) ||
+                  (st.key === 'lease' && (status === APPLICATION_STATUS.LEASE_SIGNED || status === APPLICATION_STATUS.MOVED_IN)) ||
+                  (st.key === 'move_in' && status === APPLICATION_STATUS.MOVED_IN)
+                );
+                const isCurrent = !isDeclined && !isComplete && (
+                  currentIndex === st.minIndex ||
+                  (st.key === 'payment' && (status === APPLICATION_STATUS.INVOICE_ISSUED || status === APPLICATION_STATUS.PAYMENT_PENDING)) ||
+                  (st.key === 'lease' && (status === APPLICATION_STATUS.RENT_PAID || status === APPLICATION_STATUS.LEASE_SENT)) ||
+                  (st.key === 'move_in' && status === APPLICATION_STATUS.LEASE_SIGNED)
+                );
+
+                return (
+                  <div
+                    key={st.key}
+                    className={`p-2 sm:p-2.5 rounded-xl border transition-all ${
+                      isDeclined && idx === 0
+                        ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-900/60 text-rose-800 dark:text-rose-300 font-bold"
+                        : isComplete
+                        ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300 font-bold"
+                        : isCurrent
+                        ? "bg-moss-50 dark:bg-[#FFFFFF]/10 border-moss-600 dark:border-[#E5C583] text-moss-800 dark:text-[#E5C583] font-bold shadow-xs"
+                        : "bg-neutral-50 dark:bg-[#FFFFFF]/5 border-neutral-200 dark:border-white/10 text-ink-400 dark:text-cream-100/40 opacity-60"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-1 mb-0.5">
+                      {isComplete ? (
+                        <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      ) : isCurrent ? (
+                        <Clock className="h-3 w-3 text-moss-700 dark:text-[#E5C583] shrink-0" />
+                      ) : null}
+                      <span className="text-[10px] uppercase font-extrabold opacity-75 truncate">{idx + 1}. {st.label}</span>
+                    </div>
+                    <span className="truncate block text-[11px]">
+                      {isDeclined && idx === 0
+                        ? "Declined"
+                        : isComplete
+                        ? "Completed"
+                        : isCurrent
+                        ? "In Progress"
+                        : "Upcoming"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* HEADER: APPLICANT & PROPERTY BANNER */}
       <div className="bg-[#FFFFFF] dark:bg-[#07130D] p-6 rounded-3xl border border-ink-200/80 dark:border-[#3f3f46]/60 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
@@ -768,13 +1089,8 @@ export default function LandlordApplications({ setActiveTab }) {
               <h2 className="text-xl sm:text-2xl font-black text-ink-900 dark:text-white tracking-tight">
                 {tProf.fullName}
               </h2>
-              <span className={`text-[10.5px] px-3 py-0.5 rounded-full uppercase font-extrabold tracking-wider ${
-                activeApp.status === 'pending' ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30' :
-                activeApp.status === 'approved' ? 'bg-emerald-500/15 text-emerald-800 dark:text-cream-100 border border-emerald-500/30' :
-                activeApp.status === 'declined' ? 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30' :
-                'bg-indigo-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-500/30'
-              }`}>
-                {activeApp.status.replace('_', ' ')}
+              <span className={`text-[10.5px] px-3 py-0.5 rounded-full uppercase font-extrabold tracking-wider ${getStatusBadgeClass(activeApp.status)}`}>
+                {APPLICATION_STATUS_LABELS[activeApp.status] || activeApp.status?.replace(/_/g, ' ')}
               </span>
             </div>
             <div className="flex items-center gap-4 text-xs text-ink-600 dark:text-cream-100/70 font-semibold mt-1.5 flex-wrap">
@@ -791,7 +1107,7 @@ export default function LandlordApplications({ setActiveTab }) {
             title="Click to view detailed reliability history"
           >
             <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-            <span>★ {tProf.reliabilityScore > 0 ? tProf.reliabilityScore : "New"} Score</span>
+            <span>{tProf.reliabilityScore > 0 ? tProf.reliabilityScore : "New"} Score</span>
           </button>
           <div className="md:text-right">
             <span className="text-[10px] text-ink-400 dark:text-cream-100/50 uppercase font-extrabold tracking-wider block">Applying For Property</span>
@@ -816,10 +1132,11 @@ export default function LandlordApplications({ setActiveTab }) {
             </div>
           </div>
           <button
-            onClick={handleVerifyPayment}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl cursor-pointer shadow-xs shrink-0"
+            onClick={() => setShowVerifyPaymentModal(true)}
+            disabled={isSubmitting}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-extrabold text-xs rounded-xl cursor-pointer shadow-xs shrink-0 flex items-center gap-1.5"
           >
-            Verify & Confirm Rent Received ✓
+            <CheckCircle2 className="h-4 w-4" /> Verify & Confirm Rent Received
           </button>
         </div>
       ) : isInvoicePaid && !activeLease ? (
@@ -837,6 +1154,19 @@ export default function LandlordApplications({ setActiveTab }) {
           >
             Draft Lease Agreement &rarr;
           </button>
+        </div>
+      ) : activeApp?.status === APPLICATION_STATUS.MOVED_IN ? (
+        <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-cream-100 flex items-center justify-between gap-3 text-xs shadow-xs">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-6 w-6 text-emerald-600 shrink-0" />
+            <div>
+              <span className="font-bold text-sm">Move-in Complete — Tenancy Officially Active</span>
+              <p className="mt-0.5">Key handover and move-in package finalized. The property is now occupied and tenancy is in active standing.</p>
+            </div>
+          </div>
+          <span className="px-3.5 py-1.5 bg-emerald-100 text-emerald-900 dark:bg-emerald-900/60 dark:text-emerald-200 text-xs font-bold rounded-xl shrink-0">
+            Tenancy Active
+          </span>
         </div>
       ) : isLeaseSigned && !isMoveInSet ? (
         <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-white/10 text-emerald-900 dark:text-cream-100 flex items-center justify-between gap-3 text-xs shadow-xs">
@@ -1252,17 +1582,6 @@ export default function LandlordApplications({ setActiveTab }) {
         {renderActionBar()}
       </div>
 
-      {/* MOVE IN SETUP MODAL */}
-      <MoveInSetupModal
-        isOpen={showMoveInModal}
-        onClose={() => setShowMoveInModal(false)}
-        application={activeApp}
-        onSuccess={() => {
-          fetchApplications();
-          if (activeApp.id) loadStageData(activeApp.id);
-        }}
-      />
-
       {/* RELIABILITY BREAKDOWN SUB-MODAL */}
       {showReliabilityDetails && (
         <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowReliabilityDetails(false)}>
@@ -1415,16 +1734,16 @@ export default function LandlordApplications({ setActiveTab }) {
                 onClick={() => handleSendRequest("Proof of Employment / Recent 3 Months Payslips")}
                 className="p-3 text-left text-xs font-semibold bg-cream-50 dark:bg-[#FFFFFF]/5 hover:bg-moss-50 dark:hover:bg-moss-900/30 rounded-xl border border-ink-100 dark:border-white/10 text-ink-800 dark:text-cream-100 flex items-center justify-between cursor-pointer"
               >
-                <span>📄 Request Proof of Employment / Payslips</span>
-                <span className="text-moss-700 dark:text-[#E5C583] font-bold">Send →</span>
+                <span>Request Proof of Employment / Payslips</span>
+                <span className="text-moss-700 dark:text-[#E5C583] font-bold flex items-center gap-1">Send <ChevronRight className="h-3.5 w-3.5" /></span>
               </button>
 
               <button
                 onClick={() => handleSendRequest("Bank Statement / Financial Proof")}
                 className="p-3 text-left text-xs font-semibold bg-cream-50 dark:bg-[#FFFFFF]/5 hover:bg-moss-50 dark:hover:bg-moss-900/30 rounded-xl border border-ink-100 dark:border-white/10 text-ink-800 dark:text-cream-100 flex items-center justify-between cursor-pointer"
               >
-                <span>💼 Request Bank Statement (6 Months)</span>
-                <span className="text-moss-700 dark:text-[#E5C583] font-bold">Send →</span>
+                <span>Request Bank Statement (6 Months)</span>
+                <span className="text-moss-700 dark:text-[#E5C583] font-bold flex items-center gap-1">Send <ChevronRight className="h-3.5 w-3.5" /></span>
               </button>
             </div>
 
@@ -1494,6 +1813,84 @@ export default function LandlordApplications({ setActiveTab }) {
         </div>
       )}
 
+      {/* VERIFY PAYMENT CONFIRMATION MODAL */}
+      {showVerifyPaymentModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#FFFFFF] dark:bg-[#07130D] rounded-2xl max-w-md w-full p-6 shadow-xl border border-ink-100 dark:border-white/10 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-ink-900 dark:text-white">Verify Rent Payment</h3>
+                <p className="text-xs text-ink-500 dark:text-cream-100/60">Confirm receipt of payment from tenant</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-ink-600 dark:text-cream-100/70 leading-relaxed">
+              Confirming this payment will mark the rent invoice as paid and advance the application to lease preparation.
+            </p>
+
+            <div className="bg-cream-50 dark:bg-[#FFFFFF]/5 rounded-xl p-3.5 space-y-2 border border-ink-100 dark:border-white/5 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-ink-500 dark:text-cream-100/60 font-medium">Tenant</span>
+                <span className="font-bold text-ink-900 dark:text-white">{tProf?.fullName || activeApp?.tenantName || "Tenant"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-ink-500 dark:text-cream-100/60 font-medium">Property</span>
+                <span className="font-bold text-ink-900 dark:text-white truncate max-w-[200px]">{activeApp?.propertyTitle || "Property Unit"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-ink-500 dark:text-cream-100/60 font-medium">Amount Received</span>
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                  {(() => {
+                    const raw = activeInvoice?.totalAmount || activeInvoice?.total_amount || activeInvoice?.amount || activeApp?.rentAmount || activeApp?.propertyRentAmount;
+                    if (!raw) return "—";
+                    const num = Number(raw);
+                    return !isNaN(num) ? `₦${num.toLocaleString()}` : String(raw);
+                  })()}
+                </span>
+              </div>
+              {activeInvoice?.paymentReference && (
+                <div className="flex justify-between items-center pt-1 border-t border-ink-100 dark:border-white/5">
+                  <span className="text-ink-500 dark:text-cream-100/60 font-medium">Reference</span>
+                  <span className="font-mono font-medium text-ink-700 dark:text-cream-100/80 text-[11px]">{activeInvoice.paymentReference}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button 
+                type="button"
+                className="px-4 py-2 text-xs font-bold text-ink-600 dark:text-cream-100/70 hover:bg-ink-100 dark:hover:bg-white/10 rounded-lg cursor-pointer transition-colors disabled:opacity-50"
+                onClick={() => setShowVerifyPaymentModal(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button"
+                className="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg cursor-pointer transition-all flex items-center gap-1.5 shadow-sm"
+                onClick={handleVerifyPayment}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Verifying...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Confirm & Verify</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* DIGITAL RENT INVOICE GENERATOR MODAL */}
       <InvoiceBuilderModal
         isOpen={showInvoiceModal}
@@ -1524,15 +1921,31 @@ export default function LandlordApplications({ setActiveTab }) {
         property={{
           id: activeApp?.propertyId || activeApp?.property_id,
           title: activeApp?.propertyTitle,
+          address: activeApp?.propertyAddress || activeApp?.propertyTitle,
           rent_amount: activeApp?.propertyRentAmount || activeApp?.rent_amount || 0,
           rent_period: activeApp?.propertyRentPeriod || "annually"
         }}
         tenant={{
+          id: activeApp?.tenantId || activeApp?.tenant_id || activeApp?.tenant?.id || tProf?.id,
           full_name: activeApp ? tProf.fullName : 'Tenant Candidate',
           email: activeApp ? tProf.email : '',
           phone: activeApp ? tProf.phone : ''
         }}
         onSuccess={() => {
+          fetchApplications();
+          if (activeApp?.id) loadStageData(activeApp.id);
+        }}
+      />
+
+      {/* MOVE-IN ONBOARDING SETUP MODAL */}
+      <MoveInSetupModal
+        isOpen={showMoveInModal}
+        onClose={() => setShowMoveInModal(false)}
+        application={activeApp}
+        onSuccess={(updated) => {
+          if (updated && updated.id) {
+            setApplications(prev => prev.map(a => String(a.id) === String(updated.id) ? { ...a, ...updated, status: APPLICATION_STATUS.MOVED_IN } : a));
+          }
           fetchApplications();
           if (activeApp?.id) loadStageData(activeApp.id);
         }}

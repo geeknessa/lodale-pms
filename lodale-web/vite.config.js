@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    watch: {
+      ignored: ['**/*.rar', '**/*.zip']
+    },
     proxy: {
       '/uploads': {
         target: 'http://localhost:5000',

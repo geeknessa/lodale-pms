@@ -9,7 +9,7 @@ export const PropertyModel = {
         (SELECT COUNT(*) FROM property_units u WHERE u.property_id = p.id) as units_count,
         COALESCE((SELECT json_agg(a.amenity) FROM property_amenities a WHERE a.property_id = p.id), '[]'::json) as fetched_amenities,
         (SELECT storage_url FROM property_images pi WHERE pi.property_id = p.id AND pi.is_cover = TRUE LIMIT 1) as fetched_cover_image,
-        (SELECT json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'avatar_url', u.avatar_url, 'address', lp.address, 'location', lp.location, 'phone', u.phone_number, 'email', u.email) FROM users u LEFT JOIN landlord_profiles lp ON lp.user_id = u.id WHERE u.id = p.landlord_id) as landlord_data
+        (SELECT json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'avatar_url', u.avatar_url, 'address', lp.address, 'location', lp.location, 'phone', u.phone_number, 'email', u.email, 'score', COALESCE(ROUND((SELECT AVG(r.rating)::numeric FROM ratings r WHERE r.ratee_id = u.id AND r.rating_type = 'tenant_rates_landlord'), 1), 0), 'reviews', COALESCE((SELECT COUNT(*) FROM ratings r WHERE r.ratee_id = u.id AND r.rating_type = 'tenant_rates_landlord'), 0)) FROM users u LEFT JOIN landlord_profiles lp ON lp.user_id = u.id WHERE u.id = p.landlord_id) as landlord_data
       FROM properties p 
       WHERE (p.is_deleted IS FALSE OR p.is_deleted IS NULL) 
         AND p.status::text IN ('active_vacant', 'approved', 'live', 'active', 'occupied', 'active_occupied')`;
@@ -45,7 +45,7 @@ export const PropertyModel = {
         COALESCE((SELECT json_agg(b.*) FROM property_blocks b WHERE b.property_id = p.id), '[]'::json) as fetched_blocks,
         COALESCE((SELECT json_agg(u.*) FROM property_units u WHERE u.property_id = p.id), '[]'::json) as fetched_units,
         (SELECT rejection_reason FROM listing_approval_queue WHERE property_id = p.id ORDER BY submitted_at DESC LIMIT 1) as fetched_admin_notes,
-        (SELECT json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'avatar_url', u.avatar_url, 'address', lp.address, 'location', lp.location, 'phone', u.phone_number, 'email', u.email) FROM users u LEFT JOIN landlord_profiles lp ON lp.user_id = u.id WHERE u.id = p.landlord_id) as landlord_data
+        (SELECT json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'avatar_url', u.avatar_url, 'address', lp.address, 'location', lp.location, 'phone', u.phone_number, 'email', u.email, 'score', COALESCE(ROUND((SELECT AVG(r.rating)::numeric FROM ratings r WHERE r.ratee_id = u.id AND r.rating_type = 'tenant_rates_landlord'), 1), 0), 'reviews', COALESCE((SELECT COUNT(*) FROM ratings r WHERE r.ratee_id = u.id AND r.rating_type = 'tenant_rates_landlord'), 0)) FROM users u LEFT JOIN landlord_profiles lp ON lp.user_id = u.id WHERE u.id = p.landlord_id) as landlord_data
        FROM properties p 
        WHERE p.landlord_id::text = $1 AND (p.is_deleted IS FALSE OR p.is_deleted IS NULL) 
        ORDER BY p.created_at DESC`,
@@ -61,7 +61,7 @@ export const PropertyModel = {
         COALESCE((SELECT json_agg(b.*) FROM property_blocks b WHERE b.property_id = p.id), '[]'::json) as fetched_blocks,
         COALESCE((SELECT json_agg(u.*) FROM property_units u WHERE u.property_id = p.id), '[]'::json) as fetched_units,
         (SELECT storage_url FROM property_images pi WHERE pi.property_id = p.id AND pi.is_cover = TRUE LIMIT 1) as fetched_cover_image,
-        (SELECT json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'avatar_url', u.avatar_url, 'address', lp.address, 'location', lp.location, 'phone', u.phone_number, 'email', u.email) FROM users u LEFT JOIN landlord_profiles lp ON lp.user_id = u.id WHERE u.id = p.landlord_id) as landlord_data
+        (SELECT json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'avatar_url', u.avatar_url, 'address', lp.address, 'location', lp.location, 'phone', u.phone_number, 'email', u.email, 'score', COALESCE(ROUND((SELECT AVG(r.rating)::numeric FROM ratings r WHERE r.ratee_id = u.id AND r.rating_type = 'tenant_rates_landlord'), 1), 0), 'reviews', COALESCE((SELECT COUNT(*) FROM ratings r WHERE r.ratee_id = u.id AND r.rating_type = 'tenant_rates_landlord'), 0)) FROM users u LEFT JOIN landlord_profiles lp ON lp.user_id = u.id WHERE u.id = p.landlord_id) as landlord_data
        FROM properties p 
        WHERE p.id::text = $1 OR p.slug = $1`, 
       [idOrSlug]

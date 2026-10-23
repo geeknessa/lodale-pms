@@ -1,9 +1,8 @@
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
 import { pool } from '../db/db.js';
 import { ProfileModel } from '../models/profileModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { uploadImage } from '../services/uploadService.js';
+import { paystackService } from '../services/paystackService.js';
 
 export const profileController = {
   /**
@@ -37,7 +36,77 @@ export const profileController = {
     let updatedProfile = null;
 
     if (role === 'landlord') {
+      const existingProfile = await ProfileModel.getLandlordProfile(id);
       updatedProfile = await ProfileModel.upsertLandlordProfile(id, req.body);
+
+      const bankAccNumber = req.body.bank_account_number || req.body.bankAccountNumber;
+      const bankName = req.body.bank_name || req.body.bankName;
+      const bankAccName = req.body.bank_account_name || req.body.bankAccountName;
+      let payoutError = null;
+
+      if (bankAccNumber && bankName) {
+        const cleanAcc = String(bankAccNumber).replace(/\D/g, '').trim();
+
+        if (cleanAcc.length !== 10) {
+          payoutError = 'Bank account number must be exactly 10 digits for Nigerian NUBAN.';
+          // Clear subaccount if invalid account number provided
+          await ProfileModel.updateLandlordSubaccountCode(id, null);
+          if (updatedProfile) updatedProfile.paystack_subaccount_code = null;
+        } else {
+          try {
+            const userRes = await pool.query('SELECT first_name, last_name FROM users WHERE id = $1', [id]);
+            const user = userRes.rows[0] || {};
+            const businessName =
+              req.body.business_name ||
+              bankAccName ||
+              updatedProfile?.bank_account_name ||
+              updatedProfile?.business_name ||
+              `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
+              'Lodale Landlord';
+
+            const subaccountCodeToUse = existingProfile?.paystack_subaccount_code || updatedProfile?.paystack_subaccount_code;
+
+            const subaccount = await paystackService.createOrUpdateSubaccount({
+              businessName,
+              bankCodeOrName: bankName,
+              accountNumber: cleanAcc,
+              subaccountCode: subaccountCodeToUse,
+            });
+
+            if (subaccount?.subaccount_code) {
+              updatedProfile = await ProfileModel.updateLandlordSubaccountCode(id, subaccount.subaccount_code);
+            } else {
+              throw new Error('Paystack did not return a valid subaccount code');
+            }
+          } catch (subErr) {
+            console.error('[Paystack Subaccount Sync Error]:', subErr.message, subErr.data || '');
+            payoutError = subErr.message || 'Could not verify account with Paystack';
+            // If new bank details were submitted but Paystack verification failed,
+            // clear the subaccount code so we do not treat the unverified account as linked
+            await ProfileModel.updateLandlordSubaccountCode(id, null);
+            if (updatedProfile) updatedProfile.paystack_subaccount_code = null;
+          }
+        }
+      }
+
+      const paystackLinked = Boolean(updatedProfile?.paystack_subaccount_code) && !payoutError;
+      const paystackSubaccountCode = paystackLinked ? updatedProfile.paystack_subaccount_code : null;
+
+      return res.json({
+        profile: {
+          ...updatedProfile,
+          paystack_subaccount_code: paystackSubaccountCode,
+          paystackSubaccountCode,
+          paystackLinked,
+          paystackError: payoutError || null,
+          payout_error: payoutError || null,
+        },
+        paystackSubaccountCode,
+        paystackLinked,
+        paystackError: payoutError || null,
+        subaccount_linked: paystackLinked,
+        payout_error: payoutError || null,
+      });
     } else if (role === 'tenant') {
       updatedProfile = await ProfileModel.upsertTenantProfile(id, req.body);
     } else {
@@ -88,7 +157,7 @@ export const profileController = {
       buffer = Buffer.from(image, 'base64');
     }
 
-    const MAX_SIZE = 2 * 1024 * 1024; // 2MB strict limit
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB strict limit
     if (buffer.length > MAX_SIZE) {
       return res.status(400).json({ error: 'Image file exceeds the 2MB size limit.' });
     }
@@ -121,16 +190,14 @@ export const profileController = {
       return res.status(400).json({ error: 'Invalid file format. Only JPEG, PNG, and WebP images are allowed.' });
     }
 
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+    const uploadResult = await uploadImage({
+      buffer,
+      folder: 'avatars',
+      filenamePrefix: 'avatar',
+      mimeExt: ext
+    });
 
-    const randomFilename = `avatar-${crypto.randomUUID()}${ext}`;
-    const filePath = path.join(uploadsDir, randomFilename);
-    fs.writeFileSync(filePath, buffer);
-
-    const avatarUrl = `/uploads/${randomFilename}`;
+    const avatarUrl = uploadResult.url;
 
     await pool.query('UPDATE users SET avatar_url = $1 WHERE id = $2', [avatarUrl, userId]);
 

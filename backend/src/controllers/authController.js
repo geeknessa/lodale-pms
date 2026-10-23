@@ -3,6 +3,10 @@ import jwt from 'jsonwebtoken';
 import { UserModel } from '../models/userModel.js';
 import { ProfileModel } from '../models/profileModel.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { sendPasswordResetEmail } from '../services/emailService.js';
+
+const passwordResetCodes = new Map();
+const usedResetTokens = new Set();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -103,5 +107,122 @@ export const authController = {
     }
 
     res.json({ user });
+  }),
+
+  forgotPassword: asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+
+    // Always return a generic success message to prevent user enumeration
+    const genericResponse = {
+      success: true,
+      message: 'If an account exists with this email, instructions to reset your password have been sent.'
+    };
+
+    if (!cleanEmail) {
+      return res.json(genericResponse);
+    }
+
+    const user = await UserModel.findByEmail(cleanEmail);
+    const status = (user?.account_status || 'active').toLowerCase();
+
+    if (user && status === 'active') {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const resetToken = jwt.sign(
+        { id: user.id, email: cleanEmail, purpose: 'password_reset' },
+        JWT_SECRET,
+        { expiresIn: '15m' }
+      );
+
+      passwordResetCodes.set(cleanEmail, {
+        code,
+        userId: user.id,
+        token: resetToken,
+        expiresAt: Date.now() + 15 * 60 * 1000
+      });
+
+      const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
+      const resetUrl = `${frontendBase}/reset-password?token=${encodeURIComponent(resetToken)}&email=${encodeURIComponent(cleanEmail)}`;
+
+      try {
+        await sendPasswordResetEmail({
+          to: cleanEmail,
+          resetUrl,
+          code
+        });
+      } catch (err) {
+        console.error('[authController.forgotPassword] Email send error:', err.message);
+      }
+    }
+
+    return res.json(genericResponse);
+  }),
+
+  resetPassword: asyncHandler(async (req, res) => {
+    const { email, code, token, newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    }
+
+    let targetUserId = null;
+    let targetEmail = null;
+
+    if (token) {
+      let decoded;
+      try {
+        decoded = jwt.verify(token, JWT_SECRET);
+      } catch (err) {
+        return res.status(400).json({ error: 'Password reset link is invalid or has expired. Please request a new one.' });
+      }
+
+      if (decoded.purpose !== 'password_reset' || !decoded.id) {
+        return res.status(400).json({ error: 'Invalid password reset token.' });
+      }
+
+      if (usedResetTokens.has(token)) {
+        return res.status(400).json({ error: 'This password reset link has already been used. Please request a new one.' });
+      }
+
+      targetUserId = decoded.id;
+      targetEmail = decoded.email?.toLowerCase();
+      usedResetTokens.add(token);
+    } else if (email && code) {
+      const cleanEmail = email.trim().toLowerCase();
+      const record = passwordResetCodes.get(cleanEmail);
+
+      if (!record || record.expiresAt < Date.now()) {
+        return res.status(400).json({ error: 'Verification code has expired or was not requested. Please request a new code.' });
+      }
+
+      if (record.code !== String(code).trim()) {
+        return res.status(400).json({ error: 'Invalid verification code.' });
+      }
+
+      targetUserId = record.userId;
+      targetEmail = cleanEmail;
+      if (record.token) {
+        usedResetTokens.add(record.token);
+      }
+    } else {
+      return res.status(400).json({ error: 'Either a reset token or both email and verification code must be provided.' });
+    }
+
+    const user = await UserModel.findById(targetUserId);
+    if (!user) {
+      return res.status(404).json({ error: 'User account not found.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    await UserModel.updatePassword(user.id, hashedPassword);
+
+    if (targetEmail) {
+      passwordResetCodes.delete(targetEmail);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Password has been reset successfully. You can now sign in with your new password.'
+    });
   })
 };

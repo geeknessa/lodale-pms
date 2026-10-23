@@ -13,7 +13,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
   const [showRateModal, setShowRateModal] = useState(false);
   const [reviewsData, setReviewsData] = useState({ hasReviews: false, rating: "New", count: 0, reviews: [] });
   
-  const tenantId = tenant?.id || tenant?.tenantId || tenant?.userId || tenant?.email || "";
+  const tenantId = tenant?.tenantId || (tenant?.id && !String(tenant.id).includes('::') ? tenant.id : null) || tenant?.userId || tenant?.email || "";
   const emailId = tenant?.email || tenant?.tenant_email || (tenant?.tenant && tenant.tenant.email) || "";
 
   const refreshReviews = async () => {
@@ -34,10 +34,10 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
   const effectiveScore = reviewsData.hasReviews ? reviewsData.rating : (tenant.reliabilityScore > 0 ? parseFloat(tenant.reliabilityScore).toFixed(1) : "New");
 
-  const contactNo = tenant.phone || tenant.contactNo || tenant.tenant_phone || (tenant.tenant && tenant.tenant.phone) || "Not Provided";
+  const contactNo = tenant.phone || tenant.phone_number || tenant.contactNo || tenant.tenant_phone || (tenant.tenant && (tenant.tenant.phone || tenant.tenant.phone_number)) || "Not Provided";
   const occupation = tenant.occupation || (tenant.tenant && tenant.tenant.occupation) || "Not Provided";
-  const emergencyContact = tenant.emergencyContact || tenant.emergency_contact || tenant.guarantorPhone || "Not Provided";
-  const currentAddress = tenant.currentAddress || tenant.address || tenant.propertyTitle || "Not Provided";
+  const emergencyContact = tenant.emergencyContact || tenant.emergency_contact || tenant.emergencyContactPhone || (tenant.tenant && (tenant.tenant.emergencyContact || tenant.tenant.emergency_contact || tenant.tenant.emergencyContactPhone || tenant.tenant.guarantorPhone)) || tenant.guarantorPhone || "Not Provided";
+  const currentAddress = tenant.currentAddress || tenant.address || tenant.tenantAddress || tenant.tenant_address || (tenant.tenant && (tenant.tenant.currentAddress || tenant.tenant.address || tenant.tenant.location)) || tenant.location || "Not Provided";
   
   // Format income strictly from real numerical or text inputs
   const rawIncome = tenant.income || tenant.monthlyIncome || tenant.incomeRange || (tenant.tenant && (tenant.tenant.incomeRange || tenant.tenant.monthly_income)) || null;
@@ -71,8 +71,8 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
 
   // Real uploaded documents list from system data
   const documentsList = Array.isArray(tenant.documents) ? tenant.documents : [
-    ...(tenant.nin_verified || tenant.ninVerified ? [{ name: "National Identity Number (NIN)", status: "Verified Match ✓", type: "NIN" }] : []),
-    ...(tenant.guarantorName ? [{ name: `Guarantor Verification (${tenant.guarantorName})`, status: "Submitted ✓", type: "Guarantor" }] : [])
+    ...(tenant.nin_verified || tenant.ninVerified ? [{ name: "National Identity Number (NIN)", status: "Verified Match", type: "NIN" }] : []),
+    ...(tenant.guarantorName ? [{ name: `Guarantor Verification (${tenant.guarantorName})`, status: "Submitted", type: "Guarantor" }] : [])
   ];
 
   return (
@@ -138,7 +138,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
               title="Click to view detailed reliability history"
             >
               <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-              <span>★ {effectiveScore} ({reviewsData.count})</span>
+              <span>{effectiveScore} ({reviewsData.count})</span>
             </button>
 
             <button
@@ -382,7 +382,7 @@ export default function UserInfo({ tenant, onClose, onApprove, onDecline }) {
                     <div>
                       <h4 className="font-bold text-xs text-amber-900 dark:text-amber-200">Reliability Evaluation</h4>
                       <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
-                        {reviewsData.hasReviews ? `★ ${reviewsData.rating} average from ${reviewsData.count} review(s)` : "No landlord reviews yet"}
+                        {reviewsData.hasReviews ? `${reviewsData.rating} average from ${reviewsData.count} review(s)` : "No landlord reviews yet"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">

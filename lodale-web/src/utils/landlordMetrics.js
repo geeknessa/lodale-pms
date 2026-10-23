@@ -31,6 +31,30 @@ export function parsePaymentDateYearMonth(rawDateStr) {
 }
 
 /**
+ * Safely parses any rent or monetary amount string or number.
+ * Handles numbers and strings like "₦1,200,000", "1200000", "₦1,200,000/yr", etc.
+ * Supports any magnitude (no artificial cap).
+ * If missing, non-positive, or unparseable, returns null (excluded from totals).
+ *
+ * @param {string | number | null | undefined} val 
+ * @returns {number | null}
+ */
+export function parseRentAmount(val) {
+  if (val === null || val === undefined || val === '') return null;
+  if (typeof val === 'number') {
+    return (!isNaN(val) && val > 0) ? val : null;
+  }
+  const str = String(val).trim();
+  if (!str) return null;
+  const match = str.match(/[\d,]+(?:\.\d+)?/);
+  if (!match) return null;
+  const cleaned = match[0].replace(/,/g, '');
+  const parsed = parseFloat(cleaned);
+  if (isNaN(parsed) || parsed <= 0) return null;
+  return parsed;
+}
+
+/**
  * Determines a property's operational and review status strictly.
  * A rejected property must NEVER count as Live, Occupied, or in the occupancy rate.
  * Occupancy is matched STRICTLY by property ID (never by title or fuzzy name).
@@ -267,13 +291,13 @@ export function calculatePortfolioMetrics(properties = [], leases = [], invoices
   });
 
   const totalCollectedRevenue = paidInvoices.reduce((sum, inv) => {
-    const amt = parseFloat(inv.grandTotal || inv.grand_total || inv.amount || 0);
-    return sum + (isNaN(amt) ? 0 : amt);
+    const amt = parseRentAmount(inv.grandTotal ?? inv.grand_total ?? inv.amount);
+    return sum + (amt !== null ? amt : 0);
   }, 0);
 
   const outstandingBalance = unpaidInvoices.reduce((sum, inv) => {
-    const amt = parseFloat(inv.grandTotal || inv.grand_total || inv.amount || 0);
-    return sum + (isNaN(amt) ? 0 : amt);
+    const amt = parseRentAmount(inv.grandTotal ?? inv.grand_total ?? inv.amount);
+    return sum + (amt !== null ? amt : 0);
   }, 0);
 
   // Month Attribution: grouped strictly by actual payment date
@@ -288,8 +312,8 @@ export function calculatePortfolioMetrics(properties = [], leases = [], invoices
   });
 
   const thisMonthRentCollected = thisMonthPaidInvoices.reduce((sum, inv) => {
-    const amt = parseFloat(inv.grandTotal || inv.grand_total || inv.amount || 0);
-    return sum + (isNaN(amt) ? 0 : amt);
+    const amt = parseRentAmount(inv.grandTotal ?? inv.grand_total ?? inv.amount);
+    return sum + (amt !== null ? amt : 0);
   }, 0);
 
   // 6-Month Rental Income Chart (Last 6 months ending on reference month)
@@ -306,8 +330,8 @@ export function calculatePortfolioMetrics(properties = [], leases = [], invoices
       const ym = parsePaymentDateYearMonth(rawDate);
       return ym && ym.year === yVal && ym.month === mIdx;
     }).reduce((sum, inv) => {
-      const amt = parseFloat(inv.grandTotal || inv.grand_total || inv.amount || 0);
-      return sum + (isNaN(amt) ? 0 : amt);
+      const amt = parseRentAmount(inv.grandTotal ?? inv.grand_total ?? inv.amount);
+      return sum + (amt !== null ? amt : 0);
     }, 0);
 
     monthlyRevenueChart.push({
@@ -322,7 +346,7 @@ export function calculatePortfolioMetrics(properties = [], leases = [], invoices
   // Sorted collected payments list for Rent Payments modal
   const collectedPaymentsList = paidInvoices.map(inv => {
     const rawDate = inv.paid_at || inv.paidAt || inv.payment_date || inv.paymentDate;
-    const amount = parseFloat(inv.grandTotal || inv.grand_total || inv.amount || 0) || 0;
+    const amount = parseRentAmount(inv.grandTotal ?? inv.grand_total ?? inv.amount) || 0;
     return {
       id: inv.id,
       invoiceNumber: inv.invoice_number || inv.invoiceNumber || `INV-${String(inv.id).slice(0, 8)}`,
